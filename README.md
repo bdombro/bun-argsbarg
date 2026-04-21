@@ -160,10 +160,15 @@ Check the `examples/` directory for full working scripts:
 | `ArgsBargNested` | `examples/nested.ts` | Nested `CliCommand` tree, positional tails, async handlers. |
 
 ```bash
-bun examples/minimal.ts --help
-bun examples/minimal.ts hello --name world
-bun examples/nested.ts stat owner lookup -u alice ./README.md
-bun examples/nested.ts read ./README.md
+export PATH="$PATH:$(pwd)/examples"
+
+eval "$(minimal.ts completion zsh)"
+minimal.ts --help
+minimal.ts hello --name world
+
+eval "$(nested.ts completion zsh)"
+nested.ts stat owner lookup -u alice ./README.md
+nested.ts read ./README.md
 ```
 
 
