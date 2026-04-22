@@ -28,7 +28,7 @@ export function cliValidateRoot(root: CliCommand): void {
   }
 
   // Check for reserved command names at root
-  for (const child of root.children ?? []) {
+  for (const child of root.commands ?? []) {
     if (reservedCommandNames.includes(child.key)) {
       throw new CliSchemaValidationError(`Reserved command name: ${child.key}`);
     }
@@ -38,6 +38,7 @@ export function cliValidateRoot(root: CliCommand): void {
   walkCommand(root, true);
 }
 
+/** Recursively validates a command node: handlers vs children, options, and positionals. */
 function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   // Fallback only on root
   if (!isRoot && cmd.fallbackCommand !== undefined) {
@@ -55,7 +56,7 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     );
   }
 
-  if ((cmd.children ?? []).length > 0) {
+  if ((cmd.commands ?? []).length > 0) {
     if (cmd.handler !== undefined) {
       throw new CliSchemaValidationError(`Routing command must not set handler: ${cmd.key}`);
     }
@@ -67,7 +68,7 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
 
   // Check for duplicate child names
   const seenNames = new Set<string>();
-  for (const child of cmd.children ?? []) {
+  for (const child of cmd.commands ?? []) {
     if (seenNames.has(child.key)) {
       throw new CliSchemaValidationError(`Duplicate command name: ${child.key}`);
     }
@@ -93,7 +94,7 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   }
 
   // Validate positionals
-  const positionals = (cmd.positionals ?? []).filter((p) => p.positional);
+  const positionals = cmd.positionals ?? [];
   for (const p of positionals) {
     if (p.argMin < 0) {
       throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${cmd.key}/${p.name}`);
@@ -129,8 +130,8 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Recurse into children
-  for (const child of cmd.children ?? []) {
+  // Recurse into nested commands
+  for (const child of cmd.commands ?? []) {
     walkCommand(child, false);
   }
 }

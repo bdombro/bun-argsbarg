@@ -7,18 +7,7 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
-export { cliBuiltinCompletionGroup, completionBashScript, completionZshScript } from "./completion.ts";
-export { cliRun, cliErrWithHelp } from "./runtime";
 export { CliContext } from "./context.ts";
-export { cliOptionLabel, cliHelpRender } from "./help.ts";
-export { ParseKind, parse, postParseValidate } from "./parse.ts";
-export type { ParseResult } from "./parse.ts";
-export {
-  CliOptionKind,
-  CliFallbackMode,
-  CliSchemaValidationError,
-  createOption,
-} from "./types.ts";
-export type { CliOptionDef, CliCommand, CliHandler } from "./types.ts";
-export { fullStringIsDouble, strictParseDouble } from "./utils.ts";
-export { cliValidateRoot } from "./validate.ts";
+export { cliErrWithHelp, cliRun } from "./runtime";
+export { CliFallbackMode, CliOptionKind, CliSchemaValidationError } from "./types.ts";
+export type { CliCommand, CliHandler, CliOption, CliPositional } from "./types.ts";

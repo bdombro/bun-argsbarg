@@ -29,23 +29,28 @@ Shell completions! -->
 ## Usage
 
 ```typescript
-import { cliRun, CliCommand, createOption, CliOptionKind, CliFallbackMode } from "argsbarg";
+import { cliRun, CliCommand, CliOptionKind, CliFallbackMode } from "argsbarg";
 
 const cli: CliCommand = {
   key: "helloapp",
   description: "Tiny demo.",
-  children: [
+  commands: [
     {
       key: "hello",
       description: "Say hello.",
       options: [
-        createOption("name", "Who to greet.", {
+        {
+          name: "name",
+          description: "Who to greet.",
           kind: CliOptionKind.String,
           shortName: "n",
-        }),
-        createOption("verbose", "Enable extra logging.", {
+        },
+        {
+          name: "verbose",
+          description: "Enable extra logging.",
+          kind: CliOptionKind.Presence,
           shortName: "v",
-        }),
+        },
       ],
       handler: async (ctx) => {
         const name = ctx.stringOpt("name") ?? "world";
@@ -71,10 +76,10 @@ await cliRun(cli);
 
 Everything you need for a first-class CLI:
 
-- **Nested subcommands** (`CliCommand` with `children` for groups, `handler` for leaves)
+- **Nested subcommands** (`CliCommand` with `commands` for groups, `handler` for leaves)
 - **POSIX-style options** (`-x`, `--long`, `--long=value`)
 - **Bundled presence flags** (`-abc`)
-- **Positional arguments and varargs tails** (`CliOptionDef` with `positional: true`)
+- **Positional arguments and varargs tails** (`CliPositional` objects on `positionals`)
 - **Scoped help** at any routing depth (`-h` / `--help`)
 - **Default-command fallback** (`CliFallbackMode`)
 - **Option separator** (`--` to stop option parsing)
@@ -115,7 +120,7 @@ bun add bun-argsbarg
 
 ## How it works
 
-1. Build a **program root** `CliCommand` using pure TypeScript objects: `key` is the app/binary name, `children` are top-level subcommands, `options` are global flags. The root must not set `handler` or declare `positionals` (validated at startup). Use `fallbackCommand` / `fallbackMode` on the root only for default top-level routing.
+1. Build a **program root** `CliCommand` using pure TypeScript objects: `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. The root must not set `handler` or declare `positionals` (validated at startup). Use `fallbackCommand` / `fallbackMode` on the root only for default top-level routing.
 2. Call `await cliRun(root)` with that root — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
 
@@ -131,14 +136,14 @@ With `MissingOrUnknown` / `UnknownOnly`, unrecognized **root** flags stop root-f
 
 ### Positionals (help labels)
 
-Use `createOption` with `positional: true`. With `argMax: 0`, the tail accepts at least `argMin` tokens and has no upper bound unless you set `argMax` > 0.
+Add `CliPositional` entries to the command’s `positionals` list (separate from `CliOption` flags). With `argMax: 0`, the tail accepts at least `argMin` tokens and has no upper bound unless you set `argMax` > 0.
 
 | Fields | Label |
 | --- | --- |
-| `positional: true`, default `argMin`/`argMax` | `<n>` |
-| `positional: true`, `argMin: 0`, `argMax: 1` | `[n]` |
-| `positional: true`, `argMin: 0`, `argMax: 0` | `[n...]` |
-| `positional: true`, `argMin: 1`, `argMax: 0` | `<n...>` |
+| default `argMin`/`argMax` (single-slot) | `<n>` |
+| `argMin: 0`, `argMax: 1` | `[n]` |
+| `argMin: 0`, `argMax: 0` | `[n...]` |
+| `argMin: 1`, `argMax: 0` | `<n...>` |
 
 ### Reading values (`CliContext`)
 
@@ -175,14 +180,16 @@ nested.ts read ./README.md
 
 ## Public API overview
 
+The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you need to define a schema and run it. Parsing, completion script generation, help rendering, and schema pre-validation live in other modules under `src/` for tests and advanced integrations.
+
 | Symbol | Role |
 | --- | --- |
-| `CliCommand`, `CliOptionDef`, `CliOptionKind`, `CliFallbackMode` | Schema types. |
-| `createOption()` | Factory helper for options with sensible defaults. |
-| `CliContext`, `CliHandler` | Handler context and async-compatible closure type. |
-| `cliRun(root, [argv])` | Parse argv, dispatch, exit. |
-| `cliErrWithHelp(ctx, msg)` | Error + scoped help, exit 1. |
-| `cliHelpRender(schema, helpPath, useStderr)` | Render help (`schema` is the program root `CliCommand`). |
+| `CliCommand`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
+| `CliOptionKind`, `CliFallbackMode` | Option kinds and root fallback behavior. |
+| `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
+| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.args`, …). |
+| `cliRun(root, [argv])` | Validate, parse argv, dispatch, exit. |
+| `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 
 Reserved identifier (validated at startup): root command **`completion`**.
 

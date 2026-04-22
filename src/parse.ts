@@ -10,7 +10,7 @@ across every entry path.
 import { CliContext } from "./context.ts";
 import {
   CliCommand,
-  CliOptionDef,
+  CliOption,
   CliOptionKind,
   CliFallbackMode,
 } from "./types.ts";
@@ -18,22 +18,35 @@ import { fullStringIsDouble } from "./utils.ts";
 
 // ── Parse Result ──────────────────────────────────────────────────────────────
 
-/** Outcome of a parse: success, help request, or fatal user error. */
+/**
+ * Outcome of a parse: success, help request, or fatal user error.
+ */
 export enum ParseKind {
+  /** Parsed successfully; options and positionals are valid. */
   Ok = "ok",
+  /** User requested help (explicit or implicit). */
   Help = "help",
+  /** User error (unknown command, bad option, etc.). */
   Error = "error",
 }
 
 /** Structured parse output: routed path, merged options, positional args, and help/error metadata. */
 export interface ParseResult {
+  /** Parse outcome (ok, help, or error). */
   kind: ParseKind;
+  /** Routed subcommand keys from the program root (e.g. `["hello"]`). */
   path: string[];
+  /** Merged long/short option values as string values (presence → `"1"`). */
   opts: Record<string, string>;
+  /** Positional arguments for the leaf command, in order. */
   args: string[];
+  /** True when the user passed `-h` / `--help` explicitly. */
   helpExplicit: boolean;
+  /** Path segments for scoped help (empty for root help). */
   helpPath: string[];
+  /** User-facing error message when `kind === Error`. */
   errorMsg: string;
+  /** Help path to render next to an error (for contextual help). */
   errorHelpPath: string[];
 }
 
@@ -42,32 +55,41 @@ export interface ParseResult {
 const helpShort = "-h";
 const helpLong = "--help";
 
+/** Returns true if the argv token is `-h` or `--help`. */
 function isHelpTok(tok: string): boolean {
   return tok === helpShort || tok === helpLong;
 }
 
+/** Looks up a subcommand or routing node by `key`. */
 function findChild(cmds: CliCommand[], name: string): CliCommand | undefined {
   return cmds.find((c) => c.key === name);
 }
 
-function findOptionByName(defs: CliOptionDef[], name: string): CliOptionDef | undefined {
+/** Resolves a long-option definition by name (without leading `--`). */
+function findOptionByName(defs: CliOption[], name: string): CliOption | undefined {
   return defs.find((o) => o.name === name);
 }
 
-function findOptionDefByShort(defs: CliOptionDef[], short: string): CliOptionDef | undefined {
-  return defs.find((o) => !o.positional && o.shortName === short);
+/** Resolves a short-option definition by its single character. */
+function findOptionDefByShort(defs: CliOption[], short: string): CliOption | undefined {
+  return defs.find((o) => o.shortName === short);
 }
 
 // ── Option Consumption ────────────────────────────────────────────────────────
 
+/** State from scanning argv for flags: error text, lenient early exit, or `--` seen. */
 interface ConsumeReport {
+  /** User-facing error when option parsing failed; null on success. */
   err: string | null;
+  /** True when lenient mode stopped on an unknown option token. */
   stoppedOnUnknown: boolean;
+  /** True when `--` was read (remaining argv is positional-only). */
   sawDoubleDash: boolean;
 }
 
+/** Consumes argv from index `i` for long/short options, updating `opts` until a non-option or `--`. */
 function consumeOptions(
-  defs: CliOptionDef[],
+  defs: CliOption[],
   lenientUnknown: boolean,
   argv: string[],
   i: number,
@@ -75,6 +97,7 @@ function consumeOptions(
 ): { report: ConsumeReport; nextIndex: number } {
   let idx = i;
 
+  /** Parses a single `--name` or `--name=value` token. Returns an error string, `""` if unknown and lenient, or `null` on success. */
   function consumeLong(tok: string): string | null {
     const body = tok.slice(2);
     let optName: string;
@@ -118,6 +141,7 @@ function consumeOptions(
     return null;
   }
 
+  /** Parses a bundled or single `-x` / `-nval` short token. */
   function consumeShort(tok: string): string | null {
     if (tok.length < 2) return `Unexpected option token: ${tok}`;
     const shorts = tok.slice(1);
@@ -183,6 +207,7 @@ function consumeOptions(
 
 // ── Positional Collection ─────────────────────────────────────────────────────
 
+/** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
   node: CliCommand,
   startIdx: number,
@@ -190,6 +215,7 @@ function finishLeaf(
   path: string[],
   opts: Record<string, string>,
 ): ParseResult {
+  /** Builds a parse error for positional consumption failures. */
   function errorResult(msg: string): ParseResult {
     const pr: ParseResult = {
       kind: ParseKind.Error,
@@ -208,8 +234,6 @@ function finishLeaf(
   const args: string[] = [];
 
   for (const p of node.positionals ?? []) {
-    if (!p.positional) continue;
-
     if (p.argMax === 1) {
       if (p.argMin >= 1) {
         if (idx >= argv.length) {
@@ -252,6 +276,7 @@ function finishLeaf(
 
 // ── Main Parser ───────────────────────────────────────────────────────────────
 
+/** Builds a help-request result for the current routing path. */
 function helpResult(p: string[], explicit: boolean): ParseResult {
   return {
     kind: ParseKind.Help,
@@ -265,6 +290,9 @@ function helpResult(p: string[], explicit: boolean): ParseResult {
   };
 }
 
+/**
+ * Parses `argv` against the program root, routing into subcommands and filling `opts` / `args`.
+ */
 export function parse(root: CliCommand, argv: string[]): ParseResult {
   let i = 0;
   const path: string[] = [];
@@ -302,7 +330,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
   if (i >= argv.length) {
     if (root.fallbackCommand !== undefined && ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOnly || (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown)) {
       cmdName = root.fallbackCommand;
-      node = findChild(root.children ?? [], cmdName);
+      node = findChild(root.commands ?? [], cmdName);
       if (!node) {
         return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
       }
@@ -311,7 +339,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
   } else {
     const peek = argv[i];
-    const childPick = !forcePositionals ? findChild(root.children ?? [], peek) : undefined;
+    const childPick = !forcePositionals ? findChild(root.commands ?? [], peek) : undefined;
 
     if (childPick !== undefined) {
       cmdName = peek;
@@ -325,14 +353,14 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 
       if (canRouteUnknown) {
         cmdName = root.fallbackCommand!;
-        node = findChild(root.children ?? [], cmdName);
+        node = findChild(root.commands ?? [], cmdName);
         if (!node) {
           return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
         }
       } else {
         cmdName = peek;
         if (!forcePositionals) i += 1;
-        node = findChild(root.children ?? [], cmdName);
+        node = findChild(root.commands ?? [], cmdName);
         if (!node) {
           return {
             kind: ParseKind.Error,
@@ -379,7 +407,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
 
     if (i >= argv.length) {
-      if ((current.children ?? []).length > 0) {
+      if ((current.commands ?? []).length > 0) {
         return helpResult(path, false);
       }
       return finishLeaf(current, i, argv, path, opts);
@@ -400,7 +428,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
 
     if (!forcePositionals) {
-      const childOpt = findChild(current.children ?? [], tok);
+      const childOpt = findChild(current.commands ?? [], tok);
       if (childOpt !== undefined) {
         i += 1;
         path.push(tok);
@@ -409,7 +437,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       }
     }
 
-    if ((current.children ?? []).length > 0) {
+    if ((current.commands ?? []).length > 0) {
       return {
         kind: ParseKind.Error,
         path,
@@ -428,11 +456,14 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 
 // ── Post-Parse Validation ─────────────────────────────────────────────────────
 
+/**
+ * Validates option keys and numeric values for an Ok parse, merging in-scope options along `pr.path`.
+ */
 export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResult {
   if (pr.kind !== ParseKind.Ok) return pr;
 
   let defs = [...(root.options ?? [])];
-  let cmds = root.children ?? [];
+  let cmds = root.commands ?? [];
 
   for (const seg of pr.path) {
     const ch = findChild(cmds, seg);
@@ -449,8 +480,7 @@ export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResul
       };
     }
     defs.push(...(ch.options ?? []));
-    defs.push(...(ch.positionals ?? []));
-    cmds = ch.children ?? [];
+    cmds = ch.commands ?? [];
   }
 
   for (const [k, v] of Object.entries(pr.opts)) {

@@ -7,32 +7,41 @@ It keeps help formatting shared across help and error paths so users see one con
 style no matter how help is reached.
 */
 
-import { CliCommand, CliOptionDef, CliOptionKind } from "./types.ts";
+import { CliCommand, CliOption, CliOptionKind, CliPositional } from "./types.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
 
+/** SGR wrappers for TTY help output. */
 const style = {
+  /** Joins a message with a prefix and a reset (or suffix) for ANSI SGR. */
   wrap(prefix: string, body: string, suffix: string): string {
     return prefix + body + suffix;
   },
+  /** Renders the message in red. */
   red(msg: string): string {
     return this.wrap("\u001B[31m", msg, "\u001B[0m");
   },
+  /** Renders the message in gray. */
   gray(msg: string): string {
     return this.wrap("\u001B[90m", msg, "\u001B[0m");
   },
+  /** Renders the message in bold. */
   bold(msg: string): string {
     return this.wrap("\u001B[1m", msg, "\u001B[0m");
   },
+  /** Renders the message in white. */
   white(msg: string): string {
     return this.wrap("\u001B[37m", msg, "\u001B[0m");
   },
+  /** Renders the message in bright aqua + bold. */
   aquaBold(msg: string): string {
     return this.wrap("\u001B[96m\u001B[1m", msg, "\u001B[0m");
   },
+  /** Renders the message in bright green. */
   greenBright(msg: string): string {
     return this.wrap("\u001B[92m", msg, "\u001B[0m");
   },
+  /** Renders a section title: gray and bold. */
   grayBoldTitle(title: string): string {
     return this.gray(this.bold(title));
   },
@@ -49,11 +58,13 @@ const kBoxH = "\u2500";  // ─
 
 // ── Terminal Detection ────────────────────────────────────────────────────────
 
+/** Returns a minimum column width for help, clamped to stdout width when known. */
 function getHelpWidth(): number {
   return Math.max(40, process.stdout.columns || 80);
 }
 
-function isTTY(fd: number): boolean {
+/** True when stdout is a TTY (used to decide on color). */
+function isTTY(): boolean {
   return process.stdout.isTTY !== undefined;
 }
 
@@ -78,20 +89,24 @@ function visibleWidth(s: string): number {
   return w;
 }
 
+/** Repeats the horizontal box-drawing character `n` times. */
 function repeatBoxH(n: number): string {
   return kBoxH.repeat(Math.max(0, n));
 }
 
+/** Returns a string of `n` spaces. */
 function spaces(n: number): string {
   return " ".repeat(Math.max(0, n));
 }
 
+/** Pads `s` to visible width (ANSI-aware) to `width` columns. */
 function padVisible(s: string, width: number): string {
   return s + spaces(Math.max(0, width - visibleWidth(s)));
 }
 
 // ── Text Wrapping ─────────────────────────────────────────────────────────────
 
+/** Word-wraps a single line of text to a maximum `width` in columns. */
 function wrapParagraph(text: string, width: number): string[] {
   const available = Math.max(1, width);
   const out: string[] = [];
@@ -113,6 +128,7 @@ function wrapParagraph(text: string, width: number): string[] {
   return out;
 }
 
+/** Splits on newlines and wraps each logical line, preserving intentional leading-indent lines. */
 function wrapText(text: string, width: number): string[] {
   const out: string[] = [];
   const lines = text.split("\n");
@@ -134,6 +150,7 @@ function wrapText(text: string, width: number): string[] {
 
 // ── Option Label Formatting ───────────────────────────────────────────────────
 
+/** Suffix for `--name` in usage (e.g. ` <string>`) based on value kind. */
 function optKindLabel(k: CliOptionKind): string {
   switch (k) {
     case CliOptionKind.Presence:
@@ -145,13 +162,8 @@ function optKindLabel(k: CliOptionKind): string {
   }
 }
 
-export function cliOptionLabel(o: CliOptionDef, color: boolean): string {
-  if (o.positional) {
-    if (o.argMax === 1) {
-      return o.argMin === 0 ? "[" + o.name + "]" : "<" + o.name + ">";
-    }
-    return o.argMin === 0 ? "[" + o.name + "...]" : "<" + o.name + "...>";
-  }
+/** Formats a flag/value option for help tables: `--name`, optional short, optional kind hint. */
+export function cliOptionLabel(o: CliOption, color: boolean): string {
   let r = "--" + o.name + optKindLabel(o.kind);
   if (o.shortName) r += ", -" + o.shortName;
   if (!color) return r;
@@ -163,13 +175,29 @@ export function cliOptionLabel(o: CliOptionDef, color: boolean): string {
   return style.aquaBold(left) + " " + style.greenBright(right);
 }
 
+/** Formats a positional slot label (`<n>`, `[n]`, or varargs) for help. */
+export function cliPositionalLabel(p: CliPositional, color: boolean): string {
+  let r: string;
+  if (p.argMax === 1) {
+    r = p.argMin === 0 ? "[" + p.name + "]" : "<" + p.name + ">";
+  } else {
+    r = p.argMin === 0 ? "[" + p.name + "...]" : "<" + p.name + "...>";
+  }
+  if (!color) return r;
+  return style.aquaBold(r);
+}
+
 // ── Box Rendering ─────────────────────────────────────────────────────────────
 
+/** A single help table row: left column text and right-column description. */
 interface HelpRow {
+  /** Option flag or subcommand / positional label. */
   label: string;
+  /** Explanatory text (may be wrapped to multiple display lines). */
   description: string;
 }
 
+/** Renders a free-text or notes box with a Unicode border and `title` header. */
 function renderTextBox(title: string, lines: string[], hw: number, color: boolean): string[] {
   if (lines.length === 0) return [];
 
@@ -208,6 +236,7 @@ function renderTextBox(title: string, lines: string[], hw: number, color: boolea
   return out;
 }
 
+/** Renders a two-column label/description table in a box (options, subcommands, positionals). */
 function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boolean): string[] {
   if (rows.length === 0) return [];
 
@@ -273,6 +302,7 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
 
 // ── Usage & Rows ──────────────────────────────────────────────────────────────
 
+/** Builds one or two usage line strings (OPTIONS / COMMAND / ARGS) for the help header. */
 function usageLines(
   appName: string,
   helpPath: string[],
@@ -304,25 +334,25 @@ function usageLines(
   return out;
 }
 
-function rowsForOptions(defs: CliOptionDef[], color: boolean): HelpRow[] {
+/** Table rows for named options, including a synthetic `--help, -h` row. */
+function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
   const rows: HelpRow[] = [];
   const helpLabel = color
     ? style.aquaBold("--help, ") + style.greenBright("-h")
     : "--help, -h";
   rows.push({ label: helpLabel, description: "Show help for this command." });
   for (const o of defs) {
-    if (o.positional) continue;
     rows.push({ label: cliOptionLabel(o, color), description: o.description });
   }
   return rows;
 }
 
-function rowsForPositionals(defs: CliOptionDef[], color: boolean): HelpRow[] {
-  return defs
-    .filter((o) => o.positional)
-    .map((o) => ({ label: cliOptionLabel(o, color), description: o.description }));
+/** Table rows for positional `CliPositional` definitions. */
+function rowsForPositionals(defs: CliPositional[], color: boolean): HelpRow[] {
+  return defs.map((p) => ({ label: cliPositionalLabel(p, color), description: p.description }));
 }
 
+/** Table rows for subcommands, sorted by key. */
 function rowsForSubcommands(cmds: CliCommand[]): HelpRow[] {
   return cmds
     .sort((a, b) => a.key.localeCompare(b.key))
@@ -331,9 +361,13 @@ function rowsForSubcommands(cmds: CliCommand[]): HelpRow[] {
 
 // ── Main Help Render ──────────────────────────────────────────────────────────
 
+/**
+ * Renders full help for the app root or a nested command, following `helpPath` from the root key.
+ * `useStderr` is reserved for call-site consistency; width and color use stdout TTY.
+ */
 export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr: boolean): string {
   const hw = getHelpWidth();
-  const color = isTTY(1);
+  const color = isTTY();
 
   if (helpPath.length === 0) {
     const lines: string[] = [];
@@ -345,7 +379,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
     lines.push(
       renderTextBox(
         "Usage",
-        usageLines(schema.key, helpPath, (schema.children ?? []).length > 0, false, color),
+        usageLines(schema.key, helpPath, (schema.commands ?? []).length > 0, false, color),
         hw,
         color,
       ).join("\n"),
@@ -356,16 +390,16 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
       lines.push("");
       lines.push(optBox.join("\n"));
     }
-    if ((schema.children ?? []).length > 0) {
+    if ((schema.commands ?? []).length > 0) {
       lines.push("");
       lines.push(
-        renderTableBox("Commands", rowsForSubcommands(schema.children ?? []), hw, color).join("\n"),
+        renderTableBox("Commands", rowsForSubcommands(schema.commands ?? []), hw, color).join("\n"),
       );
     }
     return lines.join("\n") + "\n\n";
   }
 
-  let layer = schema.children ?? [];
+  let layer = schema.commands ?? [];
   let node: CliCommand | undefined;
   for (const seg of helpPath) {
     const ch = layer.find((c) => c.key === seg);
@@ -373,7 +407,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
       return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
     }
     node = ch;
-    layer = ch.children ?? [];
+    layer = ch.commands ?? [];
   }
   if (!node) {
     return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
@@ -388,7 +422,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
   lines.push(
     renderTextBox(
       "Usage",
-      usageLines(schema.key, helpPath, (node.children ?? []).length > 0, (node.positionals ?? []).length > 0, color),
+      usageLines(schema.key, helpPath, (node.commands ?? []).length > 0, (node.positionals ?? []).length > 0, color),
       hw,
       color,
     ).join("\n"),
@@ -406,7 +440,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
     lines.push(posBox.join("\n"));
   }
 
-  const subBox = renderTableBox("Subcommands", rowsForSubcommands(node.children ?? []), hw, color);
+  const subBox = renderTableBox("Subcommands", rowsForSubcommands(node.commands ?? []), hw, color);
   if (subBox.length > 0) {
     lines.push("");
     lines.push(subBox.join("\n"));

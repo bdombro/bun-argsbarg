@@ -1,5 +1,5 @@
 /*
-This module defines the CLI schema, option kinds, fallback modes, and helpers.
+This module defines the CLI schema, option kinds, and fallback modes.
 It is the shared declarative model that parsing, validation, help, and completion all
 read from, so the package has one source of truth.
 
@@ -12,8 +12,11 @@ import type { CliContext } from "./context.ts";
  * Option kinds: presence (boolean flag), string (free-form text), or number (strict double).
  */
 export enum CliOptionKind {
+  /** Boolean flag: no value token (may be implicit `"1"` when set). */
   Presence = "presence",
+  /** Free-form string value. */
   String = "string",
+  /** Strict floating-point value (parsed at validation time). */
   Number = "number",
 }
 
@@ -22,18 +25,25 @@ export enum CliOptionKind {
  * Only the program root may set a non-default mode or a non-nil fallbackCommand.
  */
 export enum CliFallbackMode {
-  /** Use the fallback only when argv has no first subcommand token. */
+  /**
+   * If argv has no first subcommand, route to `fallbackCommand`; if the first token is unknown, error.
+   */
   MissingOnly = "missingOnly",
-  /** Use the fallback when the first token is missing or not a known child name. */
+  /**
+   * If argv has no first subcommand or the first token is not a known child, route to `fallbackCommand`.
+   */
   MissingOrUnknown = "missingOrUnknown",
-  /** Use the fallback only when the first token is not a known child name. */
+  /**
+   * If the first token is present but not a known child, route to `fallbackCommand`.
+   * When the first subcommand token is missing (empty argv), do not use fallback (implicit root help).
+   */
   UnknownOnly = "unknownOnly",
 }
 
 /**
- * One CLI flag, option, or positional definition.
+ * A named flag or value option (`--long`, `-short`), listed on `CliCommand.options`.
  */
-export interface CliOptionDef {
+export interface CliOption {
   /** Option name (e.g., "name", "verbose"). */
   name: string;
   /** Description shown in help. */
@@ -42,19 +52,29 @@ export interface CliOptionDef {
   kind: CliOptionKind;
   /** Short option character (e.g., 'n' for -n). */
   shortName?: string;
-  /** Whether this is a positional argument (true) or a flag/option (false). */
-  positional: boolean;
-  /** Minimum number of values required (for positionals). */
+}
+
+/**
+ * An ordered positional argument slot, listed on `CliCommand.positionals`.
+ */
+export interface CliPositional {
+  /** Positional name (used in help and error messages). */
+  name: string;
+  /** Description shown in help. */
+  description: string;
+  /** Value kind for each consumed token. */
+  kind: CliOptionKind;
+  /** Minimum number of values required. */
   argMin: number;
-  /** Maximum number of values allowed (0 = unlimited, for positionals). */
+  /** Maximum number of values (0 = unlimited, for a varargs tail). */
   argMax: number;
 }
 
 /**
- * A command node: routing group (has children) or leaf (has handler).
+ * A command node: routing group (has commands) or leaf (has handler).
  *
  * The value passed to cliRun is the program root: name is the app/binary name,
- * children are top-level subcommands, options are global flags.
+ * commands are top-level subcommands, options are global flags.
  * The root must not set handler or declare positionals (validated at startup).
  */
 export interface CliCommand {
@@ -65,11 +85,11 @@ export interface CliCommand {
   /** Additional notes shown in help (supports {app} placeholder). */
   notes?: string;
   /** Global or command-level flags/options. */
-  options?: CliOptionDef[];
+  options?: CliOption[];
   /** Positional argument definitions. */
-  positionals?: CliOptionDef[];
-  /** Child subcommands (empty for leaf commands). */
-  children?: CliCommand[];
+  positionals?: CliPositional[];
+  /** Nested subcommands (empty for leaf commands). */
+  commands?: CliCommand[];
   /** Handler function for leaf commands. */
   handler?: CliHandler;
   /** Default top-level subcommand when argv omits a command or uses an unknown first token (root only). */
@@ -88,27 +108,9 @@ export type CliHandler = (ctx: CliContext) => void | Promise<void>;
  * Error thrown when the static CliCommand tree violates ArgsBarg rules.
  */
 export class CliSchemaValidationError extends Error {
+  /** Creates a schema validation error with a human-readable rule violation. */
   constructor(message: string) {
     super(message);
     this.name = "CliSchemaValidationError";
   }
-}
-
-/**
- * Creates a new CliOptionDef with sensible defaults.
- */
-export function createOption(
-  name: string,
-  description: string,
-  options?: Partial<CliOptionDef>,
-): CliOptionDef {
-  return {
-    name,
-    description,
-    kind: options?.kind ?? CliOptionKind.Presence,
-    shortName: options?.shortName,
-    positional: options?.positional ?? false,
-    argMin: options?.argMin ?? 1,
-    argMax: options?.argMax ?? 1,
-  };
 }
