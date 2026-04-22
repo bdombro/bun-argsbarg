@@ -64,10 +64,16 @@ export interface CliPositional {
   description: string;
   /** Value kind for each consumed token. */
   kind: CliOptionKind;
-  /** Minimum number of values required. */
-  argMin: number;
-  /** Maximum number of values (0 = unlimited, for a varargs tail). */
-  argMax: number;
+  /**
+   * Minimum number of values required (default 1).
+   * Use `0` for an optional slot when paired with `argMax: 1`, or a varargs tail with `argMax: 0`.
+   */
+  argMin?: number;
+  /**
+   * Maximum number of values (`1` = a single required or optional word; default 1). Use `0` for an
+   * unbounded varargs tail (must be the last slot in the command’s `positionals` list).
+   */
+  argMax?: number;
 }
 
 /**

@@ -96,15 +96,16 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   // Validate positionals
   const positionals = cmd.positionals ?? [];
   for (const p of positionals) {
-    if (p.argMin < 0) {
+    if (p.argMin !== undefined && p.argMin < 0) {
       throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${cmd.key}/${p.name}`);
     }
-    if (p.argMax < 0) {
+    if (p.argMax !== undefined && p.argMax < 0) {
       throw new CliSchemaValidationError(
         `argMax must be >= 0 (use 0 for unlimited) for positional ${cmd.key}/${p.name}`,
       );
     }
-    if (p.argMax > 0 && p.argMin > p.argMax) {
+    const { argMin = 1, argMax = 1 } = p;
+    if (argMax > 0 && argMin > argMax) {
       throw new CliSchemaValidationError(
         `argMin must not exceed argMax for positional ${cmd.key}/${p.name}`,
       );
@@ -114,7 +115,8 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   // Check positional ordering: required before optional
   let sawOptional = false;
   for (const p of positionals) {
-    if (p.argMin === 0) {
+    const { argMin = 1 } = p;
+    if (argMin === 0) {
       sawOptional = true;
     } else if (sawOptional) {
       throw new CliSchemaValidationError(`Required positional after optional in scope ${cmd.key}`);
@@ -123,7 +125,8 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
 
   // Check unlimited positional must be last
   for (let idx = 0; idx < positionals.length; idx++) {
-    if (positionals[idx].argMax === 0 && idx + 1 < positionals.length) {
+    const { argMax = 1 } = positionals[idx]!;
+    if (argMax === 0 && idx + 1 < positionals.length) {
       throw new CliSchemaValidationError(
         `Unlimited positional (argMax == 0) must be last in scope ${cmd.key}`,
       );

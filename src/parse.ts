@@ -10,9 +10,9 @@ across every entry path.
 import { CliContext } from "./context.ts";
 import {
   CliCommand,
+  CliFallbackMode,
   CliOption,
   CliOptionKind,
-  CliFallbackMode,
 } from "./types.ts";
 import { fullStringIsDouble } from "./utils.ts";
 
@@ -234,8 +234,9 @@ function finishLeaf(
   const args: string[] = [];
 
   for (const p of node.positionals ?? []) {
-    if (p.argMax === 1) {
-      if (p.argMin >= 1) {
+    const { argMin = 1, argMax = 1 } = p;
+    if (argMax === 1) {
+      if (argMin >= 1) {
         if (idx >= argv.length) {
           return errorResult(`Missing positional argument: ${p.name}`);
         }
@@ -249,21 +250,21 @@ function finishLeaf(
     }
 
     let count = 0;
-    if (p.argMax === 0) {
+    if (argMax === 0) {
       while (idx < argv.length) {
         args.push(argv[idx]);
         idx += 1;
         count += 1;
       }
     } else {
-      while (count < p.argMax && idx < argv.length) {
+      while (count < argMax && idx < argv.length) {
         args.push(argv[idx]);
         idx += 1;
         count += 1;
       }
     }
-    if (count < p.argMin) {
-      return errorResult(`Expected at least ${p.argMin} argument(s) for ${p.name}, got ${count}`);
+    if (count < argMin) {
+      return errorResult(`Expected at least ${argMin} argument(s) for ${p.name}, got ${count}`);
     }
   }
 

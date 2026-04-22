@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Release workflow: bump semver; update CHANGELOG; commit, tag, push, GitHub release, npm publish.
+ * Release workflow: bump semver; update CHANGELOG (trailing release reference links); commit, tag, push,
+ * GitHub release, npm publish.
  *
  * **Run `just test` (or the individual `just check-types`, `just lint`, `bun test`) before this
  * script** — it does not typecheck, lint, or run tests. The `just release` recipe runs checks first.
@@ -63,6 +64,94 @@ function bumpSemver(version: string, part: Bump): string {
     patch += 1;
   }
   return `${major}.${minor}.${patch}`;
+}
+
+/** Returns stdout from a successful subprocess, trimmed; throws if the command fails. */
+function runCapture(cmd: string[], cwd: string = repoRoot): string {
+  const proc = Bun.spawnSync({ cmd, cwd, stdout: "pipe", stderr: "pipe" });
+  if (proc.exitCode !== 0) {
+    const err = new TextDecoder().decode(proc.stderr);
+    throw new Error(`Command failed: ${cmd.join(" ")}\n${err}`);
+  }
+  return new TextDecoder().decode(proc.stdout).trimEnd();
+}
+
+/** Parses `git remote get-url origin` into `https://github.com/owner/repo`, or null if not GitHub. */
+function githubRepoBaseFromOrigin(origin: string): string | null {
+  const trimmed = origin.trim();
+  let path = trimmed.replace(/^git@[^:]+:/, "").replace(/^https?:\/\/[^/]+\//, "");
+  if (path.endsWith(".git")) {
+    path = path.slice(0, -4);
+  }
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(path)) {
+    return null;
+  }
+  return `https://github.com/${path}`;
+}
+
+/**
+ * Collects released semver headings from changelog body in document order (newest first when
+ * headings follow Keep a Changelog order after each release).
+ */
+function releasedSemverVersionsFromChangelog(md: string): string[] {
+  const re = /^## \[(\d+\.\d+\.\d+)\] /gm;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(md)) !== null) {
+    out.push(m[1]!);
+  }
+  return out;
+}
+
+/**
+ * Strips optional legacy `## Links` heading and/or trailing Keep-a-Changelog reference link lines
+ * (`[...]: http...`) at the end of the file.
+ */
+function stripChangelogLinkDefinitions(md: string): string {
+  let s = md.replace(/\r?\n## Links\r?\n/, "\n");
+  const lines = s.split(/\r?\n/);
+  let i = lines.length;
+  while (i > 0 && lines[i - 1] === "") {
+    i -= 1;
+  }
+  const refLine = /^\[[^\]]+\]: .+$/;
+  while (i > 0 && refLine.test(lines[i - 1]!)) {
+    i -= 1;
+  }
+  while (i > 0 && lines[i - 1] === "") {
+    i -= 1;
+  }
+  if (i > 0 && lines[i - 1] === "## Links") {
+    i -= 1;
+  }
+  while (i > 0 && lines[i - 1] === "") {
+    i -= 1;
+  }
+  if (i === 0) {
+    return "";
+  }
+  return lines.slice(0, i).join("\n");
+}
+
+/**
+ * Appends reference link definitions (no visible heading): `[Unreleased]` → compare latest tag to `HEAD`,
+ * and each released `[x.y.z]` → release tag URL.
+ */
+function appendChangelogLinkDefinitions(md: string, repoBase: string): string {
+  const body = stripChangelogLinkDefinitions(md).trimEnd();
+  const versions = releasedSemverVersionsFromChangelog(body);
+  if (versions.length === 0) {
+    return `${body}\n`;
+  }
+  const newest = versions[0]!;
+  const lines = [
+    "",
+    "",
+    `[Unreleased]: ${repoBase}/compare/v${newest}...HEAD`,
+    ...versions.map((v) => `[${v}]: ${repoBase}/releases/tag/v${v}`),
+    "",
+  ];
+  return `${body}${lines.join("\n")}`;
 }
 
 /** Runs a subprocess, inheriting stdio, and exits the process on non-zero status. */
@@ -129,7 +218,13 @@ await Bun.write(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
 const changelogPath = joinFile(repoRoot, "CHANGELOG.md");
 const changelog = await Bun.file(changelogPath).text();
-const nextChangelog = promoteChangelog(changelog, nextVersion, releaseDate);
+const promoted = promoteChangelog(changelog, nextVersion, releaseDate);
+const origin = runCapture(["git", "remote", "get-url", "origin"], repoRoot);
+const repoBase = githubRepoBaseFromOrigin(origin);
+if (repoBase === null) {
+  throw new Error(`Could not parse GitHub repo URL from origin: ${JSON.stringify(origin)}`);
+}
+const nextChangelog = appendChangelogLinkDefinitions(promoted, repoBase);
 await Bun.write(changelogPath, nextChangelog);
 
 const notesPath = joinFile(repoRoot, ".release-notes.tmp.md");

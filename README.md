@@ -1,4 +1,4 @@
-![Logo](logo.png)
+![Logo](https://github.com/bdombro/bun-argsbarg/blob/main/logo.png)
 <!-- Big money NE - https://patorjk.com/software/taag/#p=testall&f=Bulbhead&t=shebangsy&x=none&v=4&h=4&w=80&we=false> -->
 
 [![GitHub](https://img.shields.io/badge/GitHub-bdombro%2Fbun--argsbarg-181717?logo=github)](https://github.com/bdombro/bun-argsbarg)
@@ -17,13 +17,13 @@ Why another CLI parser?
 Also checkout ArgsBarg for [cpp](https://github.com/bdombro/cpp-argsbarg), [nim](https://github.com/bdombro/nim-argsbarg), and [swift](https://github.com/bdombro/swift-argsbarg)!
 
 Halps! -->
-![help-preview.png](docs/help-preview.png)
+![help-preview.png](https://github.com/bdombro/bun-argsbarg/blob/main/docs/help-preview.png)
 
 Sub-level Halps! -->
-![help-l2-preview.png](docs/help-l2-preview.png)
+![help-l2-preview.png](https://github.com/bdombro/bun-argsbarg/blob/main/docs/help-l2-preview.png)
 
 Shell completions! -->
-![completions-preview.png](docs/completions-preview.png)
+![completions-preview.png](https://github.com/bdombro/bun-argsbarg/blob/main/docs/completions-preview.png)
 
 
 ## Usage
@@ -140,7 +140,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 | Fields | Label |
 | --- | --- |
-| default `argMin`/`argMax` (single-slot) | `<n>` |
+| omit `argMin` / `argMax` (defaults `1` / `1`, one required word) | `<n>` |
 | `argMin: 0`, `argMax: 1` | `[n]` |
 | `argMin: 0`, `argMax: 0` | `[n...]` |
 | `argMin: 1`, `argMax: 0` | `<n...>` |

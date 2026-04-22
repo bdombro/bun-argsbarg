@@ -37,8 +37,6 @@ const cli: CliCommand = {
                   name: "path",
                   description: "File or directory.",
                   kind: CliOptionKind.String,
-                  argMin: 1,
-                  argMax: 1,
                 },
               ],
               handler: (ctx) => {
@@ -64,7 +62,6 @@ const cli: CliCommand = {
           name: "files",
           description: "Paths to read.",
           kind: CliOptionKind.String,
-          argMin: 1,
           argMax: 0,
         },
       ],

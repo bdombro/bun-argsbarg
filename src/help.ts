@@ -177,11 +177,12 @@ export function cliOptionLabel(o: CliOption, color: boolean): string {
 
 /** Formats a positional slot label (`<n>`, `[n]`, or varargs) for help. */
 export function cliPositionalLabel(p: CliPositional, color: boolean): string {
+  const { argMin = 1, argMax = 1 } = p;
   let r: string;
-  if (p.argMax === 1) {
-    r = p.argMin === 0 ? "[" + p.name + "]" : "<" + p.name + ">";
+  if (argMax === 1) {
+    r = argMin === 0 ? "[" + p.name + "]" : "<" + p.name + ">";
   } else {
-    r = p.argMin === 0 ? "[" + p.name + "...]" : "<" + p.name + "...>";
+    r = argMin === 0 ? "[" + p.name + "...]" : "<" + p.name + "...>";
   }
   if (!color) return r;
   return style.aquaBold(r);
