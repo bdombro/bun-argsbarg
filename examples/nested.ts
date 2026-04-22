@@ -7,34 +7,39 @@ and fallback commands fit together in one schema.
 It demonstrates how the schema scales beyond one command.
 */
 
-import { cliRun, CliCommand, createOption, CliOptionKind, CliFallbackMode } from "../src/index.ts";
+import { cliRun, CliCommand, CliOptionKind, CliFallbackMode } from "../src/index.ts";
 
 const cli: CliCommand = {
   key: "nested.ts",
   description: "Nested groups demo.",
-  children: [
+  commands: [
     {
       key: "stat",
       description: "File metadata.",
-      children: [
+      commands: [
         {
           key: "owner",
           description: "Ownership helpers.",
-          children: [
+          commands: [
             {
               key: "lookup",
               description: "Resolve owner info.",
               options: [
-                createOption("user-name", "User to look up.", {
+                {
+                  name: "user-name",
+                  description: "User to look up.",
                   kind: CliOptionKind.String,
                   shortName: "u",
-                }),
+                },
               ],
               positionals: [
-                createOption("path", "File or directory.", {
+                {
+                  name: "path",
+                  description: "File or directory.",
                   kind: CliOptionKind.String,
-                  positional: true,
-                }),
+                  argMin: 1,
+                  argMax: 1,
+                },
               ],
               handler: (ctx) => {
                 const user = ctx.stringOpt("user-name") ?? "?";
@@ -55,12 +60,13 @@ const cli: CliCommand = {
       description: "Print the first line of each file.",
       notes: "Pass one or more file paths. {app} prints the first line of each.",
       positionals: [
-        createOption("files", "Paths to read.", {
+        {
+          name: "files",
+          description: "Paths to read.",
           kind: CliOptionKind.String,
-          positional: true,
           argMin: 1,
           argMax: 0,
-        }),
+        },
       ],
       handler: async (ctx) => {
         if (ctx.args.length === 0) {

@@ -8,43 +8,51 @@ It keeps completion aligned with the runtime schema so the generated commands,
 options, and descriptions stay in sync with the CLI definition.
 */
 
-import { CliCommand, CliOptionDef } from "./types.ts";
+import { CliCommand, CliOption } from "./types.ts";
 
 // ── Shared Types ───────────────────────────────────────────────────────────────
 
+/** One tab-completion scope: child commands, options, and path key for the schema walk. */
 interface ScopeRec {
+  /** Child `CliCommand` keys at this scope. */
   kids: CliCommand[];
-  opts: CliOptionDef[];
+  /** Options in scope (for option token completion). */
+  opts: CliOption[];
+  /** `/`-separated path of command keys from the root, or `""` for the root. */
   path: string;
+  /** True when a positional tail exists (bash/zsh may offer filenames). */
   wantsFiles: boolean;
 }
 
+/** True if the command declares at least one positional (used to enable file completion). */
 function hasPositionalArguments(cmd: CliCommand): boolean {
-  return (cmd.positionals ?? []).some((p) => p.positional);
+  return (cmd.positionals ?? []).length > 0;
 }
 
+/** Recursively appends a scope record for `cmd` and its subtree into `acc`. */
 function walkScopes(cmdPath: string, cmd: CliCommand, acc: ScopeRec[]): void {
   acc.push({
-    kids: cmd.children ?? [],
+    kids: cmd.commands ?? [],
     opts: cmd.options ?? [],
     path: cmdPath,
     wantsFiles: hasPositionalArguments(cmd),
   });
-  for (const ch of cmd.children ?? []) {
+  for (const ch of cmd.commands ?? []) {
     const nextPath = cmdPath === "" ? ch.key : cmdPath + "/" + ch.key;
     walkScopes(nextPath, ch, acc);
   }
 }
 
+/** Flattens the schema into a list of completion scopes (root + every command path). */
 function collectScopes(schema: CliCommand): ScopeRec[] {
   const acc: ScopeRec[] = [];
   acc.push({
-    kids: schema.children ?? [],
+    kids: schema.commands ?? [],
     opts: schema.options ?? [],
     path: "",
     wantsFiles: false,
   });
-  for (const c of schema.children ?? []) {
+  for (const c of schema.commands ?? []) {
     walkScopes(c.key, c, acc);
   }
   return acc;
@@ -52,14 +60,17 @@ function collectScopes(schema: CliCommand): ScopeRec[] {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/** Produces a shell-safe identifier from the app or command name (alnum → `_`). */
 function identToken(s: string): string {
   return s.replace(/[^a-zA-Z0-9]/g, "_");
 }
 
+/** Escapes a string for use inside single quotes in generated shell scripts. */
 function escShellSingleQuoted(s: string): string {
   return s.replace(/'/g, "'\\''");
 }
 
+/** Sanitizes the app key for generated shell function names (non-alnum removed). */
 function mainName(schemaName: string): string {
   return schemaName.replace(/[^a-zA-Z0-9]/g, "_");
 }
@@ -69,6 +80,7 @@ const kHelpShort = "-h";
 
 // ── Bash Completion ────────────────────────────────────────────────────────────
 
+/** Emits the bash helper that classifies a `--long` or `--long=val` token for each scope. */
 function emitConsumeLong(ident: string, scopes: ScopeRec[]): string {
   let o = "_${ident}_nac_consume_long() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\" nw=\"$3\"\n";
@@ -78,7 +90,6 @@ function emitConsumeLong(ident: string, scopes: ScopeRec[]): string {
     o += "      case $w in\n";
     o += "        " + kHelpLong + "|${kHelpLong}=*|${kHelpShort}) echo 1 ;;\n".replace(/\$\{kHelpLong\}/g, kHelpLong).replace(/\$\{kHelpShort\}/g, kHelpShort);
     for (const op of sc.opts) {
-      if (op.positional) continue;
       const base = "--" + op.name;
       if (op.kind === "presence") {
         o += "        " + base + "|${base}=*) echo 1 ;;\n".replace(/\$\{base\}/g, base);
@@ -97,6 +108,7 @@ function emitConsumeLong(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
+/** Emits the bash helper that classifies a bundled/short `-x` / `-abc` token for each scope. */
 function emitConsumeShort(ident: string, scopes: ScopeRec[]): string {
   let o = "_${ident}_nac_consume_short() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\"\n";
@@ -112,7 +124,6 @@ function emitConsumeShort(ident: string, scopes: ScopeRec[]): string {
     o += "        case $ch in\n";
     let boolChars = "";
     for (const op of sc.opts) {
-      if (op.positional) continue;
       if (!op.shortName) continue;
       if (op.kind === "presence") {
         boolChars += op.shortName + "|";
@@ -139,6 +150,7 @@ function emitConsumeShort(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
+/** Emits the bash helper that maps a non-option token to the child scope id. */
 function emitMatchChild(ident: string, scopes: ScopeRec[], pathIndex: Record<string, number>): string {
   let o = "_${ident}_nac_match_child() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\"\n";
@@ -161,6 +173,7 @@ function emitMatchChild(ident: string, scopes: ScopeRec[], pathIndex: Record<str
   return o;
 }
 
+/** Emits bash that replays argv up to the current word to find the active completion scope. */
 function emitSimulate(ident: string): string {
   let o = "_${ident}_nac_simulate() {\n".replace("${ident}", ident);
   o += "  local i=1 sid=0 w steps next\n";
@@ -198,6 +211,7 @@ function emitSimulate(ident: string): string {
   return o;
 }
 
+/** Emits the main `COMPREPLY` driver and `complete -F` registration for bash. */
 function emitMainBodyBash(schema: CliCommand, ident: string): string {
   const main = mainName(schema.key);
   let o = "_${main}() {\n".replace("${main}", main);
@@ -231,6 +245,7 @@ function emitMainBodyBash(schema: CliCommand, ident: string): string {
   return o;
 }
 
+/** Returns a self-contained bash `complete` script for the given program schema. */
 export function completionBashScript(schema: CliCommand): string {
   const ident = identToken(schema.key);
   const scopes = collectScopes(schema);
@@ -246,7 +261,6 @@ export function completionBashScript(schema: CliCommand): string {
     out += "A_" + ident + "_" + i + "_opts=()\n";
     out += "A_" + ident + "_" + i + "_opts+=('" + kHelpLong + "' '" + kHelpShort + "')\n";
     for (const o of sc.opts) {
-      if (o.positional) continue;
       out += "A_" + ident + "_" + i + "_opts+=('--" + o.name + "')\n";
       if (o.shortName) {
         out += "A_" + ident + "_" + i + "_opts+=('-" + o.shortName + "')\n";
@@ -274,6 +288,7 @@ export function completionBashScript(schema: CliCommand): string {
 
 // ── Zsh Completion ─────────────────────────────────────────────────────────────
 
+/** Emits zsh `typeset` arrays of options and subcommands for each scope. */
 function emitScopeArraysZsh(ident: string, scopes: ScopeRec[]): string {
   let out = "";
   for (const [i, sc] of scopes.entries()) {
@@ -305,6 +320,7 @@ function emitScopeArraysZsh(ident: string, scopes: ScopeRec[]): string {
   return out;
 }
 
+/** Zsh: long-option classifier function source (mirrors bash consume_long). */
 function emitConsumeLongZsh(ident: string, scopes: ScopeRec[]): string {
   let o = "_${ident}_nac_consume_long() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\" nw=\"$3\"\n";
@@ -314,7 +330,6 @@ function emitConsumeLongZsh(ident: string, scopes: ScopeRec[]): string {
     o += "      case $w in\n";
     o += "        " + kHelpLong + "|${kHelpLong}=*|${kHelpShort}) echo 1 ;;\n".replace(/\$\{kHelpLong\}/g, kHelpLong).replace(/\$\{kHelpShort\}/g, kHelpShort);
     for (const op of sc.opts) {
-      if (op.positional) continue;
       const base = "--" + op.name;
       if (op.kind === "presence") {
         o += "        " + base + "|${base}=*) echo 1 ;;\n".replace(/\$\{base\}/g, base);
@@ -333,6 +348,7 @@ function emitConsumeLongZsh(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
+/** Zsh: short-option classifier function source. */
 function emitConsumeShortZsh(ident: string, scopes: ScopeRec[]): string {
   let o = "_${ident}_nac_consume_short() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\"\n";
@@ -348,7 +364,6 @@ function emitConsumeShortZsh(ident: string, scopes: ScopeRec[]): string {
     o += "        case $ch in\n";
     let boolChars = "";
     for (const op of sc.opts) {
-      if (op.positional) continue;
       if (!op.shortName) continue;
       if (op.kind === "presence") {
         boolChars += op.shortName + "|";
@@ -375,6 +390,7 @@ function emitConsumeShortZsh(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
+/** Zsh: subcommand name → scope id matching helper. */
 function emitMatchChildZsh(ident: string, scopes: ScopeRec[], pathIndex: Record<string, number>): string {
   let o = "_${ident}_nac_match_child() {\n".replace("${ident}", ident);
   o += "  local sid=\"$1\" w=\"$2\"\n";
@@ -397,6 +413,7 @@ function emitMatchChildZsh(ident: string, scopes: ScopeRec[], pathIndex: Record<
   return o;
 }
 
+/** Zsh: simulates word traversal to the current completion context (sets `REPLY_SID`). */
 function emitSimulateZsh(ident: string): string {
   let o = "_${ident}_nac_simulate() {\n".replace("${ident}", ident);
   o += "  local i=2 sid=0 w steps next\n";
@@ -434,6 +451,7 @@ function emitSimulateZsh(ident: string): string {
   return o;
 }
 
+/** Zsh: `_main` completer and `compdef` registration. */
 function emitMainBodyZsh(schema: CliCommand, ident: string): string {
   const main = mainName(schema.key);
   let o = "_${main}() {\n".replace("${main}", main);
@@ -465,6 +483,7 @@ function emitMainBodyZsh(schema: CliCommand, ident: string): string {
   return o;
 }
 
+/** Returns a self-contained zsh completion script for the given program schema. */
 export function completionZshScript(schema: CliCommand): string {
   const ident = identToken(schema.key);
   const scopes = collectScopes(schema);
@@ -484,13 +503,13 @@ export function completionZshScript(schema: CliCommand): string {
 }
 
 /**
- * Builds the static `completion` / `bash` / `zsh` subtree used for shell integration.
+ * Builds the static `completion` / `bash` / `zsh` command subtree (merged into the program root at runtime).
  */
 export function cliBuiltinCompletionGroup(appName: string): CliCommand {
   return {
     key: "completion",
     description: "Generate the autocompletion script for shells.",
-    children: [
+    commands: [
       {
         key: "bash",
         description: "Print a bash tab-completion script.",

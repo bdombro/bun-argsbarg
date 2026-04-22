@@ -7,31 +7,33 @@ It keeps the CLI contract stable by catching routing, option handling, and gener
 shell output regressions.
 */
 
-import {
-  CliCommand,
-  createOption,
-  CliOptionKind,
-  CliFallbackMode,
-  cliValidateRoot,
-  parse,
-  postParseValidate,
-  completionBashScript,
-  completionZshScript,
-  ParseKind,
-} from "./index.ts";
+import { completionBashScript, completionZshScript } from "./completion.ts";
+import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
+import { ParseKind, parse, postParseValidate } from "./parse.ts";
+import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
 
 test("bundled short presence flags", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "x",
         description: "cmd",
         options: [
-          createOption("a", "", { kind: CliOptionKind.Presence, shortName: "a" }),
-          createOption("b", "", { kind: CliOptionKind.Presence, shortName: "b" }),
+          {
+            name: "a",
+            description: "",
+            kind: CliOptionKind.Presence,
+            shortName: "a",
+          },
+          {
+            name: "b",
+            description: "",
+            kind: CliOptionKind.Presence,
+            shortName: "b",
+          },
         ],
         handler: () => {},
       },
@@ -48,11 +50,17 @@ test("long option equals", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "x",
         description: "cmd",
-        options: [createOption("name", "", { kind: CliOptionKind.String })],
+        options: [
+          {
+            name: "name",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
         handler: () => {},
       },
     ],
@@ -67,11 +75,17 @@ test("fallback missing or unknown root flags", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "hello",
         description: "Say hi.",
-        options: [createOption("name", "", { kind: CliOptionKind.String })],
+        options: [
+          {
+            name: "name",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
         handler: () => {},
       },
     ],
@@ -89,7 +103,7 @@ test("unknown command", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [{ key: "hello", description: "", handler: () => {} }],
+    commands: [{ key: "hello", description: "", handler: () => {} }],
   };
   cliValidateRoot(root);
   const pr = parse(root, ["nope"]);
@@ -101,7 +115,7 @@ test("implicit help empty", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [{ key: "x", description: "", handler: () => {} }],
+    commands: [{ key: "x", description: "", handler: () => {} }],
   };
   cliValidateRoot(root);
   const pr = parse(root, []);
@@ -113,11 +127,17 @@ test("invalid number post validate", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "x",
         description: "",
-        options: [createOption("n", "", { kind: CliOptionKind.Number })],
+        options: [
+          {
+            name: "n",
+            description: "",
+            kind: CliOptionKind.Number,
+          },
+        ],
         handler: () => {},
       },
     ],
@@ -133,11 +153,17 @@ test("supports scientific notation in numbers", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "x",
         description: "",
-        options: [createOption("n", "", { kind: CliOptionKind.Number })],
+        options: [
+          {
+            name: "n",
+            description: "",
+            kind: CliOptionKind.Number,
+          },
+        ],
         handler: () => {},
       },
     ],
@@ -153,7 +179,7 @@ test("root must not have handler", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [{ key: "x", description: "", handler: () => {} }],
+    commands: [{ key: "x", description: "", handler: () => {} }],
     handler: () => {},
   };
   expect(() => cliValidateRoot(root)).toThrow(/Program root must not set handler/);
@@ -164,9 +190,15 @@ test("root must not have positionals", () => {
     key: "app",
     description: "",
     positionals: [
-      createOption("p", "", { kind: CliOptionKind.String, positional: true }),
+      {
+        name: "p",
+        description: "",
+        kind: CliOptionKind.String,
+        argMin: 1,
+        argMax: 1,
+      },
     ],
-    children: [{ key: "x", description: "", handler: () => {} }],
+    commands: [{ key: "x", description: "", handler: () => {} }],
   };
   expect(() => cliValidateRoot(root)).toThrow(/Program root must not declare positionals/);
 });
@@ -175,7 +207,7 @@ test("completion scripts contain app name", () => {
   const root: CliCommand = {
     key: "myapp",
     description: "Test",
-    children: [{ key: "hello", description: "Say hello.", handler: () => {} }],
+    commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
   cliValidateRoot(root);
   const bash = completionBashScript(root);
@@ -192,7 +224,7 @@ test("completion scripts do not emit invalid bash substitutions", () => {
   const root: CliCommand = {
     key: "app",
     description: "Test",
-    children: [{ key: "hello", description: "Say hello.", handler: () => {} }],
+    commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
   cliValidateRoot(root);
   const bash = completionBashScript(root);
@@ -203,7 +235,7 @@ test("completion scripts escape shell-sensitive command text in zsh", () => {
   const root: CliCommand = {
     key: "app",
     description: "Test",
-    children: [
+    commands: [
       {
         key: "quote'cmd",
         description: "Say 'hello' and keep going.",
@@ -220,7 +252,7 @@ test("completion scripts keep dotted app names in registration names", () => {
   const root: CliCommand = {
     key: "minimal.ts",
     description: "Test",
-    children: [{ key: "hello", description: "Say hello.", handler: () => {} }],
+    commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
   cliValidateRoot(root);
 
@@ -235,13 +267,25 @@ test("stops parsing options at --", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
-    children: [
+    commands: [
       {
         key: "x",
         description: "cmd",
-        options: [createOption("name", "", { kind: CliOptionKind.String })],
+        options: [
+          {
+            name: "name",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
         positionals: [
-          createOption("files", "", { kind: CliOptionKind.String, positional: true, argMax: 0, argMin: 0 })
+          {
+            name: "files",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 0,
+            argMax: 0,
+          },
         ],
         handler: () => {},
       },

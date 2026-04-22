@@ -13,9 +13,9 @@
 - **Phase 1**: Core Schema Types (`src/types.ts`)
   - `CliOptionKind` enum (Presence, String, Number)
   - `CliFallbackMode` enum (MissingOnly, MissingOrUnknown, UnknownOnly)
-  - `CliCommand`, `CliOptionDef`, `CliHandler`, `CliContext` interfaces
+  - `CliCommand`, `CliOption`, `CliPositional`, `CliHandler`, `CliContext` interfaces
   - `CliSchemaValidationError` class
-  - Helper factories: `createOption()`, `createCommand()`
+  - `CliOption` on `options`, `CliPositional` on `positionals`, nested routes under `commands`
 
 - **Phase 2**: Argument Parser (`src/parse.ts`)
   - `parse(root, argv)` with long/short options, bundling, equals syntax

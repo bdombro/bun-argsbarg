@@ -20,6 +20,7 @@ export class CliContext {
   readonly schema: CliCommand;
   readonly opts: Record<string, string>;
 
+  /** Captures the merged program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
     appName: string,
     commandPath: string[],
@@ -35,7 +36,7 @@ export class CliContext {
   }
 
   /** Returns whether a presence flag was set (including implicit "1" for boolean options). */
-  flag(name: string): boolean {
+  hasFlag(name: string): boolean {
     return this.opts[name] !== undefined;
   }
 

@@ -7,3 +7,4 @@ globs: **/*.ts
 
 - All imports must be ordered alphabetically by their source module path (the `from` clause).
 - Explicit exports using the `export { ... } from "..."` or `export type { ... } from "..."` syntax must be ordered alphabetically by their source module path and placed at the top of the file, immediately below the imports.
+- Types, Interfaces, Functions must have a docstring

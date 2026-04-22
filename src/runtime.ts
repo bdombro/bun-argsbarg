@@ -19,7 +19,7 @@ import { cliValidateRoot } from "./validate.ts";
  */
 function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
   const merged = { ...root };
-  merged.children = [...(root.children ?? []), cliBuiltinCompletionGroup(root.key)];
+  merged.commands = [...(root.commands ?? []), cliBuiltinCompletionGroup(root.key)];
   return merged;
 }
 
@@ -76,7 +76,7 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
 
   let current = merged;
   for (const seg of pr.path) {
-    const ch = (current.children ?? []).find((candidate: CliCommand) => candidate.key === seg);
+    const ch = (current.commands ?? []).find((candidate: CliCommand) => candidate.key === seg);
     if (!ch) {
       process.stderr.write("Internal error: missing handler for path.\n");
       process.exit(1);

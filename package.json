@@ -1,23 +1,18 @@
 {
   "name": "argsbarg",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "//just": "echo this app uses justfile for development tasks"
+  },
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "types": "./src/index.ts",
   "bin": {
-    "argsbarg": "./src/index.ts"
+    "argsbarg": "src/index.ts"
   },
   "exports": {
     ".": "./src/index.ts"
-  },
-  "scripts": {
-    "test": "bun check-types && bun lint && bun test",
-    "dev": "bun --watch ./examples/minimal.ts",
-    "lint": "bun x biome check ./src",
-    "format": "bun x biome format ./src --write",
-    "check-types": "bun x tsc",
-    "release": "bun x npm publish"
   },
   "devDependencies": {
     "@types/bun": "^1.3.12"
