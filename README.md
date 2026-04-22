@@ -3,7 +3,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-bdombro%2Fbun--argsbarg-181717?logo=github)](https://github.com/bdombro/bun-argsbarg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![npm version](https://img.shields.io/npm/v/bun-argsbarg.svg)](https://www.npmjs.com/package/argsbarg)
+[![npm version](https://img.shields.io/npm/v/argsbarg.svg)](https://www.npmjs.com/package/argsbarg)
 [![Bun](https://img.shields.io/badge/Bun-%23000000.svg?logo=bun&logoColor=white)](https://bun.sh)
 
 Build beautiful, well-behaved CLI apps with Bun — **no third-party runtime dependencies**. 
