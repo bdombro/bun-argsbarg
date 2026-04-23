@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-04-23
+
+### Changed
+
+- fix exports in package.json
+
 ## [1.1.0] - 2026-04-23
 
+### Changed
+
+- gen index.d.ts with `dts-bundle-generator` so that consumers don't typecheck the source files
 
 ## [1.0.1] - 2026-04-22
 
@@ -43,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.1
 [1.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.0
 [1.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.0.1
 [1.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.0.0

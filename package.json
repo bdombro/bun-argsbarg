@@ -1,6 +1,6 @@
 {
   "name": "argsbarg",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "//just": "echo this app uses justfile for development tasks"
@@ -12,7 +12,10 @@
     "argsbarg": "src/index.ts"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.ts"
+    }
   },
   "devDependencies": {
     "@types/bun": "^1.3.12"
