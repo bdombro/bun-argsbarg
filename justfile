@@ -27,6 +27,10 @@ lint:
 test: check-types format lint
     bun test
 
+# generate type declarations for the package
+typegen:
+    bunx dts-bundle-generator --out-file index.d.ts src/index.ts
+
 # publish to github and npm
-release bump: test
+release bump: test typegen
     bun scripts/release.ts {{bump}}

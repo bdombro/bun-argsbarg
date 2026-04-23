@@ -1,13 +1,13 @@
 {
   "name": "argsbarg",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "//just": "echo this app uses justfile for development tasks"
   },
   "main": "./src/index.ts",
   "module": "./src/index.ts",
-  "types": "./src/index.ts",
+  "types": "./index.d.ts",
   "bin": {
     "argsbarg": "src/index.ts"
   },
