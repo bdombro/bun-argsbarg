@@ -9,6 +9,7 @@ It fails early on structural problems so invalid trees never reach parsing or di
 import {
   CliCommand,
   CliFallbackMode,
+  CliOptionKind,
   CliSchemaValidationError,
 } from "./types.ts";
 
@@ -19,13 +20,6 @@ const reservedCommandNames = ["completion"];
  * Throws CliSchemaValidationError if rules are violated.
  */
 export function cliValidateRoot(root: CliCommand): void {
-  // Root-level rules
-  if (root.handler !== undefined) {
-    throw new CliSchemaValidationError("Program root must not set handler");
-  }
-  if ((root.positionals ?? []).length > 0) {
-    throw new CliSchemaValidationError("Program root must not declare positionals");
-  }
 
   // Check for reserved command names at root
   for (const child of root.commands ?? []) {
@@ -56,15 +50,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     );
   }
 
-  if ((cmd.commands ?? []).length > 0) {
-    if (cmd.handler !== undefined) {
-      throw new CliSchemaValidationError(`Routing command must not set handler: ${cmd.key}`);
-    }
-  } else {
-    if (cmd.handler === undefined) {
-      throw new CliSchemaValidationError(`Leaf command requires handler: ${cmd.key}`);
-    }
-  }
 
   // Check for duplicate child names
   const seenNames = new Set<string>();
@@ -75,9 +60,15 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     seenNames.add(child.key);
   }
 
-  // Validate options (short name uniqueness, reserved -h)
+  // Validate options (short name uniqueness, reserved -h, required presence)
   const seenShorts = new Set<string>();
   for (const opt of cmd.options ?? []) {
+    if (opt.required && opt.kind === CliOptionKind.Presence) {
+      throw new CliSchemaValidationError(
+        `Presence option cannot be required: ${cmd.key}/${opt.name}`,
+      );
+    }
+
     if (opt.shortName !== undefined) {
       if (opt.shortName === "h") {
         throw new CliSchemaValidationError(

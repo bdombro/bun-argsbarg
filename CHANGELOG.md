@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-24
+
+### Added
+
+- **`CliOption.required`** — makes an option required when parsing
+- **`isInteractiveTty`** - a computed boolean of whether the app is running in an interactive tty
+- **Single-command CLI support** - You can now define a `handler` directly on the root of your CLI configuration to quickly build single-command apps without nesting them in subcommands.
+
+### Changed
+
+- **`CliCommand` Strict Union** - (Breaking TS Change) `CliCommand` is now a Discriminated Union type. A command must be *either* a Router (with `commands`) or a Leaf (with `handler`), but not both. This catches structural mistakes at compile time.
+
 ## [1.1.1] - 2026-04-23
 
 ### Changed
@@ -52,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.2.0
 [1.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.1
 [1.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.0
 [1.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.0.1

@@ -18,9 +18,12 @@ import { cliValidateRoot } from "./validate.ts";
  * Merges the caller's program root with the reserved `completion` subtree.
  */
 function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
-  const merged = { ...root };
+  if (root.handler) {
+    return root;
+  }
+  const merged = { ...root } as any;
   merged.commands = [...(root.commands ?? []), cliBuiltinCompletionGroup(root.key)];
-  return merged;
+  return merged as CliCommand;
 }
 
 /**
@@ -41,12 +44,27 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  const merged = cliRootMergedWithBuiltins(root);
-  let pr = parse(merged, argv);
-  pr = postParseValidate(merged, pr);
+  let parseRoot = root;
+  let isLeafCompletionIntercept = false;
+
+  // Intercept completion for Leaf roots (since they can't natively have a completion subcommand)
+  // but wrap them in a dummy router so that the parser handles `-h` and errors correctly.
+  if (root.handler && argv.length >= 1 && argv[0] === "completion") {
+    isLeafCompletionIntercept = true;
+    parseRoot = {
+      key: root.key,
+      description: root.description,
+      commands: [cliBuiltinCompletionGroup(root.key)],
+    } as any;
+  } else {
+    parseRoot = cliRootMergedWithBuiltins(root);
+  }
+
+  let pr = parse(parseRoot, argv);
+  pr = postParseValidate(parseRoot, pr);
 
   if (pr.kind === "help") {
-    process.stdout.write(cliHelpRender(merged, pr.helpPath, false));
+    process.stdout.write(cliHelpRender(parseRoot, pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
   }
 
@@ -54,27 +72,28 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     const color = process.stderr.isTTY;
     const msg = color ? `\u001B[31m${pr.errorMsg}\u001B[0m` : pr.errorMsg;
     process.stderr.write(msg + "\n");
-    process.stderr.write(cliHelpRender(merged, pr.errorHelpPath, true));
+    process.stderr.write(cliHelpRender(parseRoot, pr.errorHelpPath, true));
     process.exit(1);
   }
 
-  if (pr.path.length === 0) {
-    process.stderr.write("Internal error: empty path.\n");
-    process.exit(1);
-  }
+  // Leaf roots have an empty path; that's normal.
 
   if (pr.path[0] === "completion") {
+    // If we intercepted a leaf, we MUST pass the original `root` to generate completions
+    // because `parseRoot` is just a dummy router!
+    const schemaForCompletion = isLeafCompletionIntercept ? root : parseRoot;
+
     if (pr.path[1] === "bash") {
-      process.stdout.write(completionBashScript(merged));
+      process.stdout.write(completionBashScript(schemaForCompletion));
       process.exit(0);
     }
     if (pr.path[1] === "zsh") {
-      process.stdout.write(completionZshScript(merged));
+      process.stdout.write(completionZshScript(schemaForCompletion));
       process.exit(0);
     }
   }
 
-  let current = merged;
+  let current = parseRoot;
   for (const seg of pr.path) {
     const ch = (current.commands ?? []).find((candidate: CliCommand) => candidate.key === seg);
     if (!ch) {
@@ -89,7 +108,7 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  const ctx = new CliContext(merged.key, pr.path, pr.args, pr.opts, merged);
+  const ctx = new CliContext(parseRoot.key, pr.path, pr.args, pr.opts, parseRoot);
   try {
     await Promise.resolve(current.handler(ctx));
     process.exit(0);

@@ -29,40 +29,35 @@ Shell completions! -->
 ## Usage
 
 ```typescript
-import { cliRun, CliCommand, CliOptionKind, CliFallbackMode } from "argsbarg";
+import { cliRun, CliCommand, CliOptionKind } from "argsbarg";
 
 const cli: CliCommand = {
   key: "helloapp",
   description: "Tiny demo.",
-  commands: [
+  positionals: [
     {
-      key: "hello",
-      description: "Say hello.",
-      options: [
-        {
-          name: "name",
-          description: "Who to greet.",
-          kind: CliOptionKind.String,
-          shortName: "n",
-        },
-        {
-          name: "verbose",
-          description: "Enable extra logging.",
-          kind: CliOptionKind.Presence,
-          shortName: "v",
-        },
-      ],
-      handler: async (ctx) => {
-        const name = ctx.stringOpt("name") ?? "world";
-        if (ctx.flag("verbose")) { 
-          console.log("verbose mode"); 
-        }
-        console.log(`hello ${name}`);
-      },
+      name: "name",
+      description: "Who to greet.",
+      kind: CliOptionKind.String,
+      argMin: 0,
+      argMax: 1,
     },
   ],
-  fallbackCommand: "hello",
-  fallbackMode: CliFallbackMode.MissingOrUnknown,
+  options: [
+    {
+      name: "verbose",
+      description: "Enable extra logging.",
+      kind: CliOptionKind.Presence,
+      shortName: "v",
+    },
+  ],
+  handler: async (ctx) => {
+    const name = ctx.args[0] ?? "world";
+    if (ctx.hasFlag("verbose")) { 
+      console.log("verbose mode"); 
+    }
+    console.log(`hello ${name}`);
+  },
 };
 
 await cliRun(cli);

@@ -22,3 +22,6 @@ export function strictParseDouble(s: string): number | null {
   const num = Number(s);
   return Number.isNaN(num) ? null : num;
 }
+
+/** True when stdin is a TTY. */
+export const isInteractiveTty = !!process.stdin.isTTY;
