@@ -52,6 +52,8 @@ export interface CliOption {
   kind: CliOptionKind;
   /** Short option character (e.g., 'n' for -n). */
   shortName?: string;
+  /** Whether this option must be provided. Cannot be used with Presence kind. */
+  required?: boolean;
 }
 
 /**
@@ -77,13 +79,9 @@ export interface CliPositional {
 }
 
 /**
- * A command node: routing group (has commands) or leaf (has handler).
- *
- * The value passed to cliRun is the program root: name is the app/binary name,
- * commands are top-level subcommands, options are global flags.
- * The root must not set handler or declare positionals (validated at startup).
+ * Base properties shared by all command nodes.
  */
-export interface CliCommand {
+export interface CliCommandBase {
   /** Program or command key (e.g., "myapp", "stat", "owner"). */
   key: string;
   /** Short description shown in help. */
@@ -92,17 +90,39 @@ export interface CliCommand {
   notes?: string;
   /** Global or command-level flags/options. */
   options?: CliOption[];
-  /** Positional argument definitions. */
-  positionals?: CliPositional[];
-  /** Nested subcommands (empty for leaf commands). */
-  commands?: CliCommand[];
-  /** Handler function for leaf commands. */
-  handler?: CliHandler;
-  /** Default top-level subcommand when argv omits a command or uses an unknown first token (root only). */
-  fallbackCommand?: string;
-  /** How fallbackCommand is applied (root only). */
-  fallbackMode?: CliFallbackMode;
 }
+
+/**
+ * A command node: either a routing group (has commands) or a leaf (has handler).
+ *
+ * The value passed to cliRun is the program root: name is the app/binary name.
+ * The root may be a routing group or a leaf command.
+ */
+export type CliCommand =
+  | (CliCommandBase & {
+      /** Handler function for leaf commands. */
+      handler: CliHandler;
+      /** Positional argument definitions. */
+      positionals?: CliPositional[];
+      /** Nested subcommands (empty for leaf commands). */
+      commands?: never;
+      /** Default top-level subcommand (routing commands only). */
+      fallbackCommand?: never;
+      /** How fallbackCommand is applied (routing commands only). */
+      fallbackMode?: never;
+    })
+  | (CliCommandBase & {
+      /** Nested subcommands. */
+      commands: CliCommand[];
+      /** Default top-level subcommand when argv omits a command or uses an unknown first token. */
+      fallbackCommand?: string;
+      /** How fallbackCommand is applied. */
+      fallbackMode?: CliFallbackMode;
+      /** Handler function (leaf commands only). */
+      handler?: never;
+      /** Positional argument definitions (leaf commands only). */
+      positionals?: never;
+    });
 
 /**
  * Handler closure type for leaf commands.

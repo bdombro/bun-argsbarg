@@ -11,3 +11,4 @@ export { CliContext } from "./context.ts";
 export { cliErrWithHelp, cliRun } from "./runtime";
 export { CliFallbackMode, CliOptionKind, CliSchemaValidationError } from "./types.ts";
 export type { CliCommand, CliHandler, CliOption, CliPositional } from "./types.ts";
+export { isInteractiveTty } from "./utils.ts";

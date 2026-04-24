@@ -328,6 +328,10 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
   let cmdName: string;
   let node: CliCommand | undefined;
 
+  if (root.handler) {
+    return finishLeaf(root as any, i, argv, path, opts);
+  }
+
   if (i >= argv.length) {
     if (root.fallbackCommand !== undefined && ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOnly || (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown)) {
       cmdName = root.fallbackCommand;
@@ -482,6 +486,21 @@ export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResul
     }
     defs.push(...(ch.options ?? []));
     cmds = ch.commands ?? [];
+  }
+
+  for (const d of defs) {
+    if (d.required && !(d.name in pr.opts)) {
+      return {
+        kind: ParseKind.Error,
+        path: pr.path,
+        opts: {},
+        args: [],
+        helpExplicit: false,
+        helpPath: [],
+        errorMsg: `Missing required option: --${d.name}`,
+        errorHelpPath: pr.path,
+      };
+    }
   }
 
   for (const [k, v] of Object.entries(pr.opts)) {

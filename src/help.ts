@@ -64,8 +64,8 @@ function getHelpWidth(): number {
 }
 
 /** True when stdout is a TTY (used to decide on color). */
-function isTTY(): boolean {
-  return process.stdout.isTTY !== undefined;
+function isStdoutTTY(): boolean {
+  return !!process.stdout.isTTY;
 }
 
 // ── Width Helpers ─────────────────────────────────────────────────────────────
@@ -343,7 +343,8 @@ function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
     : "--help, -h";
   rows.push({ label: helpLabel, description: "Show help for this command." });
   for (const o of defs) {
-    rows.push({ label: cliOptionLabel(o, color), description: o.description });
+    const desc = o.required ? "(required) " + o.description : o.description;
+    rows.push({ label: cliOptionLabel(o, color), description: desc });
   }
   return rows;
 }
@@ -368,7 +369,7 @@ function rowsForSubcommands(cmds: CliCommand[]): HelpRow[] {
  */
 export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr: boolean): string {
   const hw = getHelpWidth();
-  const color = isTTY();
+  const color = isStdoutTTY();
 
   if (helpPath.length === 0) {
     const lines: string[] = [];

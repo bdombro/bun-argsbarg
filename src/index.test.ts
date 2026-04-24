@@ -12,6 +12,7 @@ import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
+import { $ } from "bun";
 
 test("bundled short presence flags", () => {
   const root: CliCommand = {
@@ -175,33 +176,7 @@ test("supports scientific notation in numbers", () => {
   expect(Number(pr.opts["n"])).toBe(12300);
 });
 
-test("root must not have handler", () => {
-  const root: CliCommand = {
-    key: "app",
-    description: "",
-    commands: [{ key: "x", description: "", handler: () => {} }],
-    handler: () => {},
-  };
-  expect(() => cliValidateRoot(root)).toThrow(/Program root must not set handler/);
-});
 
-test("root must not have positionals", () => {
-  const root: CliCommand = {
-    key: "app",
-    description: "",
-    positionals: [
-      {
-        name: "p",
-        description: "",
-        kind: CliOptionKind.String,
-        argMin: 1,
-        argMax: 1,
-      },
-    ],
-    commands: [{ key: "x", description: "", handler: () => {} }],
-  };
-  expect(() => cliValidateRoot(root)).toThrow(/Program root must not declare positionals/);
-});
 
 test("completion scripts contain app name", () => {
   const root: CliCommand = {
@@ -296,4 +271,90 @@ test("stops parsing options at --", () => {
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts["name"]).toBe("pat");
   expect(pr.args).toEqual(["--name", "bob", "-x"]);
+});
+
+test("missing required option returns error", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    options: [
+      {
+        name: "req",
+        description: "",
+        kind: CliOptionKind.String,
+        required: true,
+      },
+    ],
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["x"]));
+  expect(pr.kind).toBe(ParseKind.Error);
+  expect(pr.errorMsg).toContain("Missing required option: --req");
+});
+
+test("provided required option parses ok", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        options: [
+          {
+            name: "req",
+            description: "",
+            kind: CliOptionKind.String,
+            required: true,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["x", "--req", "val"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.opts["req"]).toBe("val");
+});
+
+test("presence option cannot be required", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    options: [
+      {
+        name: "flag",
+        description: "",
+        kind: CliOptionKind.Presence,
+        required: true,
+      },
+    ],
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/Presence option cannot be required/);
+});
+
+test("leaf completion help prints correctly", async () => {
+  // Test the fix where `completion zsh -h` on a leaf root was incorrectly ignored.
+  // We run this as a subprocess so we don't accidentally exit the test runner.
+  const { stdout, stderr, exitCode } = await $`bun run examples/minimal.ts completion zsh -h`.nothrow().quiet();
+  const out = stdout.toString();
+  expect(exitCode).toBe(0);
+  expect(out).toContain("Show help for this command.");
+  expect(out).toContain("Output is the whole script.");
+  expect(stderr.toString()).toBe("");
 });
