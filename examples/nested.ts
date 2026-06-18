@@ -16,6 +16,13 @@ const cli: CliCommand = {
     {
       key: "stat",
       description: "File metadata.",
+      options: [
+        {
+          name: "json",
+          description: "Emit handler output as JSON.",
+          kind: CliOptionKind.Presence,
+        },
+      ],
       commands: [
         {
           key: "owner",
@@ -46,7 +53,11 @@ const cli: CliCommand = {
                   console.error("Missing path.");
                   process.exit(1);
                 }
-                console.log(`lookup user=${user} path=${path}`);
+                if (ctx.hasFlag("json")) {
+                  console.log(JSON.stringify({ user, path }));
+                } else {
+                  console.log(`lookup user=${user} path=${path}`);
+                }
               },
             },
           ],

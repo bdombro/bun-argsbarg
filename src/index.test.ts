@@ -238,6 +238,123 @@ test("completion scripts keep dotted app names in registration names", () => {
   expect(zsh).toContain("compdef _minimal_ts minimal.ts");
 });
 
+test("trailing options after bounded positionals", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        options: [
+          {
+            name: "verbose",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        positionals: [
+          {
+            name: "path",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["x", "./file", "--verbose"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["./file"]);
+  expect(pr.opts["verbose"]).toBe("1");
+});
+
+test("trailing options include parent-scoped flags", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "group",
+        description: "group",
+        options: [
+          {
+            name: "json",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        commands: [
+          {
+            key: "leaf",
+            description: "leaf",
+            options: [
+              {
+                name: "user",
+                description: "",
+                kind: CliOptionKind.String,
+                shortName: "u",
+              },
+            ],
+            positionals: [
+              {
+                name: "path",
+                description: "",
+                kind: CliOptionKind.String,
+              },
+            ],
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.path).toEqual(["group", "leaf"]);
+  expect(pr.args).toEqual(["./file"]);
+  expect(pr.opts["user"]).toBe("alice");
+  expect(pr.opts["json"]).toBe("1");
+});
+
+test("varargs tail does not parse trailing options", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        options: [
+          {
+            name: "json",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        positionals: [
+          {
+            name: "files",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 0,
+            argMax: 0,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["x", "./file", "--json"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["./file", "--json"]);
+  expect(pr.opts["json"]).toBeUndefined();
+});
+
 test("stops parsing options at --", () => {
   const root: CliCommand = {
     key: "app",

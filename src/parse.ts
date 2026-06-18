@@ -207,6 +207,26 @@ function consumeOptions(
 
 // ── Positional Collection ─────────────────────────────────────────────────────
 
+/** Merges option defs from the program root along the routed command path. */
+function collectOptionDefs(root: CliCommand, path: string[]): CliOption[] {
+  let defs = [...(root.options ?? [])];
+  let cmds = root.commands ?? [];
+
+  for (const seg of path) {
+    const ch = findChild(cmds, seg);
+    if (!ch) break;
+    defs.push(...(ch.options ?? []));
+    cmds = ch.commands ?? [];
+  }
+
+  return defs;
+}
+
+/** True when every positional slot has bounded arity (no `argMax: 0` varargs tail). */
+function allowsTrailingOptions(positionals: CliCommand["positionals"]): boolean {
+  return (positionals ?? []).every((p) => (p.argMax ?? 1) !== 0);
+}
+
 /** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
   node: CliCommand,
@@ -214,6 +234,8 @@ function finishLeaf(
   argv: string[],
   path: string[],
   opts: Record<string, string>,
+  optionDefs: CliOption[],
+  forcePositionals: boolean,
 ): ParseResult {
   /** Builds a parse error for positional consumption failures. */
   function errorResult(msg: string): ParseResult {
@@ -243,8 +265,13 @@ function finishLeaf(
         args.push(argv[idx]);
         idx += 1;
       } else if (idx < argv.length) {
-        args.push(argv[idx]);
-        idx += 1;
+        const tok = argv[idx];
+        if (argMin < 1 && tok.startsWith("-")) {
+          // Optional slot: leave `-` tokens for trailing option parsing.
+        } else {
+          args.push(tok);
+          idx += 1;
+        }
       }
       continue;
     }
@@ -269,7 +296,23 @@ function finishLeaf(
   }
 
   if (idx < argv.length) {
-    return errorResult("Unexpected extra arguments");
+    if (forcePositionals || !allowsTrailingOptions(node.positionals)) {
+      return errorResult("Unexpected extra arguments");
+    }
+
+    if (isHelpTok(argv[idx])) {
+      return helpResult(path, true);
+    }
+
+    const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
+    if (tailRep.report.err) {
+      return errorResult(tailRep.report.err);
+    }
+    idx = tailRep.nextIndex;
+
+    if (idx < argv.length) {
+      return errorResult("Unexpected extra arguments");
+    }
   }
 
   return { kind: ParseKind.Ok, path, opts, args, helpExplicit: false, helpPath: [], errorMsg: "", errorHelpPath: [] };
@@ -329,7 +372,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
   let node: CliCommand | undefined;
 
   if (root.handler) {
-    return finishLeaf(root as any, i, argv, path, opts);
+    return finishLeaf(root as CliCommand, i, argv, path, opts, root.options ?? [], forcePositionals);
   }
 
   if (i >= argv.length) {
@@ -415,7 +458,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       if ((current.commands ?? []).length > 0) {
         return helpResult(path, false);
       }
-      return finishLeaf(current, i, argv, path, opts);
+      return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
     }
 
     const tok = argv[i];
@@ -455,7 +498,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       };
     }
 
-    return finishLeaf(current, i, argv, path, opts);
+    return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
   }
 }
 

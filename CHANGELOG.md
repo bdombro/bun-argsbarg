@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Trailing options** — when a leaf command has only bounded positionals (`argMax !== 0`), options may appear after positional arguments (e.g. `cmd ./file --verbose`). Commands with a varargs tail (`argMax: 0`) keep the previous behavior.
+- **`examples/nested.ts`** — `stat` accepts `--json`; `stat owner lookup` prints JSON when the flag is set.
+
 ## [1.2.0] - 2026-04-24
 
 ### Added
