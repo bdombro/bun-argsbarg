@@ -10,7 +10,8 @@ the runtime responsibilities remain easy to reason about.
 import { cliBuiltinCompletionGroup, completionBashScript, completionZshScript } from "./completion.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
-import { parse, postParseValidate } from "./parse.ts";
+import { parse, postParseValidate, ParseKind } from "./parse.ts";
+import { cliSchemaJson } from "./schema.ts";
 import { CliCommand } from "./types.ts";
 import { cliValidateRoot } from "./validate.ts";
 
@@ -63,9 +64,14 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
   let pr = parse(parseRoot, argv);
   pr = postParseValidate(parseRoot, pr);
 
-  if (pr.kind === "help") {
+  if (pr.kind === ParseKind.Help) {
     process.stdout.write(cliHelpRender(parseRoot, pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
+  }
+
+  if (pr.kind === ParseKind.Schema) {
+    process.stdout.write(cliSchemaJson(root));
+    process.exit(0);
   }
 
   if (pr.kind === "error") {

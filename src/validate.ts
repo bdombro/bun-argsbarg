@@ -69,6 +69,12 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
       );
     }
 
+    if (opt.name === "schema") {
+      throw new CliSchemaValidationError(
+        `Option name "schema" is reserved for --schema: ${cmd.key}/${opt.name}`,
+      );
+    }
+
     if (opt.shortName !== undefined) {
       if (opt.shortName === "h") {
         throw new CliSchemaValidationError(

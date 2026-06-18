@@ -88,9 +88,11 @@ Everything you need for a first-class CLI:
 Every app gets:
 
 - `-h` / `--help` at any routing depth (scoped help).
+- **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh`** — print shell completion scripts to stdout (injected by `cliRun`).
 
 Do not declare a top-level command named **`completion`** — it is reserved for this built-in.
+Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
 ### Shell completions

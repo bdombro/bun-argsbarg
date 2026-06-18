@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--schema`** — prints the full CLI tree as JSON to stdout (exit 0). Handlers are omitted; the injected `completion` subtree is excluded. Option name `schema` is reserved.
 ## [1.2.1] - 2026-06-18
 
 ### Changed

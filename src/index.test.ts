@@ -10,6 +10,7 @@ shell output regressions.
 import { completionBashScript, completionZshScript } from "./completion.ts";
 import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
+import { cliSchemaJson } from "./schema.ts";
 import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
 import { $ } from "bun";
@@ -474,4 +475,99 @@ test("leaf completion help prints correctly", async () => {
   expect(out).toContain("Show help for this command.");
   expect(out).toContain("Output is the whole script.");
   expect(stderr.toString()).toBe("");
+});
+
+test("--schema exports JSON for nested CLIs", async () => {
+  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts --schema`.nothrow().quiet();
+  expect(exitCode).toBe(0);
+  expect(stderr.toString()).toBe("");
+
+  const schema = JSON.parse(stdout.toString());
+  expect(schema.key).toBe("nested.ts");
+  expect(schema.fallbackCommand).toBe("read");
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["stat", "read"]);
+  expect(schema.commands).not.toContainEqual(expect.objectContaining({ key: "completion" }));
+
+  const lookup = schema.commands[0].commands[0].commands[0];
+  expect(lookup.key).toBe("lookup");
+  expect(lookup.positionals[0].name).toBe("path");
+});
+
+test("--schema exports JSON for leaf roots", async () => {
+  const { stdout, exitCode } = await $`bun run examples/minimal.ts --schema`.nothrow().quiet();
+  expect(exitCode).toBe(0);
+
+  const schema = JSON.parse(stdout.toString());
+  expect(schema.key).toBe("minimal.ts");
+  expect(schema.positionals[0].name).toBe("name");
+  expect(schema.options[0].name).toBe("verbose");
+});
+
+test("parse recognizes --schema at the program root", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "demo",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = parse(root, ["--schema"]);
+  expect(pr.kind).toBe(ParseKind.Schema);
+});
+
+test("cliSchemaJson omits handlers and completion built-ins", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "demo",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+      {
+        key: "completion",
+        description: "should not appear",
+        commands: [
+          {
+            key: "bash",
+            description: "",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+
+  const schema = JSON.parse(cliSchemaJson(root));
+  expect(schema.commands).toHaveLength(1);
+  expect(schema.commands[0].key).toBe("x");
+  expect(schema).not.toHaveProperty("handler");
+});
+
+test("reserved option name schema is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        options: [
+          {
+            name: "schema",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/reserved for --schema/);
 });
