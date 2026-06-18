@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-06-18
+
 ### Changed
 
 - **Trailing options** — when a leaf command has only bounded positionals (`argMax !== 0`), options may appear after positional arguments (e.g. `cmd ./file --verbose`). Commands with a varargs tail (`argMax: 0`) keep the previous behavior.
@@ -69,7 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.2.1
 [1.2.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.2.0
 [1.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.1
 [1.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.1.0
