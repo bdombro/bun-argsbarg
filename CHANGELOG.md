@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--schema` discoverability** — list the flag in root help and offer it in shell completions at the program root (same pattern as `--help`).
+- **Leaf root help** — show the reserved `completion` command in root help and `--schema` output (routing CLIs already did).
+
 ## [1.3.0] - 2026-06-18
 
 ### Added

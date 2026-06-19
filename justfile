@@ -8,12 +8,12 @@ check-types:
     bun x tsc
 
 # run the minimal example
-example:
-    bun ./examples/minimal.ts
+example *ARGS:
+    bun ./examples/minimal.ts {{ARGS}}
 
 # run the minimal example and watch for changes
-example-watch:
-    bun --watch ./examples/minimal.ts
+example-watch *ARGS:
+    bun --watch ./examples/minimal.ts {{ARGS}}
 
 # format the codebase
 format:

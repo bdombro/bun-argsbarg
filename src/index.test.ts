@@ -8,6 +8,7 @@ shell output regressions.
 */
 
 import { completionBashScript, completionZshScript } from "./completion.ts";
+import { cliHelpRender } from "./help.ts";
 import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
@@ -501,6 +502,14 @@ test("--schema exports JSON for leaf roots", async () => {
   expect(schema.key).toBe("minimal.ts");
   expect(schema.positionals[0].name).toBe("name");
   expect(schema.options[0].name).toBe("verbose");
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion"]);
+});
+
+test("leaf root help lists completion built-in", async () => {
+  const { stdout, exitCode } = await $`bun run examples/minimal.ts -h`.nothrow().quiet();
+  expect(exitCode).toBe(0);
+  expect(stdout.toString()).toContain("completion");
+  expect(stdout.toString()).toContain("Generate the autocompletion script for shells.");
 });
 
 test("parse recognizes --schema at the program root", () => {
@@ -570,4 +579,64 @@ test("reserved option name schema is rejected", () => {
     ],
   };
   expect(() => cliValidateRoot(root)).toThrow(/reserved for --schema/);
+});
+
+test("root help lists --schema built-in", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "demo",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+    ],
+  };
+  const help = cliHelpRender(root, [], false);
+  expect(help).toContain("--schema");
+  expect(help).toContain("Print the full command tree as JSON.");
+});
+
+test("nested help omits --schema built-in", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "demo",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        handler: () => {},
+      },
+    ],
+  };
+  const help = cliHelpRender(root, ["x"], false);
+  expect(help).not.toContain("--schema");
+});
+
+test("completion scripts offer --schema at the program root only", () => {
+  const root: CliCommand = {
+    key: "myapp",
+    description: "",
+    commands: [
+      {
+        key: "stat",
+        description: "stats",
+        commands: [
+          {
+            key: "show",
+            description: "show",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+
+  const bash = completionBashScript(root);
+  expect(bash).toContain("A_myapp_0_opts+=('--schema')");
+  expect(bash).not.toContain("A_myapp_1_opts+=('--schema')");
+
+  const zsh = completionZshScript(root);
+  expect(zsh).toContain("'--schema:Print the full command tree as JSON.'");
 });

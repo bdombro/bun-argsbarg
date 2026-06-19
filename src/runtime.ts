@@ -7,7 +7,7 @@ It keeps execution flow out of the public barrel so the exported API stays small
 the runtime responsibilities remain easy to reason about.
 */
 
-import { cliBuiltinCompletionGroup, completionBashScript, completionZshScript } from "./completion.ts";
+import { cliBuiltinCompletionGroup, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
@@ -22,9 +22,7 @@ function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
   if (root.handler) {
     return root;
   }
-  const merged = { ...root } as any;
-  merged.commands = [...(root.commands ?? []), cliBuiltinCompletionGroup(root.key)];
-  return merged as CliCommand;
+  return cliPresentationRoot(root);
 }
 
 /**
@@ -65,7 +63,7 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
   pr = postParseValidate(parseRoot, pr);
 
   if (pr.kind === ParseKind.Help) {
-    process.stdout.write(cliHelpRender(parseRoot, pr.helpPath, false));
+    process.stdout.write(cliHelpRender(cliPresentationRoot(root), pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
   }
 
@@ -78,7 +76,7 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     const color = process.stderr.isTTY;
     const msg = color ? `\u001B[31m${pr.errorMsg}\u001B[0m` : pr.errorMsg;
     process.stderr.write(msg + "\n");
-    process.stderr.write(cliHelpRender(parseRoot, pr.errorHelpPath, true));
+    process.stderr.write(cliHelpRender(cliPresentationRoot(root), pr.errorHelpPath, true));
     process.exit(1);
   }
 
@@ -133,6 +131,6 @@ export function cliErrWithHelp(ctx: CliContext, msg: string): never {
   const color = process.stderr.isTTY;
   const line = color ? `\u001B[31m${msg}\u001B[0m` : msg;
   process.stderr.write(line + "\n");
-  process.stderr.write(cliHelpRender(ctx.schema, ctx.commandPath, true));
+  process.stderr.write(cliHelpRender(cliPresentationRoot(ctx.schema), ctx.commandPath, true));
   process.exit(1);
 }

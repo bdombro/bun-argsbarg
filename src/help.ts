@@ -335,13 +335,17 @@ function usageLines(
   return out;
 }
 
-/** Table rows for named options, including a synthetic `--help, -h` row. */
-function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
+/** Table rows for named options, including synthetic built-in rows. */
+function rowsForOptions(defs: CliOption[], color: boolean, isRoot: boolean): HelpRow[] {
   const rows: HelpRow[] = [];
   const helpLabel = color
     ? style.aquaBold("--help, ") + style.greenBright("-h")
     : "--help, -h";
   rows.push({ label: helpLabel, description: "Show help for this command." });
+  if (isRoot) {
+    const schemaLabel = color ? style.aquaBold("--schema") : "--schema";
+    rows.push({ label: schemaLabel, description: "Print the full command tree as JSON." });
+  }
   for (const o of defs) {
     const desc = o.required ? "(required) " + o.description : o.description;
     rows.push({ label: cliOptionLabel(o, color), description: desc });
@@ -387,7 +391,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
       ).join("\n"),
     );
 
-    const optBox = renderTableBox("Options", rowsForOptions(schema.options ?? [], color), hw, color);
+    const optBox = renderTableBox("Options", rowsForOptions(schema.options ?? [], color, true), hw, color);
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
@@ -430,7 +434,7 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
     ).join("\n"),
   );
 
-  const optBox = renderTableBox("Options", rowsForOptions(node.options ?? [], color), hw, color);
+  const optBox = renderTableBox("Options", rowsForOptions(node.options ?? [], color, false), hw, color);
   if (optBox.length > 0) {
     lines.push("");
     lines.push(optBox.join("\n"));

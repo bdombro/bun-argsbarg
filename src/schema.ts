@@ -13,6 +13,7 @@ import {
   CliOption,
   CliPositional,
 } from "./types.ts";
+import { cliBuiltinCompletionGroup } from "./completion.ts";
 
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
@@ -34,6 +35,20 @@ export interface CliSchemaExport {
   positionals?: CliPositional[];
 }
 
+/** JSON-safe export of the reserved `completion` subtree (no handler recursion). */
+function exportBuiltinCompletionGroup(appName: string): CliSchemaExport {
+  const group = cliBuiltinCompletionGroup(appName);
+  return {
+    key: group.key,
+    description: group.description,
+    commands: (group.commands ?? []).map((ch) => ({
+      key: ch.key,
+      description: ch.description,
+      ...((ch.notes ?? "").length > 0 ? { notes: ch.notes } : {}),
+    })),
+  };
+}
+
 /** Converts one `CliCommand` node into a JSON-safe export (handlers omitted). */
 function exportCommand(cmd: CliCommand): CliSchemaExport {
   const out: CliSchemaExport = {
@@ -53,6 +68,7 @@ function exportCommand(cmd: CliCommand): CliSchemaExport {
     if ((cmd.positionals ?? []).length > 0) {
       out.positionals = cmd.positionals;
     }
+    out.commands = [exportBuiltinCompletionGroup(cmd.key)];
     return out;
   }
 
