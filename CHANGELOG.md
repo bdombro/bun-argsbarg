@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-06-19
+
 ### Added
 
 - **`ctx.invocation`** (`"cli"` or `"mcp"`) on `CliContext` for handler branching.
@@ -109,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.1
 [1.4.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.0
 [1.3.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.3.1
 [1.3.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.3.0
