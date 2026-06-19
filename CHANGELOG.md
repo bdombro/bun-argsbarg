@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-06-19
+
 ### Added
 
 - **`ai` built-in group** — `myapp ai skill cursor` and `myapp ai skill claude` install Agent Skills (`SKILL.md` + `reference.md`) to project or global skill directories.
@@ -133,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.3
 [1.4.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.2
 [1.4.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.1
 [1.4.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.0
