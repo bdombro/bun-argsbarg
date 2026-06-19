@@ -334,7 +334,7 @@ test("trailing options include parent-scoped flags", () => {
   expect(pr.opts["json"]).toBe("1");
 });
 
-test("varargs tail does not parse trailing options", () => {
+test("varargs tail parses trailing options", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
@@ -365,8 +365,8 @@ test("varargs tail does not parse trailing options", () => {
   cliValidateRoot(root);
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.args).toEqual(["./file", "--json"]);
-  expect(pr.opts["json"]).toBeUndefined();
+  expect(pr.args).toEqual(["./file"]);
+  expect(pr.opts["json"]).toBe("1");
 });
 
 test("stops parsing options at --", () => {
@@ -1330,4 +1330,308 @@ test("MCP envFile loads vars for tool handlers", async () => {
   const res = responses.get(15) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(false);
   expect(res.result.content[0]!.text.trim()).toBe("file-value");
+});
+
+// ── v1.3 parser ergonomics ────────────────────────────────────────────────────
+
+function varargsReadFixture(): CliCommand {
+  return {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "read",
+        description: "Read files.",
+        options: [
+          {
+            name: "json",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        positionals: [
+          {
+            name: "files",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 0,
+            argMax: 0,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+}
+
+function nestedDocsFallbackFixture(): CliCommand {
+  return {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "docs",
+        description: "Documentation commands.",
+        fallbackCommand: "guide",
+        fallbackMode: CliFallbackMode.MissingOnly,
+        commands: [
+          {
+            key: "guide",
+            description: "User guide.",
+            handler: () => {},
+          },
+          {
+            key: "api",
+            description: "API reference.",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+}
+
+test("nested fallback routes to default when argv exhausted at router", () => {
+  const root = nestedDocsFallbackFixture();
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["docs"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.path).toEqual(["docs", "guide"]);
+});
+
+test("nested fallback MissingOrUnknown routes unknown token to default", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "docs",
+        description: "Documentation commands.",
+        fallbackCommand: "guide",
+        fallbackMode: CliFallbackMode.MissingOrUnknown,
+        commands: [
+          {
+            key: "guide",
+            description: "User guide.",
+            positionals: [
+              {
+                name: "topic",
+                description: "",
+                kind: CliOptionKind.String,
+                argMin: 0,
+                argMax: 0,
+              },
+            ],
+            handler: () => {},
+          },
+          {
+            key: "api",
+            description: "API reference.",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["docs", "extra-topic"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.path).toEqual(["docs", "guide"]);
+  expect(pr.args).toEqual(["extra-topic"]);
+});
+
+test("nested fallback MissingOnly errors on unknown subcommand", () => {
+  const root = nestedDocsFallbackFixture();
+  cliValidateRoot(root);
+  const pr = parse(root, ["docs", "nope"]);
+  expect(pr.kind).toBe(ParseKind.Error);
+  expect(pr.errorMsg).toContain("Unknown subcommand");
+});
+
+test("cliValidateRoot rejects invalid nested fallbackCommand", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "docs",
+        description: "",
+        fallbackCommand: "missing",
+        commands: [
+          {
+            key: "guide",
+            description: "",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
+});
+
+test("cliValidateRoot accepts nested fallbackCommand when child exists", () => {
+  const root = nestedDocsFallbackFixture();
+  expect(() => cliValidateRoot(root)).not.toThrow();
+});
+
+test("nested router scoped help does not route to fallback", () => {
+  const root = nestedDocsFallbackFixture();
+  cliValidateRoot(root);
+  const pr = parse(root, ["docs", "--help"]);
+  expect(pr.kind).toBe(ParseKind.Help);
+  expect(pr.helpPath).toEqual(["docs"]);
+  expect(pr.helpExplicit).toBe(true);
+  const help = cliHelpRender(root, pr.helpPath, false);
+  expect(help).toContain("api");
+  expect(help).toContain("guide");
+});
+
+test("varargs trailing option after positionals via cliInvoke", async () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["file.txt"]);
+  expect(pr.opts["json"]).toBe("1");
+});
+
+test("varargs option before positionals", () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["read", "--json", "file.txt"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["file.txt"]);
+  expect(pr.opts["json"]).toBe("1");
+});
+
+test("varargs multiple files then trailing option", () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["read", "a.txt", "b.txt", "--json"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["a.txt", "b.txt"]);
+  expect(pr.opts["json"]).toBe("1");
+});
+
+test("varargs double dash forces positional", () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--", "--json"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["file.txt", "--json"]);
+  expect(pr.opts["json"]).toBeUndefined();
+});
+
+test("varargs unknown flag errors", async () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const result = await cliInvoke(root, ["read", "--unknown"]);
+  expect(result.kind).toBe("error");
+  expect(result.stderr).toContain("--unknown");
+});
+
+test("varargs scoped help in tail", () => {
+  const root = varargsReadFixture();
+  cliValidateRoot(root);
+  const pr = parse(root, ["read", "file.txt", "--help"]);
+  expect(pr.kind).toBe(ParseKind.Help);
+  expect(pr.helpPath).toContain("read");
+  expect(pr.helpExplicit).toBe(true);
+});
+
+test("ctx.positional returns single slot value", async () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "",
+        positionals: [{ name: "path", description: "", kind: CliOptionKind.String }],
+        handler: (ctx) => {
+          captured = ctx.positional("path");
+        },
+      },
+    ],
+  };
+  let captured: string | string[] | undefined;
+  cliValidateRoot(root);
+  await cliInvoke(root, ["x", "./file"]);
+  expect(captured).toBe("./file");
+});
+
+test("ctx.positional returns varargs array", async () => {
+  const root = varargsReadFixture();
+  let captured: string | string[] | undefined;
+  root.commands![0]!.handler = (ctx) => {
+    captured = ctx.positional("files");
+  };
+  cliValidateRoot(root);
+  await cliInvoke(root, ["read", "a.txt", "b.txt"]);
+  expect(captured).toEqual(["a.txt", "b.txt"]);
+});
+
+test("ctx.positional returns undefined for absent optional slot", async () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "",
+        positionals: [
+          { name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
+        ],
+        handler: (ctx) => {
+          captured = ctx.positional("opt");
+        },
+      },
+    ],
+  };
+  let captured: string | string[] | undefined;
+  cliValidateRoot(root);
+  await cliInvoke(root, ["x"]);
+  expect(captured).toBeUndefined();
+});
+
+test("ctx.positional varargs matches ctx.args", async () => {
+  const root = varargsReadFixture();
+  let positional: string | string[] | undefined;
+  let args: string[] = [];
+  root.commands![0]!.handler = (ctx) => {
+    positional = ctx.positional("files");
+    args = ctx.args;
+  };
+  cliValidateRoot(root);
+  await cliInvoke(root, ["read", "a.txt", "b.txt"]);
+  expect(positional).toEqual(args);
+});
+
+test("mcpToolCallToArgv coerces comma-separated string for varargs", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const read = tools.find((t) => t.name === "read")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a,b" });
+  expect(argv).toEqual(["read", "a", "b"]);
+});
+
+test("mcpToolCallToArgv coerces single string for varargs", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const read = tools.find((t) => t.name === "read")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a" });
+  expect(argv).toEqual(["read", "a"]);
+});
+
+test("mcpToolCallToArgv array varargs unchanged", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const read = tools.find((t) => t.name === "read")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
+  expect(argv).toEqual(["read", "a", "b"]);
+});
+
+test("mcpToolCallToArgv empty string varargs appends nothing", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const read = tools.find((t) => t.name === "read")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "" });
+  expect(argv).toEqual(["read"]);
 });

@@ -23,6 +23,10 @@ export declare class CliContext {
 	 * This is the TypeScript-native advantage over the Swift version.
 	 */
 	typedOpt<T>(name: string, parse: (s: string) => T): T | null;
+	/** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
+	positional(name: string): string | string[] | undefined;
+	private _posMap;
+	private _positionalMap;
 }
 /**
  * How a leaf handler was dispatched.
@@ -42,21 +46,20 @@ export declare enum CliOptionKind {
 	Enum = "enum"
 }
 /**
- * When fallbackCommand is used for missing or unknown top-level tokens.
- * Only the program root may set a non-default mode or a non-nil fallbackCommand.
+ * When `fallbackCommand` is used for missing or unknown subcommand tokens at a routing node.
  */
 export declare enum CliFallbackMode {
 	/**
-	 * If argv has no first subcommand, route to `fallbackCommand`; if the first token is unknown, error.
+	 * If argv has no next subcommand, route to `fallbackCommand`; if the token is unknown, error.
 	 */
 	MissingOnly = "missingOnly",
 	/**
-	 * If argv has no first subcommand or the first token is not a known child, route to `fallbackCommand`.
+	 * If argv has no next subcommand or the token is not a known child, route to `fallbackCommand`.
 	 */
 	MissingOrUnknown = "missingOrUnknown",
 	/**
-	 * If the first token is present but not a known child, route to `fallbackCommand`.
-	 * When the first subcommand token is missing (empty argv), do not use fallback (implicit root help).
+	 * If the next token is present but not a known child, route to `fallbackCommand`.
+	 * When the subcommand token is missing (exhausted argv), do not use fallback (implicit scoped help).
 	 */
 	UnknownOnly = "unknownOnly"
 }
@@ -192,16 +195,16 @@ export type CliCommand = (CliCommandBase & {
 	positionals?: CliPositional[];
 	/** Nested subcommands (empty for leaf commands). */
 	commands?: never;
-	/** Default top-level subcommand (routing commands only). */
+	/** Default subcommand (routing commands only). */
 	fallbackCommand?: never;
-	/** How fallbackCommand is applied (routing commands only). */
+	/** How fallbackCommand is applied at this routing node (routing commands only). */
 	fallbackMode?: never;
 }) | (CliCommandBase & {
 	/** Nested subcommands. */
 	commands: CliCommand[];
-	/** Default top-level subcommand when argv omits a command or uses an unknown first token. */
+	/** Default subcommand when argv omits a command or uses an unknown token at this routing node. */
 	fallbackCommand?: string;
-	/** How fallbackCommand is applied. */
+	/** How fallbackCommand is applied at this routing node (not root-only). */
 	fallbackMode?: CliFallbackMode;
 	/** Handler function (leaf commands only). */
 	handler?: never;

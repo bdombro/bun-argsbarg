@@ -68,4 +68,42 @@ export class CliContext {
       return null;
     }
   }
+
+  /** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
+  positional(name: string): string | string[] | undefined {
+    return this._positionalMap()[name];
+  }
+
+  private _posMap: Record<string, string | string[]> | undefined;
+
+  private _positionalMap(): Record<string, string | string[]> {
+    if (this._posMap) return this._posMap;
+
+    let node: CliCommand = this.schema;
+    for (const seg of this.commandPath) {
+      const child = (node.commands ?? []).find((c) => c.key === seg);
+      if (!child) {
+        this._posMap = {};
+        return {};
+      }
+      node = child;
+    }
+
+    const map: Record<string, string | string[]> = {};
+    let argIdx = 0;
+    for (const p of node.positionals ?? []) {
+      const { argMax = 1 } = p;
+      if (argMax === 0) {
+        map[p.name] = this.args.slice(argIdx);
+        argIdx = this.args.length;
+      } else {
+        const val = this.args[argIdx];
+        if (val !== undefined) map[p.name] = val;
+        argIdx++;
+      }
+    }
+
+    this._posMap = map;
+    return map;
+  }
 }

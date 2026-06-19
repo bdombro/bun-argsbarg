@@ -232,12 +232,20 @@ export function mcpToolCallToArgv(
     const { argMin = 1, argMax = 1 } = p;
 
     if (argMax === 0) {
-      if (!Array.isArray(val)) {
-        return { error: `Missing argument: ${p.name}` };
+      const raw = args[p.name];
+      let items: string[];
+      if (Array.isArray(raw)) {
+        items = raw.map(String);
+      } else if (typeof raw === "string") {
+        items = raw.includes(",")
+          ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+          : raw.trim()
+            ? [raw.trim()]
+            : [];
+      } else {
+        items = [];
       }
-      for (const item of val) {
-        argv.push(String(item));
-      }
+      argv.push(...items);
       continue;
     }
 

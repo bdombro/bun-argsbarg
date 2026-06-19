@@ -138,7 +138,7 @@ mcpTool: {
 Each tool’s `inputSchema` is a JSON Schema object built from your CLI definition:
 
 - **Options** — parent-scoped flags are included (e.g. `stat`’s `--json` appears on `stat_owner_lookup`). Presence options are `boolean`; string, number, and **enum** options match their `CliOptionKind` (`Enum` uses JSON Schema `enum`). Required options are listed in `required`.
-- **Positionals** — one property per `CliPositional` on the leaf. Single-slot positionals are `string`; varargs tails (`argMax: 0`) are `string[]`. Required positionals are listed in `required`.
+- **Positionals** — one property per `CliPositional` on the leaf. Single-slot positionals are `string`; varargs tails (`argMax: 0`) are `string[]`. Required positionals are listed in `required`. For varargs, agents may also pass a comma-separated string (`"a,b"`) or a single string (`"a"`) — both are coerced to separate argv tokens at dispatch time.
 
 Arguments are a **flat JSON object** keyed by option and positional names (same names as in your schema, including hyphenated option names like `"user-name"`).
 

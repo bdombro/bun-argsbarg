@@ -132,7 +132,7 @@ bun add bun-argsbarg
 
 ## How it works
 
-1. Build a **program root** `CliCommand` using pure TypeScript objects: `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. The root must not set `handler` or declare `positionals` (validated at startup). Use `fallbackCommand` / `fallbackMode` on the root only for default top-level routing.
+1. Build a **program root** `CliCommand` using pure TypeScript objects: `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. The root must not set `handler` or declare `positionals` (validated at startup). Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
 2. Call `await cliRun(root)` with that root — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
 
@@ -144,7 +144,9 @@ bun add bun-argsbarg
 | `MissingOrUnknown` | Default command | Default command (token becomes argv for the default) |
 | `UnknownOnly` | Root help (exit 1) | Default command |
 
-With `MissingOrUnknown` / `UnknownOnly`, unrecognized **root** flags stop root-flag consumption and the remainder is passed to the default command.
+With `MissingOrUnknown` / `UnknownOnly`, unrecognized flags at the **current routing node** stop option consumption and the remainder is passed to the default command.
+
+Set `fallbackCommand` / `fallbackMode` on nested routers too — e.g. `docs` with `fallbackCommand: "guide"` routes `myapp docs` to the guide leaf without requiring a root-level default.
 
 ### Positionals (help labels)
 
@@ -163,6 +165,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.stringOpt("name")` / `ctx.numberOpt("count")` — `string | undefined` / `number | null`.
 - `ctx.typedOpt<T>("custom", parseFn)` — pass a custom parsing function for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
+- `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
 - `ctx.schema` — merged program root (`CliCommand`) for contextual help.
 
 

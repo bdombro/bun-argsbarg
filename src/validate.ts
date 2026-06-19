@@ -35,22 +35,6 @@ export function cliValidateRoot(root: CliCommand): void {
 
 /** Recursively validates a command node: handlers vs children, options, and positionals. */
 function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
-  // Fallback only on root
-  if (!isRoot && cmd.fallbackCommand !== undefined) {
-    throw new CliSchemaValidationError(
-      "Fallback is only supported on the program root (not on " + cmd.key + ")",
-    );
-  }
-  if (
-    !isRoot &&
-    cmd.fallbackMode !== undefined &&
-    cmd.fallbackMode !== CliFallbackMode.MissingOnly
-  ) {
-    throw new CliSchemaValidationError(
-      "fallbackMode may only be set on the program root (not on " + cmd.key + ")",
-    );
-  }
-
   if (!isRoot && cmd.mcpServer !== undefined) {
     throw new CliSchemaValidationError(
       "mcpServer is only supported on the program root (not on " + cmd.key + ")",
@@ -87,6 +71,22 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
       throw new CliSchemaValidationError(`Duplicate command name: ${child.key}`);
     }
     seenNames.add(child.key);
+  }
+
+  if (cmd.fallbackMode !== undefined && cmd.fallbackCommand === undefined) {
+    throw new CliSchemaValidationError(
+      `fallbackMode requires fallbackCommand on '${cmd.key}'`,
+    );
+  }
+
+  if (cmd.fallbackCommand !== undefined) {
+    const children = cmd.commands ?? [];
+    const valid = children.find((c) => c.key === cmd.fallbackCommand);
+    if (!valid) {
+      throw new CliSchemaValidationError(
+        `fallbackCommand '${cmd.fallbackCommand}' is not a child of '${cmd.key}'`,
+      );
+    }
   }
 
   // Validate options (short name uniqueness, reserved -h, required presence)

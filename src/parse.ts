@@ -231,11 +231,6 @@ export function collectOptionDefs(root: CliCommand, path: string[]): CliOption[]
   return defs;
 }
 
-/** True when every positional slot has bounded arity (no `argMax: 0` varargs tail). */
-function allowsTrailingOptions(positionals: CliCommand["positionals"]): boolean {
-  return (positionals ?? []).every((p) => (p.argMax ?? 1) !== 0);
-}
-
 /** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
   node: CliCommand,
@@ -244,7 +239,7 @@ function finishLeaf(
   path: string[],
   opts: Record<string, string>,
   optionDefs: CliOption[],
-  forcePositionals: boolean,
+  forcePositionalsIn: boolean,
 ): ParseResult {
   /** Builds a parse error for positional consumption failures. */
   function errorResult(msg: string): ParseResult {
@@ -263,6 +258,7 @@ function finishLeaf(
 
   let idx = startIdx;
   const args: string[] = [];
+  let forcePositionals = forcePositionalsIn;
 
   for (const p of node.positionals ?? []) {
     const { argMin = 1, argMax = 1 } = p;
@@ -288,9 +284,37 @@ function finishLeaf(
     let count = 0;
     if (argMax === 0) {
       while (idx < argv.length) {
-        args.push(argv[idx]);
-        idx += 1;
-        count += 1;
+        const tok = argv[idx];
+
+        if (!forcePositionals && tok === "--") {
+          forcePositionals = true;
+          idx++;
+          continue;
+        }
+
+        if (!forcePositionals && isHelpTok(tok)) {
+          return helpResult(path, true);
+        }
+
+        if (!forcePositionals && tok.startsWith("-")) {
+          // MUST be false — lenient mode swallows unknown flags as positionals silently
+          const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
+          if (tailRep.report.err) {
+            return errorResult(tailRep.report.err);
+          }
+          if (tailRep.report.sawDoubleDash) {
+            forcePositionals = true;
+          }
+          if (tailRep.nextIndex > idx) {
+            idx = tailRep.nextIndex;
+            continue;
+          }
+          return errorResult(`Unexpected option token: ${tok}`);
+        }
+
+        args.push(tok);
+        idx++;
+        count++;
       }
     } else {
       while (count < argMax && idx < argv.length) {
@@ -305,7 +329,7 @@ function finishLeaf(
   }
 
   if (idx < argv.length) {
-    if (forcePositionals || !allowsTrailingOptions(node.positionals)) {
+    if (forcePositionals) {
       return errorResult("Unexpected extra arguments");
     }
 
@@ -483,6 +507,19 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 
     if (i >= argv.length) {
       if ((current.commands ?? []).length > 0) {
+        const fb = current.fallbackCommand;
+        const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
+        if (
+          fb !== undefined &&
+          (fm === CliFallbackMode.MissingOnly || fm === CliFallbackMode.MissingOrUnknown)
+        ) {
+          const fbNode = findChild(current.commands ?? [], fb);
+          if (fbNode) {
+            path.push(fb);
+            current = fbNode;
+            continue;
+          }
+        }
         return helpResult(path, false);
       }
       return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
@@ -513,6 +550,21 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
 
     if ((current.commands ?? []).length > 0) {
+      const fb = current.fallbackCommand;
+      const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
+      const canRouteUnknown =
+        fb !== undefined &&
+        (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
+
+      if (canRouteUnknown) {
+        const fbNode = findChild(current.commands ?? [], fb!);
+        if (fbNode) {
+          path.push(fb!);
+          current = fbNode;
+          continue;
+        }
+      }
+
       return {
         kind: ParseKind.Error,
         path,

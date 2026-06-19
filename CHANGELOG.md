@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`fallbackCommand` / `fallbackMode` on any routing node** — nested routers can define default subcommand routing, not just the program root.
+- **`ctx.positional(name)`** — named positional lookup; varargs return `string[]`, single slots return `string | undefined`.
+- **MCP varargs coercion** — agents may pass `"a,b"` or `"a"` where `string[]` is expected.
+
+### Fixed
+
+- **Known options after varargs positionals** — `--flag` tokens after a varargs tail parse as options instead of being consumed as positional arguments.
+
 ## [1.4.1] - 2026-06-19
 
 ### Added
