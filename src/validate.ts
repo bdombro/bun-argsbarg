@@ -13,7 +13,7 @@ import {
   CliSchemaValidationError,
 } from "./types.ts";
 
-const reservedCommandNames = ["completion"];
+const reservedCommandNames = ["completion", "mcp"];
 
 /**
  * Validates the static CliCommand tree against ArgBarg rules.
@@ -50,6 +50,21 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     );
   }
 
+  if (!isRoot && cmd.mcpServer !== undefined) {
+    throw new CliSchemaValidationError(
+      "mcpServer is only supported on the program root (not on " + cmd.key + ")",
+    );
+  }
+
+  const isLeaf = "handler" in cmd && !!cmd.handler;
+  if (!isLeaf && cmd.mcpTool !== undefined) {
+    throw new CliSchemaValidationError(
+      "mcpTool is only supported on leaf commands (not on " + cmd.key + ")",
+    );
+  }
+  if (isRoot && cmd.mcpTool !== undefined) {
+    throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
+  }
 
   // Check for duplicate child names
   const seenNames = new Set<string>();

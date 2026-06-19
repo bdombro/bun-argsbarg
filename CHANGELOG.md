@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in MCP** — set `mcpServer: {}` on the program root to enable `myapp mcp`, a stdio MCP server (tools + `argsbarg://schema` resource). Hand-rolled JSON-RPC; zero new dependencies.
+- **MCP tool descriptions** — `tools/list` descriptions include the CLI path (e.g. `stat owner lookup — Resolve owner info.`).
+- **`mcpTool` leaf opt-out** — set `mcpTool: { enabled: false }` on a leaf to omit it from MCP tools while keeping it in the CLI and `--schema`.
+- **MCP stderr on success** — successful tool calls return a second content block when the handler wrote to stderr.
+- **MCP `structuredContent`** — when handler stdout is valid JSON, tool results include parsed `structuredContent` alongside text content.
+
+### Fixed
+
+- **Parent-scoped options before positionals** — nested commands accept flags from ancestor nodes when options appear before positional arguments (required for MCP tool argv layout).
+
 ## [1.3.1] - 2026-06-19
 
 ### Fixed

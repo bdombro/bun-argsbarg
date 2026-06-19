@@ -79,6 +79,26 @@ export interface CliPositional {
 }
 
 /**
+ * Root-only. Enables `myapp mcp` and MCP stdio server metadata.
+ */
+export interface CliMcpServerConfig {
+  /** `initialize` serverInfo.name (default: root `key`). */
+  name?: string;
+  /** `initialize` serverInfo.version (default: see resolveMcpVersion). */
+  version?: string;
+  /** Resource URI for schema export (default: `"argsbarg://schema"`). */
+  schemaResourceUri?: string;
+}
+
+/**
+ * Leaf-only. Controls how this command appears as an MCP tool.
+ */
+export interface CliMcpToolConfig {
+  /** When `false`, omit from `tools/list` (default: exposed). */
+  enabled?: boolean;
+}
+
+/**
  * Base properties shared by all command nodes.
  */
 export interface CliCommandBase {
@@ -90,6 +110,10 @@ export interface CliCommandBase {
   notes?: string;
   /** Global or command-level flags/options. */
   options?: CliOption[];
+  /** Root-only. When set, enables the `mcp` built-in subcommand. */
+  mcpServer?: CliMcpServerConfig;
+  /** Leaf-only. Per-tool MCP exposure and metadata. */
+  mcpTool?: CliMcpToolConfig;
 }
 
 /**

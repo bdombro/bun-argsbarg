@@ -12,6 +12,7 @@ import { cliRun, CliCommand, CliOptionKind, CliFallbackMode } from "../src/index
 const cli: CliCommand = {
   key: "nested.ts",
   description: "Nested groups demo.",
+  mcpServer: { name: "nested-demo", version: "1.0.0" },
   commands: [
     {
       key: "stat",

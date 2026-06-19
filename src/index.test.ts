@@ -10,11 +10,19 @@ shell output regressions.
 import { completionBashScript, completionZshScript } from "./completion.ts";
 import { cliHelpRender } from "./help.ts";
 import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
+import {
+  collectMcpTools,
+  mcpToolCallToArgv,
+  mcpToolDescription,
+  sanitizeToolSegment,
+} from "./mcp/tools.ts";
+import { buildToolCallSuccess } from "./mcp/result.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
 import { $ } from "bun";
+import { join } from "node:path";
 
 test("bundled short presence flags", () => {
   const root: CliCommand = {
@@ -639,4 +647,349 @@ test("completion scripts offer --schema at the program root only", () => {
 
   const zsh = completionZshScript(root);
   expect(zsh).toContain("'--schema:Print the full command tree as JSON.'");
+});
+
+const nestedMcpFixture: CliCommand = {
+  key: "nested.ts",
+  description: "Nested groups demo.",
+  mcpServer: { name: "nested-demo", version: "1.0.0" },
+  commands: [
+    {
+      key: "stat",
+      description: "File metadata.",
+      options: [
+        {
+          name: "json",
+          description: "Emit handler output as JSON.",
+          kind: CliOptionKind.Presence,
+        },
+      ],
+      commands: [
+        {
+          key: "owner",
+          description: "Ownership helpers.",
+          commands: [
+            {
+              key: "lookup",
+              description: "Resolve owner info.",
+              options: [
+                {
+                  name: "user-name",
+                  description: "User to look up.",
+                  kind: CliOptionKind.String,
+                  shortName: "u",
+                },
+              ],
+              positionals: [
+                {
+                  name: "path",
+                  description: "File or directory.",
+                  kind: CliOptionKind.String,
+                },
+              ],
+              handler: () => {},
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "read",
+      description: "Print the first line of each file.",
+      positionals: [
+        {
+          name: "files",
+          description: "Paths to read.",
+          kind: CliOptionKind.String,
+          argMax: 0,
+        },
+      ],
+      handler: () => {},
+    },
+    {
+      key: "hidden",
+      description: "Internal debug.",
+      mcpTool: { enabled: false },
+      handler: () => {},
+    },
+  ],
+  fallbackCommand: "read",
+  fallbackMode: CliFallbackMode.MissingOrUnknown,
+};
+
+/** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
+async function mcpRequest(requests: object[]): Promise<Map<string | number, object>> {
+  const proc = Bun.spawn(["bun", "run", "examples/nested.ts", "mcp"], {
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const input = requests.map((r) => JSON.stringify(r) + "\n").join("");
+  proc.stdin.write(input);
+  proc.stdin.end();
+
+  const timeout = setTimeout(() => proc.kill(), 10_000);
+  const stdout = await new Response(proc.stdout).text();
+  await proc.exited;
+  clearTimeout(timeout);
+
+  const byId = new Map<string | number, object>();
+  for (const line of stdout.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const msg = JSON.parse(trimmed) as { id?: string | number };
+    if (msg.id !== undefined) {
+      byId.set(msg.id, msg);
+    }
+  }
+  return byId;
+}
+
+test("sanitizeToolSegment normalizes dotted app keys", () => {
+  expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");
+});
+
+test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
+  expect(mcpToolDescription(["stat", "owner", "lookup"], "nested.ts", "Resolve owner info.")).toBe(
+    "stat owner lookup — Resolve owner info.",
+  );
+  expect(mcpToolDescription(["read"], "nested.ts", "Print files.")).toBe("read — Print files.");
+  expect(mcpToolDescription([], "helloapp", "Tiny demo.")).toBe("helloapp — Tiny demo.");
+});
+
+test("collectMcpTools lists user leaf commands only", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const names = tools.map((t) => t.name);
+  expect(names).toContain("stat_owner_lookup");
+  expect(names).toContain("read");
+  expect(names).not.toContain("hidden");
+  expect(names).not.toContain("mcp");
+  expect(names).not.toContain("completion");
+  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
+});
+
+test("collectMcpTools merges parent options into inputSchema", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
+  expect(schema.properties.json).toBeDefined();
+  expect(schema.required).toContain("path");
+});
+
+test("mcpToolCallToArgv builds nested lookup argv", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, lookup, {
+    "user-name": "alice",
+    path: "./x",
+    json: true,
+  });
+  expect(argv).toEqual(["stat", "owner", "lookup", "--json", "--user-name", "alice", "./x"]);
+});
+
+test("mcpToolCallToArgv expands varargs positionals", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const read = tools.find((t) => t.name === "read")!;
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
+  expect(argv).toEqual(["read", "a", "b"]);
+});
+
+test("reserved command name mcp is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "mcp",
+        description: "bad",
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: mcp/);
+});
+
+test("mcpServer on non-root node is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "cmd",
+        mcpServer: {},
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/mcpServer is only supported on the program root/);
+});
+
+test("mcpTool on root is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpTool: { enabled: false },
+    handler: () => {},
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/mcpTool is only supported on leaf commands/);
+});
+
+test("mcpTool on routing node is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "group",
+        description: "group",
+        mcpTool: { enabled: false },
+        commands: [
+          {
+            key: "leaf",
+            description: "leaf",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/mcpTool is only supported on leaf commands/);
+});
+
+test("buildToolCallSuccess returns stdout only", () => {
+  const result = buildToolCallSuccess("hello\n", "");
+  expect(result.isError).toBe(false);
+  expect(result.content).toEqual([{ type: "text", text: "hello\n" }]);
+  expect(result.structuredContent).toBeUndefined();
+});
+
+test("buildToolCallSuccess adds stderr as second content block", () => {
+  const result = buildToolCallSuccess("out\n", "warn\n");
+  expect(result.content).toEqual([
+    { type: "text", text: "out\n" },
+    { type: "text", text: "warn" },
+  ]);
+  expect(result.structuredContent).toBeUndefined();
+});
+
+test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
+  const result = buildToolCallSuccess("", "warn\n");
+  expect(result.content).toEqual([
+    { type: "text", text: "" },
+    { type: "text", text: "warn" },
+  ]);
+});
+
+test("buildToolCallSuccess parses JSON structuredContent", () => {
+  const result = buildToolCallSuccess('{"a":1}\n', "");
+  expect(result.structuredContent).toEqual({ a: 1 });
+  expect(result.content[0]!.text).toBe('{"a":1}\n');
+});
+
+test("buildToolCallSuccess skips structuredContent for plain text", () => {
+  const result = buildToolCallSuccess("lookup user=x\n", "");
+  expect(result.structuredContent).toBeUndefined();
+});
+
+test("buildToolCallSuccess parses JSON primitives", () => {
+  const result = buildToolCallSuccess("true\n", "");
+  expect(result.structuredContent).toBe(true);
+});
+
+test("MCP initialize returns tools and resources capabilities", async () => {
+  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }]);
+  const res = responses.get(1) as { result: { capabilities: Record<string, unknown> } };
+  expect(res.result.capabilities.tools).toBeDefined();
+  expect(res.result.capabilities.resources).toBeDefined();
+});
+
+test("MCP tools/list includes stat_owner_lookup", async () => {
+  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }]);
+  const res = responses.get(2) as { result: { tools: { name: string; inputSchema: { required?: string[] } }[] } };
+  const lookup = res.result.tools.find((t) => t.name === "stat_owner_lookup");
+  expect(lookup).toBeDefined();
+  expect(lookup!.inputSchema.required).toContain("path");
+});
+
+test("MCP resources/read returns schema JSON", async () => {
+  const responses = await mcpRequest([
+    { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "argsbarg://schema" } },
+  ]);
+  const res = responses.get(3) as { result: { contents: { text: string }[] } };
+  const schema = JSON.parse(res.result.contents[0]!.text);
+  expect(schema.key).toBe("nested.ts");
+});
+
+test("MCP tools/call runs stat_owner_lookup", async () => {
+  const readme = join(import.meta.dir, "..", "README.md");
+  const responses = await mcpRequest([
+    {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: {
+        name: "stat_owner_lookup",
+        arguments: { path: readme, "user-name": "test" },
+      },
+    },
+  ]);
+  const res = responses.get(4) as { result: { content: { text: string }[]; isError: boolean } };
+  expect(res.result.isError).toBe(false);
+  expect(res.result.content[0]!.text).toContain("lookup user=test");
+});
+
+test("MCP tools/call returns structuredContent for JSON stdout", async () => {
+  const readme = join(import.meta.dir, "..", "README.md");
+  const responses = await mcpRequest([
+    {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: {
+        name: "stat_owner_lookup",
+        arguments: { path: readme, "user-name": "test", json: true },
+      },
+    },
+  ]);
+  const res = responses.get(6) as {
+    result: {
+      content: { text: string }[];
+      structuredContent?: { user: string; path: string };
+      isError: boolean;
+    };
+  };
+  expect(res.result.isError).toBe(false);
+  expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
+  expect(JSON.parse(res.result.content[0]!.text.trim())).toEqual({ user: "test", path: readme });
+});
+
+test("MCP tools/call errors on missing required positional", async () => {
+  const responses = await mcpRequest([
+    {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: { name: "stat_owner_lookup", arguments: { "user-name": "test" } },
+    },
+  ]);
+  const res = responses.get(5) as { result: { isError: boolean; content: { text: string }[] } };
+  expect(res.result.isError).toBe(true);
+  expect(res.result.content[0]!.text).toContain("Missing argument: path");
+});
+
+test("MCP ping returns empty result", async () => {
+  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 99, method: "ping", params: {} }]);
+  const res = responses.get(99) as { result: Record<string, never> };
+  expect(res.result).toEqual({});
+});
+
+test("minimal.ts mcp without opt-in fails", async () => {
+  const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
+  expect(exitCode).toBe(1);
+  expect(stderr.toString()).toContain("mcp");
 });

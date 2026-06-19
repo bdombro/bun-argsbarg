@@ -7,9 +7,10 @@ It keeps execution flow out of the public barrel so the exported API stays small
 the runtime responsibilities remain easy to reason about.
 */
 
-import { cliBuiltinCompletionGroup, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
+import { cliBuiltinCompletionGroup, cliBuiltinMcpCommand, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
+import { cliMcpServeStdio } from "./mcp.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { CliCommand } from "./types.ts";
@@ -46,6 +47,11 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
   let parseRoot = root;
   let isLeafCompletionIntercept = false;
 
+  if (root.handler && argv.length >= 1 && argv[0] === "mcp" && !root.mcpServer) {
+    process.stderr.write("Unknown command: mcp\n");
+    process.exit(1);
+  }
+
   // Intercept completion for Leaf roots (since they can't natively have a completion subcommand)
   // but wrap them in a dummy router so that the parser handles `-h` and errors correctly.
   if (root.handler && argv.length >= 1 && argv[0] === "completion") {
@@ -55,6 +61,12 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
       description: root.description,
       commands: [cliBuiltinCompletionGroup(root.key)],
     } as any;
+  } else if (root.handler && argv.length >= 1 && argv[0] === "mcp" && root.mcpServer) {
+    parseRoot = {
+      key: root.key,
+      description: root.description,
+      commands: [cliBuiltinMcpCommand()],
+    } as CliCommand;
   } else {
     parseRoot = cliRootMergedWithBuiltins(root);
   }
@@ -95,6 +107,18 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
       process.stdout.write(completionZshScript(schemaForCompletion));
       process.exit(0);
     }
+  }
+
+  if (pr.path[0] === "mcp") {
+    if (!root.mcpServer) {
+      process.stderr.write("Internal error: mcp not enabled.\n");
+      process.exit(1);
+    }
+    if (pr.path.length !== 1) {
+      process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
+      process.exit(1);
+    }
+    await cliMcpServeStdio(root);
   }
 
   let current = parseRoot;

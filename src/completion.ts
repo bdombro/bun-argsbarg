@@ -522,7 +522,7 @@ export function completionZshScript(schema: CliCommand): string {
 }
 
 /**
- * Returns a schema suitable for help display, including the reserved `completion` subtree.
+ * Returns a schema suitable for help display, including reserved built-in subtrees.
  * Routing roots get `completion` merged; leaf roots are wrapped as a tiny router.
  */
 export function cliPresentationRoot(root: CliCommand): CliCommand {
@@ -534,13 +534,31 @@ export function cliPresentationRoot(root: CliCommand): CliCommand {
       key: root.key,
       description: root.description,
       options: root.options,
-      commands: [cliBuiltinCompletionGroup(root.key)],
+      commands: presentationBuiltins(root),
     } as CliCommand;
   }
   return {
     ...root,
-    commands: [...(root.commands ?? []), cliBuiltinCompletionGroup(root.key)],
+    commands: [...(root.commands ?? []), ...presentationBuiltins(root)],
   } as CliCommand;
+}
+
+/** Built-in commands shown in help and merged for routing CLIs. */
+function presentationBuiltins(root: CliCommand): CliCommand[] {
+  const cmds: CliCommand[] = [cliBuiltinCompletionGroup(root.key)];
+  if (root.mcpServer !== undefined) {
+    cmds.push(cliBuiltinMcpCommand());
+  }
+  return cmds;
+}
+
+/** Builds the static `mcp` leaf command (merged when `root.mcpServer` is set). */
+export function cliBuiltinMcpCommand(): CliCommand {
+  return {
+    key: "mcp",
+    description: "Run as an MCP server over stdio (for AI agents).",
+    handler: () => {},
+  };
 }
 
 /**

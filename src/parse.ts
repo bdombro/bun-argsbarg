@@ -217,7 +217,7 @@ function consumeOptions(
 // ── Positional Collection ─────────────────────────────────────────────────────
 
 /** Merges option defs from the program root along the routed command path. */
-function collectOptionDefs(root: CliCommand, path: string[]): CliOption[] {
+export function collectOptionDefs(root: CliCommand, path: string[]): CliOption[] {
   let defs = [...(root.options ?? [])];
   let cmds = root.commands ?? [];
 
@@ -458,7 +458,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
   // Walk the command tree
   while (true) {
     if (!forcePositionals) {
-      const orep = consumeOptions(current.options ?? [], false, argv, i, opts);
+      const orep = consumeOptions(collectOptionDefs(root, path), false, argv, i, opts);
       if (orep.report.err) {
         return {
           kind: ParseKind.Error,

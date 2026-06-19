@@ -10,9 +10,15 @@ Build beautiful, well-behaved CLI apps with Bun — **no third-party runtime dep
 
 Why another CLI parser?
 
-*Schema-first* -- define your entire CLI’s structure, commands, options, and help in a single, explicit data model, making the command-line interface centralized, clear, and self-describing upfront.
+*Schema-first* — define your entire CLI’s structure, commands, options, and help in a single, explicit data model, making the command-line interface centralized, clear, and self-describing upfront.
 
-*Bun-optimized* -- built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
+*Beautiful `-h` screens* — scoped help at any routing depth, rendered in rounded UTF-8 boxes with tables, terminal-width wrapping, and color when stdout is a TTY. Errors print in red with contextual help on stderr.
+
+*Shell completions* — `completion bash` and `completion zsh` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
+
+*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md).
+
+*Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
 Also checkout ArgsBarg for [cpp](https://github.com/bdombro/cpp-argsbarg), [nim](https://github.com/bdombro/nim-argsbarg), and [swift](https://github.com/bdombro/swift-argsbarg)!
 
@@ -90,9 +96,18 @@ Every app gets:
 - `-h` / `--help` at any routing depth (scoped help).
 - **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh`** — print shell completion scripts to stdout (injected by `cliRun`).
+- **`mcp`** — when `mcpServer: {}` is set on the program root, run an MCP server over stdio (`myapp mcp`).
 
 Do not declare a top-level command named **`completion`** — it is reserved for this built-in.
+Do not declare a top-level command named **`mcp`** — it is reserved when MCP is enabled.
 Do not declare an option named **`schema`** — it is reserved for `--schema`.
+
+
+### MCP (AI agents)
+
+Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`.
+
+See **[docs/mcp.md](docs/mcp.md)** for configuration, Cursor setup, tool naming, argument mapping, and protocol details.
 
 
 ### Shell completions
