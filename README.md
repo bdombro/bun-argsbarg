@@ -78,7 +78,7 @@ await cliRun(cli);
 Everything you need for a first-class CLI:
 
 - **Nested subcommands** (`CliCommand` with `commands` for groups, `handler` for leaves)
-- **POSIX-style options** (`-x`, `--long`, `--long=value`)
+- **POSIX-style options** (`-x`, `--long`, `--long=value`) — kinds: presence, string, number, **enum** (`choices` array)
 - **Bundled presence flags** (`-abc`)
 - **Positional arguments and varargs tails** (`CliPositional` objects on `positionals`)
 - **Scoped help** at any routing depth (`-h` / `--help`)
@@ -105,9 +105,9 @@ Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`.
+Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
-See **[docs/mcp.md](docs/mcp.md)** for configuration, Cursor setup, tool naming, argument mapping, and protocol details.
+See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
 
 
 ### Shell completions
@@ -197,10 +197,11 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | Symbol | Role |
 | --- | --- |
 | `CliCommand`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
-| `CliOptionKind`, `CliFallbackMode` | Option kinds and root fallback behavior. |
+| `CliOptionKind`, `CliFallbackMode` | Option kinds (`Presence`, `String`, `Number`, `Enum`) and root fallback behavior. |
 | `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
-| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.args`, …). |
+| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.args`, `ctx.invocation`, …). |
 | `cliRun(root, [argv])` | Validate, parse argv, dispatch, exit. |
+| `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 
 Reserved identifier (validated at startup): root command **`completion`**.

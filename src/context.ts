@@ -7,7 +7,7 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
-import type { CliCommand } from "./types.ts";
+import type { CliCommand, CliInvocation } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
 
 /**
@@ -19,6 +19,7 @@ export class CliContext {
   readonly args: string[];
   readonly schema: CliCommand;
   readonly opts: Record<string, string>;
+  readonly invocation: CliInvocation;
 
   /** Captures the merged program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
@@ -27,12 +28,14 @@ export class CliContext {
     args: string[],
     opts: Record<string, string>,
     schema: CliCommand,
+    invocation: CliInvocation = "cli",
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
     this.args = args;
     this.opts = opts;
     this.schema = schema;
+    this.invocation = invocation;
   }
 
   /** Returns whether a presence flag was set (including implicit "1" for boolean options). */

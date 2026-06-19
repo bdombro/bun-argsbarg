@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ctx.invocation`** (`"cli"` or `"mcp"`) on `CliContext` for handler branching.
+- **`cliInvoke`** and `CliInvokeResult` exported from the public API.
+- **`CliOptionKind.Enum`** with `choices` — JSON Schema `enum`, shell completions, parse validation, help labels.
+- **`mcpTool.description`** — per-leaf MCP tool description override.
+- **`mcpTool.requiresEnv`** — env requirements in auto-generated descriptions; enforced at `tools/call` (empty string counts as absent).
+- **`mcpServer.resources`** — pluggable `CliMcpResource` items in `resources/list` and `resources/read`.
+- **`mcpServer.shellEnv`** — login-shell env captured at MCP server start; `PATH` always merged, other vars fill gaps in host env.
+- **`mcpServer.envFile`** — `.env` file loaded into `process.env` after `shellEnv` (warns on stderr if missing).
+
 ## [1.4.0] - 2026-06-19
 
 ### Added

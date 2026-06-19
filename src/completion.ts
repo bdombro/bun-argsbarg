@@ -8,7 +8,7 @@ It keeps completion aligned with the runtime schema so the generated commands,
 options, and descriptions stay in sync with the CLI definition.
 */
 
-import { CliCommand, CliOption } from "./types.ts";
+import { CliCommand, CliOption, CliOptionKind } from "./types.ts";
 
 // ── Shared Types ───────────────────────────────────────────────────────────────
 
@@ -216,6 +216,31 @@ function emitSimulate(ident: string): string {
   return o;
 }
 
+/** Emits bash helper to complete Enum option values when previous token is --name. */
+function emitEnumReplyBash(ident: string, scopes: ScopeRec[]): string {
+  let o = "_${ident}_nac_enum_reply() {\n".replace("${ident}", ident);
+  o += "  local sid=\"$1\" prev=\"$2\" cur=\"$3\"\n";
+  o += "  case $sid in\n";
+  for (const [i, sc] of scopes.entries()) {
+    const enumOpts = sc.opts.filter((op) => op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0);
+    if (enumOpts.length === 0) {
+      continue;
+    }
+    o += "    " + i + ")\n";
+    o += "      case $prev in\n";
+    for (const op of enumOpts) {
+      const words = (op.choices ?? []).map((c) => escShellSingleQuoted(c)).join(" ");
+      o += "        --" + op.name + ") COMPREPLY=( $(compgen -W '" + words + "' -- \"$cur\") ); return 0 ;;\n";
+    }
+    o += "      esac\n";
+    o += "      ;;\n";
+  }
+  o += "  esac\n";
+  o += "  return 1\n";
+  o += "}\n";
+  return o;
+}
+
 /** Emits the main `COMPREPLY` driver and `complete -F` registration for bash. */
 function emitMainBodyBash(schema: CliCommand, ident: string): string {
   const main = mainName(schema.key);
@@ -224,6 +249,7 @@ function emitMainBodyBash(schema: CliCommand, ident: string): string {
   o += "  local prev=\"${COMP_WORDS[COMP_CWORD-1]:-}\"\n";
   o += "  _${ident}_nac_simulate\n".replace("${ident}", ident);
   o += "  local sid=$REPLY_SID\n";
+  o += "  if _${ident}_nac_enum_reply \"$sid\" \"$prev\" \"$cur\"; then return; fi\n".replace("${ident}", ident);
   o += "  if [[ $cur == -* ]]; then\n";
   o += "    local oname=\"A_${ident}_${sid}_opts\"\n".replace("${ident}", ident);
   o += "    local -a optsarr\n";
@@ -289,6 +315,7 @@ export function completionBashScript(schema: CliCommand): string {
   out += emitConsumeShort(ident, scopes);
   out += emitMatchChild(ident, scopes, pathIndex);
   out += emitSimulate(ident);
+  out += emitEnumReplyBash(ident, scopes);
   out += emitMainBodyBash(schema, ident);
 
   return out;
@@ -470,6 +497,31 @@ function emitSimulateZsh(ident: string): string {
   return o;
 }
 
+/** Emits zsh helper to complete Enum option values when previous token is --name. */
+function emitEnumReplyZsh(ident: string, scopes: ScopeRec[]): string {
+  let o = "_${ident}_nac_enum_reply() {\n".replace("${ident}", ident);
+  o += "  local sid=$1 prev=$2\n";
+  o += "  case $sid in\n";
+  for (const [i, sc] of scopes.entries()) {
+    const enumOpts = sc.opts.filter((op) => op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0);
+    if (enumOpts.length === 0) {
+      continue;
+    }
+    o += "    " + i + ")\n";
+    o += "      case $prev in\n";
+    for (const op of enumOpts) {
+      const vals = (op.choices ?? []).map((c) => escShellSingleQuoted(c)).join(" ");
+      o += "        --" + op.name + ") _values " + vals + "; return 0 ;;\n";
+    }
+    o += "      esac\n";
+    o += "      ;;\n";
+  }
+  o += "  esac\n";
+  o += "  return 1\n";
+  o += "}\n";
+  return o;
+}
+
 /** Zsh: `_main` completer and `compdef` registration. */
 function emitMainBodyZsh(schema: CliCommand, ident: string): string {
   const main = mainName(schema.key);
@@ -477,6 +529,7 @@ function emitMainBodyZsh(schema: CliCommand, ident: string): string {
   o += "  local curcontext=\"$curcontext\" ret=1\n";
   o += "  _${ident}_nac_simulate\n".replace("${ident}", ident);
   o += "  local sid=$REPLY_SID\n";
+  o += "  if _${ident}_nac_enum_reply \"$sid\" \"$words[CURRENT-1]\"; then return 0; fi\n".replace("${ident}", ident);
   o += "  if [[ $PREFIX == -* ]]; then\n";
   o += "    local -a optsarr\n";
   o += "    local oname=\"A_${ident}_${sid}_opts\"\n".replace("${ident}", ident);
@@ -517,6 +570,7 @@ export function completionZshScript(schema: CliCommand): string {
   out += emitConsumeShortZsh(ident, scopes);
   out += emitMatchChildZsh(ident, scopes, pathIndex);
   out += emitSimulateZsh(ident);
+  out += emitEnumReplyZsh(ident, scopes);
   out += emitMainBodyZsh(schema, ident);
   return out;
 }

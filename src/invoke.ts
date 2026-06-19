@@ -108,7 +108,7 @@ export async function cliInvoke(root: CliCommand, argv: string[]): Promise<CliIn
   }
 
   const handler = current.handler;
-  const ctx = new CliContext(root.key, pr.path, pr.args, pr.opts, root);
+  const ctx = new CliContext(root.key, pr.path, pr.args, pr.opts, root, "mcp");
 
   let stdout = "";
   let stderr = "";

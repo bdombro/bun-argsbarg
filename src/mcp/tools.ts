@@ -6,6 +6,7 @@ flat JSON tool arguments into argv for cliInvoke.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { collectOptionDefs } from "../parse.ts";
+import { cliSchemaJson } from "../schema.ts";
 import { CliCommand, CliOption, CliOptionKind, CliPositional } from "../types.ts";
 
 /** Default URI for the CLI schema MCP resource. */
@@ -54,6 +55,8 @@ function optionProperty(opt: CliOption): Record<string, unknown> {
       return { type: "string", ...base };
     case CliOptionKind.Number:
       return { type: "number", ...base };
+    case CliOptionKind.Enum:
+      return { type: "string", enum: opt.choices, ...base };
   }
 }
 
@@ -98,6 +101,48 @@ function buildInputSchema(root: CliCommand, path: string[], leaf: CliCommand): R
   return schema;
 }
 
+/** Resolves MCP tool description with optional override and requiresEnv suffix. */
+function resolveToolDescription(root: CliCommand, path: string[], leaf: CliCommand): string {
+  if (leaf.mcpTool?.description) {
+    return leaf.mcpTool.description;
+  }
+  let desc = mcpToolDescription(path, root.key, leaf.description);
+  const env = leaf.mcpTool?.requiresEnv;
+  if (env && env.length > 0) {
+    desc += ` [requires env: ${env.join(", ")}]`;
+  }
+  return desc;
+}
+
+/** One resolved MCP resource (built-in or user-defined). */
+export interface McpResourceEntry {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType: string;
+  load: () => string;
+}
+
+/** Returns built-in schema resource plus user mcpServer.resources. */
+export function allMcpResources(root: CliCommand): McpResourceEntry[] {
+  const schemaUri = resolveMcpSchemaUri(root);
+  const builtIn: McpResourceEntry = {
+    uri: schemaUri,
+    name: "cli-schema",
+    description: "Full CLI command tree (same as --schema).",
+    mimeType: "application/json",
+    load: () => cliSchemaJson(root),
+  };
+  const user = (root.mcpServer?.resources ?? []).map((r) => ({
+    uri: r.uri,
+    name: r.name,
+    description: r.description,
+    mimeType: r.mimeType ?? "text/plain",
+    load: r.load,
+  }));
+  return [builtIn, ...user];
+}
+
 /** Recursively collects MCP tool definitions from user leaf commands. */
 export function collectMcpTools(root: CliCommand): McpToolDef[] {
   const out: McpToolDef[] = [];
@@ -113,7 +158,7 @@ export function collectMcpTools(root: CliCommand): McpToolDef[] {
       }
       out.push({
         name: mcpToolName(root, path),
-        description: mcpToolDescription(path, root.key, cmd.description),
+        description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
         inputSchema: buildInputSchema(root, path, cmd),

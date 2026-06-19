@@ -151,7 +151,7 @@ function wrapText(text: string, width: number): string[] {
 // ── Option Label Formatting ───────────────────────────────────────────────────
 
 /** Suffix for `--name` in usage (e.g. ` <string>`) based on value kind. */
-function optKindLabel(k: CliOptionKind): string {
+function optKindLabel(k: CliOptionKind, o?: CliOption): string {
   switch (k) {
     case CliOptionKind.Presence:
       return "";
@@ -159,12 +159,22 @@ function optKindLabel(k: CliOptionKind): string {
       return " <number>";
     case CliOptionKind.String:
       return " <string>";
+    case CliOptionKind.Enum: {
+      const choices = o?.choices ?? [];
+      if (choices.length === 0) {
+        return " <choice>";
+      }
+      if (choices.length <= 4) {
+        return " <" + choices.join("|") + ">";
+      }
+      return " <" + choices.slice(0, 3).join("|") + "|…>";
+    }
   }
 }
 
 /** Formats a flag/value option for help tables: `--name`, optional short, optional kind hint. */
 export function cliOptionLabel(o: CliOption, color: boolean): string {
-  let r = "--" + o.name + optKindLabel(o.kind);
+  let r = "--" + o.name + optKindLabel(o.kind, o);
   if (o.shortName) r += ", -" + o.shortName;
   if (!color) return r;
 

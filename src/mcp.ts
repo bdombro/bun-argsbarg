@@ -3,6 +3,7 @@ This module starts the ArgsBarg MCP stdio server for opt-in program roots.
 */
 
 import { mcpServeStdioLoop } from "./mcp/server.ts";
+import { bootstrapMcpEnv } from "./mcp/env.ts";
 import { CliCommand } from "./types.ts";
 
 /**
@@ -11,6 +12,9 @@ import { CliCommand } from "./types.ts";
  */
 export async function cliMcpServeStdio(root: CliCommand): Promise<never> {
   try {
+    if (root.mcpServer) {
+      bootstrapMcpEnv(root.mcpServer);
+    }
     await mcpServeStdioLoop(root);
     process.exit(0);
   } catch (err) {

@@ -136,7 +136,7 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  const ctx = new CliContext(parseRoot.key, pr.path, pr.args, pr.opts, parseRoot);
+  const ctx = new CliContext(parseRoot.key, pr.path, pr.args, pr.opts, parseRoot, "cli");
   try {
     await Promise.resolve(current.handler(ctx));
     process.exit(0);

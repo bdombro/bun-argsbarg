@@ -4,13 +4,12 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import { cliInvoke } from "../invoke.ts";
-import { cliSchemaJson } from "../schema.ts";
 import { CliCommand } from "../types.ts";
 import { buildToolCallSuccess } from "./result.ts";
 import {
+  allMcpResources,
   collectMcpTools,
   mcpToolCallToArgv,
-  resolveMcpSchemaUri,
   resolveMcpServerInfo,
 } from "./tools.ts";
 
@@ -118,6 +117,18 @@ async function handleRequestLine(root: CliCommand, line: string): Promise<void> 
         writeError(id, -32602, `Unknown tool: ${name}`);
         return;
       }
+      const missingEnv = (tool.leaf.mcpTool?.requiresEnv ?? []).filter((k) => !process.env[k]);
+      if (missingEnv.length > 0) {
+        writeResponse({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            content: [{ type: "text", text: `Missing required env: ${missingEnv.join(", ")}` }],
+            isError: true,
+          },
+        });
+        return;
+      }
       const argvResult = mcpToolCallToArgv(root, tool, (rawArgs ?? {}) as Record<string, unknown>);
       if ("error" in argvResult) {
         writeResponse({
@@ -152,21 +163,13 @@ async function handleRequestLine(root: CliCommand, line: string): Promise<void> 
     }
 
     if (method === "resources/list") {
-      const uri = resolveMcpSchemaUri(root);
-      writeResponse({
-        jsonrpc: "2.0",
-        id,
-        result: {
-          resources: [
-            {
-              uri,
-              name: "cli-schema",
-              description: "Full CLI command tree (same as --schema).",
-              mimeType: "application/json",
-            },
-          ],
-        },
-      });
+      const resources = allMcpResources(root).map((r) => ({
+        uri: r.uri,
+        name: r.name,
+        description: r.description,
+        mimeType: r.mimeType,
+      }));
+      writeResponse({ jsonrpc: "2.0", id, result: { resources } });
       return;
     }
 
@@ -176,9 +179,18 @@ async function handleRequestLine(root: CliCommand, line: string): Promise<void> 
         writeError(id, -32602, "Invalid params: uri required");
         return;
       }
-      const expected = resolveMcpSchemaUri(root);
-      if (uri !== expected) {
+      const all = allMcpResources(root);
+      const found = all.find((r) => r.uri === uri);
+      if (!found) {
         writeError(id, -32602, `Unknown resource: ${uri}`);
+        return;
+      }
+      let text: string;
+      try {
+        text = found.load();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        writeError(id, -32603, `Resource load failed: ${message}`);
         return;
       }
       writeResponse({
@@ -187,9 +199,9 @@ async function handleRequestLine(root: CliCommand, line: string): Promise<void> 
         result: {
           contents: [
             {
-              uri: expected,
-              mimeType: "application/json",
-              text: cliSchemaJson(root).trimEnd(),
+              uri: found.uri,
+              mimeType: found.mimeType,
+              text,
             },
           ],
         },

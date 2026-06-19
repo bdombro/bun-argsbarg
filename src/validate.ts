@@ -12,6 +12,7 @@ import {
   CliOptionKind,
   CliSchemaValidationError,
 } from "./types.ts";
+import { MCP_SCHEMA_URI_DEFAULT } from "./mcp/tools.ts";
 
 const reservedCommandNames = ["completion", "mcp"];
 
@@ -66,6 +67,19 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
   }
 
+  if (isRoot && cmd.mcpServer?.resources) {
+    const schemaUri = cmd.mcpServer.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
+    const uris = cmd.mcpServer.resources.map((r) => r.uri);
+    if (uris.includes(schemaUri)) {
+      throw new CliSchemaValidationError(
+        `mcpServer.resources URI '${schemaUri}' conflicts with the built-in schema resource`,
+      );
+    }
+    if (new Set(uris).size !== uris.length) {
+      throw new CliSchemaValidationError("mcpServer.resources URIs must be unique");
+    }
+  }
+
   // Check for duplicate child names
   const seenNames = new Set<string>();
   for (const child of cmd.commands ?? []) {
@@ -102,6 +116,30 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
         );
       }
       seenShorts.add(opt.shortName);
+    }
+
+    if (opt.kind === CliOptionKind.Enum) {
+      if (!opt.choices || opt.choices.length === 0) {
+        throw new CliSchemaValidationError(
+          `Option '${opt.name}' on '${cmd.key}': Enum kind requires non-empty choices`,
+        );
+      }
+      if (new Set(opt.choices).size !== opt.choices.length) {
+        throw new CliSchemaValidationError(
+          `Option '${opt.name}' on '${cmd.key}': Enum choices must be distinct`,
+        );
+      }
+      for (const choice of opt.choices) {
+        if (choice.length === 0) {
+          throw new CliSchemaValidationError(
+            `Option '${opt.name}' on '${cmd.key}': Enum choices must be non-empty strings`,
+          );
+        }
+      }
+    } else if (opt.choices !== undefined) {
+      throw new CliSchemaValidationError(
+        `Option '${opt.name}' on '${cmd.key}': choices is only valid for Enum kind`,
+      );
     }
   }
 

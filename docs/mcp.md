@@ -67,6 +67,9 @@ Set `mcpServer` on the **program root only** (the `CliCommand` passed to `cliRun
 | `name` | root `key` | `serverInfo.name` in the `initialize` response |
 | `version` | `package.json` `version` in cwd, else `"0.0.0"` | `serverInfo.version` |
 | `schemaResourceUri` | `"argsbarg://schema"` | URI for the schema resource |
+| `shellEnv` | off | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
+| `envFile` | off | Load a `.env` file after `shellEnv` (`~` supported); warns on stderr if missing |
+| `resources` | `[]` | Custom `CliMcpResource` entries for `resources/list` and `resources/read` |
 
 Example with all fields:
 
@@ -117,11 +120,24 @@ Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/l
 
 Omitted or `enabled: true` exposes the command (default). `mcpTool` is only valid on leaves — not on the program root or routing groups.
 
+### Per-leaf tool metadata
+
+```typescript
+mcpTool: {
+  enabled: true,
+  description: "Custom tools/list text (overrides auto-generated path + help).",
+  requiresEnv: ["API_TOKEN", "DATABASE_URL"],
+}
+```
+
+- **`description`** — when set, replaces the auto-generated `path — help` description entirely (no automatic `requiresEnv` suffix; mention vars in your text if needed).
+- **`requiresEnv`** — on auto-generated descriptions, appended as `[requires env: …]`. Enforced at `tools/call` time before the handler runs. Empty or unset env values count as missing.
+
 ### Tool arguments
 
 Each tool’s `inputSchema` is a JSON Schema object built from your CLI definition:
 
-- **Options** — parent-scoped flags are included (e.g. `stat`’s `--json` appears on `stat_owner_lookup`). Presence options are `boolean`; string and number options match their `CliOptionKind`. Required options are listed in `required`.
+- **Options** — parent-scoped flags are included (e.g. `stat`’s `--json` appears on `stat_owner_lookup`). Presence options are `boolean`; string, number, and **enum** options match their `CliOptionKind` (`Enum` uses JSON Schema `enum`). Required options are listed in `required`.
 - **Positionals** — one property per `CliPositional` on the leaf. Single-slot positionals are `string`; varargs tails (`argMax: 0`) are `string[]`. Required positionals are listed in `required`.
 
 Arguments are a **flat JSON object** keyed by option and positional names (same names as in your schema, including hyphenated option names like `"user-name"`).
@@ -152,9 +168,9 @@ On failure (parse error, validation error, non-zero exit, thrown error), the mes
 
 Help and `--schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
 
-## Schema resource
+## Schema and custom resources
 
-The server advertises one MCP resource: your full CLI tree as JSON — the same output as `myapp --schema`.
+The built-in resource `argsbarg://schema` (or `schemaResourceUri`) exposes your full CLI tree as JSON — the same output as `myapp --schema`.
 
 | Property | Value |
 | --- | --- |
@@ -162,7 +178,79 @@ The server advertises one MCP resource: your full CLI tree as JSON — the same 
 | MIME type | `application/json` |
 | Contents | `cliSchemaJson(root)` — handlers omitted, built-ins excluded |
 
-Agents can read this resource to discover commands, options, and positionals without guessing tool shapes.
+Add custom resources on the program root:
+
+```typescript
+mcpServer: {
+  resources: [
+    {
+      uri: "myapp://config",
+      name: "config",
+      description: "Resolved app configuration.",
+      mimeType: "application/json",
+      load: () => JSON.stringify({ /* … */ }),
+    },
+  ],
+},
+```
+
+URIs must be unique and must not equal `schemaResourceUri`. `load()` runs synchronously at `resources/read` time.
+
+## Invocation context
+
+Handlers receive `ctx.invocation`: `"cli"` for normal `cliRun` dispatch, `"mcp"` for MCP `tools/call`.
+
+Use this to branch subprocess behavior — MCP stdout is the JSON-RPC wire, so child processes must not inherit it:
+
+```typescript
+handler: async (ctx) => {
+  const proc = Bun.spawn(["my-tool", ...ctx.args], {
+    stdout: ctx.invocation === "mcp" ? "pipe" : "inherit",
+    stderr: "inherit",
+  });
+  // capture proc.stdout when piping…
+};
+```
+
+`Bun.spawn({ stdout: "inherit" })` under MCP corrupts the wire. Prefer `"pipe"` and let argsbarg return captured handler stdout in the tool result.
+
+### `cliInvoke` (public API)
+
+`cliInvoke(root, argv)` runs a leaf handler without exiting the process — useful for tests and headless integrations. Returns `{ kind, exitCode, stdout, stderr }`. MCP tool dispatch uses this internally.
+
+**Note:** Tool output is buffered until the handler completes. Live streaming (e.g. `tail -f`) is not supported yet; see [Design notes](#design-notes).
+
+## Environment bootstrapping
+
+MCP hosts (e.g. Cursor) often spawn your server with a minimal environment — missing `PATH` entries for Homebrew, nvm, rbenv, etc.
+
+At server start (`cliMcpServeStdio`), before the NDJSON loop:
+
+| Order | Source | Behavior |
+| --- | --- | --- |
+| 1 | `shellEnv` | Spawns `$SHELL -l -c env`; merges into `process.env` |
+| 2 | `envFile` | Loads `.env`; **overwrites** keys from step 1 |
+
+**`shellEnv` merge rules:**
+
+- **`PATH`** — shell-only segments are **prepended** to the host `PATH` (always merged).
+- **Other vars** — set only when absent from the host environment (host wins).
+- On failure — one-line warning on **stderr**; server continues.
+
+**`envFile`:**
+
+- Supports `~` expansion.
+- Missing file — warning on stderr, server continues.
+- Keys from the file **always overwrite** `process.env`.
+
+Example:
+
+```typescript
+mcpServer: {
+  shellEnv: true,
+  envFile: "~/.config/myapp/mcp.env",
+},
+```
 
 ## Protocol
 
@@ -179,8 +267,8 @@ Agents can read this resource to discover commands, options, and positionals wit
 | `ping` | Returns `{}`. |
 | `tools/list` | Lists all tools with `name`, `description`, `inputSchema`. |
 | `tools/call` | Runs a leaf handler; params: `name`, `arguments` (object). |
-| `resources/list` | Lists the schema resource. |
-| `resources/read` | Returns schema JSON; params: `uri`. |
+| `resources/list` | Lists schema + custom resources. |
+| `resources/read` | Returns resource body; params: `uri`. |
 
 Requests without an `id` are treated as notifications and do not receive a response (except `notifications/initialized`, which is ignored after parsing).
 
@@ -207,5 +295,6 @@ Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1)
 - **Zero extra dependencies** — hand-rolled NDJSON JSON-RPC on top of ArgsBarg’s existing parser and schema.
 - **Same handlers** — tool calls run your real leaf handlers via an internal invoke path that captures stdout/stderr and does not exit the process, so the MCP server can handle many requests in one process.
 - **User schema only** — tool dispatch uses your program root, not merged presentation builtins.
+- **Buffered output** — MCP tool results are sent after the handler finishes. Incremental stdout (log tail, progress) is not streamed; a future release may add MCP progress notifications.
 
 For the `--schema` export used by the resource, see the main README built-ins section.

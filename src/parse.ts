@@ -601,6 +601,21 @@ export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResul
         };
       }
     }
+    if (d.kind === CliOptionKind.Enum) {
+      const choices = d.choices ?? [];
+      if (!choices.includes(v)) {
+        return {
+          kind: ParseKind.Error,
+          path: pr.path,
+          opts: {},
+          args: [],
+          helpExplicit: false,
+          helpPath: [],
+          errorMsg: `Option --${k}: '${v}' is not one of: ${choices.join(", ")}`,
+          errorHelpPath: pr.path,
+        };
+      }
+    }
   }
 
   return pr;

@@ -7,8 +7,19 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
+export { cliInvoke } from "./invoke.ts";
+export type { CliInvokeKind, CliInvokeResult } from "./invoke.ts";
 export { CliContext } from "./context.ts";
 export { cliErrWithHelp, cliRun } from "./runtime";
 export { CliFallbackMode, CliOptionKind, CliSchemaValidationError } from "./types.ts";
-export type { CliCommand, CliHandler, CliMcpServerConfig, CliMcpToolConfig, CliOption, CliPositional } from "./types.ts";
+export type {
+  CliCommand,
+  CliHandler,
+  CliInvocation,
+  CliMcpResource,
+  CliMcpServerConfig,
+  CliMcpToolConfig,
+  CliOption,
+  CliPositional,
+} from "./types.ts";
 export { isInteractiveTty } from "./utils.ts";

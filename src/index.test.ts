@@ -9,19 +9,23 @@ shell output regressions.
 
 import { completionBashScript, completionZshScript } from "./completion.ts";
 import { cliHelpRender } from "./help.ts";
-import { CliCommand, CliFallbackMode, CliOptionKind } from "./index.ts";
+import { CliCommand, CliFallbackMode, CliOptionKind, cliInvoke } from "./index.ts";
 import {
+  allMcpResources,
   collectMcpTools,
   mcpToolCallToArgv,
   mcpToolDescription,
   sanitizeToolSegment,
 } from "./mcp/tools.ts";
+import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
 import { buildToolCallSuccess } from "./mcp/result.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
 import { $ } from "bun";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test("bundled short presence flags", () => {
@@ -718,11 +722,16 @@ const nestedMcpFixture: CliCommand = {
 };
 
 /** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
-async function mcpRequest(requests: object[]): Promise<Map<string | number, object>> {
-  const proc = Bun.spawn(["bun", "run", "examples/nested.ts", "mcp"], {
+async function mcpRequest(
+  requests: object[],
+  opts?: { script?: string; env?: Record<string, string> },
+): Promise<Map<string | number, object>> {
+  const script = opts?.script ?? "examples/nested.ts";
+  const proc = Bun.spawn(["bun", "run", script, "mcp"], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
+    env: opts?.env ? { ...process.env, ...opts.env } : process.env,
   });
 
   const input = requests.map((r) => JSON.stringify(r) + "\n").join("");
@@ -992,4 +1001,333 @@ test("minimal.ts mcp without opt-in fails", async () => {
   const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
   expect(exitCode).toBe(1);
   expect(stderr.toString()).toContain("mcp");
+});
+
+test("ctx.invocation is cli via cliRun", async () => {
+  const indexPath = join(import.meta.dir, "index.ts");
+  const { stdout } = await $`bun -e ${`
+import { cliRun, CliCommand } from ${JSON.stringify(indexPath)};
+const cli = { key: "t", description: "d", handler: (ctx) => console.log(ctx.invocation) };
+await cliRun(cli, []);
+  `}`.quiet();
+  expect(stdout.toString().trim()).toBe("cli");
+});
+
+test("ctx.invocation is mcp via cliInvoke", async () => {
+  let seen = "";
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    handler: (ctx) => {
+      seen = ctx.invocation;
+    },
+  };
+  cliValidateRoot(root);
+  const result = await cliInvoke(root, []);
+  expect(result.kind).toBe("ok");
+  expect(seen).toBe("mcp");
+});
+
+const enumMcpFixture: CliCommand = {
+  key: "app",
+  description: "",
+  mcpServer: {},
+  commands: [
+    {
+      key: "run",
+      description: "Run with mode.",
+      options: [
+        {
+          name: "mode",
+          description: "Mode.",
+          kind: CliOptionKind.Enum,
+          choices: ["dev", "prod"],
+          required: true,
+        },
+      ],
+      handler: () => {},
+    },
+  ],
+};
+
+test("Enum option inputSchema includes enum array", () => {
+  const tools = collectMcpTools(enumMcpFixture);
+  const run = tools.find((t) => t.name === "run")!;
+  const schema = run.inputSchema as { properties: { mode: { enum?: string[] } } };
+  expect(schema.properties.mode.enum).toEqual(["dev", "prod"]);
+});
+
+test("cliInvoke rejects invalid Enum value", async () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    handler: () => {},
+    options: [
+      {
+        name: "mode",
+        description: "Mode.",
+        kind: CliOptionKind.Enum,
+        choices: ["dev", "prod"],
+        required: true,
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const result = await cliInvoke(root, ["--mode", "staging"]);
+  expect(result.kind).toBe("error");
+  expect(result.errorMsg).toContain("not one of");
+});
+
+test("cliInvoke accepts valid Enum value", async () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    handler: (ctx) => {
+      console.log(ctx.stringOpt("mode"));
+    },
+    options: [
+      {
+        name: "mode",
+        description: "Mode.",
+        kind: CliOptionKind.Enum,
+        choices: ["dev", "prod"],
+        required: true,
+      },
+    ],
+  };
+  cliValidateRoot(root);
+  const result = await cliInvoke(root, ["--mode", "dev"]);
+  expect(result.kind).toBe("ok");
+  expect(result.stdout.trim()).toBe("dev");
+});
+
+test("cliValidateRoot rejects Enum with no choices", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    handler: () => {},
+    options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: [] }],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/requires non-empty choices/);
+});
+
+test("cliValidateRoot rejects Enum with duplicate choices", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    handler: () => {},
+    options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: ["a", "a"] }],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/choices must be distinct/);
+});
+
+test("mcpTool.description override wins without requiresEnv suffix", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {},
+    commands: [
+      {
+        key: "x",
+        description: "Leaf desc.",
+        mcpTool: { description: "custom", requiresEnv: ["TOKEN"] },
+        handler: () => {},
+      },
+    ],
+  };
+  const tools = collectMcpTools(root);
+  expect(tools[0]!.description).toBe("custom");
+});
+
+test("mcpTool.requiresEnv appended to auto description", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {},
+    commands: [
+      {
+        key: "x",
+        description: "Leaf desc.",
+        mcpTool: { requiresEnv: ["TOKEN"] },
+        handler: () => {},
+      },
+    ],
+  };
+  const tools = collectMcpTools(root);
+  expect(tools[0]!.description).toContain("[requires env: TOKEN]");
+});
+
+test("cliValidateRoot rejects duplicate mcpResources URIs", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {
+      resources: [
+        { uri: "a://1", name: "a", load: () => "a" },
+        { uri: "a://1", name: "b", load: () => "b" },
+      ],
+    },
+    commands: [{ key: "x", description: "", handler: () => {} }],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/URIs must be unique/);
+});
+
+test("cliValidateRoot rejects resource URI matching schemaResourceUri", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {
+      schemaResourceUri: "custom://schema",
+      resources: [{ uri: "custom://schema", name: "dup", load: () => "" }],
+    },
+    commands: [{ key: "x", description: "", handler: () => {} }],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/conflicts with the built-in schema resource/);
+});
+
+test("allMcpResources includes custom resources", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {
+      resources: [{ uri: "test://x", name: "x", load: () => "body" }],
+    },
+    commands: [{ key: "leaf", description: "", handler: () => {} }],
+  };
+  const resources = allMcpResources(root);
+  expect(resources.map((r) => r.uri)).toContain("argsbarg://schema");
+  expect(resources.map((r) => r.uri)).toContain("test://x");
+});
+
+test("applyShellEnv merges PATH and preserves host vars", () => {
+  const origPath = process.env.PATH ?? "";
+  const origHome = process.env.HOME;
+  process.env.PATH = "/host/bin";
+  process.env.HOME = "host-home";
+  applyShellEnv({ PATH: "/shell/bin:/host/bin", HOME: "shell-home", NEWVAR: "yes" });
+  expect(process.env.PATH?.startsWith("/shell/bin:")).toBe(true);
+  expect(process.env.PATH).toContain("/host/bin");
+  expect(process.env.HOME).toBe("host-home");
+  expect(process.env.NEWVAR).toBe("yes");
+  process.env.PATH = origPath;
+  if (origHome === undefined) {
+    delete process.env.HOME;
+  } else {
+    process.env.HOME = origHome;
+  }
+  delete process.env.NEWVAR;
+});
+
+test("loadEnvFile overwrites existing keys", () => {
+  const dir = mkdtempSync(join(tmpdir(), "argsbarg-env-"));
+  const file = join(dir, ".env");
+  writeFileSync(file, "FOO=fromfile\n", "utf8");
+  process.env.FOO = "original";
+  loadEnvFile(file);
+  expect(process.env.FOO).toBe("fromfile");
+  delete process.env.FOO;
+});
+
+test("Enum completions list choices in bash script", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "run",
+        description: "",
+        options: [
+          { name: "mode", description: "m", kind: CliOptionKind.Enum, choices: ["dev", "prod"] },
+        ],
+        handler: () => {},
+      },
+    ],
+  };
+  const bash = completionBashScript(root);
+  expect(bash).toContain("--mode) COMPREPLY=");
+  expect(bash).toContain("dev");
+  expect(bash).toContain("prod");
+});
+
+test("MCP resources/list includes custom resource", async () => {
+  const responses = await mcpRequest(
+    [{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }],
+    { script: "examples/mcp-test.ts" },
+  );
+  const res = responses.get(10) as { result: { resources: { uri: string }[] } };
+  const uris = res.result.resources.map((r) => r.uri);
+  expect(uris).toContain("argsbarg://schema");
+  expect(uris).toContain("test://hello");
+});
+
+test("MCP resources/read returns custom resource body", async () => {
+  const responses = await mcpRequest(
+    [{ jsonrpc: "2.0", id: 11, method: "resources/read", params: { uri: "test://hello" } }],
+    { script: "examples/mcp-test.ts" },
+  );
+  const res = responses.get(11) as { result: { contents: { text: string }[] } };
+  expect(res.result.contents[0]!.text).toBe("hello resource");
+});
+
+test("MCP resources/read unknown URI returns error", async () => {
+  const responses = await mcpRequest(
+    [{ jsonrpc: "2.0", id: 12, method: "resources/read", params: { uri: "missing://nope" } }],
+    { script: "examples/mcp-test.ts" },
+  );
+  const res = responses.get(12) as { error: { code: number } };
+  expect(res.error.code).toBe(-32602);
+});
+
+test("MCP requiresEnv fails when env missing", async () => {
+  const responses = await mcpRequest(
+    [
+      {
+        jsonrpc: "2.0",
+        id: 13,
+        method: "tools/call",
+        params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
+      },
+    ],
+    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "" } },
+  );
+  const res = responses.get(13) as { result: { isError: boolean; content: { text: string }[] } };
+  expect(res.result.isError).toBe(true);
+  expect(res.result.content[0]!.text).toContain("ARGS_TEST_SECRET");
+});
+
+test("MCP requiresEnv succeeds when env present", async () => {
+  const responses = await mcpRequest(
+    [
+      {
+        jsonrpc: "2.0",
+        id: 14,
+        method: "tools/call",
+        params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
+      },
+    ],
+    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "sekrit" } },
+  );
+  const res = responses.get(14) as { result: { isError: boolean; content: { text: string }[] } };
+  expect(res.result.isError).toBe(false);
+  expect(res.result.content[0]!.text.trim()).toBe("sekrit");
+});
+
+test("MCP envFile loads vars for tool handlers", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "argsbarg-mcp-"));
+  const envFile = join(dir, "mcp.env");
+  writeFileSync(envFile, "ARGS_FILE_TOKEN=file-value\n", "utf8");
+  const responses = await mcpRequest(
+    [
+      {
+        jsonrpc: "2.0",
+        id: 15,
+        method: "tools/call",
+        params: { name: "echo_env", arguments: { name: "ARGS_FILE_TOKEN" } },
+      },
+    ],
+    { script: "examples/mcp-test.ts", env: { ARGS_TEST_ENV_FILE: envFile, ARGS_TEST_SECRET: "present" } },
+  );
+  const res = responses.get(15) as { result: { isError: boolean; content: { text: string }[] } };
+  expect(res.result.isError).toBe(false);
+  expect(res.result.content[0]!.text.trim()).toBe("file-value");
 });

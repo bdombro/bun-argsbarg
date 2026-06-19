@@ -9,7 +9,12 @@ It gives the package one shared model for both library users and internal module
 import type { CliContext } from "./context.ts";
 
 /**
- * Option kinds: presence (boolean flag), string (free-form text), or number (strict double).
+ * How a leaf handler was dispatched.
+ */
+export type CliInvocation = "cli" | "mcp";
+
+/**
+ * Option kinds: presence (boolean flag), string (free-form text), number (strict double), or enum (fixed choices).
  */
 export enum CliOptionKind {
   /** Boolean flag: no value token (may be implicit `"1"` when set). */
@@ -18,6 +23,8 @@ export enum CliOptionKind {
   String = "string",
   /** Strict floating-point value (parsed at validation time). */
   Number = "number",
+  /** Fixed set of allowed string values. Requires non-empty `choices` on the option. */
+  Enum = "enum",
 }
 
 /**
@@ -54,6 +61,11 @@ export interface CliOption {
   shortName?: string;
   /** Whether this option must be provided. Cannot be used with Presence kind. */
   required?: boolean;
+  /**
+   * Allowed values. Required when kind === Enum; ignored otherwise.
+   * Must be a non-empty array of distinct non-empty strings.
+   */
+  choices?: string[];
 }
 
 /**
@@ -88,6 +100,39 @@ export interface CliMcpServerConfig {
   version?: string;
   /** Resource URI for schema export (default: `"argsbarg://schema"`). */
   schemaResourceUri?: string;
+  /**
+   * Capture the user's login shell environment at MCP server start and merge it
+   * into process.env. Solves missing PATH, nvm/rbenv shims, Homebrew binaries,
+   * and shell exports that MCP hosts (e.g. Cursor) don't inherit.
+   */
+  shellEnv?: boolean | string;
+  /**
+   * Path to a .env file loaded into process.env at MCP server start, after shellEnv.
+   * Supports `~` expansion. Warns on stderr if the file does not exist.
+   * Always overwrites — envFile is authoritative for its keys.
+   */
+  envFile?: string;
+  /**
+   * Custom MCP resources exposed alongside the built-in argsbarg://schema resource.
+   * URIs must be unique and must not equal schemaResourceUri.
+   */
+  resources?: CliMcpResource[];
+}
+
+/**
+ * A custom MCP resource exposed under resources/list and resources/read.
+ */
+export interface CliMcpResource {
+  /** Resource URI (must be unique; must not equal schemaResourceUri). */
+  uri: string;
+  /** Short display name for resources/list. */
+  name: string;
+  /** Optional human description for resources/list. */
+  description?: string;
+  /** MIME type (default: "text/plain"). */
+  mimeType?: string;
+  /** Called at resources/read time; must return the resource body. */
+  load: () => string;
 }
 
 /**
@@ -96,6 +141,17 @@ export interface CliMcpServerConfig {
 export interface CliMcpToolConfig {
   /** When `false`, omit from `tools/list` (default: exposed). */
   enabled?: boolean;
+  /**
+   * Override the generated MCP tool description.
+   * Default: auto-generated from command path and description.
+   */
+  description?: string;
+  /**
+   * Environment variable names required at runtime.
+   * Appended to auto-generated MCP tool descriptions; enforced at tools/call time.
+   * Empty string counts as absent.
+   */
+  requiresEnv?: string[];
 }
 
 /**
