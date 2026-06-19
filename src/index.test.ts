@@ -19,12 +19,14 @@ import {
 } from "./mcp/tools.ts";
 import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
 import { buildToolCallSuccess } from "./mcp/result.ts";
+import { generateSkillBundle } from "./skill/generate.ts";
+import { cliSkillInstall } from "./skill/install.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { cliValidateRoot } from "./validate.ts";
 import { expect, test } from "bun:test";
 import { $ } from "bun";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -727,7 +729,7 @@ async function mcpRequest(
   opts?: { script?: string; env?: Record<string, string> },
 ): Promise<Map<string | number, object>> {
   const script = opts?.script ?? "examples/nested.ts";
-  const proc = Bun.spawn(["bun", "run", script, "mcp"], {
+  const proc = Bun.spawn(["bun", "run", script, "ai", "mcp"], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
@@ -775,7 +777,7 @@ test("collectMcpTools lists user leaf commands only", () => {
   expect(names).toContain("stat_owner_lookup");
   expect(names).toContain("read");
   expect(names).not.toContain("hidden");
-  expect(names).not.toContain("mcp");
+  expect(names).not.toContain("ai");
   expect(names).not.toContain("completion");
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
   expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
@@ -807,19 +809,34 @@ test("mcpToolCallToArgv expands varargs positionals", () => {
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
-test("reserved command name mcp is rejected", () => {
+test("reserved command name ai is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "ai",
+        description: "bad",
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: ai/);
+});
+
+test("top-level command name mcp is allowed", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
     commands: [
       {
         key: "mcp",
-        description: "bad",
+        description: "user command",
         handler: () => {},
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: mcp/);
+  expect(() => cliValidateRoot(root)).not.toThrow();
 });
 
 test("mcpServer on non-root node is rejected", () => {
@@ -997,10 +1014,10 @@ test("MCP ping returns empty result", async () => {
   expect(res.result).toEqual({});
 });
 
-test("minimal.ts mcp without opt-in fails", async () => {
-  const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
+test("minimal.ts ai mcp without opt-in fails", async () => {
+  const { stderr, exitCode } = await $`bun run examples/minimal.ts ai mcp`.nothrow().quiet();
   expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("mcp");
+  expect(stderr.toString()).toContain("MCP is not enabled");
 });
 
 test("ctx.invocation is cli via cliRun", async () => {
@@ -1634,4 +1651,129 @@ test("mcpToolCallToArgv empty string varargs appends nothing", () => {
   const read = tools.find((t) => t.name === "read")!;
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "" });
   expect(argv).toEqual(["read"]);
+});
+
+// ── AI builtins and skills ────────────────────────────────────────────────────
+
+test("aiSkill on non-root node is rejected", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "x",
+        description: "",
+        aiSkill: { enabled: false },
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/aiSkill is only supported on the program root/);
+});
+
+test("generateSkillBundle includes frontmatter and command catalog", () => {
+  const bundle = generateSkillBundle(nestedMcpFixture, "cursor");
+  expect(bundle.dirName).toBe("nested_ts");
+  expect(bundle.skillMd).toMatch(/^---\nname: nested_ts\n/);
+  expect(bundle.skillMd).toContain("stat owner lookup");
+  expect(bundle.skillMd).toContain("ai mcp");
+  expect(bundle.referenceMd).toContain("```json");
+  expect(() => JSON.parse(bundle.referenceMd.match(/```json\n([\s\S]*?)\n```/)![1]!)).not.toThrow();
+});
+
+test("cliSkillInstall writes project Cursor skill files", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-"));
+  const prev = process.cwd();
+  process.chdir(cwd);
+  try {
+    const msg = cliSkillInstall(nestedMcpFixture, "cursor", { force: true });
+    expect(msg).toContain(".cursor/skills/nested_ts/");
+    const skillDir = join(cwd, ".cursor", "skills", "nested_ts");
+    expect(existsSync(join(skillDir, "SKILL.md"))).toBe(true);
+    expect(existsSync(join(skillDir, "reference.md"))).toBe(true);
+    expect(readFileSync(join(skillDir, "SKILL.md"), "utf8")).toContain("stat owner lookup");
+  } finally {
+    process.chdir(prev);
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("cliSkillInstall global uses HOME skills directory", () => {
+  const home = mkdtempSync(join(tmpdir(), "argsbarg-home-"));
+  const prevHome = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    const msg = cliSkillInstall(nestedMcpFixture, "cursor", { global: true, force: true });
+    expect(msg).toContain(join(home, ".cursor", "skills", "nested_ts"));
+    expect(existsSync(join(home, ".cursor", "skills", "nested_ts", "SKILL.md"))).toBe(true);
+  } finally {
+    if (prevHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = prevHome;
+    }
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("cliSkillInstall fails when directory exists without force", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-dup-"));
+  const prev = process.cwd();
+  process.chdir(cwd);
+  const prevExit = process.exit;
+  let exitCode = 0;
+  process.exit = ((code?: number) => {
+    exitCode = code ?? 0;
+    throw new Error("exit");
+  }) as typeof process.exit;
+  try {
+    cliSkillInstall(nestedMcpFixture, "cursor", { force: true });
+    try {
+      cliSkillInstall(nestedMcpFixture, "cursor", {});
+    } catch {
+      // expected exit throw
+    }
+    expect(exitCode).toBe(1);
+  } finally {
+    process.exit = prevExit;
+    process.chdir(prev);
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("cliSkillInstall claude target uses .claude/skills", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-claude-"));
+  const prev = process.cwd();
+  process.chdir(cwd);
+  try {
+    const msg = cliSkillInstall(nestedMcpFixture, "claude", { force: true });
+    expect(msg).toContain(".claude/skills/nested_ts/");
+    expect(readFileSync(join(cwd, ".claude", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain(
+      "Claude Code",
+    );
+  } finally {
+    process.chdir(prev);
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("ai skill cursor fails when aiSkill disabled", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "argsbarg-skill-off-"));
+  const script = join(dir, "skill-off.ts");
+  writeFileSync(
+    script,
+    `import { cliRun, CliCommand } from ${JSON.stringify(join(import.meta.dir, "index.ts"))};
+const cli: CliCommand = {
+  key: "offapp",
+  description: "demo",
+  aiSkill: { enabled: false },
+  commands: [{ key: "x", description: "x", handler: () => {} }],
+};
+await cliRun(cli);
+`,
+    "utf8",
+  );
+  const { stderr, exitCode } = await $`bun run ${script} ai skill cursor`.nothrow().quiet();
+  expect(exitCode).toBe(1);
+  expect(stderr.toString()).toContain("AI skills are disabled");
 });

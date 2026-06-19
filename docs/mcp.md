@@ -22,17 +22,19 @@ const cli: CliCommand = {
 2. Run the MCP server:
 
 ```bash
-myapp mcp
+myapp ai mcp
 ```
 
 The process reads NDJSON requests from stdin and writes NDJSON responses to stdout. It stays alive until stdin closes.
 
 3. Point your MCP client at that command. See [Client setup](#client-setup).
 
+Optionally install an agent skill for discovery without MCP: see [docs/ai-skills.md](ai-skills.md).
+
 The `examples/nested.ts` demo enables MCP — try:
 
 ```bash
-bun run examples/nested.ts mcp
+bun run examples/nested.ts ai mcp
 ```
 
 ## Client setup
@@ -46,17 +48,17 @@ Add a server entry under `mcpServers` in your Cursor MCP config:
   "mcpServers": {
     "myapp": {
       "command": "bun",
-      "args": ["run", "myapp.ts", "mcp"]
+      "args": ["run", "myapp.ts", "ai", "mcp"]
     }
   }
 }
 ```
 
-Use your real binary or script path. For a compiled CLI, `command` can be the installed binary and `args` can be `["mcp"]` only.
+Use your real binary or script path. For a compiled CLI, `command` can be the installed binary and `args` can be `["ai", "mcp"]`.
 
 ### Other MCP hosts
 
-Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** is the subcommand that starts the server.
+Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`ai mcp`** starts the server.
 
 ## Configuration
 
@@ -83,7 +85,7 @@ mcpServer: {
 
 ## Tools
 
-Every **user-defined leaf command** in your schema becomes one MCP tool. Built-ins (`completion`, `mcp`) are not exposed as tools.
+Every **user-defined leaf command** in your schema becomes one MCP tool. Built-ins (`completion`, `ai`) are not exposed as tools.
 
 ### Tool names
 
@@ -275,7 +277,7 @@ Requests without an `id` are treated as notifications and do not receive a respo
 ### Manual smoke test
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bun run examples/nested.ts mcp
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bun run examples/nested.ts ai mcp
 ```
 
 You should get one JSON line on stdout with `result.capabilities` and `result.serverInfo`.
@@ -284,11 +286,11 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 
 When MCP is enabled:
 
-- Do not declare a top-level command named **`mcp`** — it is reserved for the built-in subcommand.
+- Do not declare a top-level command named **`ai`** — it is reserved for the built-in AI integration group.
 - Do not declare a top-level command named **`completion`** — reserved for shell completions.
 - Do not declare an option named **`schema`** — reserved for `--schema`.
 
-Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1).
+Running `myapp ai mcp` without `mcpServer` on the root fails with an error (exit 1).
 
 ## Design notes
 

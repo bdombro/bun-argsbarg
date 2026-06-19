@@ -16,7 +16,7 @@ Why another CLI parser?
 
 *Shell completions* — `completion bash` and `completion zsh` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
 
-*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md).
+*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp ai mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Install Cursor/Claude skills with `myapp ai skill cursor|claude` — see [docs/ai-skills.md](docs/ai-skills.md).
 
 *Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
@@ -96,18 +96,29 @@ Every app gets:
 - `-h` / `--help` at any routing depth (scoped help).
 - **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh`** — print shell completion scripts to stdout (injected by `cliRun`).
-- **`mcp`** — when `mcpServer: {}` is set on the program root, run an MCP server over stdio (`myapp mcp`).
+- **`ai`** — AI agent integration: `ai mcp` (when `mcpServer` is set), `ai skill cursor`, `ai skill claude` (install agent skills; opt out with `aiSkill: { enabled: false }`).
 
 Do not declare a top-level command named **`completion`** — it is reserved for this built-in.
-Do not declare a top-level command named **`mcp`** — it is reserved when MCP is enabled.
+Do not declare a top-level command named **`ai`** — it is reserved for this built-in.
 Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
+Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp ai mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
+
+### Agent skills
+
+Install Cursor or Claude Code skills (command catalog + schema reference) with:
+
+```bash
+myapp ai skill cursor          # .cursor/skills/<name>/
+myapp ai skill claude --global # ~/.claude/skills/<name>/
+```
+
+See **[docs/ai-skills.md](docs/ai-skills.md)** for opt-out, flags, and file layout.
 
 
 ### Shell completions

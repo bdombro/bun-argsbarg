@@ -105,7 +105,7 @@ export interface CliPositional {
 	argMax?: number;
 }
 /**
- * Root-only. Enables `myapp mcp` and MCP stdio server metadata.
+ * Root-only. Enables `myapp ai mcp` and MCP stdio server metadata.
  */
 export interface CliMcpServerConfig {
 	/** `initialize` serverInfo.name (default: root `key`). */
@@ -166,6 +166,15 @@ export interface CliMcpToolConfig {
 	requiresEnv?: string[];
 }
 /**
+ * Root-only. Opt out of `ai skill` install commands with `{ enabled: false }`.
+ */
+export interface CliAiSkillConfig {
+	/** When `false`, disable `ai skill *` install commands (default: enabled). */
+	enabled?: boolean;
+	/** Skill directory name (default: sanitized root `key`). */
+	name?: string;
+}
+/**
  * Base properties shared by all command nodes.
  */
 export interface CliCommandBase {
@@ -177,8 +186,10 @@ export interface CliCommandBase {
 	notes?: string;
 	/** Global or command-level flags/options. */
 	options?: CliOption[];
-	/** Root-only. When set, enables the `mcp` built-in subcommand. */
+	/** Root-only. When set, enables the `ai mcp` built-in subcommand. */
 	mcpServer?: CliMcpServerConfig;
+	/** Root-only. Opt out of `ai skill` install with `{ enabled: false }`. */
+	aiSkill?: CliAiSkillConfig;
 	/** Leaf-only. Per-tool MCP exposure and metadata. */
 	mcpTool?: CliMcpToolConfig;
 }

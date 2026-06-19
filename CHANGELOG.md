@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ai` built-in group** — `myapp ai skill cursor` and `myapp ai skill claude` install Agent Skills (`SKILL.md` + `reference.md`) to project or global skill directories.
+- **`aiSkill`** root config to opt out of skill install (`{ enabled: false }`).
+
+### Changed (breaking)
+
+- **`myapp mcp`** → **`myapp ai mcp`**
+- Reserved top-level command **`mcp`** → **`ai`** (user commands may now be named `mcp`)
+
 ## [1.4.2] - 2026-06-19
 
 ### Added

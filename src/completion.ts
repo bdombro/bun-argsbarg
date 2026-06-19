@@ -597,21 +597,62 @@ export function cliPresentationRoot(root: CliCommand): CliCommand {
   } as CliCommand;
 }
 
-/** Built-in commands shown in help and merged for routing CLIs. */
-function presentationBuiltins(root: CliCommand): CliCommand[] {
-  const cmds: CliCommand[] = [cliBuiltinCompletionGroup(root.key)];
-  if (root.mcpServer !== undefined) {
-    cmds.push(cliBuiltinMcpCommand());
-  }
-  return cmds;
+/** Presence options for skill install leaves (`--global`, `--force`). */
+function skillInstallOptions(): CliOption[] {
+  return [
+    {
+      name: "global",
+      description: "Install to the user skills directory (~/.cursor/skills or ~/.claude/skills).",
+      kind: CliOptionKind.Presence,
+    },
+    {
+      name: "force",
+      description: "Overwrite an existing skill directory.",
+      kind: CliOptionKind.Presence,
+    },
+  ];
 }
 
-/** Builds the static `mcp` leaf command (merged when `root.mcpServer` is set). */
-export function cliBuiltinMcpCommand(): CliCommand {
+/** Built-in commands shown in help and merged for routing CLIs. */
+function presentationBuiltins(root: CliCommand): CliCommand[] {
+  return [cliBuiltinCompletionGroup(root.key), cliBuiltinAiGroup(root)];
+}
+
+/** Builds the `ai` built-in command group (MCP + skill install). */
+export function cliBuiltinAiGroup(root: CliCommand): CliCommand {
+  const aiChildren: CliCommand[] = [
+    {
+      key: "skill",
+      description: "Install agent skill files for Cursor or Claude Code.",
+      commands: [
+        {
+          key: "cursor",
+          description: "Install Cursor skill (SKILL.md + reference.md).",
+          options: skillInstallOptions(),
+          handler: () => {},
+        },
+        {
+          key: "claude",
+          description: "Install Claude Code skill (SKILL.md + reference.md).",
+          options: skillInstallOptions(),
+          handler: () => {},
+        },
+      ],
+    },
+  ];
+
+  if (root.mcpServer !== undefined) {
+    aiChildren.unshift({
+      key: "mcp",
+      description: "Run as an MCP server over stdio (for AI agents).",
+      handler: () => {},
+    });
+  }
+
   return {
-    key: "mcp",
-    description: "Run as an MCP server over stdio (for AI agents).",
-    handler: () => {},
+    key: "ai",
+    description: "AI agent integration (MCP server and skill install).",
+    commands: aiChildren,
   };
 }
 

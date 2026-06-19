@@ -7,9 +7,10 @@ It keeps execution flow out of the public barrel so the exported API stays small
 the runtime responsibilities remain easy to reason about.
 */
 
-import { cliBuiltinCompletionGroup, cliBuiltinMcpCommand, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
+import { cliBuiltinAiGroup, cliBuiltinCompletionGroup, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
+import { cliSkillInstall } from "./skill/install.ts";
 import { cliMcpServeStdio } from "./mcp.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
@@ -44,29 +45,27 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  let parseRoot = root;
-  let isLeafCompletionIntercept = false;
-
-  if (root.handler && argv.length >= 1 && argv[0] === "mcp" && !root.mcpServer) {
-    process.stderr.write("Unknown command: mcp\n");
+  if (argv.length >= 2 && argv[0] === "ai" && argv[1] === "mcp" && !root.mcpServer) {
+    process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
     process.exit(1);
   }
 
-  // Intercept completion for Leaf roots (since they can't natively have a completion subcommand)
-  // but wrap them in a dummy router so that the parser handles `-h` and errors correctly.
-  if (root.handler && argv.length >= 1 && argv[0] === "completion") {
+  let parseRoot = root;
+  let isLeafCompletionIntercept = false;
+
+  if (root.handler && argv.length >= 1 && argv[0] === "ai") {
+    parseRoot = {
+      key: root.key,
+      description: root.description,
+      commands: [cliBuiltinAiGroup(root)],
+    } as CliCommand;
+  } else if (root.handler && argv.length >= 1 && argv[0] === "completion") {
     isLeafCompletionIntercept = true;
     parseRoot = {
       key: root.key,
       description: root.description,
       commands: [cliBuiltinCompletionGroup(root.key)],
     } as any;
-  } else if (root.handler && argv.length >= 1 && argv[0] === "mcp" && root.mcpServer) {
-    parseRoot = {
-      key: root.key,
-      description: root.description,
-      commands: [cliBuiltinMcpCommand()],
-    } as CliCommand;
   } else {
     parseRoot = cliRootMergedWithBuiltins(root);
   }
@@ -109,16 +108,36 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     }
   }
 
-  if (pr.path[0] === "mcp") {
-    if (!root.mcpServer) {
-      process.stderr.write("Internal error: mcp not enabled.\n");
+  if (pr.path[0] === "ai") {
+    if (pr.path[1] === "mcp") {
+      if (!root.mcpServer) {
+        process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
+        process.exit(1);
+      }
+      if (pr.path.length !== 2) {
+        process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
+        process.exit(1);
+      }
+      await cliMcpServeStdio(root);
+    } else if (pr.path[1] === "skill" && (pr.path[2] === "cursor" || pr.path[2] === "claude")) {
+      if (root.aiSkill?.enabled === false) {
+        process.stderr.write("AI skills are disabled. Remove aiSkill.enabled: false from the program root.\n");
+        process.exit(1);
+      }
+      if (pr.path.length !== 3) {
+        process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
+        process.exit(1);
+      }
+      const msg = cliSkillInstall(root, pr.path[2], {
+        global: pr.opts.global === "1",
+        force: pr.opts.force === "1",
+      });
+      process.stderr.write(msg + "\n");
+      process.exit(0);
+    } else {
+      process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
       process.exit(1);
     }
-    if (pr.path.length !== 1) {
-      process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
-      process.exit(1);
-    }
-    await cliMcpServeStdio(root);
   }
 
   let current = parseRoot;

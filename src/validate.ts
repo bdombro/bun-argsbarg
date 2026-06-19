@@ -14,7 +14,7 @@ import {
 } from "./types.ts";
 import { MCP_SCHEMA_URI_DEFAULT } from "./mcp/tools.ts";
 
-const reservedCommandNames = ["completion", "mcp"];
+const reservedCommandNames = ["completion", "ai"];
 
 /**
  * Validates the static CliCommand tree against ArgBarg rules.
@@ -38,6 +38,12 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   if (!isRoot && cmd.mcpServer !== undefined) {
     throw new CliSchemaValidationError(
       "mcpServer is only supported on the program root (not on " + cmd.key + ")",
+    );
+  }
+
+  if (!isRoot && cmd.aiSkill !== undefined) {
+    throw new CliSchemaValidationError(
+      "aiSkill is only supported on the program root (not on " + cmd.key + ")",
     );
   }
 
