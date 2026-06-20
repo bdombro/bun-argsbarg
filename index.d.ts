@@ -254,16 +254,7 @@ export interface CliInvokeResult {
  * Never calls process.exit.
  */
 export declare function cliInvoke(root: CliCommand, argv: string[]): Promise<CliInvokeResult>;
-/**
- * Validates the schema, parses argv, prints help or errors, runs completion or the leaf handler, then exits.
- *
- * @param root The root CliCommand.
- * @param argv Override the default argv (process.argv.slice(2)).
- */
 export declare function cliRun(root: CliCommand, argv?: string[]): Promise<never>;
-/**
- * Prints a red error line and contextual help on stderr, then exits with status 1.
- */
 export declare function cliErrWithHelp(ctx: CliContext, msg: string): never;
 /** True when stdin is a TTY. */
 export declare const isInteractiveTty: boolean;

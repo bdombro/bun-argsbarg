@@ -1,6 +1,6 @@
 {
   "name": "argsbarg",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "//just": "echo this app uses justfile for development tasks"
