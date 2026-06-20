@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-20
+
 ### Changed (breaking)
 
 - **`CliCommand` removed** — use `CliProgram` as the schema type passed to `cliRun` / `cliInvoke`. The runtime object shape is unchanged; only the type name and how you annotate it differ.
@@ -169,7 +171,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v2.0.0
 [1.5.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.5.0
 [1.4.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.3
 [1.4.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v1.4.2
