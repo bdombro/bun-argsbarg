@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-06-20
+
+### Added
+
+- **`docs` built-in** — opt in with `docs: { enabled: true, topics: { ... } }` on the program root. Bundled markdown topics on stdout (`myapp docs`, `myapp docs readme`, `myapp docs all`). Auto **`docs mcp`** guide when `docs` and `mcpServer` are both enabled. See [docs/bundled-docs.md](docs/bundled-docs.md).
+
+### Changed
+
+- **Agent skills** — `SKILL.md` is shell-only (removed MCP setup, `mcp.json`, and `tools/call` content). Use `docs mcp` or MCP tools for agent execution guidance.
+
 ## [3.0.0] - 2026-06-20
 
 ### Added
@@ -198,7 +208,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.1.0
 [3.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.0.0
 [2.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v2.1.1
 [2.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v2.1.0

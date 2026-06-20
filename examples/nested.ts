@@ -15,6 +15,12 @@ const cli = {
   version: pkg.version,
   description: "Nested groups demo.",
   mcpServer: { enabled: true },
+  docs: {
+    enabled: true,
+    topics: {
+      readme: { text: "# nested.ts\n\nNested groups demo.\n" },
+    },
+  },
   commands: [
     {
       key: "stat",

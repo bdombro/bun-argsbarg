@@ -10,6 +10,7 @@ export interface CliCapabilities {
   completion: true;
   mcp: boolean;
   install: boolean;
+  docs: boolean;
 }
 
 /** Resolves which capabilities are enabled for a program. */
@@ -18,6 +19,7 @@ export function resolveCapabilities(program: CliProgram): CliCapabilities {
     completion: true,
     mcp: program.mcpServer?.enabled === true,
     install: program.install?.enabled !== false,
+    docs: program.docs?.enabled === true,
   };
 }
 
@@ -26,6 +28,9 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   const names = ["completion", "version"];
   if (caps.install) {
     names.push("install");
+  }
+  if (caps.docs) {
+    names.push("docs");
   }
   if (caps.mcp) {
     names.push("mcp");

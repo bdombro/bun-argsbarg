@@ -99,10 +99,12 @@ Every app gets:
 - **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
 - **`version`** — print `CliProgram.version` (`myapp version`).
 - **`mcp`** — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
+- **`docs`** — when `docs.enabled` is `true`, print bundled markdown topics (`myapp docs`, `myapp docs readme`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
 - **`install`** — install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
 
 Do not declare a top-level command named **`completion`**, **`version`**, or **`install`** — they are reserved.
 When **`mcpServer.enabled`** is `true`, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
+When **`docs.enabled`** is `true`, do not declare a top-level command named **`docs`** — it is reserved for the docs built-in.
 Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
@@ -228,7 +230,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 
-Reserved identifiers (validated at startup): root commands **`completion`**, **`version`**, **`install`**, and **`mcp`** (only when `mcpServer.enabled` is `true`).
+Reserved identifiers (validated at startup): root commands **`completion`**, **`version`**, **`install`**, **`docs`** (when `docs.enabled` is `true`), and **`mcp`** (when `mcpServer.enabled` is `true`).
 
 ---
 

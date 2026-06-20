@@ -5,7 +5,7 @@ This module serializes the CLI schema tree to JSON for machine-readable introspe
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
 import { exportPresentationBuiltins, type CliSchemaExport } from "./builtins/export.ts";
 
-const RESERVED = new Set(["completion", "install", "mcp"]);
+const RESERVED = new Set(["completion", "install", "docs", "mcp", "version"]);
 
 function exportCommand(cmd: CliNode): CliSchemaExport {
   const out: CliSchemaExport = {

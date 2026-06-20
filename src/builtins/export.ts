@@ -4,6 +4,7 @@ import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
@@ -49,6 +50,10 @@ export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabi
   ];
   if (resolved.install) {
     builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program)));
+  }
+  const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
+  if (docsGroup) {
+    builtins.push(exportBuiltinNode(docsGroup));
   }
   if (resolved.mcp) {
     builtins.push(exportBuiltinNode(cliBuiltinMcpCommand()));

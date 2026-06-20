@@ -161,6 +161,34 @@ export interface CliInstallConfig {
 }
 
 /**
+ * One bundled documentation topic for the `docs` built-in (program root only).
+ */
+export interface CliDocsTopic {
+  /** Bundled markdown (use compile-time text imports in the consumer). */
+  text: string;
+  /** Leaf help text for `myapp docs <key> -h`. Auto-generated from key when omitted. */
+  description?: string;
+}
+
+/**
+ * Enables `myapp docs` and bundled markdown topics (program root only).
+ * Must include `enabled: true`; omit `docs` entirely to disable.
+ */
+export interface CliDocsConfig {
+  /** When `true`, enables the `docs` built-in command group. */
+  enabled: boolean;
+  /** Router description for `myapp docs` (default: "Print bundled CLI documentation."). */
+  description?: string;
+  /**
+   * Subcommand for bare `myapp docs` (maps to router `fallbackCommand`).
+   * When omitted, uses the first key in `topics` (insertion order).
+   */
+  defaultTopic?: string;
+  /** Topic key → bundled markdown. Reserved keys: `mcp`, `all` (supplied by the built-in). */
+  topics: Record<string, CliDocsTopic>;
+}
+
+/**
  * Base properties shared by all nodes in the user command tree.
  */
 export interface CliNodeBase {
@@ -214,6 +242,8 @@ export type CliProgram = CliNode & {
   mcpServer?: CliMcpServerConfig;
   /** Opt-out and defaults for `install`. */
   install?: CliInstallConfig;
+  /** When set with `enabled: true`, enables the `docs` built-in command group. */
+  docs?: CliDocsConfig;
 };
 
 /** True when the node is a leaf (has a handler). */

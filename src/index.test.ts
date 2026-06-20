@@ -1760,7 +1760,10 @@ test("generateSkillBundle includes frontmatter and command catalog", () => {
   expect(bundle.dirName).toBe("nested_ts");
   expect(bundle.skillMd).toMatch(/^---\nname: nested_ts\n/);
   expect(bundle.skillMd).toContain("stat owner lookup");
-  expect(bundle.skillMd).toContain("nested.ts mcp");
+  expect(bundle.skillMd).toContain("Invoke via shell:");
+  expect(bundle.skillMd).not.toContain("mcp.json");
+  expect(bundle.skillMd).not.toContain("Prefer MCP");
+  expect(bundle.skillMd).not.toContain("tools/call");
   expect(bundle.referenceMd).toContain("```json");
   expect(() => JSON.parse(bundle.referenceMd.match(/```json\n([\s\S]*?)\n```/)![1]!)).not.toThrow();
 });

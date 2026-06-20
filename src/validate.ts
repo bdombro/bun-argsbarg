@@ -13,6 +13,33 @@ import {
   isCliRouter,
 } from "./types.ts";
 import { resolveMcpSchemaUri } from "./mcp/tools.ts";
+import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
+
+/** Validates `docs` configuration on the program root. */
+function validateDocsConfig(docs: import("./types.ts").CliDocsConfig): void {
+  const keys = Object.keys(docs.topics);
+  if (keys.length === 0) {
+    throw new CliSchemaValidationError("docs.topics must be non-empty");
+  }
+  for (const reserved of DOCS_BUILTIN_TOPIC_KEYS) {
+    if (reserved in docs.topics) {
+      throw new CliSchemaValidationError(
+        `docs.topics key '${reserved}' is reserved for the docs built-in`,
+      );
+    }
+  }
+  if (docs.defaultTopic !== undefined && !(docs.defaultTopic in docs.topics)) {
+    throw new CliSchemaValidationError(
+      `docs.defaultTopic '${docs.defaultTopic}' is not a key in docs.topics`,
+    );
+  }
+  for (const key of keys) {
+    const text = docs.topics[key]?.text;
+    if (text === undefined || text.length === 0) {
+      throw new CliSchemaValidationError(`docs.topics['${key}'].text must be non-empty`);
+    }
+  }
+}
 
 /** Validates a program schema. */
 export function cliValidateProgram(program: CliProgram): void {
@@ -24,6 +51,16 @@ export function cliValidateProgram(program: CliProgram): void {
     throw new CliSchemaValidationError(
       "mcpServer requires enabled: true; omit mcpServer to disable MCP",
     );
+  }
+
+  if (program.docs !== undefined && program.docs.enabled !== true) {
+    throw new CliSchemaValidationError(
+      "docs requires enabled: true; omit docs to disable bundled documentation",
+    );
+  }
+
+  if (program.docs?.enabled === true) {
+    validateDocsConfig(program.docs);
   }
 
   const caps = resolveCapabilities(program);
@@ -51,6 +88,11 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (rogue.install !== undefined) {
       throw new CliSchemaValidationError(
         "install is only supported on the program root (not on " + node.key + ")",
+      );
+    }
+    if (rogue.docs !== undefined) {
+      throw new CliSchemaValidationError(
+        "docs is only supported on the program root (not on " + node.key + ")",
       );
     }
   }

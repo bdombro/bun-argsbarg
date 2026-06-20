@@ -31,17 +31,21 @@ For library use, call `cliSkillInstall(root, "cursor" | "claude", { global: true
 
 ## Generated content
 
-- **`SKILL.md`** — YAML frontmatter, when-to-use guidance, command catalog, MCP setup hints
+- **`SKILL.md`** — YAML frontmatter, when-to-use guidance, shell command catalog, pitfalls
 - **`reference.md`** — full `--schema` JSON export
 
-## MCP vs skills
+Skills describe **shell invocation only** — no MCP setup, `mcp.json`, or `tools/call` guidance. Use **`myapp docs mcp`** (when `docs` and `mcpServer` are enabled) or connect the MCP server for agent execution.
+
+## MCP vs skills vs docs
 
 | Mechanism | Role |
 | --- | --- |
 | **`myapp mcp`** (requires `mcpServer`) | Runtime tool execution over MCP |
-| **`myapp install --skill`** | Static discovery files for agents |
+| **`myapp install --skill`** | Static shell command catalog for agents |
+| **`myapp docs`** (requires `docs`) | Bundled markdown on stdout (`docs mcp` when MCP enabled) |
 
 See also:
 
+- [Bundled docs](bundled-docs.md) — `docs` config and compile-time imports
 - [MCP server](mcp.md) — `mcpServer` config and `mcp` protocol
 - [Install](install.md) — binary, completions, skills, and MCP config

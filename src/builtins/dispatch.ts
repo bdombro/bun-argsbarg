@@ -9,6 +9,7 @@ import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { cliPresentationRoot } from "./presentation.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
 import { cliInstall } from "../install/index.ts";
 import type { ParseResult } from "../parse.ts";
@@ -143,6 +144,18 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinVersionCommand()],
+      },
+      isLeafCompletionIntercept: false,
+    };
+  }
+
+  const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
+  if (first === "docs" && docsGroup) {
+    return {
+      parseRoot: {
+        key: program.key,
+        description: program.description,
+        commands: [docsGroup],
       },
       isLeafCompletionIntercept: false,
     };

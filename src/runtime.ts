@@ -41,6 +41,11 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
     process.exit(1);
   }
 
+  if (argv.length >= 1 && argv[0] === "docs" && !caps.docs) {
+    process.stderr.write("docs is not enabled. Set docs: { enabled: true } on the program root.\n");
+    process.exit(1);
+  }
+
   let parseRoot: CliNode;
   let completionParseRoot: CliRouter = cliRootMergedWithBuiltins(program);
   let isLeafCompletionIntercept = false;

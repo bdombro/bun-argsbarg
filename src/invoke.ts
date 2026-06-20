@@ -5,8 +5,10 @@ process.exit so MCP tool calls can run handlers repeatedly.
 */
 
 import { CliContext } from "./context.ts";
+import { builtinInterceptRoot } from "./builtins/dispatch.ts";
+import { cliPresentationRoot } from "./builtins/presentation.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
-import { type CliNode, type CliProgram, isCliRouter } from "./types.ts";
+import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
 import { format } from "node:util";
 
 /** Outcome of a non-exiting CLI invocation. */
@@ -49,8 +51,18 @@ function findChild(cmds: CliNode[], name: string): CliNode | undefined {
  * Never calls process.exit.
  */
 export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliInvokeResult> {
-  let pr = parse(root, argv);
-  pr = postParseValidate(root, pr);
+  let parseRoot: CliNode = root;
+  if (isCliLeaf(root)) {
+    const intercept = builtinInterceptRoot(root, argv);
+    if (intercept.parseRoot !== root) {
+      parseRoot = intercept.parseRoot;
+    }
+  } else {
+    parseRoot = cliPresentationRoot(root);
+  }
+
+  let pr = parse(parseRoot, argv);
+  pr = postParseValidate(parseRoot, pr);
 
   if (pr.kind === ParseKind.Help) {
     return {
@@ -82,7 +94,7 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
     };
   }
 
-  let current: CliNode = root;
+  let current: CliNode = parseRoot;
   for (const seg of pr.path) {
     if (!isCliRouter(current)) {
       return {

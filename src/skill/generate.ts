@@ -4,7 +4,7 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
-import { collectMcpTools, mcpServerId, sanitizeToolSegment } from "../mcp/tools.ts";
+import { collectMcpTools, sanitizeToolSegment } from "../mcp/tools.ts";
 import { CliProgram, CliOptionKind } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
@@ -69,45 +69,13 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     "## When to use",
     "",
-    `Use this skill when working with **${root.key}** — shell commands, automation, or agent tool calls for this application.`,
+    `Use this skill when working with **${root.key}** — shell commands and automation for this application.`,
     "",
     "## Execution",
     "",
+    "Invoke via shell:",
+    "",
   ];
-
-  if (root.mcpServer?.enabled === true) {
-    lines.push(
-      "**Prefer MCP** when a host has the server connected:",
-      "",
-      "```bash",
-      `${root.key} mcp`,
-      "```",
-      "",
-      "Example Cursor `mcp.json` entry:",
-      "",
-      "```json",
-      JSON.stringify(
-        {
-          mcpServers: {
-            [mcpServerId(root)]: {
-              command: root.key,
-              args: ["mcp"],
-            },
-          },
-        },
-        null,
-        2,
-      ),
-      "```",
-      "",
-      "When MCP tools are available, use `tools/call` with flat JSON arguments. Read the schema resource for full shapes.",
-      "",
-      "Otherwise invoke via shell:",
-      "",
-    );
-  } else {
-    lines.push("Invoke via shell:", "");
-  }
 
   lines.push("```bash", `${root.key} <subcommand> [options] [args]`, "```", "", "## Commands", "");
 
@@ -124,7 +92,6 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "## Pitfalls",
     "",
     "- Use `--` before tokens that look like flags when they are positional arguments.",
-    "- Under MCP (`ctx.invocation === \"mcp\"`), child processes must not inherit stdout — use piped stdout.",
     "- Required environment variables are listed per command in descriptions (`requires env`).",
     "",
     "## Reference",

@@ -6,6 +6,7 @@ import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
 /** Built-in command nodes injected for help, schema, and completions. */
 export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
@@ -15,6 +16,10 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
   ];
   if (caps.install) {
     builtins.push(cliBuiltinInstallCommand(program));
+  }
+  const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
+  if (docsGroup) {
+    builtins.push(docsGroup);
   }
   if (caps.mcp) {
     builtins.push(cliBuiltinMcpCommand());

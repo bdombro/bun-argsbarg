@@ -20,6 +20,8 @@ export type {
   CliMcpServerConfig,
   CliMcpToolConfig,
   CliInstallConfig,
+  CliDocsConfig,
+  CliDocsTopic,
   CliOption,
   CliPositional,
 } from "./types.ts";
