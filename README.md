@@ -97,7 +97,7 @@ Every app gets:
 - **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
 - **`mcp`** — when `mcpServer` is set on the program root, run as an MCP stdio server (`myapp mcp`).
-- **`install`** — when running as a compiled binary (`bun build --compile`), install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
+- **`install`** — install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
 
 Do not declare a top-level command named **`completion`** or **`install`** — they are reserved.
 When **`mcpServer`** is set, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
@@ -110,9 +110,9 @@ Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), t
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
 
-### Install (compiled binaries)
+### Install
 
-After `bun build --compile`, ship a self-contained binary and let users run:
+After `bun build --compile` (or when running via `bun`), ship your CLI and let users run:
 
 ```bash
 myapp install --all --yes
@@ -185,7 +185,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, compiled binary + `install`). Reserved command names follow from that config: `completion` and `install` are always reserved; `mcp` is reserved when `mcpServer` is set.
+`completion`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`). Reserved command names follow from that config: `completion` and `install` are always reserved unless `install.enabled: false`; `mcp` is reserved when `mcpServer` is set.
 
 
 

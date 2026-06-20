@@ -4,7 +4,7 @@ ArgsBarg can generate Cursor and Claude Code skill directories (`SKILL.md` + `re
 
 ## Install via `install` (recommended)
 
-In a **compiled binary**, install skills to the user environment:
+Install skills to the user environment:
 
 ```bash
 myapp install --skill --yes

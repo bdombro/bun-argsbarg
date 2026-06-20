@@ -1,11 +1,10 @@
-import { describe, expect, test, afterEach } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { exportPresentationBuiltins } from "./export.ts";
 import { CliProgram } from "../types.ts";
-import { setCompiledExecutableOverride } from "../install/compiled.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
@@ -20,16 +19,11 @@ const fixture: CliProgram = {
   ],
 };
 
-afterEach(() => {
-  setCompiledExecutableOverride(null);
-});
-
 describe("builtins help copy", () => {
-  test("install command includes description and option text when compiled", () => {
-    setCompiledExecutableOverride(true);
+  test("install command includes description and option text", () => {
     const install = cliBuiltinInstallCommand(fixture);
     expect(install.description).toContain("Install the binary");
-    expect(install.notes).toContain("bun build --compile");
+    expect(install.notes).toContain("install --all");
     const names = installBuiltinOptions(fixture).map((o) => o.name);
     expect(names).toContain("all");
     expect(names).toContain("mcp");
@@ -37,7 +31,6 @@ describe("builtins help copy", () => {
   });
 
   test("install omits --mcp option when mcpServer unset", () => {
-    setCompiledExecutableOverride(true);
     const noMcp: CliProgram = { key: "x", description: "x", handler: () => {} };
     const names = installBuiltinOptions(noMcp).map((o) => o.name);
     expect(names).not.toContain("mcp");
@@ -51,23 +44,22 @@ describe("builtins help copy", () => {
 });
 
 describe("presentation root", () => {
-  test("includes mcp when mcpServer set", () => {
-    setCompiledExecutableOverride(false);
+  test("includes mcp and install when enabled", () => {
     const root = cliPresentationRoot(fixture);
-    expect(root.commands?.map((c) => c.key)).toContain("mcp");
-    expect(root.commands?.map((c) => c.key)).not.toContain("install");
+    const keys = root.commands?.map((c) => c.key) ?? [];
+    expect(keys).toContain("mcp");
+    expect(keys).toContain("install");
   });
 
-  test("includes install when compiled", () => {
-    setCompiledExecutableOverride(true);
-    const root = cliPresentationRoot(fixture);
-    expect(root.commands?.map((c) => c.key)).toContain("install");
+  test("omits install when install.enabled is false", () => {
+    const disabled: CliProgram = { ...fixture, install: { enabled: false } };
+    const root = cliPresentationRoot(disabled);
+    expect(root.commands?.map((c) => c.key)).not.toContain("install");
   });
 });
 
 describe("completion emitters", () => {
   test("fish script references app key and subcommands", () => {
-    setCompiledExecutableOverride(true);
     const schema = cliPresentationRoot(fixture);
     const fish = completionFishScript(schema);
     expect(fish).toContain("complete -c myapp");
@@ -75,8 +67,7 @@ describe("completion emitters", () => {
     expect(fish).toContain("install");
   });
 
-  test("bash script includes install flags when compiled", () => {
-    setCompiledExecutableOverride(true);
+  test("bash script includes install flags", () => {
     const schema = cliPresentationRoot(fixture);
     const bash = completionBashScript(schema);
     expect(bash).toContain("--all");
@@ -92,8 +83,7 @@ describe("completion emitters", () => {
 });
 
 describe("schema export builtins", () => {
-  test("exportPresentationBuiltins includes install options when compiled", () => {
-    setCompiledExecutableOverride(true);
+  test("exportPresentationBuiltins includes install options", () => {
     const builtins = exportPresentationBuiltins(fixture);
     const install = builtins.find((b) => b.key === "install");
     expect(install?.options?.find((o) => o.name === "all")?.description).toContain("binary");

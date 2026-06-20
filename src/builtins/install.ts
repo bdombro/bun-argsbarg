@@ -77,13 +77,12 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
   return opts;
 }
 
-/** Builds the `install` built-in command (compiled binaries only). */
+/** Builds the `install` built-in command. */
 export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   return {
     key: "install",
     description: "Install the binary, shell completions, agent skills, and MCP config to your user environment.",
     notes:
-      "Requires a compiled binary (bun build --compile).\n\n" +
       "First-time setup:\n" +
       `  {app} install --all --yes\n\n` +
       "Refresh after upgrading:\n" +

@@ -10,7 +10,6 @@ import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
 import { cliInstall } from "../install/index.ts";
-import { isCompiledExecutable } from "../install/compiled.ts";
 import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
 
@@ -71,12 +70,6 @@ export async function dispatchBuiltin(
   }
 
   if (pr.path[0] === "install") {
-    if (!isCompiledExecutable()) {
-      process.stderr.write(
-        "install is only available in compiled binaries (bun build --compile).\n",
-      );
-      process.exit(1);
-    }
     if (!caps.install) {
       process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
       process.exit(1);

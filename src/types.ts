@@ -152,7 +152,7 @@ export interface CliMcpToolConfig {
 }
 
 /**
- * Opt-out and defaults for the `install` built-in (compiled binaries only; program root only).
+ * Opt-out and defaults for the `install` built-in (program root only).
  */
 export interface CliInstallConfig {
   /** When `false`, hide/disable `install` (default: enabled). */
@@ -211,7 +211,7 @@ export type CliNode = CliLeaf | CliRouter;
 export type CliProgram = CliNode & {
   /** When set, enables the `mcp` built-in subcommand. */
   mcpServer?: CliMcpServerConfig;
-  /** Opt-out and defaults for `install` (compiled binaries only). */
+  /** Opt-out and defaults for `install`. */
   install?: CliInstallConfig;
 };
 

@@ -1,6 +1,6 @@
 # Install command
 
-The `install` built-in is available only in **compiled binaries** (`bun build --compile`). It is hidden from help, `--schema`, and shell completions when running via `bun run`.
+The `install` built-in installs the binary, shell completions, agent skills, and MCP config. Opt out with `install: { enabled: false }` on the program root.
 
 ## Quick start
 

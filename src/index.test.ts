@@ -519,7 +519,7 @@ test("--schema exports JSON for leaf roots", async () => {
   expect(schema.key).toBe("minimal.ts");
   expect(schema.positionals[0].name).toBe("name");
   expect(schema.options[0].name).toBe("verbose");
-  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion"]);
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion", "install"]);
 });
 
 test("leaf root help lists completion built-in", async () => {

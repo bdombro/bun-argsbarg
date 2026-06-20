@@ -7,7 +7,6 @@ import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliPresentationRoot } from "./builtins/presentation.ts";
 import type { CliRouter } from "./types.ts";
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
-import { isCompiledExecutable } from "./install/compiled.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
@@ -37,8 +36,8 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
     process.exit(1);
   }
 
-  if (argv.length >= 1 && argv[0] === "install" && !isCompiledExecutable()) {
-    process.stderr.write("install is only available in compiled binaries (bun build --compile).\n");
+  if (argv.length >= 1 && argv[0] === "install" && !caps.install) {
+    process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
     process.exit(1);
   }
 
