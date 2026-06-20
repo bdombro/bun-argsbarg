@@ -14,6 +14,12 @@ const cli = {
   key: "minimal.ts",
   version: pkg.version,
   description: "Tiny demo.",
+  docs: {
+    enabled: true,
+    topics: {
+      readme: { text: "# minimal.ts\n\nTiny demo.\n" },
+    },
+  },
   positionals: [
     {
       name: "name",

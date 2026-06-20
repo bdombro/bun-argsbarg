@@ -12,7 +12,7 @@ import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.t
 import { format } from "node:util";
 
 /** Outcome of a non-exiting CLI invocation. */
-export type CliInvokeKind = "ok" | "help" | "schema" | "error";
+export type CliInvokeKind = "ok" | "help" | "error";
 
 /** Result of cliInvoke: captured output and exit metadata without process.exit. */
 export interface CliInvokeResult {
@@ -71,16 +71,6 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
       stdout: "",
       stderr: "",
       errorMsg: "Help is not available via MCP tool calls.",
-    };
-  }
-
-  if (pr.kind === ParseKind.Schema) {
-    return {
-      kind: "schema",
-      exitCode: 1,
-      stdout: "",
-      stderr: "",
-      errorMsg: "Schema export is not available via MCP tool calls.",
     };
   }
 

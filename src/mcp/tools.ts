@@ -134,7 +134,7 @@ export function allMcpResources(root: CliProgram): McpResourceEntry[] {
   const builtIn: McpResourceEntry = {
     uri: schemaUri,
     name: "cli-schema",
-    description: "Full CLI command tree (same as --schema).",
+    description: "Full CLI command tree (same as docs schema).",
     mimeType: "application/json",
     load: () => cliSchemaJson(root),
   };

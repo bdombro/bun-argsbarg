@@ -20,5 +20,3 @@ export function mainName(schemaName: string): string {
 
 export const kHelpLong = "--help";
 export const kHelpShort = "-h";
-export const kSchemaLong = "--schema";
-export const kSchemaDesc = "Print the full command tree as JSON.";

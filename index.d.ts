@@ -167,11 +167,28 @@ export interface CliMcpToolConfig {
 /**
  * Opt-out and defaults for the `install` built-in (program root only).
  */
+export interface CliUpdateArtifact {
+	/** Path to an executable binary to copy into the install location. */
+	path: string;
+	/** Release version of `path` (used for already-current checks and success messages). */
+	version?: string;
+	/** Called after reinstall completes (e.g. remove a temp download directory). */
+	cleanup?: () => void | Promise<void>;
+}
+/** Fetches the latest release binary for the `update` built-in. */
+export type CliUpdateGetLatest = (ctx: {
+	version: string;
+}) => Promise<CliUpdateArtifact>;
 export interface CliInstallConfig {
 	/** When `false`, hide/disable `install` (default: enabled). */
 	enabled?: boolean;
 	/** Default bin directory (default: `~/.local/bin`). Overridden by `INSTALL_PREFIX` env and `--prefix`. */
 	prefix?: string;
+	/**
+	 * When set, enables the `update` built-in (`myapp update`).
+	 * Should download or locate the latest release binary and return its path.
+	 */
+	updateGetLatest?: CliUpdateGetLatest;
 }
 /**
  * One bundled documentation topic for the `docs` built-in (program root only).
@@ -265,7 +282,7 @@ export declare class CliSchemaValidationError extends Error {
 	constructor(message: string);
 }
 /** Outcome of a non-exiting CLI invocation. */
-export type CliInvokeKind = "ok" | "help" | "schema" | "error";
+export type CliInvokeKind = "ok" | "help" | "error";
 /** Result of cliInvoke: captured output and exit metadata without process.exit. */
 export interface CliInvokeResult {
 	/** Invocation outcome. */

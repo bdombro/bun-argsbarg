@@ -46,7 +46,13 @@ test("docs reserved when enabled", () => {
 
 test("docs rejects reserved topic keys", () => {
   const root = docsFixture();
-  root.docs!.topics.mcp = { text: "nope" };
+  root.docs!.topics.schema = { text: "nope" };
+  expect(() => cliValidateProgram(root)).toThrow(/reserved/);
+  delete root.docs!.topics.schema;
+  root.docs!.topics.skill = { text: "nope" };
+  expect(() => cliValidateProgram(root)).toThrow(/reserved/);
+  delete root.docs!.topics.skill;
+  root.docs!.topics.api = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
 });
 
@@ -109,10 +115,50 @@ test("presentation includes docs subtree", () => {
   );
 });
 
+test("docs schema prints JSON", async () => {
+  const result = await cliInvoke(docsFixture(), ["docs", "schema"]);
+  expect(result.exitCode).toBe(0);
+  const schema = JSON.parse(result.stdout);
+  expect(schema.key).toBe("myapp");
+  expect(schema.commands.some((c: { key: string }) => c.key === "run")).toBe(true);
+});
+
+test("docs api prints markdown reference", async () => {
+  const result = await cliInvoke(docsFixture(), ["docs", "api"]);
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("# myapp — CLI API reference");
+  expect(result.stdout).toContain("## `myapp run`");
+  expect(result.stdout).toContain("Run something.");
+  expect(result.stdout).toContain("myapp docs schema");
+});
+
+test("docs skill prints Cursor SKILL.md", async () => {
+  const result = await cliInvoke(docsFixture(), ["docs", "skill"]);
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("---");
+  expect(result.stdout).toContain("name: myapp");
+  expect(result.stdout).toContain("## Commands");
+  expect(result.stdout).not.toContain("mcp.json");
+});
+
+test("presentation includes docs schema and skill", () => {
+  const presentation = cliPresentationRoot(docsFixture());
+  const docsNode = presentation.commands.find((c) => c.key === "docs");
+  expect(docsNode && "commands" in docsNode).toBe(true);
+  if (docsNode && "commands" in docsNode) {
+    expect(docsNode.commands.some((c) => c.key === "schema")).toBe(true);
+    expect(docsNode.commands.some((c) => c.key === "api")).toBe(true);
+    expect(docsNode.commands.some((c) => c.key === "skill")).toBe(true);
+  }
+});
+
 test("completions offer docs subcommands", () => {
   const bash = completionBashScript(cliPresentationRoot(docsFixture()));
   expect(bash).toContain("docs) echo");
   expect(bash).toContain("readme) echo");
+  expect(bash).toContain("schema) echo");
+  expect(bash).toContain("api) echo");
+  expect(bash).toContain("skill) echo");
 });
 
 test("generateMcpGuide includes schema URI", () => {

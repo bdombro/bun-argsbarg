@@ -16,8 +16,13 @@ export interface BinaryInstallResult {
   patchedZshRc: boolean;
 }
 
-/** Copies the running binary to the install path and patches rc files when shells are detected. */
-export function installBinary(root: CliProgram, paths: InstallPaths, dry: boolean): BinaryInstallResult {
+/** Copies a binary to the install path and patches rc files when shells are detected. */
+export function installBinary(
+  root: CliProgram,
+  paths: InstallPaths,
+  dry: boolean,
+  sourcePath: string = process.execPath,
+): BinaryInstallResult {
   const changed: string[] = [];
   const shells = detectShells();
   let patchedBashRc = false;
@@ -25,7 +30,7 @@ export function installBinary(root: CliProgram, paths: InstallPaths, dry: boolea
 
   if (!dry) {
     mkdirSync(paths.bindir, { recursive: true });
-    copyFileSync(process.execPath, paths.binaryPath);
+    copyFileSync(sourcePath, paths.binaryPath);
   }
   changed.push(paths.binaryPath);
 

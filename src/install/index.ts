@@ -15,13 +15,15 @@ import { buildUninstallPlan, uninstallSkillDir, type UninstallAction } from "./u
 
 function parseInstallOpts(raw: Record<string, string>): InstallOpts {
   const flag = (name: string) => raw[name] === "1";
+  const reinstall = flag("reinstall") || flag("update");
   return {
     all: flag("all"),
     bin: flag("bin"),
     completions: flag("completions"),
     skill: flag("skill"),
     mcp: flag("mcp"),
-    update: flag("update"),
+    reinstall,
+    from: raw.from,
     status: flag("status"),
     uninstall: flag("uninstall"),
     yes: flag("yes"),
@@ -36,28 +38,32 @@ function validateOpts(opts: InstallOpts): string | null {
   if (opts.quiet && opts.dry) {
     return "--quiet cannot be combined with --dry.";
   }
-  if (opts.quiet && !opts.yes && !opts.json && !opts.update) {
-    return "--quiet requires --yes (or --json / --update).";
+  if (opts.quiet && !opts.yes && !opts.json && !opts.reinstall) {
+    return "--quiet requires --yes (or --json / --reinstall).";
   }
   if (opts.json) {
     opts.yes = true;
   }
-  if (opts.update) {
+  if (opts.reinstall) {
     opts.bin = true;
     opts.yes = true;
   }
 
-  const mutationFlags = opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.update || opts.uninstall;
+  const mutationFlags =
+    opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.reinstall || opts.uninstall;
   if (opts.status && mutationFlags) {
-    return "--status is mutually exclusive with install/update/uninstall targets.";
+    return "--status is mutually exclusive with install/reinstall/uninstall targets.";
   }
-  if (opts.update && (opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.uninstall || opts.status)) {
-    return "--update cannot be combined with other target flags.";
+  if (
+    opts.reinstall &&
+    (opts.all || opts.completions || opts.skill || opts.mcp || opts.uninstall || opts.status)
+  ) {
+    return "--reinstall cannot be combined with other target flags.";
   }
-  if (opts.uninstall && (opts.all || opts.update || opts.status)) {
-    return "--uninstall cannot be combined with --all, --update, or --status.";
+  if (opts.uninstall && (opts.all || opts.reinstall || opts.status)) {
+    return "--uninstall cannot be combined with --all, --reinstall, or --status.";
   }
-  if (!opts.status && !opts.update && !opts.uninstall) {
+  if (!opts.status && !opts.reinstall && !opts.uninstall) {
     const hasTarget = opts.all || opts.bin || opts.completions || opts.skill || opts.mcp;
     if (!hasTarget) {
       return "Specify at least one target: --all, --bin, --completions, --skill, or --mcp.";
@@ -114,31 +120,31 @@ function executePlan(
   return changed;
 }
 
-/** Main install command orchestrator. */
-export async function cliInstall(root: CliProgram, rawOpts: Record<string, string>): Promise<never> {
+/** Runs install/reinstall/uninstall mutations without exiting the process. */
+export async function runInstallMutation(
+  root: CliProgram,
+  rawOpts: Record<string, string>,
+): Promise<{ changed: string[]; opts: InstallOpts; paths: ReturnType<typeof resolveInstallPaths> }> {
   const opts = parseInstallOpts(rawOpts);
   const err = validateOpts(opts);
   if (err) {
-    installErr(err);
-    process.exit(1);
+    throw new Error(err);
   }
 
   const paths = resolveInstallPaths(root, opts);
 
   if (opts.status) {
     printInstallStatus(root, opts);
-    process.exit(0);
+    return { changed: [], opts, paths };
   }
 
-  // MCP conflict checks before planning
   if (!opts.uninstall && resolveCapabilities(root).mcp && (opts.all || opts.mcp)) {
     const entry = expectedMcpEntry(root);
     const yes = !!opts.yes;
     for (const p of [paths.cursorMcpPath, paths.claudeMcpPath]) {
       const conflict = checkMcpConflict(p, paths.mcpName, entry, yes);
       if (conflict) {
-        installErr(conflict);
-        process.exit(1);
+        throw new Error(conflict);
       }
     }
   }
@@ -146,37 +152,52 @@ export async function cliInstall(root: CliProgram, rawOpts: Record<string, strin
   let actions: Array<InstallAction | UninstallAction>;
   if (opts.uninstall) {
     actions = buildUninstallPlan(root, paths, opts);
-  } else if (opts.update) {
+  } else if (opts.reinstall) {
     actions = buildUpdatePlan(root, paths, opts);
   } else {
     actions = buildInstallPlan(root, paths, opts);
   }
 
   if (actions.length === 0) {
-    installErr("Nothing to do.");
-    process.exit(1);
+    throw new Error("Nothing to do.");
   }
 
   if (!opts.quiet && !opts.json) {
-    installOut("About to " + (opts.uninstall ? "remove" : opts.update ? "update" : "install") + ":", opts);
+    installOut("About to " + (opts.uninstall ? "remove" : opts.reinstall ? "reinstall" : "install") + ":", opts);
     for (const a of actions) {
       installOut("  - " + a.summary, opts);
     }
   }
 
-  const autoYes = opts.yes || opts.json || opts.update;
+  const autoYes = opts.yes || opts.json || opts.reinstall;
   if (!autoYes) {
     if (!process.stdin.isTTY) {
-      installErr("Refusing to proceed without --yes (stdin is not a TTY).");
-      process.exit(1);
+      throw new Error("Refusing to proceed without --yes (stdin is not a TTY).");
     }
     if (!promptConfirm()) {
-      installErr("Aborted.");
-      process.exit(1);
+      throw new Error("Aborted.");
     }
   }
 
   const changed = executePlan(root, actions, opts);
+  return { changed, opts, paths };
+}
+
+/** Main install command orchestrator. */
+export async function cliInstall(root: CliProgram, rawOpts: Record<string, string>): Promise<never> {
+  let result: Awaited<ReturnType<typeof runInstallMutation>>;
+  try {
+    result = await runInstallMutation(root, rawOpts);
+  } catch (err) {
+    installErr(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+
+  const { changed, opts, paths } = result;
+
+  if (opts.status) {
+    process.exit(0);
+  }
 
   if (opts.json) {
     process.stdout.write(JSON.stringify(changed, null, 2) + "\n");
@@ -184,9 +205,13 @@ export async function cliInstall(root: CliProgram, rawOpts: Record<string, strin
   }
 
   if (!opts.quiet && changed.length > 0) {
-    const verb = opts.uninstall ? "Removed" : opts.update ? "Updated" : "Installed";
+    const verb = opts.uninstall ? "Removed" : opts.reinstall ? "Reinstalled" : "Installed";
     installOut(`${verb} ${changed.length} file(s).`, opts);
-    if (!opts.uninstall && (opts.all || opts.bin) && changed.some((p) => p === paths.bashRc || p === paths.zshRc || p === paths.binaryPath)) {
+    if (
+      !opts.uninstall &&
+      (opts.all || opts.bin) &&
+      changed.some((p) => p === paths.bashRc || p === paths.zshRc || p === paths.binaryPath)
+    ) {
       installOut("Open a new shell, or run: hash -r (bash) / rehash (zsh)", opts);
     }
   }

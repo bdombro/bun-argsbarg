@@ -26,9 +26,14 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
       kind: CliOptionKind.Presence,
     },
     {
-      name: "update",
-      description: "Update only artifacts already installed (always includes the binary).",
+      name: "reinstall",
+      description: "Reinstall artifacts already on disk (always includes the binary).",
       kind: CliOptionKind.Presence,
+    },
+    {
+      name: "from",
+      description: "Binary to copy (default: running executable). Used with --reinstall.",
+      kind: CliOptionKind.String,
     },
     {
       name: "status",
@@ -87,7 +92,8 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
       "First-time setup:\n" +
       `  {app} install --all --yes\n\n` +
       "Refresh after upgrading:\n" +
-      `  {app} install --update\n\n` +
+      `  {app} install --reinstall\n` +
+      `  {app} update\n\n` +
       "See what is installed:\n" +
       `  {app} install --status\n\n` +
       "Remove everything:\n" +

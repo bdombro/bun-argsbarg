@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`docs schema`** — print the full command tree as JSON (`myapp docs schema`). Replaces root `--schema` (requires `docs.enabled`).
+- **`docs api`** — print the command tree as markdown (`myapp docs api`). Human-readable companion to `docs schema`.
+- **`docs skill`** — print generated Cursor `SKILL.md` content to stdout (`myapp docs skill`).
+- **`update` built-in** — when `install.updateGetLatest` is set, `myapp update` downloads the latest binary and reinstalls installed artifacts.
+- **`install --reinstall`** — replaces `--update` (still accepted as a deprecated alias). Optional `--from <path>` for the binary source.
+
+### Changed
+
+- **Breaking:** root **`--schema`** removed — use **`docs schema`** when `docs.enabled` is `true`.
+- **Breaking:** **`install --update`** renamed to **`install --reinstall`**.
+
 ## [3.1.0] - 2026-06-20
 
 ### Added

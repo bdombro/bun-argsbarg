@@ -96,7 +96,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     "## Reference",
     "",
-    "See `reference.md` in this skill directory for the full `--schema` JSON export.",
+    "See `reference.md` in this skill directory for the full `docs schema` JSON export.",
     "",
   );
 
@@ -130,7 +130,7 @@ function buildReferenceMd(root: CliProgram): string {
   return [
     `# ${root.key} — CLI reference`,
     "",
-    "Generated from the program `--schema` export. Handlers and runtime-only nodes are omitted.",
+    "Generated from the program `docs schema` export. Handlers and runtime-only nodes are omitted.",
     "",
     "```json",
     cliSchemaJson(root).trimEnd(),

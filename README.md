@@ -95,22 +95,20 @@ Everything you need for a first-class CLI:
 Every app gets:
 
 - `-h` / `--help` at any routing depth (scoped help).
-- **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
 - **`version`** — print `CliProgram.version` (`myapp version`).
 - **`mcp`** — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
-- **`docs`** — when `docs.enabled` is `true`, print bundled markdown topics (`myapp docs`, `myapp docs readme`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
+- **`docs`** — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
 - **`install`** — install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
 
 Do not declare a top-level command named **`completion`**, **`version`**, or **`install`** — they are reserved.
 When **`mcpServer.enabled`** is `true`, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
 When **`docs.enabled`** is `true`, do not declare a top-level command named **`docs`** — it is reserved for the docs built-in.
-Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp --schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
+Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
 
@@ -124,7 +122,7 @@ myapp install --all --yes
 
 This copies the binary to `~/.local/bin`, installs shell completions (bash/zsh/fish when each shell is on PATH), writes Cursor/Claude skills when agent directories exist, and merges MCP server entries into Cursor and Claude config files.
 
-See **[docs/install.md](docs/install.md)** for `--update`, `--status`, `--uninstall`, and flags.
+See **[docs/install.md](docs/install.md)** for `--reinstall`, `update`, `--status`, `--uninstall`, and flags.
 
 
 ### Shell completions
@@ -189,7 +187,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `version`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`.
+`completion`, `version`, `install`, `update`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `update` when `install.updateGetLatest` is set; `mcp` when `mcpServer.enabled` is `true`; `docs` when `docs.enabled` is `true`.
 
 
 

@@ -63,6 +63,17 @@ export function cliValidateProgram(program: CliProgram): void {
     validateDocsConfig(program.docs);
   }
 
+  if (program.install?.updateGetLatest !== undefined) {
+    if (program.install.enabled === false) {
+      throw new CliSchemaValidationError(
+        "install.updateGetLatest requires install to be enabled (omit install.enabled: false)",
+      );
+    }
+    if (typeof program.install.updateGetLatest !== "function") {
+      throw new CliSchemaValidationError("install.updateGetLatest must be a function");
+    }
+  }
+
   const caps = resolveCapabilities(program);
   const reserved = reservedCommandNames(caps);
 
@@ -163,12 +174,6 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
     if (opt.required && opt.kind === CliOptionKind.Presence) {
       throw new CliSchemaValidationError(
         `Presence option cannot be required: ${scopeKey}/${opt.name}`,
-      );
-    }
-
-    if (opt.name === "schema") {
-      throw new CliSchemaValidationError(
-        `Option name "schema" is reserved for --schema: ${scopeKey}/${opt.name}`,
       );
     }
 

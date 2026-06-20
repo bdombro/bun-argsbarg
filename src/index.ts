@@ -20,6 +20,8 @@ export type {
   CliMcpServerConfig,
   CliMcpToolConfig,
   CliInstallConfig,
+  CliUpdateArtifact,
+  CliUpdateGetLatest,
   CliDocsConfig,
   CliDocsTopic,
   CliOption,

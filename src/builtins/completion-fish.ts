@@ -5,8 +5,6 @@ import {
   identToken,
   kHelpLong,
   kHelpShort,
-  kSchemaDesc,
-  kSchemaLong,
 } from "./shell-helpers.ts";
 
 function scopeCondition(ident: string, scopeIndex: number, path: string): string {
@@ -43,9 +41,6 @@ export function completionFishScript(schema: CliRouter): string {
     }
 
     out += `complete -c ${app} -n '${cond}' -s h -l help -d '${escFishSingleQuoted("Show help for this command.")}'\n`;
-    if (sc.path === "") {
-      out += `complete -c ${app} -n '${cond}' -l schema -d '${escFishSingleQuoted(kSchemaDesc)}'\n`;
-    }
 
     for (const op of sc.opts) {
       if (op.kind === CliOptionKind.Presence) {

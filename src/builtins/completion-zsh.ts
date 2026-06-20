@@ -5,8 +5,6 @@ import {
   identToken,
   kHelpLong,
   kHelpShort,
-  kSchemaDesc,
-  kSchemaLong,
   mainName,
 } from "./shell-helpers.ts";
 
@@ -16,9 +14,6 @@ function emitScopeArraysZsh(ident: string, scopes: ScopeRec[]): string {
     out += "typeset -g A_" + ident + "_" + i + "_opts\n";
     out += "A_" + ident + "_" + i + "_opts=(";
     out += "'" + escShellSingleQuoted(kHelpLong) + ":" + escShellSingleQuoted("Show help for this command.") + "' '" + escShellSingleQuoted(kHelpShort) + ":" + escShellSingleQuoted("Show help for this command.") + "'";
-    if (sc.path === "") {
-      out += " '" + escShellSingleQuoted(kSchemaLong) + ":" + escShellSingleQuoted(kSchemaDesc) + "'";
-    }
     for (const o of sc.opts) {
       out += " '" + escShellSingleQuoted("--" + o.name) + ":" + escShellSingleQuoted(o.description) + "'";
       if (o.shortName) {
@@ -47,9 +42,6 @@ function emitConsumeLongZsh(ident: string, scopes: ScopeRec[]): string {
     o += "    " + i + ")\n";
     o += "      case $w in\n";
     o += "        " + kHelpLong + "|${kHelpLong}=*|${kHelpShort}) echo 1 ;;\n".replace(/\$\{kHelpLong\}/g, kHelpLong).replace(/\$\{kHelpShort\}/g, kHelpShort);
-    if (sc.path === "") {
-      o += "        " + kSchemaLong + ") echo 1 ;;\n";
-    }
     for (const op of sc.opts) {
       const base = "--" + op.name;
       if (op.kind === "presence") {
@@ -137,7 +129,7 @@ function emitSimulateZsh(ident: string): string {
   o += "  local i=2 sid=0 w steps next\n";
   o += "  while (( i < CURRENT )); do\n";
   o += "    w=$words[i]\n";
-  o += "    if [[ $w == " + kHelpShort + " || $w == " + kHelpLong + " || $w == " + kSchemaLong + " ]]; then\n";
+  o += "    if [[ $w == " + kHelpShort + " || $w == " + kHelpLong + " ]]; then\n";
   o += "      ((i++)); continue\n";
   o += "    fi\n";
   o += "    if [[ $w == --* ]]; then\n";

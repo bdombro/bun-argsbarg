@@ -113,7 +113,7 @@ Each tool’s `description` includes the human CLI path and the leaf’s help te
 
 ### Per-leaf visibility
 
-Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/list` while keeping it in the CLI and in `--schema` output:
+Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/list` while keeping it in the CLI and in `docs schema` output:
 
 ```typescript
 {
@@ -172,11 +172,11 @@ On success (`isError: false`):
 
 On failure (parse error, validation error, non-zero exit, thrown error), the message is returned as text content with `isError: true`. Handler stderr is included when present.
 
-Help and `--schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
+Help and `docs schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
 
 ## Schema and custom resources
 
-The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp --schema`. Override with `schemaResourceUri` if needed.
+The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp docs schema`. Override with `schemaResourceUri` if needed.
 
 | Property | Value |
 | --- | --- |
@@ -291,9 +291,7 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 
 When MCP is enabled:
 
-- Do not declare a top-level command named **`ai`** — it is reserved for the built-in AI integration group.
 - Do not declare a top-level command named **`completion`** — reserved for shell completions.
-- Do not declare an option named **`schema`** — reserved for `--schema`.
 
 Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1).
 
@@ -304,4 +302,4 @@ Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1)
 - **User schema only** — tool dispatch uses your program root, not merged presentation builtins.
 - **Buffered output** — MCP tool results are sent after the handler finishes. Incremental stdout (log tail, progress) is not streamed; a future release may add MCP progress notifications.
 
-For the `--schema` export used by the resource, see the main README built-ins section.
+For the `docs schema` export used by the resource, see [docs/bundled-docs.md](bundled-docs.md).

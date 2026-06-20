@@ -3,6 +3,7 @@ import type { CliFallbackMode, CliOption, CliPositional, CliProgram } from "../t
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
+import { cliBuiltinUpdateCommand } from "./update.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
@@ -50,6 +51,9 @@ export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabi
   ];
   if (resolved.install) {
     builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program)));
+  }
+  if (resolved.update) {
+    builtins.push(exportBuiltinNode(cliBuiltinUpdateCommand(program)));
   }
   const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
   if (docsGroup) {

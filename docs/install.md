@@ -8,8 +8,11 @@ The `install` built-in installs the binary, shell completions, agent skills, and
 # First-time setup
 myapp install --all --yes
 
-# Refresh after upgrading
-myapp install --update
+# Refresh after upgrading (re-copy running binary + refresh installed artifacts)
+myapp install --reinstall
+
+# Download latest release (when install.updateGetLatest is configured)
+myapp update
 
 # See what is installed
 myapp install --status
@@ -42,8 +45,14 @@ On the program root:
 install: {
   enabled: false,       // opt out of the install built-in
   prefix: "~/.local/bin", // default bin directory
+  updateGetLatest: async ({ version }) => {
+    // download or locate latest binary; return { path, version, cleanup }
+    return { path: "/tmp/myapp", version: "2.0.0" };
+  },
 }
 ```
+
+When `updateGetLatest` is set, ArgsBarg also registers the **`update`** built-in (`myapp update`).
 
 Environment:
 
@@ -53,14 +62,17 @@ Environment:
 
 | Flag | Description |
 | --- | --- |
-| `--yes` | Skip confirmation (required for non-TTY unless `--json` / `--update`) |
+| `--yes` | Skip confirmation (required for non-TTY unless `--json` / `--reinstall`) |
 | `--dry` | Preview changes; per-step messages on stderr with `[dry run]` |
 | `--json` | Machine-readable output on stdout (implies `--yes`) |
 | `--quiet` | Suppress summaries and per-step messages (requires `--yes`) |
 | `--prefix <dir>` | Override binary install directory |
-| `--update` | Update only artifacts already installed (implies `--bin` + `--yes`) |
+| `--reinstall` | Reinstall artifacts already on disk (implies `--bin` + `--yes`) |
+| `--from <path>` | Binary to copy with `--reinstall` (default: running executable) |
 | `--status` | Read-only inventory |
 | `--uninstall` | Remove detected artifacts (scope with `--bin`, `--completions`, `--skill`, `--mcp`) |
+
+`--update` is accepted as a deprecated alias for `--reinstall`.
 
 ## MCP merge behavior
 

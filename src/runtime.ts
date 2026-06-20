@@ -10,7 +10,6 @@ import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.t
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
-import { cliSchemaJson } from "./schema.ts";
 import { cliValidateProgram } from "./validate.ts";
 
 function cliRootMergedWithBuiltins(program: CliProgram): CliRouter {
@@ -38,6 +37,13 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
 
   if (argv.length >= 1 && argv[0] === "install" && !caps.install) {
     process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
+    process.exit(1);
+  }
+
+  if (argv.length >= 1 && argv[0] === "update" && !caps.update) {
+    process.stderr.write(
+      "update is not enabled. Set install.updateGetLatest on the program root.\n",
+    );
     process.exit(1);
   }
 
@@ -71,11 +77,6 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
   if (pr.kind === ParseKind.Help) {
     process.stdout.write(cliHelpRender(cliPresentationRoot(program), pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
-  }
-
-  if (pr.kind === ParseKind.Schema) {
-    process.stdout.write(cliSchemaJson(program));
-    process.exit(0);
   }
 
   if (pr.kind === "error") {

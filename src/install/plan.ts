@@ -15,7 +15,8 @@ export interface InstallOpts {
   completions?: boolean;
   skill?: boolean;
   mcp?: boolean;
-  update?: boolean;
+  reinstall?: boolean;
+  from?: string;
   status?: boolean;
   uninstall?: boolean;
   yes?: boolean;
@@ -35,7 +36,7 @@ export interface InstallAction {
 }
 
 function wantsBin(opts: InstallOpts): boolean {
-  return !!(opts.all || opts.bin || opts.update);
+  return !!(opts.all || opts.bin || opts.reinstall);
 }
 
 function wantsCompletions(opts: InstallOpts): boolean {
@@ -56,11 +57,12 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
   const dry = !!opts.dry;
 
   if (wantsBin(opts)) {
+    const sourcePath = opts.from ?? process.execPath;
     actions.push({
       kind: "binary",
       summary: `binary: ${paths.binaryPath}`,
       message: `Installing binary to ${paths.binaryPath}`,
-      run: () => installBinary(root, paths, dry).changedFiles,
+      run: () => installBinary(root, paths, dry, sourcePath).changedFiles,
     });
   }
 

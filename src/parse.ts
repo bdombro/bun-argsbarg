@@ -29,8 +29,6 @@ export enum ParseKind {
   Ok = "ok",
   /** User requested help (explicit or implicit). */
   Help = "help",
-  /** User requested machine-readable schema export (`--schema`). */
-  Schema = "schema",
   /** User error (unknown command, bad option, etc.). */
   Error = "error",
 }
@@ -59,16 +57,10 @@ export interface ParseResult {
 
 const helpShort = "-h";
 const helpLong = "--help";
-const schemaLong = "--schema";
 
 /** Returns true if the argv token is `-h` or `--help`. */
 function isHelpTok(tok: string): boolean {
   return tok === helpShort || tok === helpLong;
-}
-
-/** Returns true if the argv token is `--schema`. */
-function isSchemaTok(tok: string): boolean {
-  return tok === schemaLong;
 }
 
 /** Looks up a subcommand or routing node by `key`. */
@@ -195,7 +187,6 @@ function consumeOptions(
     const tok = argv[idx];
 
     if (isHelpTok(tok)) break;
-    if (isSchemaTok(tok)) break;
     if (!tok.startsWith("-")) break;
 
     if (tok === "--") {
@@ -371,20 +362,6 @@ function helpResult(p: string[], explicit: boolean): ParseResult {
   };
 }
 
-/** Builds a schema-export result for the program root. */
-function schemaResult(): ParseResult {
-  return {
-    kind: ParseKind.Schema,
-    path: [],
-    opts: {},
-    args: [],
-    helpExplicit: false,
-    helpPath: [],
-    errorMsg: "",
-    errorHelpPath: [],
-  };
-}
-
 /**
  * Parses `argv` against the program root, routing into subcommands and filling `opts` / `args`.
  */
@@ -418,10 +395,6 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   if (i < argv.length && !forcePositionals && isHelpTok(argv[i])) {
     return helpResult([], true);
-  }
-
-  if (i < argv.length && !forcePositionals && isSchemaTok(argv[i])) {
-    return schemaResult();
   }
 
   // Determine which subcommand to route to

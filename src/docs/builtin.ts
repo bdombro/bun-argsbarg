@@ -37,6 +37,9 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   }
 
   leaves.push(
+    docsLeaf(program, "schema", "Print the full command tree as JSON."),
+    docsLeaf(program, "api", "Print the command tree as markdown."),
+    docsLeaf(program, "skill", "Print generated Cursor SKILL.md content."),
     docsLeaf(program, "all", "Print all bundled documentation combined."),
   );
 

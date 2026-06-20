@@ -5,7 +5,6 @@ import {
   identToken,
   kHelpLong,
   kHelpShort,
-  kSchemaLong,
   mainName,
 } from "./shell-helpers.ts";
 
@@ -17,9 +16,6 @@ function emitConsumeLong(ident: string, scopes: ScopeRec[]): string {
     o += "    " + i + ")\n";
     o += "      case $w in\n";
     o += "        " + kHelpLong + "|${kHelpLong}=*|${kHelpShort}) echo 1 ;;\n".replace(/\$\{kHelpLong\}/g, kHelpLong).replace(/\$\{kHelpShort\}/g, kHelpShort);
-    if (sc.path === "") {
-      o += "        " + kSchemaLong + ") echo 1 ;;\n";
-    }
     for (const op of sc.opts) {
       const base = "--" + op.name;
       if (op.kind === "presence") {
@@ -107,7 +103,7 @@ function emitSimulate(ident: string): string {
   o += "  local i=1 sid=0 w steps next\n";
   o += "  while (( i < COMP_CWORD )); do\n";
   o += "    w=\"${COMP_WORDS[i]}\"\n";
-  o += "    if [[ $w == " + kHelpShort + " || $w == " + kHelpLong + " || $w == " + kSchemaLong + " ]]; then\n";
+  o += "    if [[ $w == " + kHelpShort + " || $w == " + kHelpLong + " ]]; then\n";
   o += "      ((i++)); continue\n";
   o += "    fi\n";
   o += "    if [[ $w == --* ]]; then\n";
@@ -209,9 +205,6 @@ export function completionBashScript(schema: CliRouter): string {
   for (const [i, sc] of scopes.entries()) {
     out += "A_" + ident + "_" + i + "_opts=()\n";
     out += "A_" + ident + "_" + i + "_opts+=('" + kHelpLong + "' '" + kHelpShort + "')\n";
-    if (sc.path === "") {
-      out += "A_" + ident + "_" + i + "_opts+=('" + kSchemaLong + "')\n";
-    }
     for (const o of sc.opts) {
       out += "A_" + ident + "_" + i + "_opts+=('--" + o.name + "')\n";
       if (o.shortName) {

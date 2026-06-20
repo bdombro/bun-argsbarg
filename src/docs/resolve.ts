@@ -1,8 +1,11 @@
 import type { CliDocsConfig, CliProgram } from "../types.ts";
+import { cliSchemaJson } from "../schema.ts";
+import { generateSkillBundle } from "../skill/generate.ts";
+import { generateApiGuide } from "./api-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 
 /** Built-in docs subcommand keys not allowed in `docs.topics`. */
-export const DOCS_BUILTIN_TOPIC_KEYS = ["mcp", "all"] as const;
+export const DOCS_BUILTIN_TOPIC_KEYS = ["mcp", "all", "schema", "api", "skill"] as const;
 
 export type DocsBuiltinTopicKey = (typeof DOCS_BUILTIN_TOPIC_KEYS)[number];
 
@@ -81,8 +84,36 @@ export function combineAllDocs(program: CliProgram): string {
     .join("\n\n---\n\n");
 }
 
+/** Writes CLI schema JSON to stdout (`docs schema`). */
+export function printDocsSchema(program: CliProgram): void {
+  process.stdout.write(cliSchemaJson(program));
+}
+
+/** Writes markdown API reference to stdout (`docs api`). */
+export function printDocsApi(program: CliProgram): void {
+  process.stdout.write(generateApiGuide(program));
+}
+
+/** Writes generated Cursor SKILL.md to stdout (`docs skill`). */
+export function printDocsSkill(program: CliProgram): void {
+  const bundle = generateSkillBundle(program, "cursor");
+  process.stdout.write(`${bundle.skillMd}\n`);
+}
+
 /** Writes one docs topic (or `all`) to stdout. */
 export function printDocsTopic(program: CliProgram, topic: string): void {
+  if (topic === "schema") {
+    printDocsSchema(program);
+    return;
+  }
+  if (topic === "api") {
+    printDocsApi(program);
+    return;
+  }
+  if (topic === "skill") {
+    printDocsSkill(program);
+    return;
+  }
   const content = topic === "all" ? combineAllDocs(program) : docsTopicText(program, topic);
   process.stdout.write(`${content}\n`);
 }

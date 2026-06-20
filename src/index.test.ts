@@ -500,8 +500,8 @@ test("leaf completion help prints correctly", async () => {
   expect(stderr.toString()).toBe("");
 });
 
-test("--schema exports JSON for nested CLIs", async () => {
-  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts --schema`.nothrow().quiet();
+test("docs schema exports JSON for nested CLIs", async () => {
+  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
   expect(stderr.toString()).toBe("");
 
@@ -516,15 +516,20 @@ test("--schema exports JSON for nested CLIs", async () => {
   expect(lookup.positionals[0].name).toBe("path");
 });
 
-test("--schema exports JSON for leaf roots", async () => {
-  const { stdout, exitCode } = await $`bun run examples/minimal.ts --schema`.nothrow().quiet();
+test("docs schema exports JSON for leaf roots", async () => {
+  const { stdout, exitCode } = await $`bun run examples/minimal.ts docs schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
 
   const schema = JSON.parse(stdout.toString());
   expect(schema.key).toBe("minimal.ts");
   expect(schema.positionals[0].name).toBe("name");
   expect(schema.options[0].name).toBe("verbose");
-  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion", "version", "install"]);
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual([
+    "completion",
+    "version",
+    "install",
+    "docs",
+  ]);
 });
 
 test("version builtin prints program version", async () => {
@@ -540,10 +545,15 @@ test("leaf root help lists completion built-in", async () => {
   expect(stdout.toString()).toContain("Generate the autocompletion script for shells.");
 });
 
-test("parse recognizes --schema at the program root", () => {
-  const root= testProgram({
+test("root --schema is no longer a flag", () => {
+  const root = testProgram({
     key: "app",
+    version: "1.0.0",
     description: "demo",
+    docs: {
+      enabled: true,
+      topics: { readme: { text: "# readme\n" } },
+    },
     commands: [
       {
         key: "x",
@@ -553,8 +563,8 @@ test("parse recognizes --schema at the program root", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = parse(root, ["--schema"]);
-  expect(pr.kind).toBe(ParseKind.Schema);
+  const pr = parse(cliPresentationRoot(root), ["--schema"]);
+  expect(pr.kind).not.toBe(ParseKind.Ok);
 });
 
 test("cliSchemaJson omits handlers and completion built-ins", () => {
@@ -587,31 +597,36 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
   expect(schema).not.toHaveProperty("handler");
 });
 
-test("reserved option name schema is rejected", () => {
-  const root= testProgram({
+test("docs help lists schema, api, and skill subcommands", () => {
+  const root = testProgram({
     key: "app",
-    description: "",
+    version: "1.0.0",
+    description: "demo",
+    docs: {
+      enabled: true,
+      topics: { readme: { text: "# readme\n" } },
+    },
     commands: [
       {
         key: "x",
         description: "cmd",
-        options: [
-          {
-            name: "schema",
-            description: "",
-            kind: CliOptionKind.String,
-          },
-        ],
         handler: () => {},
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/reserved for --schema/);
+  const help = cliHelpRender(cliPresentationRoot(root), ["docs"], false);
+  expect(help).toContain("schema");
+  expect(help).toContain("Print the full command tree as JSON.");
+  expect(help).toContain("api");
+  expect(help).toContain("markdown");
+  expect(help).toContain("skill");
+  expect(help).toContain("SKILL.md");
 });
 
-test("root help lists --schema built-in", () => {
-  const root= testProgram({
+test("root help omits legacy --schema flag", () => {
+  const root = testProgram({
     key: "app",
+    version: "1.0.0",
     description: "demo",
     commands: [
       {
@@ -622,51 +637,7 @@ test("root help lists --schema built-in", () => {
     ],
   });
   const help = cliHelpRender(cliPresentationRoot(root), [], false);
-  expect(help).toContain("--schema");
-  expect(help).toContain("Print the full command tree as JSON.");
-});
-
-test("nested help omits --schema built-in", () => {
-  const root= testProgram({
-    key: "app",
-    description: "demo",
-    commands: [
-      {
-        key: "x",
-        description: "cmd",
-        handler: () => {},
-      },
-    ],
-  });
-  const help = cliHelpRender(cliPresentationRoot(root), ["x"], false);
   expect(help).not.toContain("--schema");
-});
-
-test("completion scripts offer --schema at the program root only", () => {
-  const root= testProgram({
-    key: "myapp",
-    description: "",
-    commands: [
-      {
-        key: "stat",
-        description: "stats",
-        commands: [
-          {
-            key: "show",
-            description: "show",
-            handler: () => {},
-          },
-        ],
-      },
-    ],
-  });
-
-  const bash = completionBashScript(cliPresentationRoot(root));
-  expect(bash).toContain("A_myapp_0_opts+=('--schema')");
-  expect(bash).not.toContain("A_myapp_1_opts+=('--schema')");
-
-  const zsh = completionZshScript(cliPresentationRoot(root));
-  expect(zsh).toContain("'--schema:Print the full command tree as JSON.'");
 });
 
 const nestedMcpFixture = testProgram({

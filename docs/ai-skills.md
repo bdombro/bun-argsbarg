@@ -32,7 +32,7 @@ For library use, call `cliSkillInstall(root, "cursor" | "claude", { global: true
 ## Generated content
 
 - **`SKILL.md`** — YAML frontmatter, when-to-use guidance, shell command catalog, pitfalls
-- **`reference.md`** — full `--schema` JSON export
+- **`reference.md`** — full `docs schema` JSON export
 
 Skills describe **shell invocation only** — no MCP setup, `mcp.json`, or `tools/call` guidance. Use **`myapp docs mcp`** (when `docs` and `mcpServer` are enabled) or connect the MCP server for agent execution.
 
