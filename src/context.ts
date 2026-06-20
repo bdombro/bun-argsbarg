@@ -18,14 +18,9 @@ export class CliContext {
   readonly appName: string;
   readonly commandPath: string[];
   readonly args: string[];
-  readonly schema: CliProgram;
+  readonly program: CliProgram;
   readonly opts: Record<string, string>;
   readonly invocation: CliInvocation;
-
-  /** Program root schema (same as {@link schema}). */
-  get program(): CliProgram {
-    return this.schema;
-  }
 
   /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
@@ -33,14 +28,14 @@ export class CliContext {
     commandPath: string[],
     args: string[],
     opts: Record<string, string>,
-    schema: CliProgram,
+    program: CliProgram,
     invocation: CliInvocation = "cli",
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
     this.args = args;
     this.opts = opts;
-    this.schema = schema;
+    this.program = program;
     this.invocation = invocation;
   }
 
@@ -85,7 +80,7 @@ export class CliContext {
   private _positionalMap(): Record<string, string | string[]> {
     if (this._posMap) return this._posMap;
 
-    let node: CliNode = this.schema;
+    let node: CliNode = this.program;
     for (const seg of this.commandPath) {
       if (!isCliRouter(node)) {
         this._posMap = {};

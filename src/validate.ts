@@ -30,9 +30,6 @@ export function cliValidateProgram(program: CliProgram): void {
   walkNode(program, program, true);
 }
 
-/** @deprecated Internal alias — use cliValidateProgram */
-export const cliValidateRoot = cliValidateProgram;
-
 function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
   if (!isRoot) {
     const rogue = node as CliProgram;

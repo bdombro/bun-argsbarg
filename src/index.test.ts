@@ -26,7 +26,7 @@ import { generateSkillBundle } from "./skill/generate.ts";
 import { cliSkillInstall } from "./skill/install.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
-import { cliValidateRoot } from "./validate.ts";
+import { cliValidateProgram } from "./validate.ts";
 import { expect, test } from "bun:test";
 import { $ } from "bun";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -59,7 +59,7 @@ test("bundled short presence flags", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "-ab"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts["a"]).toBe("1");
@@ -85,7 +85,7 @@ test("long option equals", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--name=pat"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts["name"]).toBe("pat");
@@ -112,7 +112,7 @@ test("fallback missing or unknown root flags", () => {
     fallbackCommand: "hello",
     fallbackMode: CliFallbackMode.MissingOrUnknown,
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["--name", "bob"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["hello"]);
@@ -125,7 +125,7 @@ test("unknown command", () => {
     description: "",
     commands: [{ key: "hello", description: "", handler: () => {} }],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, ["nope"]);
   expect(pr.kind).toBe(ParseKind.Error);
   expect(pr.errorMsg).toContain("Unknown command");
@@ -137,7 +137,7 @@ test("implicit help empty", () => {
     description: "",
     commands: [{ key: "x", description: "", handler: () => {} }],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, []);
   expect(pr.kind).toBe(ParseKind.Help);
   expect(pr.helpExplicit).toBe(false);
@@ -162,7 +162,7 @@ test("invalid number post validate", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   let pr = parse(root, ["x", "--n", "notnum"]);
   pr = postParseValidate(root, pr);
   expect(pr.kind).toBe(ParseKind.Error);
@@ -188,7 +188,7 @@ test("supports scientific notation in numbers", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   let pr = parse(root, ["x", "--n", "1.23e4"]);
   pr = postParseValidate(root, pr);
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -203,7 +203,7 @@ test("completion scripts contain app name", () => {
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const bash = completionBashScript(root);
   expect(bash).toContain("bash completion for myapp");
   expect(bash).toContain("complete -F _myapp myapp");
@@ -220,7 +220,7 @@ test("completion scripts do not emit invalid bash substitutions", () => {
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const bash = completionBashScript(root);
   expect(bash).not.toContain("${${");
 });
@@ -237,7 +237,7 @@ test("completion scripts escape shell-sensitive command text in zsh", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const zsh = completionZshScript(root);
   expect(zsh).toContain("quote'\\''cmd:Say '\\''hello'\\'' and keep going.");
 });
@@ -248,7 +248,7 @@ test("completion scripts keep dotted app names in registration names", () => {
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
 
   const bash = completionBashScript(root);
   expect(bash).toContain("complete -F _minimal_ts minimal.ts");
@@ -283,7 +283,7 @@ test("trailing options after bounded positionals", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--verbose"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["./file"]);
@@ -330,7 +330,7 @@ test("trailing options include parent-scoped flags", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["group", "leaf"]);
@@ -367,7 +367,7 @@ test("varargs tail parses trailing options", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["./file"]);
@@ -402,7 +402,7 @@ test("stops parsing options at --", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts["name"]).toBe("pat");
@@ -429,7 +429,7 @@ test("missing required option returns error", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x"]));
   expect(pr.kind).toBe(ParseKind.Error);
   expect(pr.errorMsg).toContain("Missing required option: --req");
@@ -455,7 +455,7 @@ test("provided required option parses ok", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--req", "val"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts["req"]).toBe("val");
@@ -481,7 +481,7 @@ test("presence option cannot be required", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/Presence option cannot be required/);
+  expect(() => cliValidateProgram(root)).toThrow(/Presence option cannot be required/);
 });
 
 test("leaf completion help prints correctly", async () => {
@@ -541,7 +541,7 @@ test("parse recognizes --schema at the program root", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, ["--schema"]);
   expect(pr.kind).toBe(ParseKind.Schema);
 });
@@ -595,7 +595,7 @@ test("reserved option name schema is rejected", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/reserved for --schema/);
+  expect(() => cliValidateProgram(root)).toThrow(/reserved for --schema/);
 });
 
 test("root help lists --schema built-in", () => {
@@ -825,7 +825,7 @@ test("reserved command name install is rejected", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: install/);
+  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: install/);
 });
 
 test("top-level command name mcp is allowed without mcpServer", () => {
@@ -840,7 +840,7 @@ test("top-level command name mcp is allowed without mcpServer", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).not.toThrow();
+  expect(() => cliValidateProgram(root)).not.toThrow();
 });
 
 test("top-level command name mcp is rejected when mcpServer is set", () => {
@@ -856,7 +856,7 @@ test("top-level command name mcp is rejected when mcpServer is set", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: mcp/);
+  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: mcp/);
 });
 
 test("mcpServer on non-root node is rejected", () => {
@@ -872,7 +872,7 @@ test("mcpServer on non-root node is rejected", () => {
       },
     ],
   } as unknown as CliProgram;
-  expect(() => cliValidateRoot(root)).toThrow(/mcpServer is only supported on the program root/);
+  expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the program root/);
 });
 
 test("mcpTool on root is rejected", () => {
@@ -882,7 +882,7 @@ test("mcpTool on root is rejected", () => {
     mcpTool: { enabled: false },
     handler: () => {},
   };
-  expect(() => cliValidateRoot(root)).toThrow(/mcpTool is only supported on leaf commands/);
+  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
 test("mcpTool on routing node is rejected", () => {
@@ -904,7 +904,7 @@ test("mcpTool on routing node is rejected", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/mcpTool is only supported on leaf commands/);
+  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
 test("buildToolCallSuccess returns stdout only", () => {
@@ -1059,7 +1059,7 @@ test("ctx.invocation is mcp via cliInvoke", async () => {
       seen = ctx.invocation;
     },
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const result = await cliInvoke(root, []);
   expect(result.kind).toBe("ok");
   expect(seen).toBe("mcp");
@@ -1109,7 +1109,7 @@ test("cliInvoke rejects invalid Enum value", async () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const result = await cliInvoke(root, ["--mode", "staging"]);
   expect(result.kind).toBe("error");
   expect(result.errorMsg).toContain("not one of");
@@ -1132,30 +1132,30 @@ test("cliInvoke accepts valid Enum value", async () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const result = await cliInvoke(root, ["--mode", "dev"]);
   expect(result.kind).toBe("ok");
   expect(result.stdout.trim()).toBe("dev");
 });
 
-test("cliValidateRoot rejects Enum with no choices", () => {
+test("cliValidateProgram rejects Enum with no choices", () => {
   const root: CliProgram = {
     key: "app",
     description: "",
     handler: () => {},
     options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: [] }],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/requires non-empty choices/);
+  expect(() => cliValidateProgram(root)).toThrow(/requires non-empty choices/);
 });
 
-test("cliValidateRoot rejects Enum with duplicate choices", () => {
+test("cliValidateProgram rejects Enum with duplicate choices", () => {
   const root: CliProgram = {
     key: "app",
     description: "",
     handler: () => {},
     options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: ["a", "a"] }],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/choices must be distinct/);
+  expect(() => cliValidateProgram(root)).toThrow(/choices must be distinct/);
 });
 
 test("mcpTool.description override wins without requiresEnv suffix", () => {
@@ -1194,7 +1194,7 @@ test("mcpTool.requiresEnv appended to auto description", () => {
   expect(tools[0]!.description).toContain("[requires env: TOKEN]");
 });
 
-test("cliValidateRoot rejects duplicate mcpResources URIs", () => {
+test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
   const root: CliProgram = {
     key: "app",
     description: "",
@@ -1206,10 +1206,10 @@ test("cliValidateRoot rejects duplicate mcpResources URIs", () => {
     },
     commands: [{ key: "x", description: "", handler: () => {} }],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/URIs must be unique/);
+  expect(() => cliValidateProgram(root)).toThrow(/URIs must be unique/);
 });
 
-test("cliValidateRoot rejects resource URI matching schemaResourceUri", () => {
+test("cliValidateProgram rejects resource URI matching schemaResourceUri", () => {
   const root: CliProgram = {
     key: "app",
     description: "",
@@ -1219,7 +1219,7 @@ test("cliValidateRoot rejects resource URI matching schemaResourceUri", () => {
     },
     commands: [{ key: "x", description: "", handler: () => {} }],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/conflicts with the built-in schema resource/);
+  expect(() => cliValidateProgram(root)).toThrow(/conflicts with the built-in schema resource/);
 });
 
 test("allMcpResources includes custom resources", () => {
@@ -1430,7 +1430,7 @@ function nestedDocsFallbackFixture(): CliProgram {
 
 test("nested fallback routes to default when argv exhausted at router", () => {
   const root = nestedDocsFallbackFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["docs"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["docs", "guide"]);
@@ -1470,7 +1470,7 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
       },
     ],
   };
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["docs", "extra-topic"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["docs", "guide"]);
@@ -1479,13 +1479,13 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
 
 test("nested fallback MissingOnly errors on unknown subcommand", () => {
   const root = nestedDocsFallbackFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, ["docs", "nope"]);
   expect(pr.kind).toBe(ParseKind.Error);
   expect(pr.errorMsg).toContain("Unknown subcommand");
 });
 
-test("cliValidateRoot rejects invalid nested fallbackCommand", () => {
+test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
   const root: CliProgram = {
     key: "app",
     description: "",
@@ -1504,17 +1504,17 @@ test("cliValidateRoot rejects invalid nested fallbackCommand", () => {
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
+  expect(() => cliValidateProgram(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
 });
 
-test("cliValidateRoot accepts nested fallbackCommand when child exists", () => {
+test("cliValidateProgram accepts nested fallbackCommand when child exists", () => {
   const root = nestedDocsFallbackFixture();
-  expect(() => cliValidateRoot(root)).not.toThrow();
+  expect(() => cliValidateProgram(root)).not.toThrow();
 });
 
 test("nested router scoped help does not route to fallback", () => {
   const root = nestedDocsFallbackFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, ["docs", "--help"]);
   expect(pr.kind).toBe(ParseKind.Help);
   expect(pr.helpPath).toEqual(["docs"]);
@@ -1526,7 +1526,7 @@ test("nested router scoped help does not route to fallback", () => {
 
 test("varargs trailing option after positionals via cliInvoke", async () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt"]);
@@ -1535,7 +1535,7 @@ test("varargs trailing option after positionals via cliInvoke", async () => {
 
 test("varargs option before positionals", () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "--json", "file.txt"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt"]);
@@ -1544,7 +1544,7 @@ test("varargs option before positionals", () => {
 
 test("varargs multiple files then trailing option", () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "a.txt", "b.txt", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["a.txt", "b.txt"]);
@@ -1553,7 +1553,7 @@ test("varargs multiple files then trailing option", () => {
 
 test("varargs double dash forces positional", () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt", "--json"]);
@@ -1562,7 +1562,7 @@ test("varargs double dash forces positional", () => {
 
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const result = await cliInvoke(root, ["read", "--unknown"]);
   expect(result.kind).toBe("error");
   expect(result.stderr).toContain("--unknown");
@@ -1570,7 +1570,7 @@ test("varargs unknown flag errors", async () => {
 
 test("varargs scoped help in tail", () => {
   const root = varargsReadFixture();
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   const pr = parse(root, ["read", "file.txt", "--help"]);
   expect(pr.kind).toBe(ParseKind.Help);
   expect(pr.helpPath).toContain("read");
@@ -1593,7 +1593,7 @@ test("ctx.positional returns single slot value", async () => {
     ],
   };
   let captured: string | string[] | undefined;
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   await cliInvoke(root, ["x", "./file"]);
   expect(captured).toBe("./file");
 });
@@ -1606,7 +1606,7 @@ test("ctx.positional returns varargs array", async () => {
       captured = ctx.positional("files");
     };
   }
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   await cliInvoke(root, ["read", "a.txt", "b.txt"]);
   expect(captured).toEqual(["a.txt", "b.txt"]);
 });
@@ -1629,7 +1629,7 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
     ],
   };
   let captured: string | string[] | undefined;
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   await cliInvoke(root, ["x"]);
   expect(captured).toBeUndefined();
 });
@@ -1644,7 +1644,7 @@ test("ctx.positional varargs matches ctx.args", async () => {
       args = ctx.args;
     };
   }
-  cliValidateRoot(root);
+  cliValidateProgram(root);
   await cliInvoke(root, ["read", "a.txt", "b.txt"]);
   expect(positional).toEqual(args);
 });
@@ -1692,7 +1692,7 @@ test("install config on non-root node is rejected", () => {
       },
     ],
   } as unknown as CliProgram;
-  expect(() => cliValidateRoot(root)).toThrow(/install is only supported on the program root/);
+  expect(() => cliValidateProgram(root)).toThrow(/install is only supported on the program root/);
 });
 
 test("generateSkillBundle includes frontmatter and command catalog", () => {

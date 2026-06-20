@@ -181,7 +181,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.typedOpt<T>("custom", parseFn)` — pass a custom parsing function for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
-- `ctx.schema` / `ctx.program` — program root (`CliProgram`) for contextual help.
+- `ctx.program` — program root (`CliProgram`) for contextual help.
 
 ### Capabilities (built-ins)
 

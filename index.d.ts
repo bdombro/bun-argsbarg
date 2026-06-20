@@ -7,13 +7,11 @@ export declare class CliContext {
 	readonly appName: string;
 	readonly commandPath: string[];
 	readonly args: string[];
-	readonly schema: CliProgram;
+	readonly program: CliProgram;
 	readonly opts: Record<string, string>;
 	readonly invocation: CliInvocation;
-	/** Program root schema (same as {@link schema}). */
-	get program(): CliProgram;
 	/** Captures the program root, routed path, positional words, and option map for a leaf handler. */
-	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, schema: CliProgram, invocation?: CliInvocation);
+	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, program: CliProgram, invocation?: CliInvocation);
 	/** Returns whether a presence flag was set (including implicit "1" for boolean options). */
 	hasFlag(name: string): boolean;
 	/** Returns the string value for a string-valued option, if present. */
