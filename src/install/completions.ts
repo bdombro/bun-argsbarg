@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from "../builtins/index.ts";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { InstallPaths } from "./paths.ts";
 import { detectShells } from "./shell.ts";
 
 /** Writes shell completion scripts for detected shells. */
-export function installCompletions(root: CliCommand, paths: InstallPaths, dry: boolean): string[] {
+export function installCompletions(root: CliProgram, paths: InstallPaths, dry: boolean): string[] {
   const changed: string[] = [];
   const shells = detectShells();
   const schema = cliPresentationRoot(root);

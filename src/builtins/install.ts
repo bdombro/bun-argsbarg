@@ -1,7 +1,7 @@
-import { CliCommand, CliOption, CliOptionKind } from "../types.ts";
+import { CliProgram, CliOption, CliOptionKind, type CliLeaf } from "../types.ts";
 
 /** Install command options (dynamic: `--mcp` only when MCP is enabled). */
-export function installBuiltinOptions(root: CliCommand): CliOption[] {
+export function installBuiltinOptions(root: CliProgram): CliOption[] {
   const opts: CliOption[] = [
     {
       name: "all",
@@ -78,7 +78,7 @@ export function installBuiltinOptions(root: CliCommand): CliOption[] {
 }
 
 /** Builds the `install` built-in command (compiled binaries only). */
-export function cliBuiltinInstallCommand(root: CliCommand): CliCommand {
+export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   return {
     key: "install",
     description: "Install the binary, shell completions, agent skills, and MCP config to your user environment.",

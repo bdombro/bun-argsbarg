@@ -2,58 +2,68 @@
 This module validates CLI schemas before execution.
 */
 
+import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
 import {
-  CliCommand,
-  CliFallbackMode,
+  type CliLeaf,
+  type CliNode,
+  type CliProgram,
   CliOptionKind,
   CliSchemaValidationError,
+  isCliLeaf,
+  isCliRouter,
 } from "./types.ts";
 import { MCP_SCHEMA_URI_DEFAULT } from "./mcp/tools.ts";
 
-function reservedCommandNames(root: CliCommand): string[] {
-  const names = ["completion", "install"];
-  if (root.mcpServer !== undefined) {
-    names.push("mcp");
-  }
-  return names;
-}
+/** Validates a program schema. */
+export function cliValidateProgram(program: CliProgram): void {
+  const caps = resolveCapabilities(program);
+  const reserved = reservedCommandNames(caps);
 
-export function cliValidateRoot(root: CliCommand): void {
-  for (const child of root.commands ?? []) {
-    if (reservedCommandNames(root).includes(child.key)) {
-      throw new CliSchemaValidationError(`Reserved command name: ${child.key}`);
+  if (isCliRouter(program)) {
+    for (const child of program.commands) {
+      if (reserved.includes(child.key)) {
+        throw new CliSchemaValidationError(`Reserved command name: ${child.key}`);
+      }
     }
   }
 
-  walkCommand(root, true);
+  walkNode(program, program, true);
 }
 
-function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
-  if (!isRoot && cmd.mcpServer !== undefined) {
-    throw new CliSchemaValidationError(
-      "mcpServer is only supported on the program root (not on " + cmd.key + ")",
-    );
+/** @deprecated Internal alias — use cliValidateProgram */
+export const cliValidateRoot = cliValidateProgram;
+
+function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
+  if (!isRoot) {
+    const rogue = node as CliProgram;
+    if (rogue.mcpServer !== undefined) {
+      throw new CliSchemaValidationError(
+        "mcpServer is only supported on the program root (not on " + node.key + ")",
+      );
+    }
+    if (rogue.install !== undefined) {
+      throw new CliSchemaValidationError(
+        "install is only supported on the program root (not on " + node.key + ")",
+      );
+    }
   }
 
-  if (!isRoot && cmd.install !== undefined) {
-    throw new CliSchemaValidationError(
-      "install is only supported on the program root (not on " + cmd.key + ")",
-    );
+  if (isCliLeaf(node)) {
+    if (isRoot && node.mcpTool !== undefined) {
+      throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
+    }
+  } else {
+    const rogue = node as unknown as CliLeaf;
+    if (rogue.mcpTool !== undefined) {
+      throw new CliSchemaValidationError(
+        "mcpTool is only supported on leaf commands (not on " + node.key + ")",
+      );
+    }
   }
 
-  const isLeaf = "handler" in cmd && !!cmd.handler;
-  if (!isLeaf && cmd.mcpTool !== undefined) {
-    throw new CliSchemaValidationError(
-      "mcpTool is only supported on leaf commands (not on " + cmd.key + ")",
-    );
-  }
-  if (isRoot && cmd.mcpTool !== undefined) {
-    throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
-  }
-
-  if (isRoot && cmd.mcpServer?.resources) {
-    const schemaUri = cmd.mcpServer.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
-    const uris = cmd.mcpServer.resources.map((r) => r.uri);
+  if (isRoot && program.mcpServer?.resources) {
+    const schemaUri = program.mcpServer.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
+    const uris = program.mcpServer.resources.map((r) => r.uri);
     if (uris.includes(schemaUri)) {
       throw new CliSchemaValidationError(
         `mcpServer.resources URI '${schemaUri}' conflicts with the built-in schema resource`,
@@ -64,53 +74,64 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  const seenNames = new Set<string>();
-  for (const child of cmd.commands ?? []) {
-    if (seenNames.has(child.key)) {
-      throw new CliSchemaValidationError(`Duplicate command name: ${child.key}`);
+  if (isCliRouter(node)) {
+    const seenNames = new Set<string>();
+    for (const child of node.commands) {
+      if (seenNames.has(child.key)) {
+        throw new CliSchemaValidationError(`Duplicate command name: ${child.key}`);
+      }
+      seenNames.add(child.key);
     }
-    seenNames.add(child.key);
-  }
 
-  if (cmd.fallbackMode !== undefined && cmd.fallbackCommand === undefined) {
-    throw new CliSchemaValidationError(
-      `fallbackMode requires fallbackCommand on '${cmd.key}'`,
-    );
-  }
-
-  if (cmd.fallbackCommand !== undefined) {
-    const children = cmd.commands ?? [];
-    const valid = children.find((c) => c.key === cmd.fallbackCommand);
-    if (!valid) {
+    if (node.fallbackMode !== undefined && node.fallbackCommand === undefined) {
       throw new CliSchemaValidationError(
-        `fallbackCommand '${cmd.fallbackCommand}' is not a child of '${cmd.key}'`,
+        `fallbackMode requires fallbackCommand on '${node.key}'`,
       );
     }
+
+    if (node.fallbackCommand !== undefined) {
+      const valid = node.commands.find((c) => c.key === node.fallbackCommand);
+      if (!valid) {
+        throw new CliSchemaValidationError(
+          `fallbackCommand '${node.fallbackCommand}' is not a child of '${node.key}'`,
+        );
+      }
+    }
+
+    for (const child of node.commands) {
+      walkNode(child, program, false);
+    }
   }
 
+  const positionals = isCliLeaf(node) ? (node.positionals ?? []) : [];
+  validateOptions(node.key, node.options ?? []);
+  validatePositionals(node.key, positionals);
+}
+
+function validateOptions(scopeKey: string, options: import("./types.ts").CliOption[]): void {
   const seenShorts = new Set<string>();
-  for (const opt of cmd.options ?? []) {
+  for (const opt of options) {
     if (opt.required && opt.kind === CliOptionKind.Presence) {
       throw new CliSchemaValidationError(
-        `Presence option cannot be required: ${cmd.key}/${opt.name}`,
+        `Presence option cannot be required: ${scopeKey}/${opt.name}`,
       );
     }
 
     if (opt.name === "schema") {
       throw new CliSchemaValidationError(
-        `Option name "schema" is reserved for --schema: ${cmd.key}/${opt.name}`,
+        `Option name "schema" is reserved for --schema: ${scopeKey}/${opt.name}`,
       );
     }
 
     if (opt.shortName !== undefined) {
       if (opt.shortName === "h") {
         throw new CliSchemaValidationError(
-          `Short alias -h is reserved for help: ${cmd.key}/${opt.name}`,
+          `Short alias -h is reserved for help: ${scopeKey}/${opt.name}`,
         );
       }
       if (seenShorts.has(opt.shortName)) {
         throw new CliSchemaValidationError(
-          `Duplicate short alias -${opt.shortName} in scope ${cmd.key}`,
+          `Duplicate short alias -${opt.shortName} in scope ${scopeKey}`,
         );
       }
       seenShorts.add(opt.shortName);
@@ -119,42 +140,43 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     if (opt.kind === CliOptionKind.Enum) {
       if (!opt.choices || opt.choices.length === 0) {
         throw new CliSchemaValidationError(
-          `Option '${opt.name}' on '${cmd.key}': Enum kind requires non-empty choices`,
+          `Option '${opt.name}' on '${scopeKey}': Enum kind requires non-empty choices`,
         );
       }
       if (new Set(opt.choices).size !== opt.choices.length) {
         throw new CliSchemaValidationError(
-          `Option '${opt.name}' on '${cmd.key}': Enum choices must be distinct`,
+          `Option '${opt.name}' on '${scopeKey}': Enum choices must be distinct`,
         );
       }
       for (const choice of opt.choices) {
         if (choice.length === 0) {
           throw new CliSchemaValidationError(
-            `Option '${opt.name}' on '${cmd.key}': Enum choices must be non-empty strings`,
+            `Option '${opt.name}' on '${scopeKey}': Enum choices must be non-empty strings`,
           );
         }
       }
     } else if (opt.choices !== undefined) {
       throw new CliSchemaValidationError(
-        `Option '${opt.name}' on '${cmd.key}': choices is only valid for Enum kind`,
+        `Option '${opt.name}' on '${scopeKey}': choices is only valid for Enum kind`,
       );
     }
   }
+}
 
-  const positionals = cmd.positionals ?? [];
+function validatePositionals(scopeKey: string, positionals: import("./types.ts").CliPositional[]): void {
   for (const p of positionals) {
     if (p.argMin !== undefined && p.argMin < 0) {
-      throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${cmd.key}/${p.name}`);
+      throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${scopeKey}/${p.name}`);
     }
     if (p.argMax !== undefined && p.argMax < 0) {
       throw new CliSchemaValidationError(
-        `argMax must be >= 0 (use 0 for unlimited) for positional ${cmd.key}/${p.name}`,
+        `argMax must be >= 0 (use 0 for unlimited) for positional ${scopeKey}/${p.name}`,
       );
     }
     const { argMin = 1, argMax = 1 } = p;
     if (argMax > 0 && argMin > argMax) {
       throw new CliSchemaValidationError(
-        `argMin must not exceed argMax for positional ${cmd.key}/${p.name}`,
+        `argMin must not exceed argMax for positional ${scopeKey}/${p.name}`,
       );
     }
   }
@@ -165,7 +187,7 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     if (argMin === 0) {
       sawOptional = true;
     } else if (sawOptional) {
-      throw new CliSchemaValidationError(`Required positional after optional in scope ${cmd.key}`);
+      throw new CliSchemaValidationError(`Required positional after optional in scope ${scopeKey}`);
     }
   }
 
@@ -173,12 +195,8 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     const { argMax = 1 } = positionals[idx]!;
     if (argMax === 0 && idx + 1 < positionals.length) {
       throw new CliSchemaValidationError(
-        `Unlimited positional (argMax == 0) must be last in scope ${cmd.key}`,
+        `Unlimited positional (argMax == 0) must be last in scope ${scopeKey}`,
       );
     }
-  }
-
-  for (const child of cmd.commands ?? []) {
-    walkCommand(child, false);
   }
 }

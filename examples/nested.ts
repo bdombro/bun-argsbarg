@@ -7,9 +7,9 @@ and fallback commands fit together in one schema.
 It demonstrates how the schema scales beyond one command.
 */
 
-import { cliRun, CliCommand, CliOptionKind, CliFallbackMode } from "../src/index.ts";
+import { cliRun, CliProgram, CliOptionKind, CliFallbackMode } from "../src/index.ts";
 
-const cli: CliCommand = {
+const cli = {
   key: "nested.ts",
   description: "Nested groups demo.",
   mcpServer: { name: "nested-demo", version: "1.0.0" },
@@ -97,6 +97,6 @@ const cli: CliCommand = {
   ],
   fallbackCommand: "read",
   fallbackMode: CliFallbackMode.MissingOrUnknown,
-};
+} satisfies CliProgram;
 
 await cliRun(cli);

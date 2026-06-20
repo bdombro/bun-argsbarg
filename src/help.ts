@@ -7,7 +7,7 @@ It keeps help formatting shared across help and error paths so users see one con
 style no matter how help is reached.
 */
 
-import { CliCommand, CliOption, CliOptionKind, CliPositional } from "./types.ts";
+import { CliNode, CliOption, CliOptionKind, CliPositional, CliRouter, isCliLeaf, isCliRouter } from "./types.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
 
@@ -369,7 +369,7 @@ function rowsForPositionals(defs: CliPositional[], color: boolean): HelpRow[] {
 }
 
 /** Table rows for subcommands, sorted by key. */
-function rowsForSubcommands(cmds: CliCommand[]): HelpRow[] {
+function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
   return cmds
     .sort((a, b) => a.key.localeCompare(b.key))
     .map((c) => ({ label: c.key, description: c.description }));
@@ -381,7 +381,7 @@ function rowsForSubcommands(cmds: CliCommand[]): HelpRow[] {
  * Renders full help for the app root or a nested command, following `helpPath` from the root key.
  * `useStderr` is reserved for call-site consistency; width and color use stdout TTY.
  */
-export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr: boolean): string {
+export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: boolean): string {
   const hw = getHelpWidth();
   const color = isStdoutTTY();
 
@@ -416,14 +416,14 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
   }
 
   let layer = schema.commands ?? [];
-  let node: CliCommand | undefined;
+  let node: CliNode | undefined;
   for (const seg of helpPath) {
-    const ch = layer.find((c) => c.key === seg);
+    const ch = layer.find((c: CliNode) => c.key === seg);
     if (!ch) {
       return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
     }
     node = ch;
-    layer = ch.commands ?? [];
+    layer = isCliRouter(ch) ? ch.commands : [];
   }
   if (!node) {
     return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
@@ -438,7 +438,13 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
   lines.push(
     renderTextBox(
       "Usage",
-      usageLines(schema.key, helpPath, (node.commands ?? []).length > 0, (node.positionals ?? []).length > 0, color),
+      usageLines(
+        schema.key,
+        helpPath,
+        isCliRouter(node) && node.commands.length > 0,
+        isCliLeaf(node) && (node.positionals ?? []).length > 0,
+        color,
+      ),
       hw,
       color,
     ).join("\n"),
@@ -450,13 +456,19 @@ export function cliHelpRender(schema: CliCommand, helpPath: string[], useStderr:
     lines.push(optBox.join("\n"));
   }
 
-  const posBox = renderTableBox("Arguments", rowsForPositionals(node.positionals ?? [], color), hw, color);
+  const posBox = renderTableBox(
+    "Arguments",
+    rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color),
+    hw,
+    color,
+  );
   if (posBox.length > 0) {
     lines.push("");
     lines.push(posBox.join("\n"));
   }
 
-  const subBox = renderTableBox("Subcommands", rowsForSubcommands(node.commands ?? []), hw, color);
+  const subcmds = isCliRouter(node) ? node.commands : [];
+  const subBox = renderTableBox("Subcommands", rowsForSubcommands(subcmds), hw, color);
   if (subBox.length > 0) {
     lines.push("");
     lines.push(subBox.join("\n"));

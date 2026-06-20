@@ -1,8 +1,8 @@
-import { CliCommand, CliFallbackMode, CliOption, CliPositional } from "../types.ts";
+import { type CliCapabilities, resolveCapabilities } from "../capabilities.ts";
+import type { CliFallbackMode, CliOption, CliPositional, CliProgram } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { isCompiledExecutable } from "../install/compiled.ts";
 
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
@@ -16,7 +16,13 @@ export interface CliSchemaExport {
   positionals?: CliPositional[];
 }
 
-function exportBuiltinNode(cmd: CliCommand): CliSchemaExport {
+function exportBuiltinNode(cmd: {
+  key: string;
+  description: string;
+  notes?: string;
+  options?: CliOption[];
+  commands?: CliSchemaExport[];
+}): CliSchemaExport {
   const out: CliSchemaExport = {
     key: cmd.key,
     description: cmd.description,
@@ -34,12 +40,13 @@ function exportBuiltinNode(cmd: CliCommand): CliSchemaExport {
 }
 
 /** Built-in subtrees matching help visibility for `--schema` export. */
-export function exportPresentationBuiltins(root: CliCommand): CliSchemaExport[] {
-  const builtins: CliSchemaExport[] = [exportBuiltinNode(cliBuiltinCompletionGroup(root.key))];
-  if (isCompiledExecutable() && root.install?.enabled !== false) {
-    builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(root)));
+export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabilities): CliSchemaExport[] {
+  const resolved = caps ?? resolveCapabilities(program);
+  const builtins: CliSchemaExport[] = [exportBuiltinNode(cliBuiltinCompletionGroup(program.key))];
+  if (resolved.install) {
+    builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program)));
   }
-  if (root.mcpServer !== undefined) {
+  if (resolved.mcp) {
     builtins.push(exportBuiltinNode(cliBuiltinMcpCommand()));
   }
   return builtins;

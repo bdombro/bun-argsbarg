@@ -4,10 +4,10 @@ import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { exportPresentationBuiltins } from "./export.ts";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { setCompiledExecutableOverride } from "../install/compiled.ts";
 
-const fixture: CliCommand = {
+const fixture: CliProgram = {
   key: "myapp",
   description: "Demo app.",
   mcpServer: { name: "myapp" },
@@ -38,7 +38,7 @@ describe("builtins help copy", () => {
 
   test("install omits --mcp option when mcpServer unset", () => {
     setCompiledExecutableOverride(true);
-    const noMcp: CliCommand = { key: "x", description: "x", handler: () => {} };
+    const noMcp: CliProgram = { key: "x", description: "x", handler: () => {} };
     const names = installBuiltinOptions(noMcp).map((o) => o.name);
     expect(names).not.toContain("mcp");
   });

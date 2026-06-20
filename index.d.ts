@@ -7,11 +7,13 @@ export declare class CliContext {
 	readonly appName: string;
 	readonly commandPath: string[];
 	readonly args: string[];
-	readonly schema: CliCommand;
+	readonly schema: CliProgram;
 	readonly opts: Record<string, string>;
 	readonly invocation: CliInvocation;
-	/** Captures the merged program root, routed path, positional words, and option map for a leaf handler. */
-	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, schema: CliCommand, invocation?: CliInvocation);
+	/** Program root schema (same as {@link schema}). */
+	get program(): CliProgram;
+	/** Captures the program root, routed path, positional words, and option map for a leaf handler. */
+	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, schema: CliProgram, invocation?: CliInvocation);
 	/** Returns whether a presence flag was set (including implicit "1" for boolean options). */
 	hasFlag(name: string): boolean;
 	/** Returns the string value for a string-valued option, if present. */
@@ -64,7 +66,7 @@ export declare enum CliFallbackMode {
 	UnknownOnly = "unknownOnly"
 }
 /**
- * A named flag or value option (`--long`, `-short`), listed on `CliCommand.options`.
+ * A named flag or value option (`--long`, `-short`), listed on command `options`.
  */
 export interface CliOption {
 	/** Option name (e.g., "name", "verbose"). */
@@ -84,7 +86,7 @@ export interface CliOption {
 	choices?: string[];
 }
 /**
- * An ordered positional argument slot, listed on `CliCommand.positionals`.
+ * An ordered positional argument slot, listed on leaf `positionals`.
  */
 export interface CliPositional {
 	/** Positional name (used in help and error messages). */
@@ -105,7 +107,7 @@ export interface CliPositional {
 	argMax?: number;
 }
 /**
- * Root-only. Enables `myapp mcp` and MCP stdio server metadata.
+ * Enables `myapp mcp` and MCP stdio server metadata (program root only).
  */
 export interface CliMcpServerConfig {
 	/** `initialize` serverInfo.name (default: root `key`). */
@@ -166,7 +168,7 @@ export interface CliMcpToolConfig {
 	requiresEnv?: string[];
 }
 /**
- * Root-only. Opt-out and defaults for the `install` built-in (compiled binaries only).
+ * Opt-out and defaults for the `install` built-in (compiled binaries only; program root only).
  */
 export interface CliInstallConfig {
 	/** When `false`, hide/disable `install` (default: enabled). */
@@ -175,9 +177,9 @@ export interface CliInstallConfig {
 	prefix?: string;
 }
 /**
- * Base properties shared by all command nodes.
+ * Base properties shared by all nodes in the user command tree.
  */
-export interface CliCommandBase {
+export interface CliNodeBase {
 	/** Program or command key (e.g., "myapp", "stat", "owner"). */
 	key: string;
 	/** Short description shown in help. */
@@ -186,49 +188,50 @@ export interface CliCommandBase {
 	notes?: string;
 	/** Global or command-level flags/options. */
 	options?: CliOption[];
-	/** Root-only. When set, enables the `mcp` built-in subcommand. */
-	mcpServer?: CliMcpServerConfig;
-	/** Root-only. Opt-out and defaults for `install` (compiled binaries only). */
-	install?: CliInstallConfig;
-	/** Leaf-only. Per-tool MCP exposure and metadata. */
-	mcpTool?: CliMcpToolConfig;
 }
 /**
- * A command node: either a routing group (has commands) or a leaf (has handler).
- *
- * The value passed to cliRun is the program root: name is the app/binary name.
- * The root may be a routing group or a leaf command.
+ * A leaf command node with a handler and optional positionals.
  */
-export type CliCommand = (CliCommandBase & {
+export type CliLeaf = CliNodeBase & {
 	/** Handler function for leaf commands. */
 	handler: CliHandler;
 	/** Positional argument definitions. */
 	positionals?: CliPositional[];
-	/** Nested subcommands (empty for leaf commands). */
-	commands?: never;
-	/** Default subcommand (routing commands only). */
-	fallbackCommand?: never;
-	/** How fallbackCommand is applied at this routing node (routing commands only). */
-	fallbackMode?: never;
-}) | (CliCommandBase & {
+	/** Per-tool MCP exposure and metadata. */
+	mcpTool?: CliMcpToolConfig;
+};
+/**
+ * A routing command node with nested subcommands.
+ */
+export type CliRouter = CliNodeBase & {
 	/** Nested subcommands. */
-	commands: CliCommand[];
+	commands: CliNode[];
 	/** Default subcommand when argv omits a command or uses an unknown token at this routing node. */
 	fallbackCommand?: string;
-	/** How fallbackCommand is applied at this routing node (not root-only). */
+	/** How fallbackCommand is applied at this routing node. */
 	fallbackMode?: CliFallbackMode;
-	/** Handler function (leaf commands only). */
-	handler?: never;
-	/** Positional argument definitions (leaf commands only). */
-	positionals?: never;
-});
+};
+/**
+ * A node in the user-defined command tree (router or leaf).
+ */
+export type CliNode = CliLeaf | CliRouter;
+/**
+ * Program root passed to `cliRun` / `cliInvoke`.
+ * May be a leaf or router, plus optional program-level MCP and install config.
+ */
+export type CliProgram = CliNode & {
+	/** When set, enables the `mcp` built-in subcommand. */
+	mcpServer?: CliMcpServerConfig;
+	/** Opt-out and defaults for `install` (compiled binaries only). */
+	install?: CliInstallConfig;
+};
 /**
  * Handler closure type for leaf commands.
  * Supports both sync and async handlers.
  */
 export type CliHandler = (ctx: CliContext) => void | Promise<void>;
 /**
- * Error thrown when the static CliCommand tree violates ArgsBarg rules.
+ * Error thrown when the static CLI tree violates ArgsBarg rules.
  */
 export declare class CliSchemaValidationError extends Error {
 	/** Creates a schema validation error with a human-readable rule violation. */
@@ -253,8 +256,8 @@ export interface CliInvokeResult {
  * Parses argv against the user root, runs the leaf handler, and returns captured output.
  * Never calls process.exit.
  */
-export declare function cliInvoke(root: CliCommand, argv: string[]): Promise<CliInvokeResult>;
-export declare function cliRun(root: CliCommand, argv?: string[]): Promise<never>;
+export declare function cliInvoke(root: CliProgram, argv: string[]): Promise<CliInvokeResult>;
+export declare function cliRun(program: CliProgram, argv?: string[]): Promise<never>;
 export declare function cliErrWithHelp(ctx: CliContext, msg: string): never;
 /** True when stdin is a TTY. */
 export declare const isInteractiveTty: boolean;

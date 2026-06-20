@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { generateSkillBundle, type SkillTarget } from "./generate.ts";
 
 export interface SkillInstallOpts {
@@ -24,7 +24,7 @@ function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean):
 }
 
 /** Writes SKILL.md and reference.md; returns changed file paths. */
-export function cliSkillInstall(root: CliCommand, target: SkillTarget, opts: SkillInstallOpts): string[] {
+export function cliSkillInstall(root: CliProgram, target: SkillTarget, opts: SkillInstallOpts): string[] {
   const bundle = generateSkillBundle(root, target);
   const dir = resolveSkillDir(target, bundle.dirName, opts.global ?? false);
   const changed: string[] = [];

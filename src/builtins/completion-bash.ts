@@ -1,4 +1,4 @@
-import { CliCommand, CliOptionKind } from "../types.ts";
+import { CliNode, CliRouter, CliOptionKind } from "../types.ts";
 import { collectScopes, type ScopeRec } from "./scopes.ts";
 import {
   escShellSingleQuoted,
@@ -161,7 +161,7 @@ function emitEnumReplyBash(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
-function emitMainBodyBash(schema: CliCommand, ident: string): string {
+function emitMainBodyBash(schema: CliRouter, ident: string): string {
   const main = mainName(schema.key);
   let o = "_${main}() {\n".replace("${main}", main);
   o += "  local cur=\"${COMP_WORDS[COMP_CWORD]}\"\n";
@@ -196,7 +196,7 @@ function emitMainBodyBash(schema: CliCommand, ident: string): string {
 }
 
 /** Returns a self-contained bash `complete` script for the given program schema. */
-export function completionBashScript(schema: CliCommand): string {
+export function completionBashScript(schema: CliRouter): string {
   const ident = identToken(schema.key);
   const scopes = collectScopes(schema);
   const pathIndex: Record<string, number> = {};

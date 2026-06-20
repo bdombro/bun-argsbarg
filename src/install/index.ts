@@ -1,5 +1,5 @@
 import { readSync } from "node:fs";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { cliSkillInstall } from "../skill/install.ts";
 import { checkMcpConflict, expectedMcpEntry } from "./mcp-config.ts";
 import {
@@ -74,7 +74,7 @@ function promptConfirm(): boolean {
 }
 
 function runSkillAction(
-  root: CliCommand,
+  root: CliProgram,
   kind: "cursor-skill" | "claude-skill",
   opts: InstallOpts,
 ): string[] {
@@ -87,7 +87,7 @@ function runSkillAction(
 }
 
 function executePlan(
-  root: CliCommand,
+  root: CliProgram,
   actions: Array<InstallAction | UninstallAction>,
   opts: InstallOpts,
 ): string[] {
@@ -114,7 +114,7 @@ function executePlan(
 }
 
 /** Main install command orchestrator. */
-export async function cliInstall(root: CliCommand, rawOpts: Record<string, string>): Promise<never> {
+export async function cliInstall(root: CliProgram, rawOpts: Record<string, string>): Promise<never> {
   const opts = parseInstallOpts(rawOpts);
   const err = validateOpts(opts);
   if (err) {

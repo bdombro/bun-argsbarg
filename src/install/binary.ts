@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { InstallPaths } from "./paths.ts";
 import {
   buildPathRcBlock,
@@ -17,7 +17,7 @@ export interface BinaryInstallResult {
 }
 
 /** Copies the running binary to the install path and patches rc files when shells are detected. */
-export function installBinary(root: CliCommand, paths: InstallPaths, dry: boolean): BinaryInstallResult {
+export function installBinary(root: CliProgram, paths: InstallPaths, dry: boolean): BinaryInstallResult {
   const changed: string[] = [];
   const shells = detectShells();
   let patchedBashRc = false;
@@ -58,7 +58,7 @@ export function installBinary(root: CliCommand, paths: InstallPaths, dry: boolea
 }
 
 /** Removes binary and rc marker blocks. */
-export function uninstallBinary(root: CliCommand, paths: InstallPaths, dry: boolean): string[] {
+export function uninstallBinary(root: CliProgram, paths: InstallPaths, dry: boolean): string[] {
   const changed: string[] = [];
   if (existsSync(paths.binaryPath)) {
     if (!dry) unlinkSync(paths.binaryPath);

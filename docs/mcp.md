@@ -9,12 +9,12 @@ MCP is **opt-in**. Apps that do not set `mcpServer` on the program root behave e
 1. Add `mcpServer` to your program root:
 
 ```typescript
-const cli: CliCommand = {
+const cli = {
   key: "myapp",
   description: "My app.",
   mcpServer: { name: "myapp", version: "1.0.0" },
   commands: [/* ... */],
-};
+} satisfies CliProgram;
 ```
 
 `mcpServer: {}` is enough to enable the server. Optional fields override defaults (see [Configuration](#configuration)).
@@ -62,7 +62,7 @@ Any host that spawns a subprocess and wires stdin/stdout works the same way: the
 
 ## Configuration
 
-Set `mcpServer` on the **program root only** (the `CliCommand` passed to `cliRun`). Validation rejects `mcpServer` on nested nodes.
+Set `mcpServer` on the **program root only** (the `CliProgram` passed to `cliRun`). Validation rejects `mcpServer` on nested nodes.
 
 | Field | Default | Purpose |
 | --- | --- | --- |

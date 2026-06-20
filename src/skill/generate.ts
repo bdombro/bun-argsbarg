@@ -5,7 +5,7 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { collectMcpTools, sanitizeToolSegment } from "../mcp/tools.ts";
-import { CliCommand, CliOptionKind } from "../types.ts";
+import { CliProgram, CliOptionKind } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
 
@@ -22,7 +22,7 @@ function truncate(text: string, maxLen: number): string {
 }
 
 /** Builds third-person skill description for YAML frontmatter. */
-function skillDescription(root: CliCommand): string {
+function skillDescription(root: CliProgram): string {
   const tools = collectMcpTools(root);
   const paths = tools.map((t) => (t.path.length > 0 ? t.path.join(" ") : root.key));
   const sample = paths.slice(0, 5).join(", ");
@@ -32,7 +32,7 @@ function skillDescription(root: CliCommand): string {
 }
 
 /** Formats one command line for the catalog section. */
-function formatCommandEntry(root: CliCommand, tool: ReturnType<typeof collectMcpTools>[number]): string {
+function formatCommandEntry(root: CliProgram, tool: ReturnType<typeof collectMcpTools>[number]): string {
   const cliPath = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
   let line = `- **\`${cliPath}\`** — ${tool.description}`;
   const opts = collectOptionDefs(root, tool.path);
@@ -52,7 +52,7 @@ function formatCommandEntry(root: CliCommand, tool: ReturnType<typeof collectMcp
 }
 
 /** Builds SKILL.md body for the given target. */
-function buildSkillMd(root: CliCommand, target: SkillTarget, dirName: string): string {
+function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): string {
   const name = sanitizeToolSegment(root.key);
   const description = skillDescription(root);
   const tools = collectMcpTools(root);
@@ -159,7 +159,7 @@ function buildSkillMd(root: CliCommand, target: SkillTarget, dirName: string): s
 }
 
 /** Builds reference.md with pretty-printed schema JSON. */
-function buildReferenceMd(root: CliCommand): string {
+function buildReferenceMd(root: CliProgram): string {
   return [
     `# ${root.key} — CLI reference`,
     "",
@@ -173,7 +173,7 @@ function buildReferenceMd(root: CliCommand): string {
 }
 
 /** Generates SKILL.md and reference.md for Cursor or Claude Code. */
-export function generateSkillBundle(root: CliCommand, target: SkillTarget): SkillBundle {
+export function generateSkillBundle(root: CliProgram, target: SkillTarget): SkillBundle {
   const dirName = sanitizeToolSegment(root.key);
   return {
     dirName,

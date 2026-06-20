@@ -2,26 +2,25 @@
 This module runs parsed commands, help, errors, completion, and leaf handlers.
 */
 
+import { resolveCapabilities } from "./capabilities.ts";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliPresentationRoot } from "./builtins/presentation.ts";
+import type { CliRouter } from "./types.ts";
+import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
 import { isCompiledExecutable } from "./install/compiled.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
-import { CliCommand } from "./types.ts";
-import { cliValidateRoot } from "./validate.ts";
+import { cliValidateProgram } from "./validate.ts";
 
-function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
-  if (root.handler) {
-    return root;
-  }
-  return cliPresentationRoot(root);
+function cliRootMergedWithBuiltins(program: CliProgram): CliRouter {
+  return cliPresentationRoot(program);
 }
 
-export async function cliRun(root: CliCommand, argv: string[] = process.argv.slice(2)): Promise<never> {
+export async function cliRun(program: CliProgram, argv: string[] = process.argv.slice(2)): Promise<never> {
   try {
-    cliValidateRoot(root);
+    cliValidateProgram(program);
   } catch (err) {
     if (err instanceof Error) {
       process.stderr.write(err.message + "\n");
@@ -31,7 +30,9 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  if (argv.length >= 1 && argv[0] === "mcp" && !root.mcpServer) {
+  const caps = resolveCapabilities(program);
+
+  if (argv.length >= 1 && argv[0] === "mcp" && !caps.mcp) {
     process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
     process.exit(1);
   }
@@ -41,31 +42,35 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  let parseRoot: CliCommand;
+  let parseRoot: CliNode;
+  let completionParseRoot: CliRouter = cliRootMergedWithBuiltins(program);
   let isLeafCompletionIntercept = false;
 
-  if (root.handler) {
-    const intercept = builtinInterceptRoot(root, argv);
-    if (intercept.isLeafCompletionIntercept || intercept.parseRoot !== root) {
+  if (isCliLeaf(program)) {
+    const intercept = builtinInterceptRoot(program, argv);
+    if (intercept.isLeafCompletionIntercept || intercept.parseRoot !== program) {
       parseRoot = intercept.parseRoot;
+      completionParseRoot = isCliRouter(intercept.parseRoot)
+        ? intercept.parseRoot
+        : cliRootMergedWithBuiltins(program);
       isLeafCompletionIntercept = intercept.isLeafCompletionIntercept;
     } else {
-      parseRoot = root;
+      parseRoot = program;
     }
   } else {
-    parseRoot = cliRootMergedWithBuiltins(root);
+    parseRoot = cliRootMergedWithBuiltins(program);
   }
 
   let pr = parse(parseRoot, argv);
   pr = postParseValidate(parseRoot, pr);
 
   if (pr.kind === ParseKind.Help) {
-    process.stdout.write(cliHelpRender(cliPresentationRoot(root), pr.helpPath, false));
+    process.stdout.write(cliHelpRender(cliPresentationRoot(program), pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
   }
 
   if (pr.kind === ParseKind.Schema) {
-    process.stdout.write(cliSchemaJson(root));
+    process.stdout.write(cliSchemaJson(program));
     process.exit(0);
   }
 
@@ -73,17 +78,21 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     const color = process.stderr.isTTY;
     const msg = color ? `\u001B[31m${pr.errorMsg}\u001B[0m` : pr.errorMsg;
     process.stderr.write(msg + "\n");
-    process.stderr.write(cliHelpRender(cliPresentationRoot(root), pr.errorHelpPath, true));
+    process.stderr.write(cliHelpRender(cliPresentationRoot(program), pr.errorHelpPath, true));
     process.exit(1);
   }
 
   if (pr.kind === ParseKind.Ok) {
-    await dispatchBuiltin(root, pr, { isLeafCompletionIntercept, parseRoot });
+    await dispatchBuiltin(program, pr, { isLeafCompletionIntercept, parseRoot: completionParseRoot });
   }
 
-  let current = parseRoot;
+  let current: CliNode = parseRoot;
   for (const seg of pr.path) {
-    const ch = (current.commands ?? []).find((candidate: CliCommand) => candidate.key === seg);
+    if (!isCliRouter(current)) {
+      process.stderr.write("Internal error: missing handler for path.\n");
+      process.exit(1);
+    }
+    const ch = current.commands.find((candidate) => candidate.key === seg);
     if (!ch) {
       process.stderr.write("Internal error: missing handler for path.\n");
       process.exit(1);
@@ -91,12 +100,12 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     current = ch;
   }
 
-  if (!current.handler) {
+  if (!isCliLeaf(current) || !current.handler) {
     process.stderr.write("Internal error: missing handler for path.\n");
     process.exit(1);
   }
 
-  const ctx = new CliContext(parseRoot.key, pr.path, pr.args, pr.opts, parseRoot, "cli");
+  const ctx = new CliContext(program.key, pr.path, pr.args, pr.opts, program, "cli");
   try {
     await Promise.resolve(current.handler(ctx));
     process.exit(0);

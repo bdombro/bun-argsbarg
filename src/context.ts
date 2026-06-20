@@ -7,7 +7,8 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
-import type { CliCommand, CliInvocation } from "./types.ts";
+import type { CliInvocation, CliNode, CliProgram } from "./types.ts";
+import { isCliLeaf, isCliRouter } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
 
 /**
@@ -17,17 +18,22 @@ export class CliContext {
   readonly appName: string;
   readonly commandPath: string[];
   readonly args: string[];
-  readonly schema: CliCommand;
+  readonly schema: CliProgram;
   readonly opts: Record<string, string>;
   readonly invocation: CliInvocation;
 
-  /** Captures the merged program root, routed path, positional words, and option map for a leaf handler. */
+  /** Program root schema (same as {@link schema}). */
+  get program(): CliProgram {
+    return this.schema;
+  }
+
+  /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
     appName: string,
     commandPath: string[],
     args: string[],
     opts: Record<string, string>,
-    schema: CliCommand,
+    schema: CliProgram,
     invocation: CliInvocation = "cli",
   ) {
     this.appName = appName;
@@ -79,14 +85,23 @@ export class CliContext {
   private _positionalMap(): Record<string, string | string[]> {
     if (this._posMap) return this._posMap;
 
-    let node: CliCommand = this.schema;
+    let node: CliNode = this.schema;
     for (const seg of this.commandPath) {
-      const child = (node.commands ?? []).find((c) => c.key === seg);
+      if (!isCliRouter(node)) {
+        this._posMap = {};
+        return {};
+      }
+      const child = node.commands.find((c) => c.key === seg);
       if (!child) {
         this._posMap = {};
         return {};
       }
       node = child;
+    }
+
+    if (!isCliLeaf(node)) {
+      this._posMap = {};
+      return {};
     }
 
     const map: Record<string, string | string[]> = {};

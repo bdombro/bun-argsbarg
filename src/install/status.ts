@@ -1,4 +1,4 @@
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
 import type { InstallOpts } from "./plan.ts";
 import { resolveInstallPaths } from "./paths.ts";
@@ -20,7 +20,7 @@ export function installErr(msg: string): void {
 }
 
 /** Prints install status to stdout (human or JSON). */
-export function printInstallStatus(root: CliCommand, opts: InstallOpts): void {
+export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
   const paths = resolveInstallPaths(root, opts);
   const detected = detectInstalledArtifacts(paths);
   const status = buildInstallStatus(paths, detected);

@@ -7,9 +7,9 @@ readers can copy the pattern into their own scripts quickly.
 It demonstrates the minimal Bun integration path.
 */
 
-import { cliRun, CliCommand, CliOptionKind } from "../src/index.ts";
+import { cliRun, CliProgram, CliOptionKind } from "../src/index.ts";
 
-const cli: CliCommand = {
+const cli = {
   key: "minimal.ts",
   description: "Tiny demo.",
   positionals: [
@@ -36,6 +36,6 @@ const cli: CliCommand = {
     }
     console.log(`hello ${name}`);
   },
-};
+} satisfies CliProgram;
 
 await cliRun(cli);

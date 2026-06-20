@@ -6,7 +6,7 @@ process.exit so MCP tool calls can run handlers repeatedly.
 
 import { CliContext } from "./context.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
-import { CliCommand } from "./types.ts";
+import { type CliNode, type CliProgram, isCliRouter } from "./types.ts";
 import { format } from "node:util";
 
 /** Outcome of a non-exiting CLI invocation. */
@@ -40,7 +40,7 @@ class CliInvokeExit extends Error {
 }
 
 /** Looks up a subcommand or routing node by `key`. */
-function findChild(cmds: CliCommand[], name: string): CliCommand | undefined {
+function findChild(cmds: CliNode[], name: string): CliNode | undefined {
   return cmds.find((c) => c.key === name);
 }
 
@@ -48,7 +48,7 @@ function findChild(cmds: CliCommand[], name: string): CliCommand | undefined {
  * Parses argv against the user root, runs the leaf handler, and returns captured output.
  * Never calls process.exit.
  */
-export async function cliInvoke(root: CliCommand, argv: string[]): Promise<CliInvokeResult> {
+export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliInvokeResult> {
   let pr = parse(root, argv);
   pr = postParseValidate(root, pr);
 
@@ -82,9 +82,18 @@ export async function cliInvoke(root: CliCommand, argv: string[]): Promise<CliIn
     };
   }
 
-  let current: CliCommand = root;
+  let current: CliProgram = root;
   for (const seg of pr.path) {
-    const ch = findChild(current.commands ?? [], seg);
+    if (!isCliRouter(current)) {
+      return {
+        kind: "error",
+        exitCode: 1,
+        stdout: "",
+        stderr: "Internal error: missing handler for path.",
+        errorMsg: "Internal error: missing handler for path.",
+      };
+    }
+    const ch = findChild(current.commands, seg);
     if (!ch) {
       return {
         kind: "error",

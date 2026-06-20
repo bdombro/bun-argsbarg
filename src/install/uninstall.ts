@@ -1,6 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
@@ -20,7 +20,7 @@ function scopeAll(opts: InstallOpts): boolean {
 
 /** Builds uninstall actions from detected artifacts. */
 export function buildUninstallPlan(
-  root: CliCommand,
+  root: CliProgram,
   paths: InstallPaths,
   opts: InstallOpts,
 ): UninstallAction[] {

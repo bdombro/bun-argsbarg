@@ -7,9 +7,9 @@ readers can copy the pattern into their own scripts quickly.
 It demonstrates the minimal Bun integration path.
 */
 
-import { cliRun, CliCommand, CliOptionKind, CliFallbackMode, isInteractiveTty } from "../src/index.ts";
+import { cliRun, CliProgram, CliOptionKind, CliFallbackMode, isInteractiveTty } from "../src/index.ts";
 
-const cli: CliCommand = {
+const cli = {
   key: "option-required.ts",
   description: "Demo of a required option.",
   options: [
@@ -42,6 +42,6 @@ const cli: CliCommand = {
     console.log(`requiredNonTty: ${requiredNonTty}`);
     console.log(`optional: ${optional}`);
   },
-};
+} satisfies CliProgram;
 
 await cliRun(cli);

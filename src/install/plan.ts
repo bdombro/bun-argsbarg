@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { installBinary } from "./binary.ts";
 import { installCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
@@ -45,12 +45,12 @@ function wantsSkill(opts: InstallOpts): boolean {
   return !!(opts.all || opts.skill);
 }
 
-function wantsMcp(opts: InstallOpts, root: CliCommand): boolean {
+function wantsMcp(opts: InstallOpts, root: CliProgram): boolean {
   return !!(opts.all || opts.mcp) && root.mcpServer !== undefined;
 }
 
 /** Builds install actions for normal mode (--all / scoped targets). */
-export function buildInstallPlan(root: CliCommand, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
+export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   const actions: InstallAction[] = [];
   const dry = !!opts.dry;
 
@@ -148,7 +148,7 @@ export function buildInstallPlan(root: CliCommand, paths: InstallPaths, opts: In
 }
 
 /** Builds update actions for artifacts already installed. */
-export function buildUpdatePlan(root: CliCommand, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
+export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   const detected = detectInstalledArtifacts(paths);
   const scoped: InstallOpts = {
     bin: true,

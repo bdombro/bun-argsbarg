@@ -35,9 +35,9 @@ Shell completions! -->
 ## Usage
 
 ```typescript
-import { cliRun, CliCommand, CliOptionKind } from "argsbarg";
+import { cliRun, type CliProgram, CliOptionKind } from "argsbarg";
 
-const cli: CliCommand = {
+const cli = {
   key: "helloapp",
   description: "Tiny demo.",
   positionals: [
@@ -64,7 +64,7 @@ const cli: CliCommand = {
     }
     console.log(`hello ${name}`);
   },
-};
+} satisfies CliProgram;
 
 await cliRun(cli);
 ```
@@ -77,7 +77,7 @@ await cliRun(cli);
 
 Everything you need for a first-class CLI:
 
-- **Nested subcommands** (`CliCommand` with `commands` for groups, `handler` for leaves)
+- **Nested subcommands** (router nodes with `commands`, leaf nodes with `handler`)
 - **POSIX-style options** (`-x`, `--long`, `--long=value`) — kinds: presence, string, number, **enum** (`choices` array)
 - **Bundled presence flags** (`-abc`)
 - **Positional arguments and varargs tails** (`CliPositional` objects on `positionals`)
@@ -147,7 +147,7 @@ bun add bun-argsbarg
 
 ## How it works
 
-1. Build a **program root** `CliCommand` using pure TypeScript objects: `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. The root must not set `handler` or declare `positionals` (validated at startup). Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
+1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
 2. Call `await cliRun(root)` with that root — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
 
@@ -181,7 +181,11 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.typedOpt<T>("custom", parseFn)` — pass a custom parsing function for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
-- `ctx.schema` — merged program root (`CliCommand`) for contextual help.
+- `ctx.schema` / `ctx.program` — program root (`CliProgram`) for contextual help.
+
+### Capabilities (built-ins)
+
+`completion`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, compiled binary + `install`). Reserved command names follow from that config: `completion` and `install` are always reserved; `mcp` is reserved when `mcpServer` is set.
 
 
 
@@ -192,7 +196,7 @@ Check the `examples/` directory for full working scripts:
 | Example | File | Shows |
 | --- | --- | --- |
 | `ArgsBargMinimal` | `examples/minimal.ts` | String + presence flags, `MissingOrUnknown` fallback. |
-| `ArgsBargNested` | `examples/nested.ts` | Nested `CliCommand` tree, positional tails, async handlers. |
+| `ArgsBargNested` | `examples/nested.ts` | Nested command tree, positional tails, async handlers. |
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -214,7 +218,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 
 | Symbol | Role |
 | --- | --- |
-| `CliCommand`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
+| `CliProgram`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
 | `CliOptionKind`, `CliFallbackMode` | Option kinds (`Presence`, `String`, `Number`, `Enum`) and root fallback behavior. |
 | `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
 | `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.args`, `ctx.invocation`, …). |

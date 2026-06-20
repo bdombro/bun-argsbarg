@@ -2,8 +2,6 @@
 This module defines the CLI schema, option kinds, and fallback modes.
 It is the shared declarative model that parsing, validation, help, and completion all
 read from, so the package has one source of truth.
-
-It gives the package one shared model for both library users and internal modules.
 */
 
 import type { CliContext } from "./context.ts";
@@ -47,7 +45,7 @@ export enum CliFallbackMode {
 }
 
 /**
- * A named flag or value option (`--long`, `-short`), listed on `CliCommand.options`.
+ * A named flag or value option (`--long`, `-short`), listed on command `options`.
  */
 export interface CliOption {
   /** Option name (e.g., "name", "verbose"). */
@@ -68,7 +66,7 @@ export interface CliOption {
 }
 
 /**
- * An ordered positional argument slot, listed on `CliCommand.positionals`.
+ * An ordered positional argument slot, listed on leaf `positionals`.
  */
 export interface CliPositional {
   /** Positional name (used in help and error messages). */
@@ -90,7 +88,7 @@ export interface CliPositional {
 }
 
 /**
- * Root-only. Enables `myapp mcp` and MCP stdio server metadata.
+ * Enables `myapp mcp` and MCP stdio server metadata (program root only).
  */
 export interface CliMcpServerConfig {
   /** `initialize` serverInfo.name (default: root `key`). */
@@ -154,7 +152,7 @@ export interface CliMcpToolConfig {
 }
 
 /**
- * Root-only. Opt-out and defaults for the `install` built-in (compiled binaries only).
+ * Opt-out and defaults for the `install` built-in (compiled binaries only; program root only).
  */
 export interface CliInstallConfig {
   /** When `false`, hide/disable `install` (default: enabled). */
@@ -164,9 +162,9 @@ export interface CliInstallConfig {
 }
 
 /**
- * Base properties shared by all command nodes.
+ * Base properties shared by all nodes in the user command tree.
  */
-export interface CliCommandBase {
+export interface CliNodeBase {
   /** Program or command key (e.g., "myapp", "stat", "owner"). */
   key: string;
   /** Short description shown in help. */
@@ -175,45 +173,57 @@ export interface CliCommandBase {
   notes?: string;
   /** Global or command-level flags/options. */
   options?: CliOption[];
-  /** Root-only. When set, enables the `mcp` built-in subcommand. */
-  mcpServer?: CliMcpServerConfig;
-  /** Root-only. Opt-out and defaults for `install` (compiled binaries only). */
-  install?: CliInstallConfig;
-  /** Leaf-only. Per-tool MCP exposure and metadata. */
-  mcpTool?: CliMcpToolConfig;
 }
 
 /**
- * A command node: either a routing group (has commands) or a leaf (has handler).
- *
- * The value passed to cliRun is the program root: name is the app/binary name.
- * The root may be a routing group or a leaf command.
+ * A leaf command node with a handler and optional positionals.
  */
-export type CliCommand =
-  | (CliCommandBase & {
-      /** Handler function for leaf commands. */
-      handler: CliHandler;
-      /** Positional argument definitions. */
-      positionals?: CliPositional[];
-      /** Nested subcommands (empty for leaf commands). */
-      commands?: never;
-      /** Default subcommand (routing commands only). */
-      fallbackCommand?: never;
-      /** How fallbackCommand is applied at this routing node (routing commands only). */
-      fallbackMode?: never;
-    })
-  | (CliCommandBase & {
-      /** Nested subcommands. */
-      commands: CliCommand[];
-      /** Default subcommand when argv omits a command or uses an unknown token at this routing node. */
-      fallbackCommand?: string;
-      /** How fallbackCommand is applied at this routing node (not root-only). */
-      fallbackMode?: CliFallbackMode;
-      /** Handler function (leaf commands only). */
-      handler?: never;
-      /** Positional argument definitions (leaf commands only). */
-      positionals?: never;
-    });
+export type CliLeaf = CliNodeBase & {
+  /** Handler function for leaf commands. */
+  handler: CliHandler;
+  /** Positional argument definitions. */
+  positionals?: CliPositional[];
+  /** Per-tool MCP exposure and metadata. */
+  mcpTool?: CliMcpToolConfig;
+};
+
+/**
+ * A routing command node with nested subcommands.
+ */
+export type CliRouter = CliNodeBase & {
+  /** Nested subcommands. */
+  commands: CliNode[];
+  /** Default subcommand when argv omits a command or uses an unknown token at this routing node. */
+  fallbackCommand?: string;
+  /** How fallbackCommand is applied at this routing node. */
+  fallbackMode?: CliFallbackMode;
+};
+
+/**
+ * A node in the user-defined command tree (router or leaf).
+ */
+export type CliNode = CliLeaf | CliRouter;
+
+/**
+ * Program root passed to `cliRun` / `cliInvoke`.
+ * May be a leaf or router, plus optional program-level MCP and install config.
+ */
+export type CliProgram = CliNode & {
+  /** When set, enables the `mcp` built-in subcommand. */
+  mcpServer?: CliMcpServerConfig;
+  /** Opt-out and defaults for `install` (compiled binaries only). */
+  install?: CliInstallConfig;
+};
+
+/** True when the node is a leaf (has a handler). */
+export function isCliLeaf(node: CliNode): node is CliLeaf {
+  return "handler" in node && typeof node.handler === "function";
+}
+
+/** True when the node is a router (has subcommands). */
+export function isCliRouter(node: CliNode): node is CliRouter {
+  return "commands" in node && Array.isArray(node.commands);
+}
 
 /**
  * Handler closure type for leaf commands.
@@ -222,7 +232,7 @@ export type CliCommand =
 export type CliHandler = (ctx: CliContext) => void | Promise<void>;
 
 /**
- * Error thrown when the static CliCommand tree violates ArgsBarg rules.
+ * Error thrown when the static CLI tree violates ArgsBarg rules.
  */
 export class CliSchemaValidationError extends Error {
   /** Creates a schema validation error with a human-readable rule violation. */

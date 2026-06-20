@@ -1,9 +1,9 @@
-import { CliCommand } from "../types.ts";
+import { type CliLeaf, type CliNode, type CliRouter } from "../types.ts";
 
 /**
  * Builds the static `completion` / `bash` / `zsh` / `fish` command subtree (merged into the program root at runtime).
  */
-export function cliBuiltinCompletionGroup(appName: string): CliCommand {
+export function cliBuiltinCompletionGroup(appName: string): CliRouter {
   return {
     key: "completion",
     description: "Generate the autocompletion script for shells.",

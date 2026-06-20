@@ -1,10 +1,13 @@
-import { CliCommand } from "../types.ts";
+import { resolveCapabilities } from "../capabilities.ts";
+import type { CliNode, CliProgram, CliRouter } from "../types.ts";
+import { isCliLeaf, isCliRouter } from "../types.ts";
 import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
+import { cliPresentationRoot } from "./presentation.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
 import { cliInstall } from "../install/index.ts";
 import { isCompiledExecutable } from "../install/compiled.ts";
@@ -13,22 +16,32 @@ import { ParseKind } from "../parse.ts";
 
 export interface DispatchBuiltinOpts {
   isLeafCompletionIntercept: boolean;
-  parseRoot: CliCommand;
+  parseRoot: CliRouter;
+}
+
+function completionSchema(program: CliProgram, opts: DispatchBuiltinOpts): CliRouter {
+  if (opts.isLeafCompletionIntercept) {
+    return cliPresentationRoot(program);
+  }
+  return opts.parseRoot;
 }
 
 /**
  * Handles built-in commands after parse.
  */
 export async function dispatchBuiltin(
-  root: CliCommand,
+  program: CliProgram,
   pr: ParseResult,
   opts: DispatchBuiltinOpts,
 ): Promise<void> {
   if (pr.kind !== ParseKind.Ok) {
     return;
   }
+
+  const caps = resolveCapabilities(program);
+
   if (pr.path[0] === "completion") {
-    const schemaForCompletion = opts.isLeafCompletionIntercept ? root : opts.parseRoot;
+    const schemaForCompletion = completionSchema(program, opts);
     if (pr.path[1] === "bash") {
       process.stdout.write(completionBashScript(schemaForCompletion));
       process.exit(0);
@@ -45,7 +58,7 @@ export async function dispatchBuiltin(
   }
 
   if (pr.path[0] === "mcp") {
-    if (!root.mcpServer) {
+    if (!caps.mcp) {
       process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
       process.exit(1);
     }
@@ -53,7 +66,7 @@ export async function dispatchBuiltin(
       process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
       process.exit(1);
     }
-    await cliMcpServeStdio(root);
+    await cliMcpServeStdio(program);
     process.exit(0);
   }
 
@@ -64,7 +77,7 @@ export async function dispatchBuiltin(
       );
       process.exit(1);
     }
-    if (root.install?.enabled === false) {
+    if (!caps.install) {
       process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
       process.exit(1);
     }
@@ -72,52 +85,54 @@ export async function dispatchBuiltin(
       process.stderr.write("Unknown subcommand: install " + pr.path.slice(1).join(" ") + "\n");
       process.exit(1);
     }
-    await cliInstall(root, pr.opts);
+    await cliInstall(program, pr.opts);
   }
 }
 
 /** Built-in intercept roots for leaf programs. */
 export function builtinInterceptRoot(
-  root: CliCommand,
+  program: CliProgram,
   argv: string[],
-): { parseRoot: CliCommand; isLeafCompletionIntercept: boolean } {
-  if (!root.handler || argv.length < 1) {
-    return { parseRoot: root, isLeafCompletionIntercept: false };
+): { parseRoot: CliNode; isLeafCompletionIntercept: boolean } {
+  if (!isCliLeaf(program) || argv.length < 1) {
+    return { parseRoot: program, isLeafCompletionIntercept: false };
   }
 
+  const caps = resolveCapabilities(program);
   const first = argv[0];
+
   if (first === "completion") {
     return {
       parseRoot: {
-        key: root.key,
-        description: root.description,
-        commands: [completionGroup(root.key)],
-      } as CliCommand,
+        key: program.key,
+        description: program.description,
+        commands: [completionGroup(program.key)],
+      },
       isLeafCompletionIntercept: true,
     };
   }
 
-  if (first === "install" && isCompiledExecutable() && root.install?.enabled !== false) {
+  if (first === "install" && caps.install) {
     return {
       parseRoot: {
-        key: root.key,
-        description: root.description,
-        commands: [cliBuiltinInstallCommand(root)],
-      } as CliCommand,
+        key: program.key,
+        description: program.description,
+        commands: [cliBuiltinInstallCommand(program)],
+      },
       isLeafCompletionIntercept: false,
     };
   }
 
-  if (first === "mcp" && root.mcpServer !== undefined) {
+  if (first === "mcp" && caps.mcp) {
     return {
       parseRoot: {
-        key: root.key,
-        description: root.description,
+        key: program.key,
+        description: program.description,
         commands: [cliBuiltinMcpCommand()],
-      } as CliCommand,
+      },
       isLeafCompletionIntercept: false,
     };
   }
 
-  return { parseRoot: root, isLeafCompletionIntercept: false };
+  return { parseRoot: program, isLeafCompletionIntercept: false };
 }

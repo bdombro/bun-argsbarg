@@ -1,4 +1,4 @@
-import { CliCommand, CliOptionKind } from "../types.ts";
+import { CliNode, CliRouter, CliOptionKind } from "../types.ts";
 import { collectScopes, type ScopeRec } from "./scopes.ts";
 import {
   escShellSingleQuoted,
@@ -191,7 +191,7 @@ function emitEnumReplyZsh(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
-function emitMainBodyZsh(schema: CliCommand, ident: string): string {
+function emitMainBodyZsh(schema: CliRouter, ident: string): string {
   const main = mainName(schema.key);
   let o = "_${main}() {\n".replace("${main}", main);
   o += "  local curcontext=\"$curcontext\" ret=1\n";
@@ -224,7 +224,7 @@ function emitMainBodyZsh(schema: CliCommand, ident: string): string {
 }
 
 /** Returns a self-contained zsh completion script for the given program schema. */
-export function completionZshScript(schema: CliCommand): string {
+export function completionZshScript(schema: CliRouter): string {
   const ident = identToken(schema.key);
   const scopes = collectScopes(schema);
   const pathIndex: Record<string, number> = {};

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- **`CliCommand` removed** — use `CliProgram` as the schema type passed to `cliRun` / `cliInvoke`. The runtime object shape is unchanged; only the type name and how you annotate it differ.
+
+```typescript
+// 1.x
+import { type CliCommand } from "argsbarg";
+const cli: CliCommand = { ... };
+// 2.0
+import { type CliProgram } from "argsbarg";
+const cli = { ... } satisfies CliProgram;  // or : CliProgram
+```
+
+- **Internal type split** — `CliNode` / `CliLeaf` / `CliRouter` model the user command tree; `CliProgram` adds root-only `mcpServer` and `install`. These are not exported from the public API.
+- **Capabilities resolver** — reserved built-in names (`completion`, `install`, `mcp`) are derived from program config and runtime (compiled binary), not from user-declared commands.
+
+### Added
+
+- **`ctx.program`** — alias for `ctx.schema` on `CliContext` (same `CliProgram` value).
+
 ## [1.5.0] - 2026-06-20
 
 ### Added

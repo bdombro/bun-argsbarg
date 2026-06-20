@@ -75,10 +75,10 @@ If an existing entry differs, the command exits with an error unless `--yes` is 
 ## Opt out
 
 ```typescript
-const cli: CliCommand = {
+const cli = {
   key: "myapp",
   description: "...",
   install: { enabled: false },
   // ...
-};
+} satisfies CliProgram;
 ```

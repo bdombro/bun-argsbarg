@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { InstallPaths } from "./paths.ts";
 
 export interface InstalledArtifacts {

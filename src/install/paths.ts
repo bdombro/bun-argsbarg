@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { sanitizeToolSegment } from "../mcp/tools.ts";
 
 export interface InstallPaths {
@@ -35,7 +35,7 @@ function expandTilde(path: string): string {
 }
 
 /** Resolves the binary install directory from CLI flag, env, or config. */
-export function resolveBindir(root: CliCommand, prefix?: string): string {
+export function resolveBindir(root: CliProgram, prefix?: string): string {
   const raw = prefix ?? process.env.INSTALL_PREFIX ?? root.install?.prefix;
   if (raw) {
     return expandTilde(raw);
@@ -44,7 +44,7 @@ export function resolveBindir(root: CliCommand, prefix?: string): string {
 }
 
 /** Resolves all install artifact paths for a program root. */
-export function resolveInstallPaths(root: CliCommand, opts: { prefix?: string }): InstallPaths {
+export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string }): InstallPaths {
   const home = userHome();
   const bindir = resolveBindir(root, opts.prefix);
   const key = root.key;

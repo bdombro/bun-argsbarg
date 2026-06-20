@@ -13,7 +13,7 @@ export { CliContext } from "./context.ts";
 export { cliErrWithHelp, cliRun } from "./runtime";
 export { CliFallbackMode, CliOptionKind, CliSchemaValidationError } from "./types.ts";
 export type {
-  CliCommand,
+  CliProgram,
   CliHandler,
   CliInvocation,
   CliMcpResource,

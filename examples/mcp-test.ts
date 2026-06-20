@@ -3,11 +3,11 @@
 MCP test fixture for subprocess integration tests only.
 */
 
-import { cliRun, CliCommand, CliOptionKind } from "../src/index.ts";
+import { cliRun, CliProgram, CliOptionKind } from "../src/index.ts";
 
 const envFilePath = process.env.ARGS_TEST_ENV_FILE;
 
-const cli: CliCommand = {
+const cli = {
   key: "mcp-test",
   description: "MCP integration test fixture.",
   mcpServer: {
@@ -61,6 +61,6 @@ const cli: CliCommand = {
       },
     },
   ],
-};
+} satisfies CliProgram;
 
 await cliRun(cli);

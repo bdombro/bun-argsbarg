@@ -4,7 +4,7 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import { cliInvoke } from "../invoke.ts";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { buildToolCallSuccess } from "./result.ts";
 import {
   allMcpResources,
@@ -41,7 +41,7 @@ function writeError(id: string | number | null | undefined, code: number, messag
 }
 
 /** Handles one NDJSON request line. */
-async function handleRequestLine(root: CliCommand, line: string): Promise<void> {
+async function handleRequestLine(root: CliProgram, line: string): Promise<void> {
   let req: JsonRpcRequest;
   try {
     req = JSON.parse(line) as JsonRpcRequest;
@@ -217,7 +217,7 @@ async function handleRequestLine(root: CliCommand, line: string): Promise<void> 
 }
 
 /** Runs the MCP NDJSON read loop on stdin until EOF. */
-export async function mcpServeStdioLoop(root: CliCommand): Promise<void> {
+export async function mcpServeStdioLoop(root: CliProgram): Promise<void> {
   let buffer = "";
   for await (const chunk of Bun.stdin.stream()) {
     buffer += new TextDecoder().decode(chunk);

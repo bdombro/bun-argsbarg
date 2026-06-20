@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { InstallPaths } from "./paths.ts";
 
 export interface McpServerEntry {
@@ -8,7 +8,7 @@ export interface McpServerEntry {
   args: string[];
 }
 
-export function expectedMcpEntry(root: CliCommand): McpServerEntry {
+export function expectedMcpEntry(root: CliProgram): McpServerEntry {
   return { command: root.key, args: ["mcp"] };
 }
 

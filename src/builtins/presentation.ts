@@ -1,39 +1,50 @@
-import { CliCommand } from "../types.ts";
-import { isCompiledExecutable } from "../install/compiled.ts";
+import type { CliCapabilities } from "../capabilities.ts";
+import { resolveCapabilities } from "../capabilities.ts";
+import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../types.ts";
+import { isCliLeaf, isCliRouter } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 
-/** Built-in commands shown in help and merged for routing CLIs. */
-export function presentationBuiltins(root: CliCommand): CliCommand[] {
-  const builtins: CliCommand[] = [cliBuiltinCompletionGroup(root.key)];
-  if (isCompiledExecutable() && root.install?.enabled !== false) {
-    builtins.push(cliBuiltinInstallCommand(root));
+/** Built-in command nodes injected for help, schema, and completions. */
+export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
+  const builtins: CliNode[] = [cliBuiltinCompletionGroup(program.key)];
+  if (caps.install) {
+    builtins.push(cliBuiltinInstallCommand(program));
   }
-  if (root.mcpServer !== undefined) {
+  if (caps.mcp) {
     builtins.push(cliBuiltinMcpCommand());
   }
   return builtins;
 }
 
 /**
- * Returns a schema suitable for help display, including reserved built-in subtrees.
- * Routing roots get builtins merged; leaf roots are wrapped as a tiny router.
+ * Returns a schema suitable for help display, including capability-built-in subtrees.
+ * Routing programs get builtins merged; leaf programs are wrapped as a tiny router.
  */
-export function cliPresentationRoot(root: CliCommand): CliCommand {
-  if ((root.commands ?? []).some((c) => c.key === "completion")) {
-    return root;
-  }
-  if ("handler" in root && root.handler) {
+export function cliPresentationRoot(program: CliProgram): CliRouter {
+  const caps = resolveCapabilities(program);
+  const builtins = presentationBuiltins(program, caps);
+
+  if (isCliLeaf(program)) {
     return {
-      key: root.key,
-      description: root.description,
-      options: root.options,
-      commands: presentationBuiltins(root),
-    } as CliCommand;
+      key: program.key,
+      description: program.description,
+      options: program.options,
+      commands: builtins,
+    };
   }
+
   return {
-    ...root,
-    commands: [...(root.commands ?? []), ...presentationBuiltins(root)],
-  } as CliCommand;
+    key: program.key,
+    description: program.description,
+    notes: program.notes,
+    options: program.options,
+    fallbackCommand: program.fallbackCommand,
+    fallbackMode: program.fallbackMode,
+    commands: [...program.commands, ...builtins],
+  };
 }
+
+/** Presentation tree may include builtin leaf stubs. */
+export type CliPresentationNode = CliNode | CliLeaf;

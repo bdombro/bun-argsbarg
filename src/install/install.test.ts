@@ -2,14 +2,14 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { CliCommand } from "../types.ts";
+import { CliProgram } from "../types.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { buildInstallPlan } from "./plan.ts";
 import { printInstallStatus } from "./status.ts";
 import { parseInstallOpts } from "./index.ts";
 
-const fixture: CliCommand = {
+const fixture: CliProgram = {
   key: "testapp",
   description: "Test",
   mcpServer: { name: "testapp" },

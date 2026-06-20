@@ -9,10 +9,13 @@ across every entry path.
 
 import { CliContext } from "./context.ts";
 import {
-  CliCommand,
+  type CliLeaf,
+  CliNode,
   CliFallbackMode,
   CliOption,
   CliOptionKind,
+  isCliLeaf,
+  isCliRouter,
 } from "./types.ts";
 import { fullStringIsDouble } from "./utils.ts";
 
@@ -69,7 +72,7 @@ function isSchemaTok(tok: string): boolean {
 }
 
 /** Looks up a subcommand or routing node by `key`. */
-function findChild(cmds: CliCommand[], name: string): CliCommand | undefined {
+function findChild(cmds: CliNode[], name: string): CliNode | undefined {
   return cmds.find((c) => c.key === name);
 }
 
@@ -217,15 +220,16 @@ function consumeOptions(
 // ── Positional Collection ─────────────────────────────────────────────────────
 
 /** Merges option defs from the program root along the routed command path. */
-export function collectOptionDefs(root: CliCommand, path: string[]): CliOption[] {
+export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
   let defs = [...(root.options ?? [])];
-  let cmds = root.commands ?? [];
+  let node: CliNode = root;
 
   for (const seg of path) {
-    const ch = findChild(cmds, seg);
+    if (!isCliRouter(node)) break;
+    const ch = findChild(node.commands, seg);
     if (!ch) break;
     defs.push(...(ch.options ?? []));
-    cmds = ch.commands ?? [];
+    node = ch;
   }
 
   return defs;
@@ -233,7 +237,7 @@ export function collectOptionDefs(root: CliCommand, path: string[]): CliOption[]
 
 /** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
-  node: CliCommand,
+  node: CliLeaf,
   startIdx: number,
   argv: string[],
   path: string[],
@@ -384,14 +388,16 @@ function schemaResult(): ParseResult {
 /**
  * Parses `argv` against the program root, routing into subcommands and filling `opts` / `args`.
  */
-export function parse(root: CliCommand, argv: string[]): ParseResult {
+export function parse(root: CliNode, argv: string[]): ParseResult {
   let i = 0;
   const path: string[] = [];
   const opts: Record<string, string> = {};
 
   const rootLenient =
+    isCliRouter(root) &&
     root.fallbackCommand !== undefined &&
-    ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown || (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
+    ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown ||
+      (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
 
   // Consume root-level options first
   const rootRep = consumeOptions(root.options ?? [], rootLenient, argv, i, opts);
@@ -420,16 +426,20 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 
   // Determine which subcommand to route to
   let cmdName: string;
-  let node: CliCommand | undefined;
+  let node: CliNode | undefined;
 
-  if (root.handler) {
-    return finishLeaf(root as CliCommand, i, argv, path, opts, root.options ?? [], forcePositionals);
+  if (isCliLeaf(root)) {
+    return finishLeaf(root, i, argv, path, opts, root.options ?? [], forcePositionals);
   }
 
   if (i >= argv.length) {
-    if (root.fallbackCommand !== undefined && ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOnly || (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown)) {
+    if (
+      root.fallbackCommand !== undefined &&
+      ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOnly ||
+        (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown)
+    ) {
       cmdName = root.fallbackCommand;
-      node = findChild(root.commands ?? [], cmdName);
+      node = findChild(root.commands, cmdName);
       if (!node) {
         return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
       }
@@ -438,7 +448,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
   } else {
     const peek = argv[i];
-    const childPick = !forcePositionals ? findChild(root.commands ?? [], peek) : undefined;
+    const childPick = !forcePositionals ? findChild(root.commands, peek) : undefined;
 
     if (childPick !== undefined) {
       cmdName = peek;
@@ -452,14 +462,14 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 
       if (canRouteUnknown) {
         cmdName = root.fallbackCommand!;
-        node = findChild(root.commands ?? [], cmdName);
+        node = findChild(root.commands, cmdName);
         if (!node) {
           return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
         }
       } else {
         cmdName = peek;
         if (!forcePositionals) i += 1;
-        node = findChild(root.commands ?? [], cmdName);
+        node = findChild(root.commands, cmdName);
         if (!node) {
           return {
             kind: ParseKind.Error,
@@ -506,20 +516,23 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
     }
 
     if (i >= argv.length) {
-      if ((current.commands ?? []).length > 0) {
+      if (isCliRouter(current) && current.commands.length > 0) {
         const fb = current.fallbackCommand;
         const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
         if (
           fb !== undefined &&
           (fm === CliFallbackMode.MissingOnly || fm === CliFallbackMode.MissingOrUnknown)
         ) {
-          const fbNode = findChild(current.commands ?? [], fb);
+          const fbNode = findChild(current.commands, fb);
           if (fbNode) {
             path.push(fb);
             current = fbNode;
             continue;
           }
         }
+        return helpResult(path, false);
+      }
+      if (!isCliLeaf(current)) {
         return helpResult(path, false);
       }
       return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
@@ -539,8 +552,8 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       };
     }
 
-    if (!forcePositionals) {
-      const childOpt = findChild(current.commands ?? [], tok);
+    if (!forcePositionals && isCliRouter(current)) {
+      const childOpt = findChild(current.commands, tok);
       if (childOpt !== undefined) {
         i += 1;
         path.push(tok);
@@ -549,7 +562,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       }
     }
 
-    if ((current.commands ?? []).length > 0) {
+    if (isCliRouter(current) && current.commands.length > 0) {
       const fb = current.fallbackCommand;
       const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
       const canRouteUnknown =
@@ -557,7 +570,7 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
         (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
 
       if (canRouteUnknown) {
-        const fbNode = findChild(current.commands ?? [], fb!);
+        const fbNode = findChild(current.commands, fb!);
         if (fbNode) {
           path.push(fb!);
           current = fbNode;
@@ -577,6 +590,9 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
       };
     }
 
+    if (!isCliLeaf(current)) {
+      return helpResult(path, false);
+    }
     return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
   }
 }
@@ -586,14 +602,26 @@ export function parse(root: CliCommand, argv: string[]): ParseResult {
 /**
  * Validates option keys and numeric values for an Ok parse, merging in-scope options along `pr.path`.
  */
-export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResult {
+export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
   if (pr.kind !== ParseKind.Ok) return pr;
 
   let defs = [...(root.options ?? [])];
-  let cmds = root.commands ?? [];
+  let node: CliNode = root;
 
   for (const seg of pr.path) {
-    const ch = findChild(cmds, seg);
+    if (!isCliRouter(node)) {
+      return {
+        kind: ParseKind.Error,
+        path: pr.path,
+        opts: {},
+        args: [],
+        helpExplicit: false,
+        helpPath: [],
+        errorMsg: "Internal path error",
+        errorHelpPath: pr.path,
+      };
+    }
+    const ch = findChild(node.commands, seg);
     if (!ch) {
       return {
         kind: ParseKind.Error,
@@ -607,7 +635,7 @@ export function postParseValidate(root: CliCommand, pr: ParseResult): ParseResul
       };
     }
     defs.push(...(ch.options ?? []));
-    cmds = ch.commands ?? [];
+    node = ch;
   }
 
   for (const d of defs) {

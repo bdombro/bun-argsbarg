@@ -1,4 +1,4 @@
-import { CliCommand, CliOptionKind } from "../types.ts";
+import { CliNode, CliRouter, CliOptionKind } from "../types.ts";
 import { collectScopes } from "./scopes.ts";
 import {
   escFishSingleQuoted,
@@ -27,7 +27,7 @@ function scopeCondition(ident: string, scopeIndex: number, path: string): string
 }
 
 /** Returns a self-contained fish completion script for the given program schema. */
-export function completionFishScript(schema: CliCommand): string {
+export function completionFishScript(schema: CliRouter): string {
   const ident = identToken(schema.key);
   const app = schema.key;
   const scopes = collectScopes(schema);

@@ -1,5 +1,5 @@
 /*
-This module maps CliCommand leaf nodes to MCP tool definitions and converts
+This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for cliInvoke.
 */
 
@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
-import { CliCommand, CliOption, CliOptionKind, CliPositional } from "../types.ts";
+import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter } from "../types.ts";
 
 /** Default URI for the CLI schema MCP resource. */
 export const MCP_SCHEMA_URI_DEFAULT = "argsbarg://schema";
@@ -21,7 +21,7 @@ export interface McpToolDef {
   /** Command path segments from the program root. */
   path: string[];
   /** Leaf command node. */
-  leaf: CliCommand;
+  leaf: CliLeaf;
   /** JSON Schema for tools/call arguments. */
   inputSchema: Record<string, unknown>;
 }
@@ -38,7 +38,7 @@ export function sanitizeToolSegment(key: string): string {
 }
 
 /** Builds the MCP tool name for a leaf at the given path. */
-export function mcpToolName(root: CliCommand, path: string[]): string {
+export function mcpToolName(root: CliProgram, path: string[]): string {
   if (path.length === 0) {
     return sanitizeToolSegment(root.key);
   }
@@ -71,7 +71,7 @@ function positionalProperty(p: CliPositional): Record<string, unknown> {
 }
 
 /** Builds inputSchema for a leaf command. */
-function buildInputSchema(root: CliCommand, path: string[], leaf: CliCommand): Record<string, unknown> {
+function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
@@ -102,7 +102,7 @@ function buildInputSchema(root: CliCommand, path: string[], leaf: CliCommand): R
 }
 
 /** Resolves MCP tool description with optional override and requiresEnv suffix. */
-function resolveToolDescription(root: CliCommand, path: string[], leaf: CliCommand): string {
+function resolveToolDescription(root: CliProgram, path: string[], leaf: CliLeaf): string {
   if (leaf.mcpTool?.description) {
     return leaf.mcpTool.description;
   }
@@ -124,7 +124,7 @@ export interface McpResourceEntry {
 }
 
 /** Returns built-in schema resource plus user mcpServer.resources. */
-export function allMcpResources(root: CliCommand): McpResourceEntry[] {
+export function allMcpResources(root: CliProgram): McpResourceEntry[] {
   const schemaUri = resolveMcpSchemaUri(root);
   const builtIn: McpResourceEntry = {
     uri: schemaUri,
@@ -144,12 +144,12 @@ export function allMcpResources(root: CliCommand): McpResourceEntry[] {
 }
 
 /** Recursively collects MCP tool definitions from user leaf commands. */
-export function collectMcpTools(root: CliCommand): McpToolDef[] {
+export function collectMcpTools(root: CliProgram): McpToolDef[] {
   const out: McpToolDef[] = [];
 
   /** Walks the command tree and appends leaf tools. */
-  function walk(cmd: CliCommand, path: string[]): void {
-    if ("handler" in cmd && cmd.handler) {
+  function walk(cmd: CliNode, path: string[]): void {
+    if (isCliLeaf(cmd)) {
       if (cmd.key === "completion" || cmd.key === "install" || cmd.key === "mcp") {
         return;
       }
@@ -165,15 +165,15 @@ export function collectMcpTools(root: CliCommand): McpToolDef[] {
       });
       return;
     }
-    for (const ch of cmd.commands ?? []) {
+    for (const ch of cmd.commands) {
       walk(ch, [...path, ch.key]);
     }
   }
 
-  if ("handler" in root && root.handler) {
+  if (isCliLeaf(root)) {
     walk(root, []);
   } else {
-    for (const ch of root.commands ?? []) {
+    for (const ch of root.commands) {
       walk(ch, [ch.key]);
     }
   }
@@ -193,7 +193,7 @@ function resolveMcpVersionFromPackageJson(): string | undefined {
 }
 
 /** Resolves MCP server name and version for initialize. */
-export function resolveMcpServerInfo(root: CliCommand): { name: string; version: string } {
+export function resolveMcpServerInfo(root: CliProgram): { name: string; version: string } {
   return {
     name: root.mcpServer?.name ?? root.key,
     version: root.mcpServer?.version ?? resolveMcpVersionFromPackageJson() ?? "0.0.0",
@@ -201,13 +201,13 @@ export function resolveMcpServerInfo(root: CliCommand): { name: string; version:
 }
 
 /** Resolves the schema resource URI for this app. */
-export function resolveMcpSchemaUri(root: CliCommand): string {
+export function resolveMcpSchemaUri(root: CliProgram): string {
   return root.mcpServer?.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
 }
 
 /** Converts flat MCP tool arguments to argv for cliInvoke. */
 export function mcpToolCallToArgv(
-  root: CliCommand,
+  root: CliProgram,
   tool: McpToolDef,
   args: Record<string, unknown>,
 ): string[] | { error: string } {
