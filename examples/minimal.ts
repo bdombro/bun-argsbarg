@@ -7,10 +7,12 @@ readers can copy the pattern into their own scripts quickly.
 It demonstrates the minimal Bun integration path.
 */
 
+import pkg from "../package.json" with { type: "json" };
 import { cliRun, CliProgram, CliOptionKind } from "../src/index.ts";
 
 const cli = {
   key: "minimal.ts",
+  version: pkg.version,
   description: "Tiny demo.",
   positionals: [
     {

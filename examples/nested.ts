@@ -7,12 +7,14 @@ and fallback commands fit together in one schema.
 It demonstrates how the schema scales beyond one command.
 */
 
+import pkg from "../package.json" with { type: "json" };
 import { cliRun, CliProgram, CliOptionKind, CliFallbackMode } from "../src/index.ts";
 
 const cli = {
   key: "nested.ts",
+  version: pkg.version,
   description: "Nested groups demo.",
-  mcpServer: { name: "nested-demo", version: "1.0.0" },
+  mcpServer: { enabled: true },
   commands: [
     {
       key: "stat",

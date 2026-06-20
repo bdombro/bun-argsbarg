@@ -8,8 +8,9 @@ import { CliProgram } from "../types.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
+  version: "0.0.0",
   description: "Demo app.",
-  mcpServer: { name: "myapp" },
+  mcpServer: { enabled: true },
   commands: [
     {
       key: "hello",
@@ -31,7 +32,7 @@ describe("builtins help copy", () => {
   });
 
   test("install omits --mcp option when mcpServer unset", () => {
-    const noMcp: CliProgram = { key: "x", description: "x", handler: () => {} };
+    const noMcp: CliProgram = { key: "x", version: "0.0.0", description: "x", handler: () => {} };
     const names = installBuiltinOptions(noMcp).map((o) => o.name);
     expect(names).not.toContain("mcp");
   });
@@ -56,6 +57,10 @@ describe("presentation root", () => {
     const root = cliPresentationRoot(disabled);
     expect(root.commands?.map((c) => c.key)).not.toContain("install");
   });
+  test("includes version builtin", () => {
+    const root = cliPresentationRoot(fixture);
+    expect(root.commands?.map((c) => c.key)).toContain("version");
+  });
 });
 
 describe("completion emitters", () => {
@@ -75,7 +80,7 @@ describe("completion emitters", () => {
   });
 
   test("zsh script registers compdef", () => {
-    const schema = cliPresentationRoot({ key: "zapp", description: "z", handler: () => {} });
+    const schema = cliPresentationRoot({ key: "zapp", version: "0.0.0", description: "z", handler: () => {} });
     const zsh = completionZshScript(schema);
     expect(zsh).toContain("#compdef zapp");
     expect(zsh).toContain("compdef _zapp zapp");

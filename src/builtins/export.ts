@@ -3,6 +3,7 @@ import type { CliFallbackMode, CliOption, CliPositional, CliProgram } from "../t
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
+import { cliBuiltinVersionCommand } from "./version.ts";
 
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
@@ -42,7 +43,10 @@ function exportBuiltinNode(cmd: {
 /** Built-in subtrees matching help visibility for `--schema` export. */
 export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabilities): CliSchemaExport[] {
   const resolved = caps ?? resolveCapabilities(program);
-  const builtins: CliSchemaExport[] = [exportBuiltinNode(cliBuiltinCompletionGroup(program.key))];
+  const builtins: CliSchemaExport[] = [
+    exportBuiltinNode(cliBuiltinCompletionGroup(program.key)),
+    exportBuiltinNode(cliBuiltinVersionCommand()),
+  ];
   if (resolved.install) {
     builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program)));
   }

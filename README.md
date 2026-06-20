@@ -16,7 +16,7 @@ Why another CLI parser?
 
 *Shell completions* — `completion bash`, `completion zsh`, and `completion fish` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
 
-*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Compiled binaries can install binary, completions, skills, and MCP config with `myapp install` — see [docs/install.md](docs/install.md).
+*Optional MCP server* — set `mcpServer: { enabled: true }` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Compiled binaries can install binary, completions, skills, and MCP config with `myapp install` — see [docs/install.md](docs/install.md).
 
 *Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
@@ -39,6 +39,7 @@ import { cliRun, type CliProgram, CliOptionKind } from "argsbarg";
 
 const cli = {
   key: "helloapp",
+  version: "1.0.0",
   description: "Tiny demo.",
   positionals: [
     {
@@ -96,17 +97,18 @@ Every app gets:
 - `-h` / `--help` at any routing depth (scoped help).
 - **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
 - **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
-- **`mcp`** — when `mcpServer` is set on the program root, run as an MCP stdio server (`myapp mcp`).
+- **`version`** — print `CliProgram.version` (`myapp version`).
+- **`mcp`** — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
 - **`install`** — install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
 
-Do not declare a top-level command named **`completion`** or **`install`** — they are reserved.
-When **`mcpServer`** is set, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
+Do not declare a top-level command named **`completion`**, **`version`**, or **`install`** — they are reserved.
+When **`mcpServer.enabled`** is `true`, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
 Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
+Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp --schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
 
@@ -185,7 +187,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`). Reserved command names follow from that config: `completion` and `install` are always reserved unless `install.enabled: false`; `mcp` is reserved when `mcpServer` is set.
+`completion`, `version`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`.
 
 
 
@@ -226,7 +228,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 
-Reserved identifiers (validated at startup): root commands **`completion`**, **`install`**, and **`mcp`** (only when `mcpServer` is set).
+Reserved identifiers (validated at startup): root commands **`completion`**, **`version`**, **`install`**, and **`mcp`** (only when `mcpServer.enabled` is `true`).
 
 ---
 

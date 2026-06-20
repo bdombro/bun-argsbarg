@@ -10,7 +10,7 @@ shell output regressions.
 import { cliPresentationRoot } from "./builtins/presentation.ts";
 import { completionBashScript, completionZshScript } from "./completion.ts";
 import { cliHelpRender } from "./help.ts";
-import { CliProgram, CliFallbackMode, CliOptionKind, cliInvoke } from "./index.ts";
+import { CliProgram, CliFallbackMode, CliOptionKind, cliInvoke, CliContext } from "./index.ts";
 import type { CliLeaf } from "./types.ts";
 import { isCliRouter } from "./types.ts";
 import {
@@ -18,6 +18,7 @@ import {
   collectMcpTools,
   mcpToolCallToArgv,
   mcpToolDescription,
+  resolveMcpSchemaUri,
   sanitizeToolSegment,
 } from "./mcp/tools.ts";
 import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
@@ -28,13 +29,17 @@ import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { cliValidateProgram } from "./validate.ts";
 import { expect, test } from "bun:test";
+
+function testProgram(prog: Record<string, unknown> & { key: string; description: string }): CliProgram {
+  return { version: "0.0.0", ...prog } as CliProgram;
+}
 import { $ } from "bun";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test("bundled short presence flags", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -58,7 +63,7 @@ test("bundled short presence flags", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "-ab"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -67,7 +72,7 @@ test("bundled short presence flags", () => {
 });
 
 test("long option equals", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -84,7 +89,7 @@ test("long option equals", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--name=pat"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -92,7 +97,7 @@ test("long option equals", () => {
 });
 
 test("fallback missing or unknown root flags", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -111,7 +116,7 @@ test("fallback missing or unknown root flags", () => {
     ],
     fallbackCommand: "hello",
     fallbackMode: CliFallbackMode.MissingOrUnknown,
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["--name", "bob"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -120,11 +125,11 @@ test("fallback missing or unknown root flags", () => {
 });
 
 test("unknown command", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [{ key: "hello", description: "", handler: () => {} }],
-  };
+  });
   cliValidateProgram(root);
   const pr = parse(root, ["nope"]);
   expect(pr.kind).toBe(ParseKind.Error);
@@ -132,11 +137,11 @@ test("unknown command", () => {
 });
 
 test("implicit help empty", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [{ key: "x", description: "", handler: () => {} }],
-  };
+  });
   cliValidateProgram(root);
   const pr = parse(root, []);
   expect(pr.kind).toBe(ParseKind.Help);
@@ -144,7 +149,7 @@ test("implicit help empty", () => {
 });
 
 test("invalid number post validate", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -161,7 +166,7 @@ test("invalid number post validate", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   let pr = parse(root, ["x", "--n", "notnum"]);
   pr = postParseValidate(root, pr);
@@ -170,7 +175,7 @@ test("invalid number post validate", () => {
 });
 
 test("supports scientific notation in numbers", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -187,7 +192,7 @@ test("supports scientific notation in numbers", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   let pr = parse(root, ["x", "--n", "1.23e4"]);
   pr = postParseValidate(root, pr);
@@ -198,35 +203,35 @@ test("supports scientific notation in numbers", () => {
 
 
 test("completion scripts contain app name", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "myapp",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
-  };
+  });
   cliValidateProgram(root);
-  const bash = completionBashScript(root);
+  const bash = completionBashScript(cliPresentationRoot(root));
   expect(bash).toContain("bash completion for myapp");
   expect(bash).toContain("complete -F _myapp myapp");
 
-  const zsh = completionZshScript(root);
+  const zsh = completionZshScript(cliPresentationRoot(root));
   expect(zsh).toContain("#compdef myapp");
   expect(zsh).toContain("compdef _myapp myapp");
   expect(zsh).toContain("hello:Say hello.");
 });
 
 test("completion scripts do not emit invalid bash substitutions", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
-  };
+  });
   cliValidateProgram(root);
-  const bash = completionBashScript(root);
+  const bash = completionBashScript(cliPresentationRoot(root));
   expect(bash).not.toContain("${${");
 });
 
 test("completion scripts escape shell-sensitive command text in zsh", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "Test",
     commands: [
@@ -236,29 +241,29 @@ test("completion scripts escape shell-sensitive command text in zsh", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
-  const zsh = completionZshScript(root);
+  const zsh = completionZshScript(cliPresentationRoot(root));
   expect(zsh).toContain("quote'\\''cmd:Say '\\''hello'\\'' and keep going.");
 });
 
 test("completion scripts keep dotted app names in registration names", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "minimal.ts",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
-  };
+  });
   cliValidateProgram(root);
 
-  const bash = completionBashScript(root);
+  const bash = completionBashScript(cliPresentationRoot(root));
   expect(bash).toContain("complete -F _minimal_ts minimal.ts");
 
-  const zsh = completionZshScript(root);
+  const zsh = completionZshScript(cliPresentationRoot(root));
   expect(zsh).toContain("compdef _minimal_ts minimal.ts");
 });
 
 test("trailing options after bounded positionals", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -282,7 +287,7 @@ test("trailing options after bounded positionals", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--verbose"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -291,7 +296,7 @@ test("trailing options after bounded positionals", () => {
 });
 
 test("trailing options include parent-scoped flags", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -329,7 +334,7 @@ test("trailing options include parent-scoped flags", () => {
         ],
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -340,7 +345,7 @@ test("trailing options include parent-scoped flags", () => {
 });
 
 test("varargs tail parses trailing options", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -366,7 +371,7 @@ test("varargs tail parses trailing options", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -375,7 +380,7 @@ test("varargs tail parses trailing options", () => {
 });
 
 test("stops parsing options at --", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -401,7 +406,7 @@ test("stops parsing options at --", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -410,7 +415,7 @@ test("stops parsing options at --", () => {
 });
 
 test("missing required option returns error", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     options: [
@@ -428,7 +433,7 @@ test("missing required option returns error", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x"]));
   expect(pr.kind).toBe(ParseKind.Error);
@@ -436,7 +441,7 @@ test("missing required option returns error", () => {
 });
 
 test("provided required option parses ok", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -454,7 +459,7 @@ test("provided required option parses ok", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--req", "val"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -462,7 +467,7 @@ test("provided required option parses ok", () => {
 });
 
 test("presence option cannot be required", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     options: [
@@ -480,7 +485,7 @@ test("presence option cannot be required", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/Presence option cannot be required/);
 });
 
@@ -519,7 +524,13 @@ test("--schema exports JSON for leaf roots", async () => {
   expect(schema.key).toBe("minimal.ts");
   expect(schema.positionals[0].name).toBe("name");
   expect(schema.options[0].name).toBe("verbose");
-  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion", "install"]);
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["completion", "version", "install"]);
+});
+
+test("version builtin prints program version", async () => {
+  const { stdout, exitCode } = await $`bun run examples/nested.ts version`.nothrow().quiet();
+  expect(exitCode).toBe(0);
+  expect(stdout.toString().trim()).toMatch(/^\d+\.\d+\.\d+/);
 });
 
 test("leaf root help lists completion built-in", async () => {
@@ -530,7 +541,7 @@ test("leaf root help lists completion built-in", async () => {
 });
 
 test("parse recognizes --schema at the program root", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "demo",
     commands: [
@@ -540,14 +551,14 @@ test("parse recognizes --schema at the program root", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = parse(root, ["--schema"]);
   expect(pr.kind).toBe(ParseKind.Schema);
 });
 
 test("cliSchemaJson omits handlers and completion built-ins", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "demo",
     commands: [
@@ -568,7 +579,7 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
         ],
       },
     ],
-  };
+  });
 
   const schema = JSON.parse(cliSchemaJson(root));
   expect(schema.commands).toHaveLength(1);
@@ -577,7 +588,7 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
 });
 
 test("reserved option name schema is rejected", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -594,12 +605,12 @@ test("reserved option name schema is rejected", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/reserved for --schema/);
 });
 
 test("root help lists --schema built-in", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "demo",
     commands: [
@@ -609,14 +620,14 @@ test("root help lists --schema built-in", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   const help = cliHelpRender(cliPresentationRoot(root), [], false);
   expect(help).toContain("--schema");
   expect(help).toContain("Print the full command tree as JSON.");
 });
 
 test("nested help omits --schema built-in", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "demo",
     commands: [
@@ -626,13 +637,13 @@ test("nested help omits --schema built-in", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   const help = cliHelpRender(cliPresentationRoot(root), ["x"], false);
   expect(help).not.toContain("--schema");
 });
 
 test("completion scripts offer --schema at the program root only", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "myapp",
     description: "",
     commands: [
@@ -648,20 +659,21 @@ test("completion scripts offer --schema at the program root only", () => {
         ],
       },
     ],
-  };
+  });
 
-  const bash = completionBashScript(root);
+  const bash = completionBashScript(cliPresentationRoot(root));
   expect(bash).toContain("A_myapp_0_opts+=('--schema')");
   expect(bash).not.toContain("A_myapp_1_opts+=('--schema')");
 
-  const zsh = completionZshScript(root);
+  const zsh = completionZshScript(cliPresentationRoot(root));
   expect(zsh).toContain("'--schema:Print the full command tree as JSON.'");
 });
 
-const nestedMcpFixture: CliProgram = {
+const nestedMcpFixture = testProgram({
   key: "nested.ts",
   description: "Nested groups demo.",
-  mcpServer: { name: "nested-demo", version: "1.0.0" },
+  version: "1.0.0",
+  mcpServer: { enabled: true },
   commands: [
     {
       key: "stat",
@@ -724,7 +736,7 @@ const nestedMcpFixture: CliProgram = {
   ],
   fallbackCommand: "read",
   fallbackMode: CliFallbackMode.MissingOrUnknown,
-};
+});
 
 /** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
 async function mcpRequest(
@@ -814,7 +826,7 @@ test("mcpToolCallToArgv expands varargs positionals", () => {
 });
 
 test("reserved command name install is rejected", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -824,12 +836,12 @@ test("reserved command name install is rejected", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: install/);
 });
 
 test("top-level command name mcp is allowed without mcpServer", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -839,15 +851,15 @@ test("top-level command name mcp is allowed without mcpServer", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).not.toThrow();
 });
 
-test("top-level command name mcp is rejected when mcpServer is set", () => {
-  const root: CliProgram = {
+test("top-level command name mcp is rejected when mcpServer is enabled", () => {
+  const root = testProgram({
     key: "app",
     description: "",
-    mcpServer: {},
+    mcpServer: { enabled: true },
     commands: [
       {
         key: "mcp",
@@ -855,19 +867,20 @@ test("top-level command name mcp is rejected when mcpServer is set", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: mcp/);
 });
 
 test("mcpServer on non-root node is rejected", () => {
   const root = {
     key: "app",
+    version: "0.0.0",
     description: "",
     commands: [
       {
         key: "x",
         description: "cmd",
-        mcpServer: {},
+        mcpServer: { enabled: true },
         handler: () => {},
       },
     ],
@@ -876,17 +889,17 @@ test("mcpServer on non-root node is rejected", () => {
 });
 
 test("mcpTool on root is rejected", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     mcpTool: { enabled: false },
     handler: () => {},
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
 test("mcpTool on routing node is rejected", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -903,7 +916,7 @@ test("mcpTool on routing node is rejected", () => {
         ],
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
@@ -964,7 +977,7 @@ test("MCP tools/list includes stat_owner_lookup", async () => {
 
 test("MCP resources/read returns schema JSON", async () => {
   const responses = await mcpRequest([
-    { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "argsbarg://schema" } },
+    { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "nested_ts://schema" } },
   ]);
   const res = responses.get(3) as { result: { contents: { text: string }[] } };
   const schema = JSON.parse(res.result.contents[0]!.text);
@@ -1044,7 +1057,7 @@ test("ctx.invocation is cli via cliRun", async () => {
   const indexPath = join(import.meta.dir, "index.ts");
   const { stdout } = await $`bun -e ${`
 import { cliRun, CliProgram } from ${JSON.stringify(indexPath)};
-const cli = { key: "t", description: "d", handler: (ctx) => console.log(ctx.invocation) };
+const cli = { key: "t", description: "d", version: "0.0.0", handler: (ctx) => console.log(ctx.invocation) };
 await cliRun(cli, []);
   `}`.quiet();
   expect(stdout.toString().trim()).toBe("cli");
@@ -1052,23 +1065,23 @@ await cliRun(cli, []);
 
 test("ctx.invocation is mcp via cliInvoke", async () => {
   let seen = "";
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
-    handler: (ctx) => {
+    handler: (ctx: CliContext) => {
       seen = ctx.invocation;
     },
-  };
+  });
   cliValidateProgram(root);
   const result = await cliInvoke(root, []);
   expect(result.kind).toBe("ok");
   expect(seen).toBe("mcp");
 });
 
-const enumMcpFixture: CliProgram = {
+const enumMcpFixture = testProgram({
   key: "app",
   description: "",
-  mcpServer: {},
+  mcpServer: { enabled: true },
   commands: [
     {
       key: "run",
@@ -1085,7 +1098,7 @@ const enumMcpFixture: CliProgram = {
       handler: () => {},
     },
   ],
-};
+});
 
 test("Enum option inputSchema includes enum array", () => {
   const tools = collectMcpTools(enumMcpFixture);
@@ -1095,7 +1108,7 @@ test("Enum option inputSchema includes enum array", () => {
 });
 
 test("cliInvoke rejects invalid Enum value", async () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     handler: () => {},
@@ -1108,7 +1121,7 @@ test("cliInvoke rejects invalid Enum value", async () => {
         required: true,
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const result = await cliInvoke(root, ["--mode", "staging"]);
   expect(result.kind).toBe("error");
@@ -1116,10 +1129,10 @@ test("cliInvoke rejects invalid Enum value", async () => {
 });
 
 test("cliInvoke accepts valid Enum value", async () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
-    handler: (ctx) => {
+    handler: (ctx: CliContext) => {
       console.log(ctx.stringOpt("mode"));
     },
     options: [
@@ -1131,7 +1144,7 @@ test("cliInvoke accepts valid Enum value", async () => {
         required: true,
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const result = await cliInvoke(root, ["--mode", "dev"]);
   expect(result.kind).toBe("ok");
@@ -1139,30 +1152,30 @@ test("cliInvoke accepts valid Enum value", async () => {
 });
 
 test("cliValidateProgram rejects Enum with no choices", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     handler: () => {},
     options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: [] }],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/requires non-empty choices/);
 });
 
 test("cliValidateProgram rejects Enum with duplicate choices", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     handler: () => {},
     options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: ["a", "a"] }],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/choices must be distinct/);
 });
 
 test("mcpTool.description override wins without requiresEnv suffix", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
-    mcpServer: {},
+    mcpServer: { enabled: true },
     commands: [
       {
         key: "x",
@@ -1171,16 +1184,16 @@ test("mcpTool.description override wins without requiresEnv suffix", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   const tools = collectMcpTools(root);
   expect(tools[0]!.description).toBe("custom");
 });
 
 test("mcpTool.requiresEnv appended to auto description", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
-    mcpServer: {},
+    mcpServer: { enabled: true },
     commands: [
       {
         key: "x",
@@ -1189,50 +1202,96 @@ test("mcpTool.requiresEnv appended to auto description", () => {
         handler: () => {},
       },
     ],
-  };
+  });
   const tools = collectMcpTools(root);
   expect(tools[0]!.description).toContain("[requires env: TOKEN]");
 });
 
 test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
-  const root: CliProgram = {
+  const root = testProgram({
     key: "app",
     description: "",
     mcpServer: {
+      enabled: true,
       resources: [
         { uri: "a://1", name: "a", load: () => "a" },
         { uri: "a://1", name: "b", load: () => "b" },
       ],
     },
     commands: [{ key: "x", description: "", handler: () => {} }],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/URIs must be unique/);
 });
 
-test("cliValidateProgram rejects resource URI matching schemaResourceUri", () => {
-  const root: CliProgram = {
+test("cliValidateProgram rejects empty mcpServer", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    mcpServer: {} as { enabled: boolean },
+    handler: () => {},
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/mcpServer requires enabled: true/);
+});
+
+test("resolveMcpSchemaUri uses sanitized root key", () => {
+  const root = testProgram({
+    key: "nested.ts",
+    description: "",
+    mcpServer: { enabled: true },
+    handler: () => {},
+  });
+  expect(resolveMcpSchemaUri(root)).toBe("nested_ts://schema");
+});
+
+test("resolveMcpSchemaUri uses plain key when alphanumeric", () => {
+  const root = testProgram({
+    key: "qa",
+    description: "",
+    mcpServer: { enabled: true },
+    handler: () => {},
+  });
+  expect(resolveMcpSchemaUri(root)).toBe("qa://schema");
+});
+
+test("cliValidateProgram rejects resource URI matching default schema URI", () => {
+  const root = testProgram({
     key: "app",
     description: "",
     mcpServer: {
+      enabled: true,
+      resources: [{ uri: "app://schema", name: "dup", load: () => "" }],
+    },
+    commands: [{ key: "x", description: "", handler: () => {} }],
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/conflicts with the built-in schema resource/);
+});
+
+test("cliValidateProgram rejects resource URI matching schemaResourceUri", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    mcpServer: {
+      enabled: true,
       schemaResourceUri: "custom://schema",
       resources: [{ uri: "custom://schema", name: "dup", load: () => "" }],
     },
     commands: [{ key: "x", description: "", handler: () => {} }],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/conflicts with the built-in schema resource/);
 });
 
 test("allMcpResources includes custom resources", () => {
-  const root: CliProgram = {
+  const root = testProgram({
     key: "app",
     description: "",
     mcpServer: {
+      enabled: true,
       resources: [{ uri: "test://x", name: "x", load: () => "body" }],
     },
     commands: [{ key: "leaf", description: "", handler: () => {} }],
-  };
+  });
   const resources = allMcpResources(root);
-  expect(resources.map((r) => r.uri)).toContain("argsbarg://schema");
+  expect(resources.map((r) => r.uri)).toContain("app://schema");
   expect(resources.map((r) => r.uri)).toContain("test://x");
 });
 
@@ -1266,7 +1325,7 @@ test("loadEnvFile overwrites existing keys", () => {
 });
 
 test("Enum completions list choices in bash script", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1279,8 +1338,8 @@ test("Enum completions list choices in bash script", () => {
         handler: () => {},
       },
     ],
-  };
-  const bash = completionBashScript(root);
+  });
+  const bash = completionBashScript(cliPresentationRoot(root));
   expect(bash).toContain("--mode) COMPREPLY=");
   expect(bash).toContain("dev");
   expect(bash).toContain("prod");
@@ -1293,7 +1352,7 @@ test("MCP resources/list includes custom resource", async () => {
   );
   const res = responses.get(10) as { result: { resources: { uri: string }[] } };
   const uris = res.result.resources.map((r) => r.uri);
-  expect(uris).toContain("argsbarg://schema");
+  expect(uris).toContain("mcp_test://schema");
   expect(uris).toContain("test://hello");
 });
 
@@ -1372,7 +1431,7 @@ test("MCP envFile loads vars for tool handlers", async () => {
 // ── v1.3 parser ergonomics ────────────────────────────────────────────────────
 
 function varargsReadFixture(): CliProgram {
-  return {
+  return testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1398,11 +1457,11 @@ function varargsReadFixture(): CliProgram {
         handler: () => {},
       },
     ],
-  };
+  });
 }
 
 function nestedDocsFallbackFixture(): CliProgram {
-  return {
+  return testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1425,7 +1484,7 @@ function nestedDocsFallbackFixture(): CliProgram {
         ],
       },
     ],
-  };
+  });
 }
 
 test("nested fallback routes to default when argv exhausted at router", () => {
@@ -1437,7 +1496,7 @@ test("nested fallback routes to default when argv exhausted at router", () => {
 });
 
 test("nested fallback MissingOrUnknown routes unknown token to default", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1469,7 +1528,7 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
         ],
       },
     ],
-  };
+  });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["docs", "extra-topic"]));
   expect(pr.kind).toBe(ParseKind.Ok);
@@ -1486,7 +1545,7 @@ test("nested fallback MissingOnly errors on unknown subcommand", () => {
 });
 
 test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1503,7 +1562,7 @@ test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
         ],
       },
     ],
-  };
+  });
   expect(() => cliValidateProgram(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
 });
 
@@ -1578,7 +1637,7 @@ test("varargs scoped help in tail", () => {
 });
 
 test("ctx.positional returns single slot value", async () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1586,12 +1645,12 @@ test("ctx.positional returns single slot value", async () => {
         key: "x",
         description: "",
         positionals: [{ name: "path", description: "", kind: CliOptionKind.String }],
-        handler: (ctx) => {
+        handler: (ctx: CliContext) => {
           captured = ctx.positional("path");
         },
       },
     ],
-  };
+  });
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
   await cliInvoke(root, ["x", "./file"]);
@@ -1612,7 +1671,7 @@ test("ctx.positional returns varargs array", async () => {
 });
 
 test("ctx.positional returns undefined for absent optional slot", async () => {
-  const root: CliProgram = {
+  const root= testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1622,12 +1681,12 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
         positionals: [
           { name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
         ],
-        handler: (ctx) => {
+        handler: (ctx: CliContext) => {
           captured = ctx.positional("opt");
         },
       },
     ],
-  };
+  });
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
   await cliInvoke(root, ["x"]);
@@ -1682,6 +1741,7 @@ test("mcpToolCallToArgv empty string varargs appends nothing", () => {
 test("install config on non-root node is rejected", () => {
   const root = {
     key: "app",
+    version: "0.0.0",
     description: "",
     commands: [
       {

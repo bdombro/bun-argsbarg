@@ -5,10 +5,14 @@ import { isCliLeaf, isCliRouter } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
+import { cliBuiltinVersionCommand } from "./version.ts";
 
 /** Built-in command nodes injected for help, schema, and completions. */
 export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
-  const builtins: CliNode[] = [cliBuiltinCompletionGroup(program.key)];
+  const builtins: CliNode[] = [
+    cliBuiltinCompletionGroup(program.key),
+    cliBuiltinVersionCommand(),
+  ];
   if (caps.install) {
     builtins.push(cliBuiltinInstallCommand(program));
   }

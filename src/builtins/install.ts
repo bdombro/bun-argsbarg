@@ -1,3 +1,4 @@
+import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram, CliOption, CliOptionKind, type CliLeaf } from "../types.ts";
 
 /** Install command options (dynamic: `--mcp` only when MCP is enabled). */
@@ -66,7 +67,7 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
   ];
 
-  if (root.mcpServer !== undefined) {
+  if (resolveCapabilities(root).mcp) {
     opts.splice(4, 0, {
       name: "mcp",
       description: "Add or update MCP server entries in Cursor and Claude config files.",

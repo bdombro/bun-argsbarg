@@ -7,10 +7,12 @@ readers can copy the pattern into their own scripts quickly.
 It demonstrates the minimal Bun integration path.
 */
 
+import pkg from "../package.json" with { type: "json" };
 import { cliRun, CliProgram, CliOptionKind, CliFallbackMode, isInteractiveTty } from "../src/index.ts";
 
 const cli = {
   key: "option-required.ts",
+  version: pkg.version,
   description: "Demo of a required option.",
   options: [
     {

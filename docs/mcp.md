@@ -9,15 +9,18 @@ MCP is **opt-in**. Apps that do not set `mcpServer` on the program root behave e
 1. Add `mcpServer` to your program root:
 
 ```typescript
+import pkg from "../package.json" with { type: "json" };
+
 const cli = {
   key: "myapp",
+  version: pkg.version,
   description: "My app.",
-  mcpServer: { name: "myapp", version: "1.0.0" },
+  mcpServer: { enabled: true },
   commands: [/* ... */],
 } satisfies CliProgram;
 ```
 
-`mcpServer: {}` is enough to enable the server. Optional fields override defaults (see [Configuration](#configuration)).
+`mcpServer: { enabled: true }` opts in. Omit `mcpServer` entirely to disable MCP. Empty `mcpServer: {}` is rejected at validation.
 
 2. Run the MCP server:
 
@@ -66,26 +69,27 @@ Set `mcpServer` on the **program root only** (the `CliProgram` passed to `cliRun
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `name` | root `key` | `serverInfo.name` in the `initialize` response |
-| `version` | `package.json` `version` in cwd, else `"0.0.0"` | `serverInfo.version` |
-| `schemaResourceUri` | `"argsbarg://schema"` | URI for the schema resource |
+| `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
+| `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
 | `shellEnv` | off | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
 | `envFile` | off | Load a `.env` file after `shellEnv` (`~` supported); warns on stderr if missing |
-| `resources` | `[]` | Custom `CliMcpResource` entries for `resources/list` and `resources/read` |
+| `resources` | `[]` | Custom `CliMcpResource` entries (additive; schema resource is always included) |
 
-Example with all fields:
+MCP `serverInfo.name` and the default schema URI use the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `CliProgram.version` (also used by the `version` built-in).
+
+Example with optional fields:
 
 ```typescript
 mcpServer: {
-  name: "nested-demo",
-  version: "1.0.0",
-  schemaResourceUri: "argsbarg://schema",
+  enabled: true,
+  shellEnv: true,
+  envFile: "~/.config/myapp/mcp.env",
 }
 ```
 
 ## Tools
 
-Every **user-defined leaf command** in your schema becomes one MCP tool. Built-ins (`completion`, `ai`) are not exposed as tools.
+Every **user-defined leaf command** in your schema becomes one MCP tool. Built-ins (`completion`, `version`, `install`, `mcp`) are not exposed as tools.
 
 ### Tool names
 
@@ -172,11 +176,11 @@ Help and `--schema` are not available through tool calls; use the schema resourc
 
 ## Schema and custom resources
 
-The built-in resource `argsbarg://schema` (or `schemaResourceUri`) exposes your full CLI tree as JSON — the same output as `myapp --schema`.
+The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp --schema`. Override with `schemaResourceUri` if needed.
 
 | Property | Value |
 | --- | --- |
-| Default URI | `argsbarg://schema` |
+| Default URI | `<sanitized root key>://schema` |
 | MIME type | `application/json` |
 | Contents | `cliSchemaJson(root)` — handlers omitted, built-ins excluded |
 
@@ -184,6 +188,7 @@ Add custom resources on the program root:
 
 ```typescript
 mcpServer: {
+  enabled: true,
   resources: [
     {
       uri: "myapp://config",

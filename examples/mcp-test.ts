@@ -9,10 +9,10 @@ const envFilePath = process.env.ARGS_TEST_ENV_FILE;
 
 const cli = {
   key: "mcp-test",
+  version: "0.0.0-test",
   description: "MCP integration test fixture.",
   mcpServer: {
-    name: "mcp-test",
-    version: "0.0.0-test",
+    enabled: true,
     ...(envFilePath ? { envFile: envFilePath } : {}),
     resources: [
       {

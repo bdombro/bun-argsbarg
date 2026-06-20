@@ -32,7 +32,7 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
   const caps = resolveCapabilities(program);
 
   if (argv.length >= 1 && argv[0] === "mcp" && !caps.mcp) {
-    process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
+    process.stderr.write("MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n");
     process.exit(1);
   }
 

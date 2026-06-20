@@ -1,5 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram } from "../types.ts";
 import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
@@ -77,7 +78,7 @@ export function buildUninstallPlan(
     });
   }
 
-  if ((all || opts.mcp) && root.mcpServer !== undefined) {
+  if ((all || opts.mcp) && resolveCapabilities(root).mcp) {
     if (detected.cursorMcp) {
       actions.push({
         summary: `cursor mcp: ${paths.cursorMcpPath}`,

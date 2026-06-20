@@ -6,6 +6,7 @@ import { completionFishScript } from "./completion-fish.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
+import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
@@ -56,9 +57,18 @@ export async function dispatchBuiltin(
     return;
   }
 
+  if (pr.path[0] === "version") {
+    if (pr.path.length !== 1) {
+      process.stderr.write("Unknown subcommand: version " + pr.path.slice(1).join(" ") + "\n");
+      process.exit(1);
+    }
+    process.stdout.write(program.version + "\n");
+    process.exit(0);
+  }
+
   if (pr.path[0] === "mcp") {
     if (!caps.mcp) {
-      process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
+      process.stderr.write("MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n");
       process.exit(1);
     }
     if (pr.path.length !== 1) {
@@ -122,6 +132,17 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinMcpCommand()],
+      },
+      isLeafCompletionIntercept: false,
+    };
+  }
+
+  if (first === "version") {
+    return {
+      parseRoot: {
+        key: program.key,
+        description: program.description,
+        commands: [cliBuiltinVersionCommand()],
       },
       isLeafCompletionIntercept: false,
     };

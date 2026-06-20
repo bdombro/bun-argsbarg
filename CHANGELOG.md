@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`version` built-in** — `myapp version` prints `CliProgram.version` (always available; reserved command name).
+
+### Changed
+
+- **`CliProgram.version`** (required) — single source of truth for the `version` built-in and MCP `serverInfo.version`. Removed `mcpServer.version` and automatic `package.json` lookup.
+- **MCP opt-in** — `mcpServer: { enabled: true }` enables MCP; omit `mcpServer` to disable. Empty `mcpServer: {}` is rejected at validation.
+- **MCP identity from `key`** — removed `mcpServer.name`. MCP `serverInfo.name`, schema URI, and `mcp.json` entry keys use `sanitizeToolSegment(root.key)` (e.g. `nested.ts` → `nested_ts://schema`). Shell `command` stays the raw `key`.
 ## [2.1.1] - 2026-06-20
 
 ### Changed

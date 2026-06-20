@@ -16,14 +16,14 @@ export interface CliCapabilities {
 export function resolveCapabilities(program: CliProgram): CliCapabilities {
   return {
     completion: true,
-    mcp: program.mcpServer !== undefined,
+    mcp: program.mcpServer?.enabled === true,
     install: program.install?.enabled !== false,
   };
 }
 
 /** Reserved top-level command names for the given capabilities. */
 export function reservedCommandNames(caps: CliCapabilities): string[] {
-  const names = ["completion"];
+  const names = ["completion", "version"];
   if (caps.install) {
     names.push("install");
   }

@@ -11,8 +11,9 @@ import { parseInstallOpts } from "./index.ts";
 
 const fixture: CliProgram = {
   key: "testapp",
+  version: "0.0.0",
   description: "Test",
-  mcpServer: { name: "testapp" },
+  mcpServer: { enabled: true },
   handler: () => {},
 };
 

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram } from "../types.ts";
 import { installBinary } from "./binary.ts";
 import { installCompletions } from "./completions.ts";
@@ -46,7 +47,7 @@ function wantsSkill(opts: InstallOpts): boolean {
 }
 
 function wantsMcp(opts: InstallOpts, root: CliProgram): boolean {
-  return !!(opts.all || opts.mcp) && root.mcpServer !== undefined;
+  return !!(opts.mcp || opts.all) && resolveCapabilities(root).mcp;
 }
 
 /** Builds install actions for normal mode (--all / scoped targets). */
@@ -154,7 +155,7 @@ export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: Ins
     bin: true,
     completions: detected.bashCompletion || detected.zshCompletion || detected.fishCompletion,
     skill: detected.cursorSkill || detected.claudeSkill,
-    mcp: (detected.cursorMcp || detected.claudeMcp) && root.mcpServer !== undefined,
+    mcp: (detected.cursorMcp || detected.claudeMcp) && resolveCapabilities(root).mcp,
     dry: opts.dry,
   };
   const plan = buildInstallPlan(root, paths, scoped);

@@ -18,8 +18,9 @@ const _leafOnly: CliLeaf = {
 
 const _program: CliProgram = {
   key: "app",
+  version: "0.0.0",
   description: "",
-  mcpServer: {},
+  mcpServer: { enabled: true },
   commands: [],
 };
 
@@ -27,7 +28,7 @@ const _badMcpOnNode = {
   key: "x",
   description: "",
   // @ts-expect-error mcpServer is program-root only
-  mcpServer: {},
+  mcpServer: { enabled: true },
   commands: [],
 } satisfies CliNode;
 

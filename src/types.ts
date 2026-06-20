@@ -89,13 +89,12 @@ export interface CliPositional {
 
 /**
  * Enables `myapp mcp` and MCP stdio server metadata (program root only).
+ * Must include `enabled: true`; omit `mcpServer` entirely to disable MCP.
  */
 export interface CliMcpServerConfig {
-  /** `initialize` serverInfo.name (default: root `key`). */
-  name?: string;
-  /** `initialize` serverInfo.version (default: see resolveMcpVersion). */
-  version?: string;
-  /** Resource URI for schema export (default: `"argsbarg://schema"`). */
+  /** When `true`, enables the `mcp` built-in and MCP stdio server. */
+  enabled: boolean;
+  /** Resource URI for schema export (default: `<sanitized root key>://schema`). */
   schemaResourceUri?: string;
   /**
    * Capture the user's login shell environment at MCP server start and merge it
@@ -110,7 +109,7 @@ export interface CliMcpServerConfig {
    */
   envFile?: string;
   /**
-   * Custom MCP resources exposed alongside the built-in argsbarg://schema resource.
+   * Custom MCP resources exposed alongside the built-in schema resource.
    * URIs must be unique and must not equal schemaResourceUri.
    */
   resources?: CliMcpResource[];
@@ -209,7 +208,9 @@ export type CliNode = CliLeaf | CliRouter;
  * May be a leaf or router, plus optional program-level MCP and install config.
  */
 export type CliProgram = CliNode & {
-  /** When set, enables the `mcp` built-in subcommand. */
+  /** Program version (printed by the `version` built-in and MCP serverInfo). */
+  version: string;
+  /** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
   mcpServer?: CliMcpServerConfig;
   /** Opt-out and defaults for `install`. */
   install?: CliInstallConfig;

@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { CliProgram } from "../types.ts";
-import { sanitizeToolSegment } from "../mcp/tools.ts";
+import { sanitizeToolSegment, mcpServerId } from "../mcp/tools.ts";
 
 export interface InstallPaths {
   bindir: string;
@@ -63,7 +63,7 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
     claudeMcpPath: join(home, ".claude.json"),
     bashRc: join(home, ".bashrc"),
     zshRc: join(home, ".zshrc"),
-    mcpName: root.mcpServer?.name ?? root.key,
+    mcpName: mcpServerId(root),
     skillDirName,
   };
 }

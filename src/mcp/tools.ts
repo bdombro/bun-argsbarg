@@ -3,14 +3,24 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for cliInvoke.
 */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter } from "../types.ts";
 
-/** Default URI for the CLI schema MCP resource. */
-export const MCP_SCHEMA_URI_DEFAULT = "argsbarg://schema";
+/** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
+export function defaultMcpSchemaUri(mcpId: string): string {
+  return `${mcpId}://schema`;
+}
+
+/** Sanitizes a command key segment for MCP tool names and server identity. */
+export function sanitizeToolSegment(key: string): string {
+  return key.replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+/** MCP server id derived from the program root key (sanitized). */
+export function mcpServerId(root: CliProgram): string {
+  return sanitizeToolSegment(root.key);
+}
 
 /** One MCP tool derived from a leaf CLI command. */
 export interface McpToolDef {
@@ -30,11 +40,6 @@ export interface McpToolDef {
 export function mcpToolDescription(path: string[], rootKey: string, description: string): string {
   const prefix = path.length > 0 ? path.join(" ") : rootKey;
   return `${prefix} — ${description}`;
-}
-
-/** Sanitizes a command key segment for MCP tool names. */
-export function sanitizeToolSegment(key: string): string {
-  return key.replace(/[^a-zA-Z0-9]/g, "_");
 }
 
 /** Builds the MCP tool name for a leaf at the given path. */
@@ -150,7 +155,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
   /** Walks the command tree and appends leaf tools. */
   function walk(cmd: CliNode, path: string[]): void {
     if (isCliLeaf(cmd)) {
-      if (cmd.key === "completion" || cmd.key === "install" || cmd.key === "mcp") {
+      if (cmd.key === "completion" || cmd.key === "install" || cmd.key === "mcp" || cmd.key === "version") {
         return;
       }
       if (cmd.mcpTool?.enabled === false) {
@@ -181,28 +186,20 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
   return out;
 }
 
-/** Reads package.json version from cwd synchronously. */
-function resolveMcpVersionFromPackageJson(): string | undefined {
-  try {
-    const text = readFileSync(join(process.cwd(), "package.json"), "utf8");
-    const version = (JSON.parse(text) as { version?: string }).version;
-    return typeof version === "string" ? version : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Resolves MCP server name and version for initialize. */
 export function resolveMcpServerInfo(root: CliProgram): { name: string; version: string } {
   return {
-    name: root.mcpServer?.name ?? root.key,
-    version: root.mcpServer?.version ?? resolveMcpVersionFromPackageJson() ?? "0.0.0",
+    name: mcpServerId(root),
+    version: root.version,
   };
 }
 
 /** Resolves the schema resource URI for this app. */
 export function resolveMcpSchemaUri(root: CliProgram): string {
-  return root.mcpServer?.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
+  if (root.mcpServer?.schemaResourceUri) {
+    return root.mcpServer.schemaResourceUri;
+  }
+  return defaultMcpSchemaUri(mcpServerId(root));
 }
 
 /** Converts flat MCP tool arguments to argv for cliInvoke. */

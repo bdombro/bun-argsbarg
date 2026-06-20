@@ -82,7 +82,7 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
     };
   }
 
-  let current: CliProgram = root;
+  let current: CliNode = root;
   for (const seg of pr.path) {
     if (!isCliRouter(current)) {
       return {

@@ -30,7 +30,7 @@ myapp install --uninstall --yes
 | Claude skill | `--skill` | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | MCP config | `--mcp` | `~/.cursor/mcp.json` and `~/.claude.json` when MCP is enabled |
 
-`--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer` is set).
+`--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer.enabled` is `true`).
 
 Shells not on PATH are skipped silently (no warnings).
 
@@ -64,7 +64,7 @@ Environment:
 
 ## MCP merge behavior
 
-When `--mcp` runs, entries are merged into `mcpServers[<name>]` with:
+When `--mcp` runs, entries are merged into `mcpServers[<sanitized-key>]` with:
 
 ```json
 { "command": "<root.key>", "args": ["mcp"] }

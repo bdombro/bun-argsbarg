@@ -1,4 +1,5 @@
 import { readSync } from "node:fs";
+import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram } from "../types.ts";
 import { cliSkillInstall } from "../skill/install.ts";
 import { checkMcpConflict, expectedMcpEntry } from "./mcp-config.ts";
@@ -130,7 +131,7 @@ export async function cliInstall(root: CliProgram, rawOpts: Record<string, strin
   }
 
   // MCP conflict checks before planning
-  if (!opts.uninstall && root.mcpServer && (opts.all || opts.mcp)) {
+  if (!opts.uninstall && resolveCapabilities(root).mcp && (opts.all || opts.mcp)) {
     const entry = expectedMcpEntry(root);
     const yes = !!opts.yes;
     for (const p of [paths.cursorMcpPath, paths.claudeMcpPath]) {

@@ -4,7 +4,7 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
-import { collectMcpTools, sanitizeToolSegment } from "../mcp/tools.ts";
+import { collectMcpTools, mcpServerId, sanitizeToolSegment } from "../mcp/tools.ts";
 import { CliProgram, CliOptionKind } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
@@ -75,7 +75,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
   ];
 
-  if (root.mcpServer !== undefined) {
+  if (root.mcpServer?.enabled === true) {
     lines.push(
       "**Prefer MCP** when a host has the server connected:",
       "",
@@ -89,7 +89,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
       JSON.stringify(
         {
           mcpServers: {
-            [root.mcpServer.name ?? root.key]: {
+            [mcpServerId(root)]: {
               command: root.key,
               args: ["mcp"],
             },

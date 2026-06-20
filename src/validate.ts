@@ -12,10 +12,20 @@ import {
   isCliLeaf,
   isCliRouter,
 } from "./types.ts";
-import { MCP_SCHEMA_URI_DEFAULT } from "./mcp/tools.ts";
+import { resolveMcpSchemaUri } from "./mcp/tools.ts";
 
 /** Validates a program schema. */
 export function cliValidateProgram(program: CliProgram): void {
+  if (!program.version || program.version.trim().length === 0) {
+    throw new CliSchemaValidationError("CliProgram.version is required");
+  }
+
+  if (program.mcpServer !== undefined && program.mcpServer.enabled !== true) {
+    throw new CliSchemaValidationError(
+      "mcpServer requires enabled: true; omit mcpServer to disable MCP",
+    );
+  }
+
   const caps = resolveCapabilities(program);
   const reserved = reservedCommandNames(caps);
 
@@ -58,8 +68,8 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     }
   }
 
-  if (isRoot && program.mcpServer?.resources) {
-    const schemaUri = program.mcpServer.schemaResourceUri ?? MCP_SCHEMA_URI_DEFAULT;
+  if (isRoot && program.mcpServer?.enabled === true && program.mcpServer.resources) {
+    const schemaUri = resolveMcpSchemaUri(program);
     const uris = program.mcpServer.resources.map((r) => r.uri);
     if (uris.includes(schemaUri)) {
       throw new CliSchemaValidationError(
