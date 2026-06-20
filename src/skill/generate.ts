@@ -53,7 +53,7 @@ function formatCommandEntry(root: CliCommand, tool: ReturnType<typeof collectMcp
 
 /** Builds SKILL.md body for the given target. */
 function buildSkillMd(root: CliCommand, target: SkillTarget, dirName: string): string {
-  const name = root.aiSkill?.name ?? sanitizeToolSegment(root.key);
+  const name = sanitizeToolSegment(root.key);
   const description = skillDescription(root);
   const tools = collectMcpTools(root);
 
@@ -80,7 +80,7 @@ function buildSkillMd(root: CliCommand, target: SkillTarget, dirName: string): s
       "**Prefer MCP** when a host has the server connected:",
       "",
       "```bash",
-      `${root.key} ai mcp`,
+      `${root.key} mcp`,
       "```",
       "",
       "Example Cursor `mcp.json` entry:",
@@ -91,7 +91,7 @@ function buildSkillMd(root: CliCommand, target: SkillTarget, dirName: string): s
           mcpServers: {
             [root.mcpServer.name ?? root.key]: {
               command: root.key,
-              args: ["ai", "mcp"],
+              args: ["mcp"],
             },
           },
         },
@@ -174,7 +174,7 @@ function buildReferenceMd(root: CliCommand): string {
 
 /** Generates SKILL.md and reference.md for Cursor or Claude Code. */
 export function generateSkillBundle(root: CliCommand, target: SkillTarget): SkillBundle {
-  const dirName = root.aiSkill?.name ?? sanitizeToolSegment(root.key);
+  const dirName = sanitizeToolSegment(root.key);
   return {
     dirName,
     skillMd: buildSkillMd(root, target, dirName),

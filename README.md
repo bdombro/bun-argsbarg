@@ -14,9 +14,9 @@ Why another CLI parser?
 
 *Beautiful `-h` screens* — scoped help at any routing depth, rendered in rounded UTF-8 boxes with tables, terminal-width wrapping, and color when stdout is a TTY. Errors print in red with contextual help on stderr.
 
-*Shell completions* — `completion bash` and `completion zsh` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
+*Shell completions* — `completion bash`, `completion zsh`, and `completion fish` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
 
-*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp ai mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Install Cursor/Claude skills with `myapp ai skill cursor|claude` — see [docs/ai-skills.md](docs/ai-skills.md).
+*Optional MCP server* — set `mcpServer: {}` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Compiled binaries can install binary, completions, skills, and MCP config with `myapp install` — see [docs/install.md](docs/install.md).
 
 *Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
@@ -95,30 +95,32 @@ Every app gets:
 
 - `-h` / `--help` at any routing depth (scoped help).
 - **`--schema`** at the program root — print the full command tree as JSON (for tooling and agents).
-- **`completion bash` / `completion zsh`** — print shell completion scripts to stdout (injected by `cliRun`).
-- **`ai`** — AI agent integration: `ai mcp` (when `mcpServer` is set), `ai skill cursor`, `ai skill claude` (install agent skills; opt out with `aiSkill: { enabled: false }`).
+- **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
+- **`mcp`** — when `mcpServer` is set on the program root, run as an MCP stdio server (`myapp mcp`).
+- **`install`** — when running as a compiled binary (`bun build --compile`), install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
 
-Do not declare a top-level command named **`completion`** — it is reserved for this built-in.
-Do not declare a top-level command named **`ai`** — it is reserved for this built-in.
+Do not declare a top-level command named **`completion`** or **`install`** — they are reserved.
+When **`mcpServer`** is set, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
 Do not declare an option named **`schema`** — it is reserved for `--schema`.
 
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp ai mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
+Opt in on the program root with `mcpServer: {}` (or `{ name, version, … }`), then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `argsbarg://schema`. Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details.
 
-### Agent skills
+### Install (compiled binaries)
 
-Install Cursor or Claude Code skills (command catalog + schema reference) with:
+After `bun build --compile`, ship a self-contained binary and let users run:
 
 ```bash
-myapp ai skill cursor          # .cursor/skills/<name>/
-myapp ai skill claude --global # ~/.claude/skills/<name>/
+myapp install --all --yes
 ```
 
-See **[docs/ai-skills.md](docs/ai-skills.md)** for opt-out, flags, and file layout.
+This copies the binary to `~/.local/bin`, installs shell completions (bash/zsh/fish when each shell is on PATH), writes Cursor/Claude skills when agent directories exist, and merges MCP server entries into Cursor and Claude config files.
+
+See **[docs/install.md](docs/install.md)** for `--update`, `--status`, `--uninstall`, and flags.
 
 
 ### Shell completions
@@ -130,6 +132,8 @@ myapp completion bash > ~/.bash_completion.d/myapp
 myapp completion zsh > ~/.zsh/completions/_myapp   
 # then: fpath+=(~/.zsh/completions); autoload -Uz compinit && compinit
 # or, for a one-off test in the current shell: eval "$(myapp completion zsh)"
+
+myapp completion fish > ~/.config/fish/completions/myapp.fish
 ```
 
 
@@ -218,7 +222,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 
-Reserved identifier (validated at startup): root command **`completion`**.
+Reserved identifiers (validated at startup): root commands **`completion`**, **`install`**, and **`mcp`** (only when `mcpServer` is set).
 
 ---
 

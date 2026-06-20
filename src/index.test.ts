@@ -729,7 +729,7 @@ async function mcpRequest(
   opts?: { script?: string; env?: Record<string, string> },
 ): Promise<Map<string | number, object>> {
   const script = opts?.script ?? "examples/nested.ts";
-  const proc = Bun.spawn(["bun", "run", script, "ai", "mcp"], {
+  const proc = Bun.spawn(["bun", "run", script, "mcp"], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
@@ -777,7 +777,8 @@ test("collectMcpTools lists user leaf commands only", () => {
   expect(names).toContain("stat_owner_lookup");
   expect(names).toContain("read");
   expect(names).not.toContain("hidden");
-  expect(names).not.toContain("ai");
+  expect(names).not.toContain("install");
+  expect(names).not.toContain("mcp");
   expect(names).not.toContain("completion");
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
   expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
@@ -809,22 +810,22 @@ test("mcpToolCallToArgv expands varargs positionals", () => {
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
-test("reserved command name ai is rejected", () => {
+test("reserved command name install is rejected", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
     commands: [
       {
-        key: "ai",
+        key: "install",
         description: "bad",
         handler: () => {},
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: ai/);
+  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: install/);
 });
 
-test("top-level command name mcp is allowed", () => {
+test("top-level command name mcp is allowed without mcpServer", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
@@ -837,6 +838,22 @@ test("top-level command name mcp is allowed", () => {
     ],
   };
   expect(() => cliValidateRoot(root)).not.toThrow();
+});
+
+test("top-level command name mcp is rejected when mcpServer is set", () => {
+  const root: CliCommand = {
+    key: "app",
+    description: "",
+    mcpServer: {},
+    commands: [
+      {
+        key: "mcp",
+        description: "user command",
+        handler: () => {},
+      },
+    ],
+  };
+  expect(() => cliValidateRoot(root)).toThrow(/Reserved command name: mcp/);
 });
 
 test("mcpServer on non-root node is rejected", () => {
@@ -1014,8 +1031,8 @@ test("MCP ping returns empty result", async () => {
   expect(res.result).toEqual({});
 });
 
-test("minimal.ts ai mcp without opt-in fails", async () => {
-  const { stderr, exitCode } = await $`bun run examples/minimal.ts ai mcp`.nothrow().quiet();
+test("minimal.ts mcp without opt-in fails", async () => {
+  const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
   expect(exitCode).toBe(1);
   expect(stderr.toString()).toContain("MCP is not enabled");
 });
@@ -1653,9 +1670,9 @@ test("mcpToolCallToArgv empty string varargs appends nothing", () => {
   expect(argv).toEqual(["read"]);
 });
 
-// ── AI builtins and skills ────────────────────────────────────────────────────
+// ── Skills ────────────────────────────────────────────────────────────────────
 
-test("aiSkill on non-root node is rejected", () => {
+test("install config on non-root node is rejected", () => {
   const root: CliCommand = {
     key: "app",
     description: "",
@@ -1663,12 +1680,12 @@ test("aiSkill on non-root node is rejected", () => {
       {
         key: "x",
         description: "",
-        aiSkill: { enabled: false },
+        install: { enabled: false },
         handler: () => {},
       },
     ],
   };
-  expect(() => cliValidateRoot(root)).toThrow(/aiSkill is only supported on the program root/);
+  expect(() => cliValidateRoot(root)).toThrow(/install is only supported on the program root/);
 });
 
 test("generateSkillBundle includes frontmatter and command catalog", () => {
@@ -1676,7 +1693,7 @@ test("generateSkillBundle includes frontmatter and command catalog", () => {
   expect(bundle.dirName).toBe("nested_ts");
   expect(bundle.skillMd).toMatch(/^---\nname: nested_ts\n/);
   expect(bundle.skillMd).toContain("stat owner lookup");
-  expect(bundle.skillMd).toContain("ai mcp");
+  expect(bundle.skillMd).toContain("nested.ts mcp");
   expect(bundle.referenceMd).toContain("```json");
   expect(() => JSON.parse(bundle.referenceMd.match(/```json\n([\s\S]*?)\n```/)![1]!)).not.toThrow();
 });
@@ -1686,8 +1703,8 @@ test("cliSkillInstall writes project Cursor skill files", () => {
   const prev = process.cwd();
   process.chdir(cwd);
   try {
-    const msg = cliSkillInstall(nestedMcpFixture, "cursor", { force: true });
-    expect(msg).toContain(".cursor/skills/nested_ts/");
+    const files = cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
+    expect(files.some((f) => f.includes(".cursor/skills/nested_ts/"))).toBe(true);
     const skillDir = join(cwd, ".cursor", "skills", "nested_ts");
     expect(existsSync(join(skillDir, "SKILL.md"))).toBe(true);
     expect(existsSync(join(skillDir, "reference.md"))).toBe(true);
@@ -1703,8 +1720,8 @@ test("cliSkillInstall global uses HOME skills directory", () => {
   const prevHome = process.env.HOME;
   process.env.HOME = home;
   try {
-    const msg = cliSkillInstall(nestedMcpFixture, "cursor", { global: true, force: true });
-    expect(msg).toContain(join(home, ".cursor", "skills", "nested_ts"));
+    const files = cliSkillInstall(nestedMcpFixture, "cursor", { global: true, rimraf: true });
+    expect(files.some((f) => f.includes(join(home, ".cursor", "skills", "nested_ts")))).toBe(true);
     expect(existsSync(join(home, ".cursor", "skills", "nested_ts", "SKILL.md"))).toBe(true);
   } finally {
     if (prevHome === undefined) {
@@ -1716,26 +1733,19 @@ test("cliSkillInstall global uses HOME skills directory", () => {
   }
 });
 
-test("cliSkillInstall fails when directory exists without force", () => {
+test("cliSkillInstall rimraf overwrites existing directory", () => {
   const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-dup-"));
   const prev = process.cwd();
   process.chdir(cwd);
-  const prevExit = process.exit;
-  let exitCode = 0;
-  process.exit = ((code?: number) => {
-    exitCode = code ?? 0;
-    throw new Error("exit");
-  }) as typeof process.exit;
   try {
-    cliSkillInstall(nestedMcpFixture, "cursor", { force: true });
-    try {
-      cliSkillInstall(nestedMcpFixture, "cursor", {});
-    } catch {
-      // expected exit throw
-    }
-    expect(exitCode).toBe(1);
+    cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
+    writeFileSync(join(cwd, ".cursor", "skills", "nested_ts", "SKILL.md"), "stale", "utf8");
+    const files = cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
+    expect(files.length).toBeGreaterThan(0);
+    expect(readFileSync(join(cwd, ".cursor", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain(
+      "stat owner lookup",
+    );
   } finally {
-    process.exit = prevExit;
     process.chdir(prev);
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -1746,8 +1756,8 @@ test("cliSkillInstall claude target uses .claude/skills", () => {
   const prev = process.cwd();
   process.chdir(cwd);
   try {
-    const msg = cliSkillInstall(nestedMcpFixture, "claude", { force: true });
-    expect(msg).toContain(".claude/skills/nested_ts/");
+    const files = cliSkillInstall(nestedMcpFixture, "claude", { rimraf: true });
+    expect(files.some((f) => f.includes(".claude/skills/nested_ts/"))).toBe(true);
     expect(readFileSync(join(cwd, ".claude", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain(
       "Claude Code",
     );
@@ -1755,25 +1765,4 @@ test("cliSkillInstall claude target uses .claude/skills", () => {
     process.chdir(prev);
     rmSync(cwd, { recursive: true, force: true });
   }
-});
-
-test("ai skill cursor fails when aiSkill disabled", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "argsbarg-skill-off-"));
-  const script = join(dir, "skill-off.ts");
-  writeFileSync(
-    script,
-    `import { cliRun, CliCommand } from ${JSON.stringify(join(import.meta.dir, "index.ts"))};
-const cli: CliCommand = {
-  key: "offapp",
-  description: "demo",
-  aiSkill: { enabled: false },
-  commands: [{ key: "x", description: "x", handler: () => {} }],
-};
-await cliRun(cli);
-`,
-    "utf8",
-  );
-  const { stderr, exitCode } = await $`bun run ${script} ai skill cursor`.nothrow().quiet();
-  expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("AI skills are disabled");
 });

@@ -1,9 +1,5 @@
 /*
 This module validates CLI schemas before execution.
-It checks reserved command names, handler placement, fallback rules, duplicate names,
-and positional ordering before the runtime starts.
-
-It fails early on structural problems so invalid trees never reach parsing or dispatch.
 */
 
 import {
@@ -14,26 +10,24 @@ import {
 } from "./types.ts";
 import { MCP_SCHEMA_URI_DEFAULT } from "./mcp/tools.ts";
 
-const reservedCommandNames = ["completion", "ai"];
+function reservedCommandNames(root: CliCommand): string[] {
+  const names = ["completion", "install"];
+  if (root.mcpServer !== undefined) {
+    names.push("mcp");
+  }
+  return names;
+}
 
-/**
- * Validates the static CliCommand tree against ArgBarg rules.
- * Throws CliSchemaValidationError if rules are violated.
- */
 export function cliValidateRoot(root: CliCommand): void {
-
-  // Check for reserved command names at root
   for (const child of root.commands ?? []) {
-    if (reservedCommandNames.includes(child.key)) {
+    if (reservedCommandNames(root).includes(child.key)) {
       throw new CliSchemaValidationError(`Reserved command name: ${child.key}`);
     }
   }
 
-  // Recursively validate
   walkCommand(root, true);
 }
 
-/** Recursively validates a command node: handlers vs children, options, and positionals. */
 function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
   if (!isRoot && cmd.mcpServer !== undefined) {
     throw new CliSchemaValidationError(
@@ -41,9 +35,9 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     );
   }
 
-  if (!isRoot && cmd.aiSkill !== undefined) {
+  if (!isRoot && cmd.install !== undefined) {
     throw new CliSchemaValidationError(
-      "aiSkill is only supported on the program root (not on " + cmd.key + ")",
+      "install is only supported on the program root (not on " + cmd.key + ")",
     );
   }
 
@@ -70,7 +64,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Check for duplicate child names
   const seenNames = new Set<string>();
   for (const child of cmd.commands ?? []) {
     if (seenNames.has(child.key)) {
@@ -95,7 +88,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Validate options (short name uniqueness, reserved -h, required presence)
   const seenShorts = new Set<string>();
   for (const opt of cmd.options ?? []) {
     if (opt.required && opt.kind === CliOptionKind.Presence) {
@@ -149,7 +141,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Validate positionals
   const positionals = cmd.positionals ?? [];
   for (const p of positionals) {
     if (p.argMin !== undefined && p.argMin < 0) {
@@ -168,7 +159,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Check positional ordering: required before optional
   let sawOptional = false;
   for (const p of positionals) {
     const { argMin = 1 } = p;
@@ -179,7 +169,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Check unlimited positional must be last
   for (let idx = 0; idx < positionals.length; idx++) {
     const { argMax = 1 } = positionals[idx]!;
     if (argMax === 0 && idx + 1 < positionals.length) {
@@ -189,7 +178,6 @@ function walkCommand(cmd: CliCommand, isRoot: boolean = false): void {
     }
   }
 
-  // Recurse into nested commands
   for (const child of cmd.commands ?? []) {
     walkCommand(child, false);
   }

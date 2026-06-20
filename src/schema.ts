@@ -1,55 +1,12 @@
 /*
 This module serializes the CLI schema tree to JSON for machine-readable introspection.
-It strips handlers and runtime-only nodes so agents can discover commands, options,
-and positionals in one shot.
-
-It keeps schema export aligned with the declarative CliCommand model that drives help
-and completion.
 */
 
-import {
-  CliCommand,
-  CliFallbackMode,
-  CliOption,
-  CliPositional,
-} from "./types.ts";
-import { cliBuiltinCompletionGroup } from "./completion.ts";
+import { CliCommand } from "./types.ts";
+import { exportPresentationBuiltins, type CliSchemaExport } from "./builtins/export.ts";
 
-/** JSON-safe command node (no handlers). */
-export interface CliSchemaExport {
-  /** Program or command key. */
-  key: string;
-  /** Short description shown in help. */
-  description: string;
-  /** Additional notes shown in help (supports {app} placeholder). */
-  notes?: string;
-  /** Global or command-level flags/options. */
-  options?: CliOption[];
-  /** Default top-level subcommand (program root only). */
-  fallbackCommand?: string;
-  /** How fallbackCommand is applied (program root only). */
-  fallbackMode?: CliFallbackMode;
-  /** Nested subcommands (routing nodes only). */
-  commands?: CliSchemaExport[];
-  /** Positional argument definitions (leaf nodes only). */
-  positionals?: CliPositional[];
-}
+const RESERVED = new Set(["completion", "install", "mcp"]);
 
-/** JSON-safe export of the reserved `completion` subtree (no handler recursion). */
-function exportBuiltinCompletionGroup(appName: string): CliSchemaExport {
-  const group = cliBuiltinCompletionGroup(appName);
-  return {
-    key: group.key,
-    description: group.description,
-    commands: (group.commands ?? []).map((ch) => ({
-      key: ch.key,
-      description: ch.description,
-      ...((ch.notes ?? "").length > 0 ? { notes: ch.notes } : {}),
-    })),
-  };
-}
-
-/** Converts one `CliCommand` node into a JSON-safe export (handlers omitted). */
 function exportCommand(cmd: CliCommand): CliSchemaExport {
   const out: CliSchemaExport = {
     key: cmd.key,
@@ -68,7 +25,7 @@ function exportCommand(cmd: CliCommand): CliSchemaExport {
     if ((cmd.positionals ?? []).length > 0) {
       out.positionals = cmd.positionals;
     }
-    out.commands = [exportBuiltinCompletionGroup(cmd.key)];
+    out.commands = exportPresentationBuiltins(cmd);
     return out;
   }
 
@@ -79,7 +36,7 @@ function exportCommand(cmd: CliCommand): CliSchemaExport {
     out.fallbackMode = cmd.fallbackMode;
   }
 
-  const children = (cmd.commands ?? []).filter((ch) => ch.key !== "completion");
+  const children = (cmd.commands ?? []).filter((ch) => !RESERVED.has(ch.key));
   if (children.length > 0) {
     out.commands = children.map(exportCommand);
   }
@@ -87,7 +44,8 @@ function exportCommand(cmd: CliCommand): CliSchemaExport {
   return out;
 }
 
-/** Returns pretty-printed JSON for the full program schema (trailing newline). */
 export function cliSchemaJson(root: CliCommand): string {
   return JSON.stringify(exportCommand(root), null, 2) + "\n";
 }
+
+export type { CliSchemaExport };

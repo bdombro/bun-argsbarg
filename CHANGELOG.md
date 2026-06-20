@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`install` built-in** (compiled binaries only) — install binary, bash/zsh/fish completions, Cursor/Claude skills, and MCP config (`install --all --yes`, `--update`, `--status`, `--uninstall`).
+- **`completion fish`** — fish tab-completion script generation.
+- Root **`install`** config (`{ enabled?: boolean, prefix?: string }`).
+
+### Changed (breaking)
+
+- **Removed `ai` command group** — no more `ai mcp` or `ai skill`.
+- **Restored top-level `mcp`** — `myapp mcp` (reserved only when `mcpServer` is set).
+- **Removed `aiSkill` config** — skill directory name defaults to sanitized root `key`; use `install --skill` instead of `ai skill`.
+
 ## [1.4.3] - 2026-06-19
 
 ### Added

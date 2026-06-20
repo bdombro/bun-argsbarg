@@ -150,7 +150,7 @@ export function collectMcpTools(root: CliCommand): McpToolDef[] {
   /** Walks the command tree and appends leaf tools. */
   function walk(cmd: CliCommand, path: string[]): void {
     if ("handler" in cmd && cmd.handler) {
-      if (cmd.key === "completion" || cmd.key === "ai") {
+      if (cmd.key === "completion" || cmd.key === "install" || cmd.key === "mcp") {
         return;
       }
       if (cmd.mcpTool?.enabled === false) {

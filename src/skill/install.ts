@@ -1,8 +1,4 @@
-/*
-This module installs generated Agent Skills to Cursor or Claude Code skill directories.
-*/
-
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { CliCommand } from "../types.ts";
@@ -10,15 +6,16 @@ import { generateSkillBundle, type SkillTarget } from "./generate.ts";
 
 export interface SkillInstallOpts {
   global?: boolean;
-  force?: boolean;
+  /** When true, remove an existing skill directory before writing. */
+  rimraf?: boolean;
+  /** When true, skip writes but return paths that would change. */
+  dry?: boolean;
 }
 
-/** Resolves the user home directory (`$HOME` when set). */
 function userHome(): string {
   return process.env.HOME ?? homedir();
 }
 
-/** Resolves the install directory for a skill target. */
 function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean): string {
   const base = global
     ? join(userHome(), target === "cursor" ? ".cursor" : ".claude", "skills")
@@ -26,20 +23,25 @@ function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean):
   return join(base, dirName);
 }
 
-/** Writes SKILL.md and reference.md to the target skills directory. */
-export function cliSkillInstall(root: CliCommand, target: SkillTarget, opts: SkillInstallOpts): string {
+/** Writes SKILL.md and reference.md; returns changed file paths. */
+export function cliSkillInstall(root: CliCommand, target: SkillTarget, opts: SkillInstallOpts): string[] {
   const bundle = generateSkillBundle(root, target);
   const dir = resolveSkillDir(target, bundle.dirName, opts.global ?? false);
+  const changed: string[] = [];
 
-  if (existsSync(dir) && !opts.force) {
-    process.stderr.write(`Skill directory already exists: ${dir}\nUse --force to overwrite.\n`);
-    process.exit(1);
+  if (opts.rimraf && existsSync(dir) && !opts.dry) {
+    rmSync(dir, { recursive: true, force: true });
   }
 
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "SKILL.md"), bundle.skillMd, "utf8");
-  writeFileSync(join(dir, "reference.md"), bundle.referenceMd, "utf8");
+  const skillPath = join(dir, "SKILL.md");
+  const refPath = join(dir, "reference.md");
 
-  const label = target === "cursor" ? "Cursor" : "Claude Code";
-  return `Installed ${label} skill to ${dir}/`;
+  if (!opts.dry) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(skillPath, bundle.skillMd, "utf8");
+    writeFileSync(refPath, bundle.referenceMd, "utf8");
+  }
+
+  changed.push(skillPath, refPath);
+  return changed;
 }

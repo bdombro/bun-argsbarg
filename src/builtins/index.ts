@@ -1,0 +1,10 @@
+export { completionBashScript } from "./completion-bash.ts";
+export { completionZshScript } from "./completion-zsh.ts";
+export { completionFishScript } from "./completion-fish.ts";
+export { cliBuiltinCompletionGroup } from "./completion-group.ts";
+export { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
+export { cliBuiltinMcpCommand } from "./mcp.ts";
+export { cliPresentationRoot, presentationBuiltins } from "./presentation.ts";
+export { exportPresentationBuiltins, type CliSchemaExport } from "./export.ts";
+export { dispatchBuiltin, builtinInterceptRoot } from "./dispatch.ts";
+export { collectScopes, type ScopeRec } from "./scopes.ts";

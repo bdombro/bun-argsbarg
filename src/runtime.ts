@@ -1,25 +1,17 @@
 /*
 This module runs parsed commands, help, errors, completion, and leaf handlers.
-It owns the top-level control flow after parsing, including validation failures,
-shell completion dispatch, and leaf handler invocation.
-
-It keeps execution flow out of the public barrel so the exported API stays small and
-the runtime responsibilities remain easy to reason about.
 */
 
-import { cliBuiltinAiGroup, cliBuiltinCompletionGroup, cliPresentationRoot, completionBashScript, completionZshScript } from "./completion.ts";
+import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
+import { cliPresentationRoot } from "./builtins/presentation.ts";
+import { isCompiledExecutable } from "./install/compiled.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
-import { cliSkillInstall } from "./skill/install.ts";
-import { cliMcpServeStdio } from "./mcp.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { CliCommand } from "./types.ts";
 import { cliValidateRoot } from "./validate.ts";
 
-/**
- * Merges the caller's program root with the reserved `completion` subtree.
- */
 function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
   if (root.handler) {
     return root;
@@ -27,12 +19,6 @@ function cliRootMergedWithBuiltins(root: CliCommand): CliCommand {
   return cliPresentationRoot(root);
 }
 
-/**
- * Validates the schema, parses argv, prints help or errors, runs completion or the leaf handler, then exits.
- *
- * @param root The root CliCommand.
- * @param argv Override the default argv (process.argv.slice(2)).
- */
 export async function cliRun(root: CliCommand, argv: string[] = process.argv.slice(2)): Promise<never> {
   try {
     cliValidateRoot(root);
@@ -45,27 +31,27 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  if (argv.length >= 2 && argv[0] === "ai" && argv[1] === "mcp" && !root.mcpServer) {
+  if (argv.length >= 1 && argv[0] === "mcp" && !root.mcpServer) {
     process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
     process.exit(1);
   }
 
-  let parseRoot = root;
+  if (argv.length >= 1 && argv[0] === "install" && !isCompiledExecutable()) {
+    process.stderr.write("install is only available in compiled binaries (bun build --compile).\n");
+    process.exit(1);
+  }
+
+  let parseRoot: CliCommand;
   let isLeafCompletionIntercept = false;
 
-  if (root.handler && argv.length >= 1 && argv[0] === "ai") {
-    parseRoot = {
-      key: root.key,
-      description: root.description,
-      commands: [cliBuiltinAiGroup(root)],
-    } as CliCommand;
-  } else if (root.handler && argv.length >= 1 && argv[0] === "completion") {
-    isLeafCompletionIntercept = true;
-    parseRoot = {
-      key: root.key,
-      description: root.description,
-      commands: [cliBuiltinCompletionGroup(root.key)],
-    } as any;
+  if (root.handler) {
+    const intercept = builtinInterceptRoot(root, argv);
+    if (intercept.isLeafCompletionIntercept || intercept.parseRoot !== root) {
+      parseRoot = intercept.parseRoot;
+      isLeafCompletionIntercept = intercept.isLeafCompletionIntercept;
+    } else {
+      parseRoot = root;
+    }
   } else {
     parseRoot = cliRootMergedWithBuiltins(root);
   }
@@ -91,53 +77,8 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
     process.exit(1);
   }
 
-  // Leaf roots have an empty path; that's normal.
-
-  if (pr.path[0] === "completion") {
-    // If we intercepted a leaf, we MUST pass the original `root` to generate completions
-    // because `parseRoot` is just a dummy router!
-    const schemaForCompletion = isLeafCompletionIntercept ? root : parseRoot;
-
-    if (pr.path[1] === "bash") {
-      process.stdout.write(completionBashScript(schemaForCompletion));
-      process.exit(0);
-    }
-    if (pr.path[1] === "zsh") {
-      process.stdout.write(completionZshScript(schemaForCompletion));
-      process.exit(0);
-    }
-  }
-
-  if (pr.path[0] === "ai") {
-    if (pr.path[1] === "mcp") {
-      if (!root.mcpServer) {
-        process.stderr.write("MCP is not enabled. Set mcpServer on the program root.\n");
-        process.exit(1);
-      }
-      if (pr.path.length !== 2) {
-        process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
-        process.exit(1);
-      }
-      await cliMcpServeStdio(root);
-    } else if (pr.path[1] === "skill" && (pr.path[2] === "cursor" || pr.path[2] === "claude")) {
-      if (root.aiSkill?.enabled === false) {
-        process.stderr.write("AI skills are disabled. Remove aiSkill.enabled: false from the program root.\n");
-        process.exit(1);
-      }
-      if (pr.path.length !== 3) {
-        process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
-        process.exit(1);
-      }
-      const msg = cliSkillInstall(root, pr.path[2], {
-        global: pr.opts.global === "1",
-        force: pr.opts.force === "1",
-      });
-      process.stderr.write(msg + "\n");
-      process.exit(0);
-    } else {
-      process.stderr.write("Unknown subcommand: ai " + pr.path.slice(1).join(" ") + "\n");
-      process.exit(1);
-    }
+  if (pr.kind === ParseKind.Ok) {
+    await dispatchBuiltin(root, pr, { isLeafCompletionIntercept, parseRoot });
   }
 
   let current = parseRoot;
@@ -167,9 +108,6 @@ export async function cliRun(root: CliCommand, argv: string[] = process.argv.sli
   }
 }
 
-/**
- * Prints a red error line and contextual help on stderr, then exits with status 1.
- */
 export function cliErrWithHelp(ctx: CliContext, msg: string): never {
   const color = process.stderr.isTTY;
   const line = color ? `\u001B[31m${msg}\u001B[0m` : msg;
