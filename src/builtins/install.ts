@@ -95,20 +95,34 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
 /** Builds the `install` built-in command. */
 export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   const app = root.key;
+  const notesLines = [
+    "First-time setup:",
+    `  ${app} install --all --yes`,
+    "",
+    "Refresh after upgrading:",
+    `  ${app} install --reinstall`,
+  ];
+  if (resolveCapabilities(root).update) {
+    notesLines.push(
+      "",
+      "Upgrade to latest release:",
+      `  ${app} install --update`,
+    );
+  }
+  notesLines.push(
+    "",
+    "See what is installed:",
+    `  ${app} install --status`,
+    "",
+    "Remove everything installed with --all:",
+    `  ${app} install --uninstall --all --yes`,
+    "",
+    "Use --dry to preview changes, --json for machine-readable output.",
+  );
   return {
     key: "install",
     description: "Install the binary, shell completions, agent skills, and MCP config to your user environment.",
-    notes:
-      "First-time setup:\n" +
-      `  ${app} install --all --yes\n\n` +
-      "Refresh after upgrading:\n" +
-      `  ${app} install --reinstall\n` +
-      `  ${app} install --update\n\n` +
-      "See what is installed:\n" +
-      `  ${app} install --status\n\n` +
-      "Remove everything installed with --all:\n" +
-      `  ${app} install --uninstall --all --yes\n\n` +
-      "Use --dry to preview changes, --json for machine-readable output.",
+    notes: notesLines.join("\n"),
     options: installBuiltinOptions(root),
     handler: () => {},
   };
