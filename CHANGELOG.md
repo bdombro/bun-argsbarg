@@ -9,15 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **MCP schema hints** — auto-append agent hints to tool descriptions when leaves define `yes`, `dry-run`, or `json` options.
-- **`docs/cli-program.md`** — authoring guide for `CliProgram` and leaves (MCP-free defaults).
+- **`docs/cli-program.md`** — authoring guide for `CliProgram` and leaves (MCP-free defaults); **headless-capable handlers** section for Ink/MCP/non-TTY patterns.
 - **`docs/templates/cursor/rules/cli-program.mdc`** — copy to `.cursor/rules/cli-program.mdc` in consumer apps (discourages unnecessary `mcpTool` escape hatches).
+
+### Removed
+
+- **`mcpToolSchemaHints`** — redundant with MCP `inputSchema` option descriptions.
+- **`wantsDryRun`** — use `ctx.hasFlag("dry-run")` instead.
 
 ## [3.3.0] - 2026-06-21
 
 ### Added
 
-- **Headless helpers** — `shouldRunHeadless`, `shouldRunHeadlessWithPositionals`, `shouldRunHeadlessWithYes`, `wantsDryRun`, `wantsExplicitJson`, `requireYesInNonTty`, `formatDryRunMessage` for Ink/MCP CLIs.
+- **Headless helpers** — `shouldRunHeadless`, `shouldRunHeadlessWithPositionals`, `shouldRunHeadlessWithYes`, `wantsExplicitJson`, `requireYesInNonTty`, `formatDryRunMessage` for Ink/MCP CLIs.
 - **`ghReleaseUpdateGetLatest`** — optional `install.updateGetLatest` factory for GitHub releases via `gh`.
 - **`createGhVersionCheck`** — version-check cache, update notices, and background refresh helpers.
 

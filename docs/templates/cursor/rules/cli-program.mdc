@@ -19,21 +19,18 @@ Package docs: `node_modules/argsbarg/readme.md`, `node_modules/argsbarg/docs/cli
 ## Leaf commands (`CliLeaf`)
 
 - One clear **`description`** per leaf (verb + object; no UI jargon unless CLI-only).
-- Use standard option names when semantics match:
-  - **`yes`** — scriptable confirmation (`--yes` → MCP `yes: true`)
-  - **`dry-run`** — preview mutations
-  - **`json`** — machine-readable stdout
-- ArgsBarg auto-appends MCP agent hints for `yes`, `dry-run`, and `json` (no extra config).
+- Use standard option names when semantics match: **`yes`**, **`dry-run`**, **`json`**
+- Write option **`description`** text for agents (e.g. "Skip confirmation; use for non-interactive runs.")
 
 ## `mcpTool` — escape hatches (rare)
 
-**Default: omit `mcpTool`.** ArgsBarg already generates tool names, descriptions (with `yes` / `dry-run` / `json` hints), and `inputSchema`.
+**Default: omit `mcpTool`.** ArgsBarg exposes tool names, descriptions, and `inputSchema` from the schema.
 
 Reach for `mcpTool` only when the schema cannot express the constraint. **Before adding an escape hatch, fix the underlying CLI design** if the motivation is an anti-pattern:
 
 | Temptation | Prefer instead |
 | --- | --- |
-| `mcpTool.description` explaining custom flags | Rename to **`yes`**, **`dry-run`**, or **`json`** when semantics match (auto hints) |
+| `mcpTool.description` explaining custom flags | Rename to **`yes`**, **`dry-run`**, or **`json`** when semantics match; describe them on the option |
 | `mcpTool.description` saying "pass `--json`" | Implement headless/`--json` in the **handler**; ensure the option exists on the leaf |
 | `mcpTool.enabled: false` because prompts block MCP | Add **`--yes`** / flag resolution so MCP can run headless; hide only if headless is impossible |
 | `mcpTool.description` duplicating help with MCP caveats | Rewrite leaf **`description`** and option text for agents; one description for both audiences |
@@ -49,10 +46,34 @@ Legitimate escape hatches:
 
 If you add `mcpTool`, leave a short comment in code **why** a schema/handler fix was not enough.
 
+## Headless-capable handlers
+
+Simple leaves (stdout only) need no branching. **If a handler can mount Ink, prompt, or open a browser, it must also support a scriptable fast path** for MCP, non-TTY CLI, and `--json` / `--dry-run` / `--yes`.
+
+- **One headless path** serves MCP + piped CLI + explicit flags — not separate MCP handlers.
+- **Mutators:** `--yes` (and/or `--dry-run`); use `shouldRunHeadlessWithYes` + `requireYesInNonTty`.
+- **Queries:** optional `--json`; use `shouldRunHeadless` + `wantsExplicitJson`.
+- **Positionals:** use `shouldRunHeadlessWithPositionals` so empty argv does not auto-headless into errors.
+- **Resolve from flags first** — wizards are TTY-only; flags must be enough for agents.
+- **`ctx.invocation === "mcp"`** — only for wire-specific behavior (pipe subprocess stdout, reject `--watch`), not duplicate business logic.
+- **`mcpTool.enabled: false`** only when headless is truly impossible.
+
+```typescript
+// Mutating pattern (sketch)
+requireYesInNonTty(yes, "Example: myapp cmd … --yes", dryRun);
+if (shouldRunHeadlessWithYes(ctx, { yes, hasRequiredArgs, dryRun })) {
+  /* stdout/stderr only */ return;
+}
+await renderInteractive(/* … */);
+```
+
+See `node_modules/argsbarg/docs/cli-program.md` for full examples.
+
 ## Handlers
 
-- Same handler serves CLI and MCP; use **`ctx.invocation`** (`"cli"` | `"mcp"`) to branch subprocess/TTY behavior.
-- Prefer ArgsBarg headless helpers (`shouldRunHeadless`, `shouldRunHeadlessWithYes`, `requireYesInNonTty`) over ad-hoc TTY checks.
+- Same handler serves CLI and MCP; headless-capable when the command may be interactive (see **Headless-capable handlers** above).
+- Use **`ctx.invocation`** (`"cli"` | `"mcp"`) only for wire-specific subprocess/TTY behavior.
+- Prefer ArgsBarg headless helpers over ad-hoc `process.stdin.isTTY` checks.
 - Do not declare reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`.
 
 ## Types

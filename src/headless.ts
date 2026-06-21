@@ -4,11 +4,6 @@ import { isInteractiveTty } from "./utils.ts";
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;
 
-/** True when `--dry-run` was passed. */
-export function wantsDryRun(hasDryRunFlag: boolean): boolean {
-  return hasDryRunFlag;
-}
-
 /** True when `--json` was passed or the handler was invoked via MCP. */
 export function wantsExplicitJson(ctx: HeadlessContext, hasJsonFlag: boolean): boolean {
   return hasJsonFlag || ctx.invocation === "mcp";

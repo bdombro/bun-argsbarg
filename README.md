@@ -108,7 +108,7 @@ When **`docs.enabled`** is `true`, do not declare a top-level command named **`d
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing. MCP tool descriptions auto-include hints when leaves define `--yes`, `--dry-run`, or `--json`.
+Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: copy **`docs/templates/cursor/rules/cli-program.mdc`** to **`.cursor/rules/cli-program.mdc`**).
 

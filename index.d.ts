@@ -307,8 +307,6 @@ export declare function cliErrWithHelp(ctx: CliContext, msg: string): never;
 export declare const isInteractiveTty: boolean;
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;
-/** True when `--dry-run` was passed. */
-export declare function wantsDryRun(hasDryRunFlag: boolean): boolean;
 /** True when `--json` was passed or the handler was invoked via MCP. */
 export declare function wantsExplicitJson(ctx: HeadlessContext, hasJsonFlag: boolean): boolean;
 /**

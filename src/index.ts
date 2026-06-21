@@ -34,7 +34,6 @@ export {
   shouldRunHeadless,
   shouldRunHeadlessWithPositionals,
   shouldRunHeadlessWithYes,
-  wantsDryRun,
   wantsExplicitJson,
 } from "./headless.ts";
 export type { HeadlessContext } from "./headless.ts";

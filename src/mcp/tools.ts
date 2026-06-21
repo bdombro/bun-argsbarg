@@ -42,30 +42,6 @@ export function mcpToolDescription(path: string[], rootKey: string, description:
   return `${prefix} — ${description}`;
 }
 
-/**
- * Agent hints inferred from well-known option names on a leaf command.
- * Appended to auto-generated MCP descriptions (not when `mcpTool.description` is set).
- */
-export function mcpToolSchemaHints(root: CliProgram, path: string[]): string {
-  const names = new Set(collectOptionDefs(root, path).map((opt) => opt.name));
-  const hints: string[] = [];
-
-  if (names.has("yes")) {
-    hints.push("pass yes: true for non-interactive use");
-  }
-  if (names.has("dry-run")) {
-    hints.push("or dry-run: true to preview");
-  }
-  if (names.has("json")) {
-    hints.push("returns JSON on stdout");
-  }
-
-  if (hints.length === 0) {
-    return "";
-  }
-  return ` [${hints.join("; ")}]`;
-}
-
 /** Builds the MCP tool name for a leaf at the given path. */
 export function mcpToolName(root: CliProgram, path: string[]): string {
   if (path.length === 0) {
@@ -140,7 +116,6 @@ function resolveToolDescription(root: CliProgram, path: string[], leaf: CliLeaf)
   if (env && env.length > 0) {
     desc += ` [requires env: ${env.join(", ")}]`;
   }
-  desc += mcpToolSchemaHints(root, path);
   return desc;
 }
 

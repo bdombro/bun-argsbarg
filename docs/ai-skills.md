@@ -44,7 +44,7 @@ Skills describe **shell invocation only** — no MCP setup, `mcp.json`, or `tool
 | **`myapp install --skill`** | Static shell command catalog for agents |
 | **`myapp docs`** (requires `docs`) | Bundled markdown on stdout (`docs mcp` when MCP enabled) |
 
-Command catalog lines reuse MCP tool descriptions (including auto hints for `yes`, `dry-run`, and `json`). See [cli-program.md](cli-program.md).
+Command catalog lines reuse MCP tool descriptions. See [cli-program.md](cli-program.md).
 
 See also:
 

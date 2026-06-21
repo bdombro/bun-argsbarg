@@ -5,14 +5,8 @@ import {
   shouldRunHeadless,
   shouldRunHeadlessWithPositionals,
   shouldRunHeadlessWithYes,
-  wantsDryRun,
   wantsExplicitJson,
 } from "./headless.ts";
-
-test("wantsDryRun detects flag", () => {
-  expect(wantsDryRun(true)).toBe(true);
-  expect(wantsDryRun(false)).toBe(false);
-});
 
 test("wantsExplicitJson includes MCP invocation", () => {
   expect(wantsExplicitJson({ invocation: "cli" }, false)).toBe(false);

@@ -36,21 +36,13 @@ Option and positional `description` strings appear in `-h`, MCP `inputSchema`, a
 
 Use root **`notes`** for cross-cutting hints shown in help (install commands, docs topics, VPN requirements).
 
-## Well-known options (auto MCP hints)
+## Well-known option names
 
-When these option **names** appear on a leaf, ArgsBarg appends agent hints to the MCP tool description:
-
-| Option name | Hint |
-| --- | --- |
-| `yes` | non-interactive / confirm mutations |
-| `dry-run` | preview without side effects |
-| `json` | structured stdout |
-
-Prefer these names when the semantics match. Mutating commands that need scriptable use should expose **`--yes`** or **`--dry-run`** rather than custom flag names.
+Prefer **`yes`**, **`dry-run`**, and **`json`** when semantics match. They appear in `-h`, MCP `inputSchema`, and generated skills — write clear option `description` strings (e.g. "Skip confirmation; use for non-interactive runs.").
 
 ## When to use `mcpTool` (escape hatches only)
 
-**Omit `mcpTool` unless you have a specific reason.** Overrides replace the entire auto-generated MCP description (including `yes` / `dry-run` / `json` hints).
+**Omit `mcpTool` unless you have a specific reason.**
 
 ### Fix the CLI first
 
@@ -76,11 +68,82 @@ Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard
 
 If help text and MCP behavior match after your fixes, **omit `mcpTool` entirely**.
 
-## Interactive / Ink CLIs
+## Headless-capable handlers
 
-- Branch on `ctx.invocation === "mcp"` or use ArgsBarg headless helpers (`shouldRunHeadless`, `shouldRunHeadlessWithYes`).
-- MCP invocation is always headless; do not mount TUI on the MCP wire.
-- Hide commands that **cannot** work headless even with `--yes` / resolved flags — use `mcpTool: { enabled: false }` only after confirming a headless path is infeasible.
+Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
+
+- **MCP** (`ctx.invocation === "mcp"` — always non-interactive)
+- **Non-TTY CLI** (pipes, CI, `myapp cmd --yes` in a script)
+- **Explicit flags** (`--json`, `--dry-run`)
+
+Use **one headless implementation** for all three; do not fork separate "MCP handlers."
+
+### When to branch
+
+| Command kind | Headless trigger | Helpers |
+| --- | --- | --- |
+| Read / query | MCP, `--json`, or non-TTY | `shouldRunHeadless`, `wantsExplicitJson` |
+| Mutate | MCP with args + `yes`/`dry-run`, or non-TTY with `--yes` | `shouldRunHeadlessWithYes`, `requireYesInNonTty` |
+| Mutate with positionals | Same, but avoid auto-headless on empty argv | `shouldRunHeadlessWithPositionals` |
+
+### Recommended handler shape
+
+**Mutating command** (wizard optional, script path required):
+
+```typescript
+import {
+  requireYesInNonTty,
+  shouldRunHeadlessWithYes,
+} from "argsbarg";
+
+handler: async (ctx) => {
+  const dryRun = ctx.hasFlag("dry-run");
+  const yes = ctx.hasFlag("yes");
+  const env = ctx.args[0];
+
+  requireYesInNonTty(yes, "Example: myapp reserve qa2 --yes", dryRun);
+
+  if (shouldRunHeadlessWithYes(ctx, { yes, hasRequiredArgs: !!env, dryRun })) {
+    const result = await executeReserve({ dryRun, env, yes });
+    process.stdout.write(`${result.message}\n`);
+    return;
+  }
+
+  await renderInteractiveWizard({ env, yes, dryRun });
+};
+```
+
+**Read / query command** (optional `--json`):
+
+```typescript
+import { shouldRunHeadless, wantsExplicitJson } from "argsbarg";
+
+handler: async (ctx) => {
+  const json = ctx.hasFlag("json");
+
+  if (shouldRunHeadless(ctx, json)) {
+    const data = await fetchStatus(ctx.args[0]);
+    if (wantsExplicitJson(ctx, json)) {
+      process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatStatusHuman(data));
+    }
+    return;
+  }
+
+  await renderPage(<StatusPage env={ctx.args[0]} />);
+};
+```
+
+### Rules of thumb
+
+1. **Resolvable from flags** — if a human can complete the action with flags, an agent can too (`--env qa2 --yes`). Wizards are optional sugar on TTY.
+2. **`--yes` on mutators** — required for non-TTY CLI scripts; MCP should pass `yes: true` in tool arguments when the schema exposes `yes`.
+3. **Stdout is the contract** — headless paths write results to stdout (or JSON with `--json`); stderr for errors. No Ink on the MCP wire.
+4. **`ctx.invocation === "mcp"`** — use only for wire-specific behavior (pipe child stdout, reject `--watch`, etc.), not to duplicate business logic.
+5. **Hide only when impossible** — `mcpTool.enabled: false` after confirming no headless path exists (browser-only, irreducible streaming).
+
+Basic synchronous handlers do not need this structure — only commands with an interactive branch.
 
 ## Reserved names
 

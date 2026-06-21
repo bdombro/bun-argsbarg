@@ -103,20 +103,11 @@ Tool names are derived from the command path, with each segment sanitized (non-a
 
 ### Tool descriptions
 
-Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. ArgsBarg also appends **agent hints** inferred from well-known option names (no per-command config required):
-
-| Option on leaf | Appended hint |
-| --- | --- |
-| `--yes` | `pass yes: true for non-interactive use` |
-| `--dry-run` | `or dry-run: true to preview` |
-| `--json` | `returns JSON on stdout` |
-
-Environment requirements from `mcpTool.requiresEnv` are appended as `[requires env: …]`. Hints are omitted when you set `mcpTool.description` (full override).
+Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. Tool arguments are defined in `inputSchema` (options and positionals with their descriptions). `mcpTool.requiresEnv` is appended as `[requires env: …]`.
 
 | CLI path | MCP `description` (example) |
 | --- | --- |
 | `stat owner lookup` | `stat owner lookup — Resolve owner info.` |
-| `deploy` (with `--yes`) | `deploy — Deploy. [pass yes: true for non-interactive use]` |
 | `read` | `read — Print the first line of each file.` |
 | (root leaf app) | `{root.key} — Tiny demo.` |
 
@@ -218,7 +209,9 @@ URIs must be unique and must not equal `schemaResourceUri`. `load()` runs synchr
 
 Handlers receive `ctx.invocation`: `"cli"` for normal `cliRun` dispatch, `"mcp"` for MCP `tools/call`.
 
-Use this to branch subprocess behavior — MCP stdout is the JSON-RPC wire, so child processes must not inherit it:
+MCP is always non-interactive. Commands that can mount Ink or prompts should implement a **headless fast path** (same path as non-TTY CLI with `--yes` / `--json`) — see [cli-program.md — Headless-capable handlers](cli-program.md#headless-capable-handlers).
+
+Use `ctx.invocation` to branch subprocess behavior — MCP stdout is the JSON-RPC wire, so child processes must not inherit it:
 
 ```typescript
 handler: async (ctx) => {

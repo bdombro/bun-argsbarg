@@ -767,9 +767,7 @@ test("collectMcpTools lists user leaf commands only", () => {
   expect(names).not.toContain("mcp");
   expect(names).not.toContain("completion");
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  expect(lookup.description).toBe(
-    "stat owner lookup — Resolve owner info. [returns JSON on stdout]",
-  );
+  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
 });
 
 test("collectMcpTools merges parent options into inputSchema", () => {
@@ -1178,49 +1176,6 @@ test("mcpTool.requiresEnv appended to auto description", () => {
   });
   const tools = collectMcpTools(root);
   expect(tools[0]!.description).toContain("[requires env: TOKEN]");
-});
-
-test("mcpToolSchemaHints appends yes, dry-run, and json hints", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "deploy",
-        description: "Deploy the service.",
-        options: [
-          { name: "yes", description: "Skip prompts.", kind: CliOptionKind.Presence },
-          { name: "dry-run", description: "Preview.", kind: CliOptionKind.Presence },
-          { name: "json", description: "JSON output.", kind: CliOptionKind.Presence },
-        ],
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toContain("pass yes: true for non-interactive use");
-  expect(tools[0]!.description).toContain("dry-run: true to preview");
-  expect(tools[0]!.description).toContain("returns JSON on stdout");
-});
-
-test("mcpToolSchemaHints skipped when description override is set", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "x",
-        description: "Leaf desc.",
-        options: [{ name: "yes", description: "", kind: CliOptionKind.Presence }],
-        mcpTool: { description: "custom only" },
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toBe("custom only");
 });
 
 test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
