@@ -67,7 +67,7 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "quiet",
-      description: "Suppress informational output (requires --yes).",
+      description: "Suppress informational output (requires --yes, --json, --reinstall, or --update).",
       kind: CliOptionKind.Presence,
     },
   ];
@@ -84,7 +84,7 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     const statusIdx = opts.findIndex((o) => o.name === "status");
     opts.splice(statusIdx, 0, {
       name: "update",
-      description: "Download and install the latest release.",
+      description: "Download the latest release and reinstall installed artifacts.",
       kind: CliOptionKind.Presence,
     });
   }

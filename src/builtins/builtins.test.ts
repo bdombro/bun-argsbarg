@@ -37,6 +37,25 @@ describe("builtins help copy", () => {
     expect(names).not.toContain("mcp");
   });
 
+  test("install omits --update when updateGetLatest unset", () => {
+    const install = cliBuiltinInstallCommand(fixture);
+    expect(installBuiltinOptions(fixture).map((o) => o.name)).not.toContain("update");
+    expect(install.notes).not.toContain("Upgrade to latest release");
+    expect(install.notes).toContain("Refresh after upgrading");
+  });
+
+  test("install notes include upgrade section when updateGetLatest is set", () => {
+    const withUpdate: CliProgram = {
+      ...fixture,
+      install: { updateGetLatest: async () => ({ path: process.execPath }) },
+    };
+    const install = cliBuiltinInstallCommand(withUpdate);
+    const notes = install.notes ?? "";
+    expect(installBuiltinOptions(withUpdate).map((o) => o.name)).toContain("update");
+    expect(notes).toContain("Upgrade to latest release");
+    expect(notes.indexOf("install --reinstall")).toBeLessThan(notes.indexOf("install --update"));
+  });
+
   test("mcp builtin description is user-facing", () => {
     const mcp = cliBuiltinMcpCommand();
     expect(mcp.description).toContain("MCP server");

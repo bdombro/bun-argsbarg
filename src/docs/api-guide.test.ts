@@ -64,6 +64,20 @@ test("generateApiGuide resolves program key in install notes", () => {
   const md = generateApiGuide(fixture);
   expect(md).not.toContain("{argsbarg:program}");
   expect(md).toContain("myapp install --all --yes");
+  expect(md).not.toContain("Upgrade to latest release");
+});
+
+test("generateApiGuide includes upgrade section when updateGetLatest is set", () => {
+  const fixture: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo app.",
+    install: { updateGetLatest: async () => ({ path: process.execPath }) },
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  };
+  const md = generateApiGuide(fixture);
+  expect(md).toContain("Upgrade to latest release");
+  expect(md).toContain("myapp install --update");
 });
 
 test("generateApiGuide resolves {argsbarg:program} in consumer notes", () => {

@@ -2,13 +2,13 @@
 
 ## Current Status
 
-**Overall**: Core CLI, MCP, install, docs, and update built-ins are complete. Public API is stable at **3.x**.
+**Overall**: Core CLI, MCP, install, docs, and `install --update` are complete. Public API is stable at **3.x**.
 
 ### Shipped
 
 - Schema-driven parsing, help, completions, subcommand routing, fallback commands
 - MCP server (`mcpServer: { enabled: true }`), `ctx.invocation`, `cliInvoke`
-- `install` / `update` built-ins, agent skills, bundled `docs` (topics, schema, api, skill, mcp)
+- `install` built-in (`install --update` when `updateGetLatest` is set), agent skills, bundled `docs` (topics, schema, api, skill, mcp)
 - Headless helpers and `ghReleaseUpdateGetLatest` for GitHub release consumers
 
 ### Consumers

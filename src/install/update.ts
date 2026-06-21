@@ -7,7 +7,7 @@ import { installErr } from "./status.ts";
 export async function cliUpdate(root: CliProgram): Promise<never> {
   const hook = root.install?.updateGetLatest;
   if (!hook) {
-    installErr("update is not configured. Set install.updateGetLatest on the program root.");
+    installErr("install --update is not configured. Set install.updateGetLatest on the program root.");
     process.exit(1);
   }
 

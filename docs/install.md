@@ -11,7 +11,7 @@ myapp install --all --yes
 # Refresh after upgrading (re-copy running binary + refresh installed artifacts)
 myapp install --reinstall
 
-# Download latest release (when install.updateGetLatest is configured)
+# Upgrade to latest release (when install.updateGetLatest is configured)
 myapp install --update
 
 # See what is installed
@@ -99,7 +99,7 @@ Environment:
 
 | Flag | Description |
 | --- | --- |
-| `--yes` | Skip confirmation (required for non-TTY unless `--json` / `--reinstall`) |
+| `--yes` | Skip confirmation (required for non-TTY unless `--json`, `--reinstall`, or `--update`) |
 | `--dry` | Preview changes; per-step messages on stderr with `[dry run]` |
 | `--json` | Machine-readable output on stdout (implies `--yes`) |
 | `--quiet` | Suppress summaries and per-step messages (requires `--yes`) |
