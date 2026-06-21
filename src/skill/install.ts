@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { CliProgram } from "../types.ts";
 import { generateSkillBundle, type SkillTarget } from "./generate.ts";
+import { applySkillInstallHints } from "./hint.ts";
 
 export interface SkillInstallOpts {
   global?: boolean;
@@ -26,6 +27,7 @@ function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean):
 /** Writes SKILL.md and reference.md; returns changed file paths. */
 export function cliSkillInstall(root: CliProgram, target: SkillTarget, opts: SkillInstallOpts): string[] {
   const bundle = generateSkillBundle(root, target);
+  const { skillMd, referenceMd } = applySkillInstallHints(root, bundle.skillMd, bundle.referenceMd);
   const dir = resolveSkillDir(target, bundle.dirName, opts.global ?? false);
   const changed: string[] = [];
 
@@ -38,8 +40,8 @@ export function cliSkillInstall(root: CliProgram, target: SkillTarget, opts: Ski
 
   if (!opts.dry) {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(skillPath, bundle.skillMd, "utf8");
-    writeFileSync(refPath, bundle.referenceMd, "utf8");
+    writeFileSync(skillPath, skillMd, "utf8");
+    writeFileSync(refPath, referenceMd, "utf8");
   }
 
   changed.push(skillPath, refPath);
