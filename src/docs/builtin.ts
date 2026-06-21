@@ -55,7 +55,20 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   leaves.push(
     docsLeaf(program, "schema", "Print the full command tree as JSON."),
     docsLeaf(program, "api", "Print the command tree as markdown."),
-    docsLeaf(program, "skill", "Print generated Cursor SKILL.md content."),
+    {
+      key: "skill",
+      description: "Print generated SKILL.md (compact command index).",
+      notes: [
+        "Prefer `{argsbarg:program} install --skill --yes` for agents: it persists an optimized skill bundle",
+        "(`SKILL.md` index + `reference.md` full API) to your skill directory.",
+        "`docs skill` prints the index only; use `docs api` or installed `reference.md` for full detail.",
+      ].join(" "),
+      options: [DOCS_SAVE_OPTION],
+      mcpTool: { enabled: false },
+      handler: (ctx) => {
+        runDocsTopic(program, "skill", ctx);
+      },
+    },
   );
 
   return {

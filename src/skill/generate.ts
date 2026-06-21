@@ -2,10 +2,10 @@
 This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
 */
 
-import { generateApiGuideBody } from "../docs/api-guide.ts";
-import { cliSchemaJson } from "../schema.ts";
-import { collectMcpTools, sanitizeToolSegment } from "../mcp/tools.ts";
-import { CliProgram } from "../types.ts";
+import { generateApiGuide } from "../docs/api-guide.ts";
+import { collectOptionDefs } from "../parse.ts";
+import { collectMcpTools, sanitizeToolSegment, type McpToolDef } from "../mcp/tools.ts";
+import { CliProgram, CliOptionKind } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
 
@@ -31,10 +31,47 @@ function skillDescription(root: CliProgram): string {
   return truncate(desc, 1024);
 }
 
+/** CLI path with required single-slot positionals for the compact catalog. */
+function commandCatalogPath(root: CliProgram, tool: McpToolDef): string {
+  const base = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
+  const slots = (tool.leaf.positionals ?? [])
+    .filter((p) => (p.argMin ?? 1) > 0 && (p.argMax ?? 1) === 1)
+    .map((p) => `<${p.name}>`);
+  if (slots.length === 0) {
+    return base;
+  }
+  return `${base} ${slots.join(" ")}`;
+}
+
+/** Formats one command line for the SKILL.md index (details live in reference.md). */
+function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
+  const cliPath = commandCatalogPath(root, tool);
+  let line = `- **\`${cliPath}\`** — ${tool.leaf.description}`;
+  const opts = collectOptionDefs(root, tool.path);
+  const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
+  if (flags.length > 0) {
+    line += ` (flags: ${flags.join(", ")})`;
+  }
+  const enums = opts.filter((o) => o.kind === CliOptionKind.Enum && o.choices?.length);
+  for (const e of enums) {
+    line += ` (\`--${e.name}\`: ${e.choices!.join(" | ")})`;
+  }
+  const varargs = (tool.leaf.positionals ?? []).filter((p) => (p.argMax ?? 1) === 0);
+  if (varargs.length > 0) {
+    line += ` (varargs: ${varargs.map((p) => p.name).join(", ")})`;
+  }
+  const env = tool.leaf.mcpTool?.requiresEnv;
+  if (env && env.length > 0) {
+    line += ` [requires env: ${env.join(", ")}]`;
+  }
+  return line;
+}
+
 /** Builds SKILL.md body for the given target. */
 function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): string {
   const name = sanitizeToolSegment(root.key);
   const description = skillDescription(root);
+  const tools = collectMcpTools(root);
 
   const lines: string[] = [
     "---",
@@ -46,10 +83,6 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     root.description,
     "",
-    "## When to use",
-    "",
-    `Use this skill when working with **${root.key}** — shell commands and automation for this application.`,
-    "",
     "## Execution",
     "",
     "Invoke via shell:",
@@ -58,18 +91,32 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     `${root.key} <subcommand> [options] [args]`,
     "```",
     "",
-    generateApiGuideBody(root).trimEnd(),
+    "## Commands",
     "",
+  ];
+
+  if (tools.length === 0) {
+    lines.push("(No leaf commands in schema.)", "");
+  } else {
+    for (const tool of tools) {
+      lines.push(formatCommandEntry(root, tool));
+    }
+    lines.push("");
+  }
+
+  lines.push(
     "## Pitfalls",
     "",
     "- Use `--` before tokens that look like flags when they are positional arguments.",
-    "- Required environment variables are listed per command in descriptions (`requires env`).",
+    "- Required environment variables are listed per command above (`requires env`) and in `reference.md`.",
     "",
     "## Reference",
     "",
-    "See `reference.md` in this skill directory for the full `docs schema` JSON export.",
+    "This file is a command index. For full option tables, positionals, notes, and built-ins,",
+    `read \`reference.md\` in this skill directory (same content as \`${root.key} docs api\`).`,
+    "Search for the command path you need before invoking.",
     "",
-  ];
+  );
 
   if (target === "cursor") {
     lines.push(
@@ -96,18 +143,9 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
   return lines.join("\n");
 }
 
-/** Builds reference.md with pretty-printed schema JSON. */
+/** Builds reference.md with the full `docs api` markdown guide. */
 function buildReferenceMd(root: CliProgram): string {
-  return [
-    `# ${root.key} — CLI reference`,
-    "",
-    "Generated from the program `docs schema` export. Handlers and runtime-only nodes are omitted.",
-    "",
-    "```json",
-    cliSchemaJson(root).trimEnd(),
-    "```",
-    "",
-  ].join("\n");
+  return generateApiGuide(root);
 }
 
 /** Generates SKILL.md and reference.md for Cursor or Claude Code. */

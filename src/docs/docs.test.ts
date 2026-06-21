@@ -152,9 +152,22 @@ test("docs skill prints Cursor SKILL.md", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("---");
   expect(result.stdout).toContain("name: myapp");
-  expect(result.stdout).toContain("#### Options");
-  expect(result.stdout).not.toContain("## Commands");
+  expect(result.stdout).toContain("## Commands");
+  expect(result.stdout).toContain("read `reference.md`");
+  expect(result.stdout).not.toContain("#### Options");
   expect(result.stdout).not.toContain("mcp.json");
+});
+
+test("docs skill help recommends install --skill", async () => {
+  const presentation = cliPresentationRoot(docsFixture());
+  const docsNode = presentation.commands.find((c) => c.key === "docs");
+  expect(docsNode && "commands" in docsNode).toBe(true);
+  if (docsNode && "commands" in docsNode) {
+    const skill = docsNode.commands.find((c) => c.key === "skill");
+    expect(skill?.description).toContain("compact command index");
+    expect(skill?.notes).toContain("install --skill --yes");
+    expect(skill?.notes).toContain("reference.md");
+  }
 });
 
 test("presentation includes docs schema and skill", () => {

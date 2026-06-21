@@ -68,7 +68,7 @@ When `docs.enabled` is `true`:
 
 - **`docs schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
 - **`docs api`** — markdown rendering of the same command tree (options, positionals, subcommands, fallback routing).
-- **`docs skill`** — prints generated Cursor `SKILL.md` content (same prose as `install --skill`, without writing files).
+- **`docs skill`** — prints the compact `SKILL.md` index. Prefer `install --skill --yes` for agents (persists index + full API in `reference.md`).
 
 ## MCP guide (`docs mcp`)
 
@@ -84,7 +84,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 
 | Channel | Role |
 | --- | --- |
-| `install --skill` | Writes `SKILL.md` (API command reference) + `reference.md` to disk |
+| `install --skill` | Writes compact `SKILL.md` + full-API `reference.md` to disk |
 | `docs skill` | Print generated `SKILL.md` to stdout |
 | `docs api` | Print command tree markdown to stdout |
 | `docs schema` | Print command tree JSON to stdout |
