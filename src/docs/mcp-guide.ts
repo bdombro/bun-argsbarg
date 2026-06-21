@@ -29,7 +29,7 @@ export function generateMcpGuide(root: CliProgram): string {
   const lines: string[] = [
     `# MCP server (${root.key})`,
     "",
-    `${root.key} exposes an MCP server via argsbarg. Each exposed leaf command becomes an MCP tool.`,
+    `${root.key} exposes an MCP server with features similar to the CLI.`,
     "",
     "## Quick start",
     "",

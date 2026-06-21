@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.7] - 2026-06-21
+
+### Changed
+
+- **`docs mcp`** — intro copy is user-facing (`exposes an MCP server with features similar to the CLI`) instead of describing argsbarg internals.
+
 ## [3.3.6] - 2026-06-21
 
 ### Added
@@ -282,7 +288,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.6...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.7...HEAD
+[3.3.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.7
 [3.3.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.6
 [3.3.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.5
 [3.3.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.4
