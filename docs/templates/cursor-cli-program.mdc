@@ -1,0 +1,44 @@
+---
+description: Argsbarg CliProgram authoring — schema, descriptions, MCP defaults; copy to .cursor/rules/argsbarg-cli.mdc in consumer apps.
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+## Scope
+
+This app uses **[argsbarg](https://www.npmjs.com/package/argsbarg)**. The `CliProgram` tree is the single source of truth for help, completions, MCP tools, and agent skills.
+
+Package docs: `node_modules/argsbarg/readme.md`, `node_modules/argsbarg/docs/cli-program.md`, `node_modules/argsbarg/docs/mcp.md`.
+
+## Defaults (basic apps)
+
+- Set **`mcpServer: { enabled: true }`** on the program root when agents should call the CLI over MCP.
+- **Do not add `mcpTool` on every leaf** — ArgsBarg exposes leaves automatically with descriptions and `inputSchema` derived from the schema.
+- Write **`description`** on the root, each command, and each option/positional for `-h`; those strings feed MCP and skills.
+
+## Leaf commands (`CliLeaf`)
+
+- One clear **`description`** per leaf (verb + object; no UI jargon unless CLI-only).
+- Use standard option names when semantics match:
+  - **`yes`** — scriptable confirmation (`--yes` → MCP `yes: true`)
+  - **`dry-run`** — preview mutations
+  - **`json`** — machine-readable stdout
+- ArgsBarg auto-appends MCP agent hints for `yes`, `dry-run`, and `json` (no extra config).
+
+## `mcpTool` (only when needed)
+
+| Field | When |
+| --- | --- |
+| `enabled: false` | Ink-only, browser, or otherwise not callable headlessly |
+| `requiresEnv: ["VAR"]` | Secrets required at runtime |
+| `description: "..."` | MCP behavior differs from help (replaces auto description + hints) |
+
+## Handlers
+
+- Same handler serves CLI and MCP; use **`ctx.invocation`** (`"cli"` | `"mcp"`) to branch subprocess/TTY behavior.
+- Prefer ArgsBarg headless helpers (`shouldRunHeadless`, `shouldRunHeadlessWithYes`, `requireYesInNonTty`) over ad-hoc TTY checks.
+- Do not declare reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`.
+
+## Types
+
+Annotate the program with **`satisfies CliProgram`** (or `: CliProgram`). Root must have **`key`**, **`version`**, **`description`**; routers use **`commands`**, leaves use **`handler`**.

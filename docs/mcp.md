@@ -103,11 +103,20 @@ Tool names are derived from the command path, with each segment sanitized (non-a
 
 ### Tool descriptions
 
-Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash:
+Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. ArgsBarg also appends **agent hints** inferred from well-known option names (no per-command config required):
 
-| CLI path | MCP `description` |
+| Option on leaf | Appended hint |
+| --- | --- |
+| `--yes` | `pass yes: true for non-interactive use` |
+| `--dry-run` | `or dry-run: true to preview` |
+| `--json` | `returns JSON on stdout` |
+
+Environment requirements from `mcpTool.requiresEnv` are appended as `[requires env: …]`. Hints are omitted when you set `mcpTool.description` (full override).
+
+| CLI path | MCP `description` (example) |
 | --- | --- |
 | `stat owner lookup` | `stat owner lookup — Resolve owner info.` |
+| `deploy` (with `--yes`) | `deploy — Deploy. [pass yes: true for non-interactive use]` |
 | `read` | `read — Print the first line of each file.` |
 | (root leaf app) | `{root.key} — Tiny demo.` |
 
