@@ -36,23 +36,25 @@ function fixtureWithUpdate(hook: () => Promise<CliUpdateArtifact>): CliProgram {
   };
 }
 
-test("update reserved when updateGetLatest is set", () => {
+test("user update command is allowed when updateGetLatest is set", () => {
   const root: CliProgram = {
     ...fixtureWithUpdate(async () => ({ path: process.execPath })),
-    commands: [{ key: "update", description: "conflict", handler: () => {} }],
+    commands: [{ key: "update", description: "Custom update", handler: () => {} }],
   };
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: update/);
+  expect(() => cliValidateProgram(root)).not.toThrow();
 });
 
-test("presentation includes update builtin when hook is set", () => {
+test("presentation exposes install --update when hook is set", () => {
   const root = fixtureWithUpdate(async () => ({ path: process.execPath }));
   const presentation = cliPresentationRoot(root);
-  expect(presentation.commands.some((c) => c.key === "update")).toBe(true);
+  const install = presentation.commands.find((c) => c.key === "install");
+  expect(install?.options?.some((o) => o.name === "update")).toBe(true);
+  expect(presentation.commands.some((c) => c.key === "update")).toBe(false);
 });
 
-test("parseInstallOpts maps deprecated --update to reinstall", () => {
-  const opts = parseInstallOpts({ update: "1" });
-  expect(opts.reinstall).toBe(true);
+test("parseInstallOpts treats --update separately from --reinstall", () => {
+  expect(parseInstallOpts({ update: "1" }).update).toBe(true);
+  expect(parseInstallOpts({ update: "1" }).reinstall).toBe(false);
 });
 
 test("runInstallMutation honors --from for binary copy", async () => {
@@ -78,7 +80,7 @@ test("runInstallMutation honors --from for binary copy", async () => {
   expect(readFileSync(dest, "utf8")).toContain("echo hi");
 });
 
-test("cliInvoke update uses hook and reinstalls", async () => {
+test("cliInvoke install --update uses hook and reinstalls", async () => {
   const source = join(home, "new-binary");
   writeFileSync(source, "#!/bin/sh\necho hi\n", "utf8");
   chmodSync(source, 0o755);
@@ -88,19 +90,19 @@ test("cliInvoke update uses hook and reinstalls", async () => {
     version: "2.0.0",
   }));
 
-  const result = await cliInvoke(root, ["update"]);
+  const result = await cliInvoke(root, ["install", "--update"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Updated testapp 1.0.0 → 2.0.0");
   expect(existsSync(join(home, ".local", "bin", "testapp"))).toBe(true);
 });
 
-test("cliInvoke update reports already current", async () => {
+test("cliInvoke install --update reports already current", async () => {
   const root = fixtureWithUpdate(async () => ({
     path: process.execPath,
     version: "1.0.0",
   }));
 
-  const result = await cliInvoke(root, ["update"]);
+  const result = await cliInvoke(root, ["install", "--update"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Already at v1.0.0");
 });

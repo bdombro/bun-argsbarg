@@ -12,7 +12,7 @@ myapp install --all --yes
 myapp install --reinstall
 
 # Download latest release (when install.updateGetLatest is configured)
-myapp update
+myapp install --update
 
 # See what is installed
 myapp install --status
@@ -54,7 +54,7 @@ install: {
 }
 ```
 
-When `updateGetLatest` is set, ArgsBarg also registers the **`update`** built-in (`myapp update`).
+When `updateGetLatest` is set, ArgsBarg adds **`install --update`** (download latest release and reinstall installed artifacts).
 
 ### GitHub releases (`ghReleaseUpdateGetLatest`)
 
@@ -105,11 +105,10 @@ Environment:
 | `--quiet` | Suppress summaries and per-step messages (requires `--yes`) |
 | `--prefix <dir>` | Override binary install directory |
 | `--reinstall` | Reinstall artifacts already on disk (implies `--bin` + `--yes`) |
+| `--update` | Download latest release and reinstall installed artifacts (requires `install.updateGetLatest`; implies `--yes`) |
 | `--from <path>` | Binary to copy with `--reinstall` (default: running executable) |
 | `--status` | Read-only inventory |
 | `--uninstall` | Remove artifacts in scope (`--all`, `--bin`, `--completions`, `--skill`, `--mcp`); skips targets not installed |
-
-`--update` is accepted as a deprecated alias for `--reinstall`.
 
 ## MCP merge behavior
 

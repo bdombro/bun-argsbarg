@@ -175,7 +175,7 @@ export interface CliUpdateArtifact {
 	/** Called after reinstall completes (e.g. remove a temp download directory). */
 	cleanup?: () => void | Promise<void>;
 }
-/** Fetches the latest release binary for the `update` built-in. */
+/** Fetches the latest release binary for `install --update`. */
 export type CliUpdateGetLatest = (ctx: {
 	version: string;
 }) => Promise<CliUpdateArtifact>;
@@ -185,7 +185,7 @@ export interface CliInstallConfig {
 	/** Default bin directory (default: `~/.local/bin`). Overridden by `INSTALL_PREFIX` env and `--prefix`. */
 	prefix?: string;
 	/**
-	 * When set, enables the `update` built-in (`myapp update`).
+	 * When set, enables `install --update` on the program root.
 	 * Should download or locate the latest release binary and return its path.
 	 */
 	updateGetLatest?: CliUpdateGetLatest;

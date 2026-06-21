@@ -6,7 +6,7 @@ import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.t
 import { exportPresentationBuiltins, type CliSchemaExport } from "./builtins/export.ts";
 import { cliResolveNotes } from "./help.ts";
 
-const RESERVED = new Set(["completion", "install", "docs", "mcp", "version", "update"]);
+const RESERVED = new Set(["completion", "install", "docs", "mcp", "version"]);
 
 function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport {
   const out: CliSchemaExport = {

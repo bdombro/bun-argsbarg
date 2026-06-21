@@ -196,7 +196,7 @@ Basic synchronous handlers do not need this structure — only commands with an 
 
 ## Reserved names
 
-Do not declare user commands named `completion`, `install`, `mcp`, `version`, `docs`, or `update` at the root — ArgsBarg injects these when configured.
+Do not declare user commands named `completion`, `install`, `mcp`, `version`, or `docs` at the root — ArgsBarg injects these when configured.
 
 ## Cursor rule for consumer repos
 

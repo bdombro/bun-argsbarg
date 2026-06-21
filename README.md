@@ -122,7 +122,7 @@ myapp install --all --yes
 
 This copies the binary to `~/.local/bin`, installs shell completions (bash/zsh/fish when each shell is on PATH), writes Cursor/Claude skills when agent directories exist, and merges MCP server entries into Cursor and Claude config files.
 
-See **[docs/install.md](docs/install.md)** for `--reinstall`, `update`, `--status`, `--uninstall`, and flags.
+See **[docs/install.md](docs/install.md)** for `--reinstall`, `install --update`, `--status`, `--uninstall`, and flags.
 
 
 ### Shell completions
@@ -187,7 +187,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `version`, `install`, `update`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `update` when `install.updateGetLatest` is set; `mcp` when `mcpServer.enabled` is `true`; `docs` when `docs.enabled` is `true`.
+`completion`, `version`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`; `docs` when `docs.enabled` is `true`. When `install.updateGetLatest` is set, `install --update` is available (not a separate command).
 
 
 

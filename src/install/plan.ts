@@ -16,6 +16,7 @@ export interface InstallOpts {
   skill?: boolean;
   mcp?: boolean;
   reinstall?: boolean;
+  update?: boolean;
   from?: string;
   status?: boolean;
   uninstall?: boolean;

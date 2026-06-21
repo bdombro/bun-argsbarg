@@ -101,7 +101,7 @@ export function createGhVersionCheck(config: GhVersionCheckConfig): {
       if (cached === null || isAlreadyCurrent(config.currentVersion, cached.latest)) {
         return null;
       }
-      return `Update available: v${cached.latest} (you have v${config.currentVersion}). Run \`${config.commandName} update\``;
+      return `Update available: v${cached.latest} (you have v${config.currentVersion}). Run \`${config.commandName} install --update\``;
     },
 
     refreshIfStale(): void {

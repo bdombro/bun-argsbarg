@@ -3,7 +3,7 @@ import type { CliProgram } from "../types.ts";
 import { runInstallMutation } from "./index.ts";
 import { installErr } from "./status.ts";
 
-/** Downloads the latest release and reinstalls installed artifacts (`myapp update`). */
+/** Downloads the latest release and reinstalls installed artifacts (`myapp install --update`). */
 export async function cliUpdate(root: CliProgram): Promise<never> {
   const hook = root.install?.updateGetLatest;
   if (!hook) {

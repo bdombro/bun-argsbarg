@@ -32,9 +32,6 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   if (caps.install) {
     names.push("install");
   }
-  if (caps.update) {
-    names.push("update");
-  }
   if (caps.docs) {
     names.push("docs");
   }

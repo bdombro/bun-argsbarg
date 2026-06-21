@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.8] - 2026-06-21
+
+### Changed
+
+- **`install --update`** — downloads the latest release and reinstalls installed artifacts when `install.updateGetLatest` is set. Replaces the top-level `update` command and the old `--update` alias for `--reinstall`.
+
+### Removed
+
+- **`update` built-in** — use `myapp install --update` instead.
+
 ## [3.3.7] - 2026-06-21
 
 ### Changed
@@ -288,7 +298,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.7...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.8...HEAD
+[3.3.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.8
 [3.3.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.7
 [3.3.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.6
 [3.3.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.5

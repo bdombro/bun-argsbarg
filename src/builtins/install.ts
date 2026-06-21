@@ -80,6 +80,15 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     });
   }
 
+  if (resolveCapabilities(root).update) {
+    const statusIdx = opts.findIndex((o) => o.name === "status");
+    opts.splice(statusIdx, 0, {
+      name: "update",
+      description: "Download and install the latest release.",
+      kind: CliOptionKind.Presence,
+    });
+  }
+
   return opts;
 }
 
@@ -94,7 +103,7 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
       `  ${app} install --all --yes\n\n` +
       "Refresh after upgrading:\n" +
       `  ${app} install --reinstall\n` +
-      `  ${app} update\n\n` +
+      `  ${app} install --update\n\n` +
       "See what is installed:\n" +
       `  ${app} install --status\n\n` +
       "Remove everything installed with --all:\n" +

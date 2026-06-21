@@ -5,7 +5,6 @@ import { isCliLeaf, isCliRouter } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinUpdateCommand } from "./update.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
@@ -17,9 +16,6 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
   ];
   if (caps.install) {
     builtins.push(cliBuiltinInstallCommand(program));
-  }
-  if (caps.update) {
-    builtins.push(cliBuiltinUpdateCommand(program));
   }
   const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
   if (docsGroup) {

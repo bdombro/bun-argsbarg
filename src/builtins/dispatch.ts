@@ -6,14 +6,12 @@ import { completionFishScript } from "./completion-fish.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinUpdateCommand } from "./update.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
 import { cliInstall } from "../install/index.ts";
-import { cliUpdate } from "../install/update.ts";
 import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
 
@@ -82,20 +80,6 @@ export async function dispatchBuiltin(
     process.exit(0);
   }
 
-  if (pr.path[0] === "update") {
-    if (!caps.update) {
-      process.stderr.write(
-        "update is not enabled. Set install.updateGetLatest on the program root.\n",
-      );
-      process.exit(1);
-    }
-    if (pr.path.length !== 1) {
-      process.stderr.write("Unknown subcommand: update " + pr.path.slice(1).join(" ") + "\n");
-      process.exit(1);
-    }
-    await cliUpdate(program);
-  }
-
   if (pr.path[0] === "install") {
     if (!caps.install) {
       process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
@@ -138,17 +122,6 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinInstallCommand(program)],
-      },
-      isLeafCompletionIntercept: false,
-    };
-  }
-
-  if (first === "update" && caps.update) {
-    return {
-      parseRoot: {
-        key: program.key,
-        description: program.description,
-        commands: [cliBuiltinUpdateCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };
