@@ -13,7 +13,7 @@ alwaysApply: false
 - Reserved root commands (do not declare): `completion`, `install`, `mcp`, `version`, `docs`, `update`
 
 ## Schema
-- **Inline** options, positionals, and handler schema; extract only for shared flags, `mcpTool` spreads, or large handlers (Ink/dispatch)
+- **Inline** options, positionals, and handler schema; extract to `export const …Command = { … } satisfies CliLeaf` (or router type) when shared flags, `mcpTool` spreads, or large handlers justify a module — not zero-arg wrapper functions
 - Leaf descriptions: action-oriented, not UI jargon
 - Prefer option names `yes`, `dry-run`, `json` when semantics match; describe non-interactive use on the option
 

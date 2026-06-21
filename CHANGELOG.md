@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`docs/cli-program.md`** — extracted commands as exported `CliLeaf` objects (`satisfies CliLeaf`), not zero-arg factory functions.
+
 ## [3.3.1] - 2026-06-21
 
 ### Added

@@ -52,12 +52,27 @@ ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliPro
 | --- | --- |
 | Shared option objects (`DRY_RUN_OPTION`, `JSON_OPTION`) | Identical flag reused on many leaves |
 | Shared spreads (`...MCP_TOOL_MUTATOR`) | Same `mcpTool` metadata on a family of commands |
-| `somethingCommand()` factory | Entry file is large; handler/body is substantial (Ink page, headless dispatch) |
+| `commands/<name>/command.tsx` module | Entry file is large; handler/body is substantial (Ink page, headless dispatch) |
 | `docs.topics` text imports | Compile-time markdown bundling — not schema shape |
 
 **Avoid extracting** thin indirection: a file that only re-exports `{ key, description, options }` with no logic, or splitting every leaf into its own module when the handler is a few lines. If extraction does not reduce duplication or file size materially, keep it inline.
 
-**`satisfies CliProgram`** on the root (or on extracted command factories) preserves type-checking whether inline or not.
+When you extract a leaf or router, prefer a **plain exported object** — not a zero-arg wrapper function:
+
+```typescript
+// commands/reserve/command.tsx
+export const reserveCommand = {
+  key: "reserve",
+  description: "Reserve a QA environment.",
+  options: [YES_OPTION, DRY_RUN_OPTION],
+  positionals: [/* … */],
+  handler: async (ctx) => { /* … */ },
+} satisfies CliLeaf;
+```
+
+Use a **parameterized factory** only when the schema truly depends on inputs (e.g. `createUpsertCommand(deps)` for tests or injected config). A `reserveCommand()` that returns a static literal adds indirection without benefit.
+
+**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not.
 
 ## Descriptions
 
