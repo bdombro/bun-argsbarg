@@ -45,7 +45,7 @@ function exportBuiltinNode(cmd: {
 export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabilities): CliSchemaExport[] {
   const resolved = caps ?? resolveCapabilities(program);
   const builtins: CliSchemaExport[] = [
-    exportBuiltinNode(cliBuiltinCompletionGroup(program.key)),
+    exportBuiltinNode(cliBuiltinCompletionGroup(program)),
     exportBuiltinNode(cliBuiltinVersionCommand()),
   ];
   if (resolved.install) {
@@ -56,7 +56,7 @@ export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabi
     builtins.push(exportBuiltinNode(docsGroup));
   }
   if (resolved.mcp) {
-    builtins.push(exportBuiltinNode(cliBuiltinMcpCommand()));
+    builtins.push(exportBuiltinNode(cliBuiltinMcpCommand(program)));
   }
   return builtins;
 }

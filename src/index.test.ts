@@ -496,7 +496,7 @@ test("leaf completion help prints correctly", async () => {
   const out = stdout.toString();
   expect(exitCode).toBe(0);
   expect(out).toContain("Show help for this command.");
-  expect(out).toContain("Output is the whole script.");
+  expect(out).toContain("Manual install:");
   expect(stderr.toString()).toBe("");
 });
 
@@ -658,7 +658,7 @@ test("docs help lists schema, api, and skill subcommands", () => {
   expect(help).toContain("api");
   expect(help).toContain("markdown");
   expect(help).toContain("skill");
-  expect(help).toContain("SKILL.md");
+  expect(help).toContain("reference agent SKILL");
 });
 
 test("root help omits legacy --schema flag", () => {
@@ -690,7 +690,8 @@ test("root help shows agent docs hint when docs enabled", () => {
     commands: [{ key: "run", description: "Run.", handler: () => {} }],
   });
   const help = cliHelpRender(cliPresentationRoot(root), [], false);
-  expect(help).toContain("Agents: run `myapp docs skill` to learn how to use this app");
+  expect(help).toContain("For AI agents: `myapp docs skill`.");
+  expect(help).not.toContain("install --skill");
 });
 
 test("root help omits agent hint when docs disabled", () => {
@@ -1815,7 +1816,7 @@ test("generateSkillBundle includes frontmatter and compact command index", () =>
   expect(bundle.skillMd).toContain("## Commands");
   expect(bundle.skillMd).toContain("`nested.ts stat owner lookup <path>`");
   expect(bundle.skillMd).toContain("Invoke via shell:");
-  expect(bundle.skillMd).toContain("read `reference.md`");
+  expect(bundle.skillMd).toContain("For full detail, open `reference.md`");
   expect(bundle.skillMd).not.toContain("#### Options");
   expect(bundle.skillMd).not.toContain("CLI API reference");
   expect(bundle.skillMd).not.toContain("mcp.json");

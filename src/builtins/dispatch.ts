@@ -110,7 +110,7 @@ export function builtinInterceptRoot(
       parseRoot: {
         key: program.key,
         description: program.description,
-        commands: [completionGroup(program.key)],
+        commands: [completionGroup(program)],
       },
       isLeafCompletionIntercept: true,
     };
@@ -132,7 +132,7 @@ export function builtinInterceptRoot(
       parseRoot: {
         key: program.key,
         description: program.description,
-        commands: [cliBuiltinMcpCommand()],
+        commands: [cliBuiltinMcpCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };

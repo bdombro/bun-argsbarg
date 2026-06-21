@@ -57,9 +57,14 @@ describe("builtins help copy", () => {
   });
 
   test("mcp builtin description is user-facing", () => {
-    const mcp = cliBuiltinMcpCommand();
+    const withDocs: CliProgram = {
+      ...fixture,
+      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
+    };
+    const mcp = cliBuiltinMcpCommand(withDocs);
     expect(mcp.description).toContain("MCP server");
-    expect(mcp.notes).toContain('["mcp"]');
+    expect(mcp.notes).toContain("install --mcp --yes");
+    expect(mcp.notes).toContain("docs mcp");
   });
 });
 
@@ -87,7 +92,8 @@ describe("presentation root", () => {
       docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
     };
     const root = cliPresentationRoot(withDocs);
-    expect(root.notes).toContain("Agents: run `myapp docs skill` to learn how to use this app");
+    expect(root.notes).toContain("For AI agents: `myapp docs skill`.");
+    expect(root.notes).not.toContain("install --skill");
   });
 });
 

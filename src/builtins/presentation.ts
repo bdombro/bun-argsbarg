@@ -11,7 +11,7 @@ import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 /** Built-in command nodes injected for help, schema, and completions. */
 export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
   const builtins: CliNode[] = [
-    cliBuiltinCompletionGroup(program.key),
+    cliBuiltinCompletionGroup(program),
     cliBuiltinVersionCommand(),
   ];
   if (caps.install) {
@@ -22,7 +22,7 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
     builtins.push(docsGroup);
   }
   if (caps.mcp) {
-    builtins.push(cliBuiltinMcpCommand());
+    builtins.push(cliBuiltinMcpCommand(program));
   }
   return builtins;
 }
@@ -64,8 +64,7 @@ export function presentationRootNotes(program: CliProgram, caps: CliCapabilities
     parts.push(program.notes!.trim());
   }
   if (caps.docs) {
-    const cmd = `${program.key} docs skill`;
-    parts.push(`Agents: run \`${cmd}\` to learn how to use this app`);
+    parts.push(`For AI agents: \`${program.key} docs skill\`.`);
   }
   if (parts.length === 0) {
     return undefined;

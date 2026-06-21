@@ -117,7 +117,8 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
     "Remove everything installed with --all:",
     `  ${app} install --uninstall --all --yes`,
     "",
-    "Use --dry to preview changes, --json for machine-readable output.",
+    "Use --dry to preview changes without writing files.",
+    "Use --json for machine-readable output.",
   );
   return {
     key: "install",

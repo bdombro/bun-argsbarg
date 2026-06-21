@@ -107,14 +107,12 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
   lines.push(
     "## Pitfalls",
     "",
-    "- Use `--` before tokens that look like flags when they are positional arguments.",
-    "- Required environment variables are listed per command above (`requires env`) and in `reference.md`.",
+    "- Pass `--` before arguments that look like flags.",
+    "- Commands marked `[requires env: ...]` need those variables set in the shell.",
     "",
     "## Reference",
     "",
-    "This file is a command index. For full option tables, positionals, notes, and built-ins,",
-    `read \`reference.md\` in this skill directory (same content as \`${root.key} docs api\`).`,
-    "Search for the command path you need before invoking.",
+    `For full detail, open \`reference.md\` in this skill directory (same as \`${root.key} docs api\`).`,
     "",
   );
 

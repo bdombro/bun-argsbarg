@@ -1,13 +1,27 @@
-import { type CliLeaf } from "../types.ts";
+import { resolveCapabilities } from "../capabilities.ts";
+import { docsEnabled } from "../docs/resolve.ts";
+import { type CliLeaf, type CliProgram } from "../types.ts";
 
 /** Presence options for the top-level `mcp` built-in (leaf). */
-export function cliBuiltinMcpCommand(): CliLeaf {
+export function cliBuiltinMcpCommand(program: CliProgram): CliLeaf {
+  const caps = resolveCapabilities(program);
+  const lines = [
+    "Stdio MCP server. Add to Cursor or Claude:",
+    "",
+    "  command: {argsbarg:program}",
+    "  args: mcp",
+    "",
+  ];
+  if (caps.install) {
+    lines.push("Or:", "", "  {argsbarg:program} install --mcp --yes", "");
+  }
+  if (docsEnabled(program)) {
+    lines.push("Full setup guide: {argsbarg:program} docs mcp");
+  }
   return {
     key: "mcp",
     description: "Run as an MCP server over stdio for AI agents.",
-    notes:
-      "Configure MCP clients with `command` set to this program name and `args` set to `[\"mcp\"]`.\n\n" +
-      "See docs/mcp.md for setup details.",
+    notes: lines.join("\n"),
     handler: () => {},
   };
 }

@@ -36,6 +36,11 @@ function docsLeaf(program: CliProgram, key: string, description: string): CliLea
   };
 }
 
+/** Help notes for the `docs` router. */
+function docsRouterNotes(): string {
+  return "Topics print to stdout. Add --save to write files under ./docs/.";
+}
+
 /** Built-in `docs` router with bundled topic subcommands. */
 export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   const docs = program.docs!;
@@ -54,26 +59,14 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
 
   leaves.push(
     docsLeaf(program, "schema", "Print the full command tree as JSON."),
-    docsLeaf(program, "api", "Print the command tree as markdown."),
-    {
-      key: "skill",
-      description: "Print generated SKILL.md (compact command index).",
-      notes: [
-        "Prefer `{argsbarg:program} install --skill --yes` for agents: it persists an optimized skill bundle",
-        "(`SKILL.md` index + `reference.md` full API) to your skill directory.",
-        "`docs skill` prints the index only; use `docs api` or installed `reference.md` for full detail.",
-      ].join(" "),
-      options: [DOCS_SAVE_OPTION],
-      mcpTool: { enabled: false },
-      handler: (ctx) => {
-        runDocsTopic(program, "skill", ctx);
-      },
-    },
+    docsLeaf(program, "api", "Print the full command reference as markdown."),
+    docsLeaf(program, "skill", "Print a reference agent SKILL, use `install --skill` for optimized."),
   );
 
   return {
     key: "docs",
     description: docs.description ?? DOCS_ROUTER_DESCRIPTION,
+    notes: docsRouterNotes(),
     options: [DOCS_SAVE_OPTION],
     fallbackCommand: docsEffectiveDefaultTopic(docs),
     fallbackMode: CliFallbackMode.MissingOnly,
