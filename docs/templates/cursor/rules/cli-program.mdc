@@ -1,89 +1,29 @@
 ---
-description: Argsbarg CliProgram authoring — schema, descriptions, MCP defaults; copy to .cursor/rules/cli-program.mdc in consumer apps.
+description: Argsbarg CliProgram authoring; copy to .cursor/rules/cli-program.mdc
 globs: "**/*.{ts,tsx}"
 alwaysApply: false
 ---
 
-## Scope
+**argsbarg** — `CliProgram` drives help, MCP, and skills. Full guide: `node_modules/argsbarg/docs/cli-program.md`.
 
-This app uses **[argsbarg](https://www.npmjs.com/package/argsbarg)**. The `CliProgram` tree is the single source of truth for help, completions, MCP tools, and agent skills.
+## Defaults
+- `mcpServer: { enabled: true }` for MCP; **omit `mcpTool`** unless an escape hatch is required
+- `description` on root, commands, options, and positionals (→ `-h`, MCP `inputSchema`, skills)
+- `satisfies CliProgram`; root: `key`, `version`, `description`
+- Reserved root commands (do not declare): `completion`, `install`, `mcp`, `version`, `docs`, `update`
 
-Package docs: `node_modules/argsbarg/readme.md`, `node_modules/argsbarg/docs/cli-program.md`, `node_modules/argsbarg/docs/mcp.md`.
+## Schema
+- **Inline** options, positionals, and handler schema; extract only for shared flags, `mcpTool` spreads, or large handlers (Ink/dispatch)
+- Leaf descriptions: action-oriented, not UI jargon
+- Prefer option names `yes`, `dry-run`, `json` when semantics match; describe non-interactive use on the option
 
-## Defaults (basic apps)
+## `mcpTool` (rare)
+Fix schema/handler first — not for missing `--yes`, wrong flag names, or unfinished headless paths.
+Only: `enabled: false` (CLI-only), `requiresEnv`, or irreducible limits (e.g. streaming `--watch`). Comment why if used.
 
-- Set **`mcpServer: { enabled: true }`** on the program root when agents should call the CLI over MCP.
-- **Do not add `mcpTool` on every leaf** — ArgsBarg exposes leaves automatically with descriptions and `inputSchema` derived from the schema.
-- Write **`description`** on the root, each command, and each option/positional for `-h`; those strings feed MCP and skills.
-
-## Inline schema (default)
-
-Keep **`CliProgram` and leaf params inline** (`options`, `positionals`, `handler`) unless extraction is justified — the schema should be readable at a glance.
-
-**Extract when:** shared options (`DRY_RUN_OPTION`), shared `mcpTool` spreads, or a command factory because the handler is large (Ink + headless dispatch). **Do not extract** thin wrappers that only move static schema to another file.
-
-Use **`satisfies CliProgram`** on the root or on command factories.
-
-## Leaf commands (`CliLeaf`)
-
-- One clear **`description`** per leaf (verb + object; no UI jargon unless CLI-only).
-- Use standard option names when semantics match: **`yes`**, **`dry-run`**, **`json`**
-- Write option **`description`** text for agents (e.g. "Skip confirmation; use for non-interactive runs.")
-
-## `mcpTool` — escape hatches (rare)
-
-**Default: omit `mcpTool`.** ArgsBarg exposes tool names, descriptions, and `inputSchema` from the schema.
-
-Reach for `mcpTool` only when the schema cannot express the constraint. **Before adding an escape hatch, fix the underlying CLI design** if the motivation is an anti-pattern:
-
-| Temptation | Prefer instead |
-| --- | --- |
-| `mcpTool.description` explaining custom flags | Rename to **`yes`**, **`dry-run`**, or **`json`** when semantics match; describe them on the option |
-| `mcpTool.description` saying "pass `--json`" | Implement headless/`--json` in the **handler**; ensure the option exists on the leaf |
-| `mcpTool.enabled: false` because prompts block MCP | Add **`--yes`** / flag resolution so MCP can run headless; hide only if headless is impossible |
-| `mcpTool.description` duplicating help with MCP caveats | Rewrite leaf **`description`** and option text for agents; one description for both audiences |
-| `enabled: false` to hide incomplete commands | Finish headless path or split into a dedicated scriptable subcommand |
-
-Legitimate escape hatches:
-
-| Field | When |
-| --- | --- |
-| `enabled: false` | Truly CLI-only (browser, TUI with no headless equivalent, internal debug) |
-| `requiresEnv: ["VAR"]` | Secrets — cannot live in the schema |
-| `description: "..."` | **Genuine** MCP limitation that cannot be fixed in schema/handler (e.g. streaming/`--watch` not supported on the wire yet) |
-
-If you add `mcpTool`, leave a short comment in code **why** a schema/handler fix was not enough.
-
-## Headless-capable handlers
-
-Simple leaves (stdout only) need no branching. **If a handler can mount Ink, prompt, or open a browser, it must also support a scriptable fast path** for MCP, non-TTY CLI, and `--json` / `--dry-run` / `--yes`.
-
-- **One headless path** serves MCP + piped CLI + explicit flags — not separate MCP handlers.
-- **Mutators:** `--yes` (and/or `--dry-run`); use `shouldRunHeadlessWithYes` + `requireYesInNonTty`.
-- **Queries:** optional `--json`; use `shouldRunHeadless` + `wantsExplicitJson`.
-- **Positionals:** use `shouldRunHeadlessWithPositionals` so empty argv does not auto-headless into errors.
-- **Resolve from flags first** — wizards are TTY-only; flags must be enough for agents.
-- **`ctx.invocation === "mcp"`** — only for wire-specific behavior (pipe subprocess stdout, reject `--watch`), not duplicate business logic.
-- **`mcpTool.enabled: false`** only when headless is truly impossible.
-
-```typescript
-// Mutating pattern (sketch)
-requireYesInNonTty(yes, "Example: myapp cmd … --yes", dryRun);
-if (shouldRunHeadlessWithYes(ctx, { yes, hasRequiredArgs, dryRun })) {
-  /* stdout/stderr only */ return;
-}
-await renderInteractive(/* … */);
-```
-
-See `node_modules/argsbarg/docs/cli-program.md` for full examples.
-
-## Handlers
-
-- Same handler serves CLI and MCP; headless-capable when the command may be interactive (see **Headless-capable handlers** above).
-- Use **`ctx.invocation`** (`"cli"` | `"mcp"`) only for wire-specific subprocess/TTY behavior.
-- Prefer ArgsBarg headless helpers over ad-hoc `process.stdin.isTTY` checks.
-- Do not declare reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`.
-
-## Types
-
-Annotate the program with **`satisfies CliProgram`** (or `: CliProgram`). Root must have **`key`**, **`version`**, **`description`**; routers use **`commands`**, leaves use **`handler`**.
+## Headless
+Interactive commands need one fast path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json`.
+- Mutators: `requireYesInNonTty`, `shouldRunHeadlessWithYes`
+- Queries: `shouldRunHeadless`, `wantsExplicitJson`
+- Varargs/positionals: `shouldRunHeadlessWithPositionals`
+- `ctx.invocation === "mcp"` only for subprocess/TTY wire behavior; use argsbarg headless helpers, not raw `isTTY`

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`docs/cli-program.md`** — authoring guide for `CliProgram` and leaves (MCP-free defaults); **headless-capable handlers** and **inline schema by default**.
-- **`docs/templates/cursor/rules/cli-program.mdc`** — copy to `.cursor/rules/cli-program.mdc` in consumer apps (discourages unnecessary `mcpTool` escape hatches).
+- **`docs/templates/cursor/rules/cli-program.mdc`** — concise copy-paste Cursor rule for consumer apps.
 
 ### Removed
 
