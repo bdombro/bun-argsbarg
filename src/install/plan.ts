@@ -35,19 +35,19 @@ export interface InstallAction {
   run: () => string[];
 }
 
-function wantsBin(opts: InstallOpts): boolean {
+export function wantsInstallBin(opts: InstallOpts): boolean {
   return !!(opts.all || opts.bin || opts.reinstall);
 }
 
-function wantsCompletions(opts: InstallOpts): boolean {
+export function wantsInstallCompletions(opts: InstallOpts): boolean {
   return !!(opts.all || opts.completions);
 }
 
-function wantsSkill(opts: InstallOpts): boolean {
+export function wantsInstallSkill(opts: InstallOpts): boolean {
   return !!(opts.all || opts.skill);
 }
 
-function wantsMcp(opts: InstallOpts, root: CliProgram): boolean {
+export function wantsInstallMcp(opts: InstallOpts, root: CliProgram): boolean {
   return !!(opts.mcp || opts.all) && resolveCapabilities(root).mcp;
 }
 
@@ -56,7 +56,7 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
   const actions: InstallAction[] = [];
   const dry = !!opts.dry;
 
-  if (wantsBin(opts)) {
+  if (wantsInstallBin(opts)) {
     const sourcePath = opts.from ?? process.execPath;
     actions.push({
       kind: "binary",
@@ -66,7 +66,7 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
     });
   }
 
-  if (wantsCompletions(opts)) {
+  if (wantsInstallCompletions(opts)) {
     const shells = detectShells();
     if (shells.bash) {
       actions.push({
@@ -103,7 +103,7 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
     }
   }
 
-  if (wantsSkill(opts)) {
+  if (wantsInstallSkill(opts)) {
     const home = userHome();
     if (existsSync(join(home, ".cursor"))) {
       actions.push({
@@ -123,7 +123,7 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
     }
   }
 
-  if (wantsMcp(opts, root)) {
+  if (wantsInstallMcp(opts, root)) {
     const entry = expectedMcpEntry(root);
     if (existsSync(join(userHome(), ".cursor"))) {
       actions.push({

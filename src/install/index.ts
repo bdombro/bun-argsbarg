@@ -13,7 +13,7 @@ import { resolveInstallPaths } from "./paths.ts";
 import { installErr, installInfo, installOut, printInstallStatus } from "./status.ts";
 import { buildUninstallPlan, uninstallSkillDir, type UninstallAction } from "./uninstall.ts";
 
-function parseInstallOpts(raw: Record<string, string>): InstallOpts {
+export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
   const flag = (name: string) => raw[name] === "1";
   const reinstall = flag("reinstall") || flag("update");
   return {
@@ -34,7 +34,7 @@ function parseInstallOpts(raw: Record<string, string>): InstallOpts {
   };
 }
 
-function validateOpts(opts: InstallOpts): string | null {
+export function validateInstallOpts(opts: InstallOpts): string | null {
   if (opts.quiet && opts.dry) {
     return "--quiet cannot be combined with --dry.";
   }
@@ -60,10 +60,10 @@ function validateOpts(opts: InstallOpts): string | null {
   ) {
     return "--reinstall cannot be combined with other target flags.";
   }
-  if (opts.uninstall && (opts.all || opts.reinstall || opts.status)) {
-    return "--uninstall cannot be combined with --all, --reinstall, or --status.";
+  if (opts.uninstall && (opts.reinstall || opts.status)) {
+    return "--uninstall cannot be combined with --reinstall or --status.";
   }
-  if (!opts.status && !opts.reinstall && !opts.uninstall) {
+  if (!opts.status && !opts.reinstall) {
     const hasTarget = opts.all || opts.bin || opts.completions || opts.skill || opts.mcp;
     if (!hasTarget) {
       return "Specify at least one target: --all, --bin, --completions, --skill, or --mcp.";
@@ -126,7 +126,7 @@ export async function runInstallMutation(
   rawOpts: Record<string, string>,
 ): Promise<{ changed: string[]; opts: InstallOpts; paths: ReturnType<typeof resolveInstallPaths> }> {
   const opts = parseInstallOpts(rawOpts);
-  const err = validateOpts(opts);
+  const err = validateInstallOpts(opts);
   if (err) {
     throw new Error(err);
   }
@@ -159,7 +159,7 @@ export async function runInstallMutation(
   }
 
   if (actions.length === 0) {
-    throw new Error("Nothing to do.");
+    return { changed: [], opts, paths };
   }
 
   if (!opts.quiet && !opts.json) {
@@ -218,5 +218,3 @@ export async function cliInstall(root: CliProgram, rawOpts: Record<string, strin
 
   process.exit(0);
 }
-
-export { parseInstallOpts };

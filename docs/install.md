@@ -17,8 +17,8 @@ myapp update
 # See what is installed
 myapp install --status
 
-# Remove everything detected
-myapp install --uninstall --yes
+# Remove everything installed with --all
+myapp install --uninstall --all --yes
 ```
 
 ## What gets installed
@@ -33,7 +33,9 @@ myapp install --uninstall --yes
 | Claude skill | `--skill` | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | MCP config | `--mcp` | `~/.cursor/mcp.json` and `~/.claude.json` when MCP is enabled |
 
-`--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer.enabled` is `true`).
+`--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer.enabled` is `true`) for both install and uninstall. Missing targets are skipped silently (no error if nothing is on disk or a shell/agent directory does not exist).
+
+`install --uninstall` requires the same target flags as install (`--all`, `--bin`, etc.) — bare `--uninstall` alone is an error.
 
 Shells not on PATH are skipped silently (no warnings).
 
@@ -105,7 +107,7 @@ Environment:
 | `--reinstall` | Reinstall artifacts already on disk (implies `--bin` + `--yes`) |
 | `--from <path>` | Binary to copy with `--reinstall` (default: running executable) |
 | `--status` | Read-only inventory |
-| `--uninstall` | Remove detected artifacts (scope with `--bin`, `--completions`, `--skill`, `--mcp`) |
+| `--uninstall` | Remove artifacts in scope (`--all`, `--bin`, `--completions`, `--skill`, `--mcp`); skips targets not installed |
 
 `--update` is accepted as a deprecated alias for `--reinstall`.
 

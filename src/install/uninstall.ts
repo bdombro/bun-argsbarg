@@ -1,13 +1,17 @@
 import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram } from "../types.ts";
 import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { removeMcpConfig } from "./mcp-config.ts";
-import { InstallPaths, userHome } from "./paths.ts";
-import type { InstallOpts } from "./plan.ts";
+import { InstallPaths } from "./paths.ts";
+import {
+  wantsInstallBin,
+  wantsInstallCompletions,
+  wantsInstallMcp,
+  wantsInstallSkill,
+  type InstallOpts,
+} from "./plan.ts";
 
 export interface UninstallAction {
   summary: string;
@@ -15,22 +19,17 @@ export interface UninstallAction {
   run: () => string[];
 }
 
-function scopeAll(opts: InstallOpts): boolean {
-  return !opts.bin && !opts.completions && !opts.skill && !opts.mcp;
-}
-
-/** Builds uninstall actions from detected artifacts. */
+/** Builds uninstall actions for scoped targets (--all mirrors install --all). */
 export function buildUninstallPlan(
   root: CliProgram,
   paths: InstallPaths,
   opts: InstallOpts,
 ): UninstallAction[] {
   const detected = detectInstalledArtifacts(paths);
-  const all = scopeAll(opts);
   const dry = !!opts.dry;
   const actions: UninstallAction[] = [];
 
-  if ((all || opts.bin) && detected.binary) {
+  if (wantsInstallBin(opts) && detected.binary) {
     actions.push({
       summary: `binary: ${paths.binaryPath}`,
       message: `Removing binary ${paths.binaryPath}`,
@@ -38,7 +37,10 @@ export function buildUninstallPlan(
     });
   }
 
-  if ((all || opts.completions) && (detected.bashCompletion || detected.zshCompletion || detected.fishCompletion)) {
+  if (
+    wantsInstallCompletions(opts) &&
+    (detected.bashCompletion || detected.zshCompletion || detected.fishCompletion)
+  ) {
     if (detected.bashCompletion) {
       actions.push({
         summary: `bash completion: ${paths.bashCompletion}`,
@@ -62,7 +64,7 @@ export function buildUninstallPlan(
     }
   }
 
-  if ((all || opts.skill) && detected.cursorSkill) {
+  if (wantsInstallSkill(opts) && detected.cursorSkill) {
     actions.push({
       summary: `cursor skill: ${paths.cursorSkillDir}/`,
       message: `Removing Cursor skill ${paths.cursorSkillDir}/`,
@@ -70,7 +72,7 @@ export function buildUninstallPlan(
     });
   }
 
-  if ((all || opts.skill) && detected.claudeSkill) {
+  if (wantsInstallSkill(opts) && detected.claudeSkill) {
     actions.push({
       summary: `claude skill: ${paths.claudeSkillDir}/`,
       message: `Removing Claude Code skill ${paths.claudeSkillDir}/`,
@@ -78,7 +80,7 @@ export function buildUninstallPlan(
     });
   }
 
-  if ((all || opts.mcp) && resolveCapabilities(root).mcp) {
+  if (wantsInstallMcp(opts, root)) {
     if (detected.cursorMcp) {
       actions.push({
         summary: `cursor mcp: ${paths.cursorMcpPath}`,

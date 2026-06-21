@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { CliProgram } from "../types.ts";
-import { InstallPaths } from "./paths.ts";
 
 export interface McpServerEntry {
   command: string;

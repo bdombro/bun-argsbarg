@@ -6,8 +6,9 @@ import { CliProgram } from "../types.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { buildInstallPlan } from "./plan.ts";
+import { buildUninstallPlan } from "./uninstall.ts";
 import { printInstallStatus } from "./status.ts";
-import { parseInstallOpts } from "./index.ts";
+import { parseInstallOpts, runInstallMutation, validateInstallOpts } from "./index.ts";
 
 const fixture: CliProgram = {
   key: "testapp",
@@ -121,5 +122,67 @@ describe("parseInstallOpts", () => {
     const opts = parseInstallOpts({ json: "1", all: "1" });
     expect(opts.json).toBe(true);
     expect(opts.all).toBe(true);
+  });
+});
+
+describe("validateInstallOpts", () => {
+  test("uninstall requires a target flag", () => {
+    const opts = parseInstallOpts({ uninstall: "1", yes: "1" });
+    expect(validateInstallOpts(opts)).toContain("Specify at least one target");
+  });
+
+  test("uninstall allows --all", () => {
+    const opts = parseInstallOpts({ uninstall: "1", all: "1", yes: "1" });
+    expect(validateInstallOpts(opts)).toBeNull();
+  });
+
+  test("uninstall rejects --reinstall", () => {
+    const opts = parseInstallOpts({ uninstall: "1", reinstall: "1", all: "1" });
+    expect(validateInstallOpts(opts)).toContain("--reinstall");
+  });
+});
+
+describe("install mutation", () => {
+  test("uninstall --all with nothing installed succeeds", async () => {
+    const result = await runInstallMutation(fixture, { uninstall: "1", all: "1", yes: "1" });
+    expect(result.changed).toEqual([]);
+  });
+
+  test("install --skill with no agent dirs succeeds", async () => {
+    const result = await runInstallMutation(fixture, { skill: "1", yes: "1", dry: "1" });
+    expect(result.changed).toEqual([]);
+  });
+
+  test("uninstall --all removes detected binary", async () => {
+    const paths = resolveInstallPaths(fixture, {});
+    mkdirSync(paths.bindir, { recursive: true });
+    writeFileSync(paths.binaryPath, "fake", "utf8");
+
+    const result = await runInstallMutation(fixture, { uninstall: "1", all: "1", yes: "1" });
+    expect(result.changed).toContain(paths.binaryPath);
+    expect(existsSync(paths.binaryPath)).toBe(false);
+  });
+});
+
+describe("uninstall plan", () => {
+  test("buildUninstallPlan --all scopes like install --all", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    mkdirSync(paths.bindir, { recursive: true });
+    writeFileSync(paths.binaryPath, "fake", "utf8");
+
+    const plan = buildUninstallPlan(fixture, paths, parseInstallOpts({ uninstall: "1", all: "1" }));
+    expect(plan.some((a) => a.summary.startsWith("binary:"))).toBe(true);
+  });
+
+  test("buildUninstallPlan --bin ignores completions", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    mkdirSync(paths.bindir, { recursive: true });
+    writeFileSync(paths.binaryPath, "fake", "utf8");
+    mkdirSync(join(home, ".bash_completion.d"), { recursive: true });
+    writeFileSync(paths.bashCompletion, "# bash", "utf8");
+
+    const plan = buildUninstallPlan(fixture, paths, parseInstallOpts({ uninstall: "1", bin: "1" }));
+    expect(plan).toHaveLength(1);
+    expect(plan[0]!.summary.startsWith("binary:")).toBe(true);
   });
 });

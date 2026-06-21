@@ -42,7 +42,7 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "uninstall",
-      description: "Remove installed artifacts (all detected, or limit with other flags).",
+      description: "Remove installed artifacts (use --all or scoped flags; skips targets not on disk).",
       kind: CliOptionKind.Presence,
     },
     {
@@ -96,8 +96,8 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
       `  {app} update\n\n` +
       "See what is installed:\n" +
       `  {app} install --status\n\n` +
-      "Remove everything:\n" +
-      `  {app} install --uninstall --yes\n\n` +
+      "Remove everything installed with --all:\n" +
+      `  {app} install --uninstall --all --yes\n\n` +
       "Use --dry to preview changes, --json for machine-readable output.",
     options: installBuiltinOptions(root),
     handler: () => {},
