@@ -51,16 +51,6 @@ export function docsTopicDescription(key: string, custom?: string): string {
   return `Print ${label} documentation.`;
 }
 
-/** Ordered keys for `docs all` (user topics, then auto `mcp` when enabled). */
-export function docsPrintOrder(program: CliProgram): string[] {
-  const docs = program.docs!;
-  const order = docsUserTopicKeys(docs);
-  if (docsIncludesMcpTopic(program)) {
-    order.push("mcp");
-  }
-  return order;
-}
-
 /** Markdown body for one docs topic key. */
 export function docsTopicText(program: CliProgram, topic: string): string {
   const docs = program.docs!;
@@ -88,21 +78,11 @@ export function docsTopicContent(program: CliProgram, topic: string): string {
   if (topic === "skill") {
     return `${generateSkillBundle(program, "cursor").skillMd}\n`;
   }
-  if (topic === "all") {
-    return `${combineAllDocs(program)}\n`;
-  }
   const text = docsTopicText(program, topic);
   return text.endsWith("\n") ? text : `${text}\n`;
 }
 
-/** All bundled docs concatenated with horizontal rules. */
-export function combineAllDocs(program: CliProgram): string {
-  return docsPrintOrder(program)
-    .map((key) => docsTopicText(program, key).trim())
-    .join("\n\n---\n\n");
-}
-
-/** Writes one docs topic (or `all`) to stdout. */
+/** Writes one docs topic to stdout. */
 export function printDocsTopic(program: CliProgram, topic: string): void {
   process.stdout.write(docsTopicContent(program, topic));
 }

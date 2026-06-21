@@ -8,19 +8,17 @@ import {
   docsUserTopicKeys,
   printDocsTopic,
 } from "./resolve.ts";
-import { saveDocsTopics } from "./save.ts";
+import { saveDocsTopic } from "./save.ts";
 
 const DOCS_SAVE_OPTION: CliOption = {
   name: "save",
-  description: "Write documentation to ./docs/ (`docs all` writes one file per topic).",
+  description: "Write documentation to ./docs/.",
   kind: CliOptionKind.Presence,
 };
 
 function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: string): boolean }): void {
   if (ctx.hasFlag("save")) {
-    for (const path of saveDocsTopics(program, topic)) {
-      process.stdout.write(`${path}\n`);
-    }
+    process.stdout.write(`${saveDocsTopic(program, topic)}\n`);
     return;
   }
   printDocsTopic(program, topic);
@@ -58,7 +56,6 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
     docsLeaf(program, "schema", "Print the full command tree as JSON."),
     docsLeaf(program, "api", "Print the command tree as markdown."),
     docsLeaf(program, "skill", "Print generated Cursor SKILL.md content."),
-    docsLeaf(program, "all", "Print all bundled documentation combined."),
   );
 
   return {
