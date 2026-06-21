@@ -381,6 +381,21 @@ function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
 
 // ── Main Help Render ──────────────────────────────────────────────────────────
 
+function appendNotesBox(
+  lines: string[],
+  notes: string | undefined,
+  appKey: string,
+  hw: number,
+  color: boolean,
+): void {
+  if ((notes ?? "").length === 0) {
+    return;
+  }
+  const resolved = cliResolveNotes(notes!, appKey);
+  lines.push("");
+  lines.push(renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"));
+}
+
 /**
  * Renders full help for the app root or a nested command, following `helpPath` from the root key.
  * `useStderr` is reserved for call-site consistency; width and color use stdout TTY.
@@ -416,6 +431,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
         renderTableBox("Commands", rowsForSubcommands(schema.commands ?? []), hw, color).join("\n"),
       );
     }
+    appendNotesBox(lines, schema.notes, schema.key, hw, color);
     return lines.join("\n") + "\n\n";
   }
 
@@ -479,11 +495,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
   }
 
   if ((node.notes ?? "").length > 0) {
-    const resolved = cliResolveNotes(node.notes!, schema.key);
-    lines.push("");
-    lines.push(
-      renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"),
-    );
+    appendNotesBox(lines, node.notes, schema.key, hw, color);
   }
 
   return lines.join("\n") + "\n\n";

@@ -678,6 +678,50 @@ test("root help omits legacy --schema flag", () => {
   expect(help).not.toContain("--schema");
 });
 
+test("root help shows agent docs hint when docs enabled", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "demo",
+    docs: {
+      enabled: true,
+      topics: { readme: { text: "# readme\n" } },
+    },
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  });
+  const help = cliHelpRender(cliPresentationRoot(root), [], false);
+  expect(help).toContain("Agents: run `myapp docs skill` to learn how to use this app");
+});
+
+test("root help omits agent hint when docs disabled", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "demo",
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  });
+  const help = cliHelpRender(cliPresentationRoot(root), [], false);
+  expect(help).not.toContain("Agents:");
+  expect(help).not.toContain("docs skill");
+});
+
+test("root help includes program notes and agent hint", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "demo",
+    notes: "See `{argsbarg:program} docs readme` for the user guide.",
+    docs: {
+      enabled: true,
+      topics: { readme: { text: "# readme\n" } },
+    },
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  });
+  const help = cliHelpRender(cliPresentationRoot(root), [], false);
+  expect(help).toContain("See `myapp docs readme` for the user guide.");
+  expect(help).toContain("myapp docs skill");
+});
+
 const nestedMcpFixture = testProgram({
   key: "nested.ts",
   description: "Nested groups demo.",

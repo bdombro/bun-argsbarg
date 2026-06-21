@@ -35,6 +35,8 @@ myapp docs readme --save   # write ./docs/readme.md
 myapp docs schema --save   # write ./docs/schema.json
 ```
 
+When `docs` is enabled, top-level `myapp --help` includes a Notes line: `Agents: run \`myapp docs skill\` to learn how to use this app`.
+
 ## Configuration
 
 | Field | Default | Purpose |

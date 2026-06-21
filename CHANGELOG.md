@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.11] - 2026-06-21
+
+### Added
+
+- **Root help agent hint** — when `docs` is enabled, top-level `-h` includes a Notes line: `Agents: run \`myapp docs skill\` to learn how to use this app`. Root help also renders `program.notes`.
+
 ## [3.3.10] - 2026-06-21
 
 ### Changed
@@ -311,7 +317,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.10...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.11...HEAD
+[3.3.11]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.11
 [3.3.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.10
 [3.3.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.9
 [3.3.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.8

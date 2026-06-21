@@ -80,6 +80,15 @@ describe("presentation root", () => {
     const root = cliPresentationRoot(fixture);
     expect(root.commands?.map((c) => c.key)).toContain("version");
   });
+
+  test("root notes include agent hint when docs enabled", () => {
+    const withDocs: CliProgram = {
+      ...fixture,
+      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
+    };
+    const root = cliPresentationRoot(withDocs);
+    expect(root.notes).toContain("Agents: run `myapp docs skill` to learn how to use this app");
+  });
 });
 
 describe("completion emitters", () => {

@@ -34,11 +34,13 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
 export function cliPresentationRoot(program: CliProgram): CliRouter {
   const caps = resolveCapabilities(program);
   const builtins = presentationBuiltins(program, caps);
+  const notes = presentationRootNotes(program, caps);
 
   if (isCliLeaf(program)) {
     return {
       key: program.key,
       description: program.description,
+      notes,
       options: program.options,
       commands: builtins,
     };
@@ -47,7 +49,7 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
   return {
     key: program.key,
     description: program.description,
-    notes: program.notes,
+    notes,
     options: program.options,
     fallbackCommand: program.fallbackCommand,
     fallbackMode: program.fallbackMode,
@@ -55,5 +57,22 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
   };
 }
 
+/** Root help notes: consumer `program.notes` plus agent discovery when `docs` is enabled. */
+export function presentationRootNotes(program: CliProgram, caps: CliCapabilities): string | undefined {
+  const parts: string[] = [];
+  if ((program.notes ?? "").trim().length > 0) {
+    parts.push(program.notes!.trim());
+  }
+  if (caps.docs) {
+    const cmd = `${program.key} docs skill`;
+    parts.push(`Agents: run \`${cmd}\` to learn how to use this app`);
+  }
+  if (parts.length === 0) {
+    return undefined;
+  }
+  return parts.join("\n\n");
+}
+
 /** Presentation tree may include builtin leaf stubs. */
 export type CliPresentationNode = CliNode | CliLeaf;
+
