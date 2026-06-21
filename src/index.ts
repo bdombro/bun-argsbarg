@@ -28,3 +28,21 @@ export type {
   CliPositional,
 } from "./types.ts";
 export { isInteractiveTty } from "./utils.ts";
+export {
+  formatDryRunMessage,
+  requireYesInNonTty,
+  shouldRunHeadless,
+  shouldRunHeadlessWithPositionals,
+  shouldRunHeadlessWithYes,
+  wantsDryRun,
+  wantsExplicitJson,
+} from "./headless.ts";
+export type { HeadlessContext } from "./headless.ts";
+export {
+  createGhFetchLatest,
+  createGhVersionCheck,
+  ghReleaseUpdateGetLatest,
+  isAlreadyCurrent,
+  parseReleaseTag,
+} from "./install/gh-release-update.ts";
+export type { GhReleaseUpdateConfig, GhVersionCheckConfig } from "./install/gh-release-update.ts";

@@ -57,7 +57,7 @@ import readmeText from "../README.md" with { type: "text" };
 
 Bun embeds the file when you `bun build --compile`. ArgsBarg does not read the filesystem at runtime.
 
-For several topics, use a barrel file (e.g. `src/docs/topics.ts`) so `index.tsx` stays small.
+Inline topics in your program root when the set is small; use a separate module only if the import map grows enough to clutter `index.tsx`.
 
 ## Schema, API, and skill (`docs schema`, `docs api`, `docs skill`)
 

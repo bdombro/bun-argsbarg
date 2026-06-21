@@ -305,5 +305,80 @@ export declare function cliRun(program: CliProgram, argv?: string[]): Promise<ne
 export declare function cliErrWithHelp(ctx: CliContext, msg: string): never;
 /** True when stdin is a TTY. */
 export declare const isInteractiveTty: boolean;
+/** Minimal context for headless routing helpers. */
+export type HeadlessContext = Pick<CliContext, "invocation">;
+/** True when `--dry-run` was passed. */
+export declare function wantsDryRun(hasDryRunFlag: boolean): boolean;
+/** True when `--json` was passed or the handler was invoked via MCP. */
+export declare function wantsExplicitJson(ctx: HeadlessContext, hasJsonFlag: boolean): boolean;
+/**
+ * Headless when MCP, `--json`, `--dry-run`, or stdin is not a TTY.
+ * Use for commands that should auto-emit JSON in pipelines.
+ */
+export declare function shouldRunHeadless(ctx: HeadlessContext, hasJsonFlag: boolean, hasDryRunFlag?: boolean, interactive?: boolean): boolean;
+/**
+ * Like {@link shouldRunHeadless}, but only auto-headless in non-TTY when positionals are present.
+ * Avoids turning empty invocations into JSON errors.
+ */
+export declare function shouldRunHeadlessWithPositionals(ctx: HeadlessContext, hasJsonFlag: boolean, positionals: string[], hasDryRunFlag?: boolean, interactive?: boolean): boolean;
+/**
+ * Headless when MCP, `--dry-run` with required args, or non-TTY with `--yes` and required args.
+ * Use for mutating commands that require explicit `--yes` in scripts.
+ */
+export declare function shouldRunHeadlessWithYes(ctx: HeadlessContext, opts: {
+	yes: boolean;
+	hasRequiredArgs: boolean;
+	dryRun?: boolean;
+}, interactive?: boolean): boolean;
+/**
+ * Exits when non-interactive mode is used without `--yes`.
+ * @param hint - Command-specific guidance appended to the error
+ */
+export declare function requireYesInNonTty(yes: boolean, hint: string, dryRun?: boolean, interactive?: boolean): void;
+/** Prefixes a success message when running in dry-run mode. */
+export declare function formatDryRunMessage(message: string, dryRun: boolean): string;
+/** Config for {@link ghReleaseUpdateGetLatest}. */
+export interface GhReleaseUpdateConfig {
+	/** GitHub `owner/repo` slug. */
+	repo: string;
+	/** Release asset filename (e.g. `myapp`). */
+	asset: string;
+	/** Temp directory name prefix for downloads. */
+	tempPrefix: string;
+	/** Path to the on-disk version-check cache JSON file. */
+	cachePath: string;
+	/** Optional hint when `gh auth` fails or no releases exist. */
+	repoEnvHint?: string;
+}
+/** Config for {@link createGhVersionCheck}. */
+export interface GhVersionCheckConfig {
+	/** Installed semver string. */
+	currentVersion: string;
+	/** CLI command name for update notices (e.g. `qa`). */
+	commandName: string;
+	/** Path to the on-disk version-check cache JSON file. */
+	cachePath: string;
+	/** Cache TTL in milliseconds (default 24h). */
+	ttlMs?: number;
+	/** When true, skip background refresh (e.g. test subprocess). */
+	skipRefresh?: () => boolean;
+	/** When true, skip refresh because `gh` is unavailable. */
+	ghAvailable?: () => boolean;
+	/** Fetches latest release version via `gh`. */
+	fetchLatest: () => Promise<string>;
+}
+/** Returns whether the installed version matches the latest release. */
+export declare function isAlreadyCurrent(current: string, latest: string): boolean;
+/** Strips a leading `v` from a release tag. */
+export declare function parseReleaseTag(tag: string): string;
+/** Builds a `CliUpdateGetLatest` hook that downloads a release via `gh`. */
+export declare function ghReleaseUpdateGetLatest(config: GhReleaseUpdateConfig): CliUpdateGetLatest;
+/** Version-check cache helpers for summary notices and background refresh. */
+export declare function createGhVersionCheck(config: GhVersionCheckConfig): {
+	getUpdateNotice: () => string | null;
+	refreshIfStale: () => void;
+};
+/** Shared `gh release view` fetcher for hooks and version-check refresh. */
+export declare function createGhFetchLatest(config: Pick<GhReleaseUpdateConfig, "repo" | "repoEnvHint">): () => Promise<string>;
 
 export {};

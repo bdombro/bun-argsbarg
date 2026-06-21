@@ -54,6 +54,41 @@ install: {
 
 When `updateGetLatest` is set, ArgsBarg also registers the **`update`** built-in (`myapp update`).
 
+### GitHub releases (`ghReleaseUpdateGetLatest`)
+
+For compiled binaries published via `gh release`, wire a hook without hand-rolling download logic:
+
+```typescript
+import {
+  createGhFetchLatest,
+  createGhVersionCheck,
+  ghReleaseUpdateGetLatest,
+} from "argsbarg";
+
+const cachePath = path.join(configDir, "version-check.json");
+
+install: {
+  updateGetLatest: ghReleaseUpdateGetLatest({
+    repo: "owner/repo",
+    asset: "myapp",
+    tempPrefix: "myapp-update.",
+    cachePath,
+  }),
+}
+
+// Optional: summary notice + background refresh
+const versionCheck = createGhVersionCheck({
+  currentVersion: "1.0.0",
+  commandName: "myapp",
+  cachePath,
+  fetchLatest: createGhFetchLatest({ repo: "owner/repo" }),
+});
+versionCheck.getUpdateNotice();
+versionCheck.refreshIfStale();
+```
+
+Requires `gh` on PATH and `gh auth login`. Consumers keep app-specific config only (~15 lines).
+
 Environment:
 
 - `INSTALL_PREFIX` — same as `install.prefix` / `--prefix`

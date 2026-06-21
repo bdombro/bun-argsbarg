@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-06-20
+
+### Added
+
+- **Headless helpers** — `shouldRunHeadless`, `shouldRunHeadlessWithPositionals`, `shouldRunHeadlessWithYes`, `wantsDryRun`, `wantsExplicitJson`, `requireYesInNonTty`, `formatDryRunMessage` for Ink/MCP CLIs.
+- **`ghReleaseUpdateGetLatest`** — optional `install.updateGetLatest` factory for GitHub releases via `gh`.
+- **`createGhVersionCheck`** — version-check cache, update notices, and background refresh helpers.
+
 ## [3.2.0] - 2026-06-20
 
 ### Added
