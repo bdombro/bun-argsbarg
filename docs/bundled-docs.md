@@ -84,7 +84,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 
 | Channel | Role |
 | --- | --- |
-| `install --skill` | Writes shell command catalog + `reference.md` to disk |
+| `install --skill` | Writes `SKILL.md` (API command reference) + `reference.md` to disk |
 | `docs skill` | Print generated `SKILL.md` to stdout |
 | `docs api` | Print command tree markdown to stdout |
 | `docs schema` | Print command tree JSON to stdout |

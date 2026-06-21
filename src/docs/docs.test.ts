@@ -152,7 +152,8 @@ test("docs skill prints Cursor SKILL.md", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("---");
   expect(result.stdout).toContain("name: myapp");
-  expect(result.stdout).toContain("## Commands");
+  expect(result.stdout).toContain("#### Options");
+  expect(result.stdout).not.toContain("## Commands");
   expect(result.stdout).not.toContain("mcp.json");
 });
 

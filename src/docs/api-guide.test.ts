@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { CliProgram } from "../types.ts";
 import { CliOptionKind } from "../types.ts";
-import { generateApiGuide } from "./api-guide.ts";
+import { generateApiGuide, generateApiGuideBody } from "./api-guide.ts";
 import { cliSchemaExport } from "../schema.ts";
 
 const nestedFixture: CliProgram = {
@@ -44,6 +44,14 @@ const nestedFixture: CliProgram = {
     },
   ],
 };
+
+test("generateApiGuideBody matches command section of full API guide", () => {
+  const body = generateApiGuideBody(nestedFixture);
+  const full = generateApiGuide(nestedFixture);
+  expect(full).toContain(body.trimEnd());
+  expect(body).toContain("## `nested.ts stat`");
+  expect(body).not.toContain("CLI API reference");
+});
 
 test("generateApiGuide covers the same command keys as cliSchemaExport", () => {
   const md = generateApiGuide(nestedFixture);

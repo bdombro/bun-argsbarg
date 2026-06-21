@@ -117,6 +117,14 @@ function renderCommandNode(
   }
 }
 
+/** Command-tree markdown shared by `docs api` and generated agent skills (no API doc header). */
+export function generateApiGuideBody(program: CliProgram): string {
+  const schema = cliSchemaExport(program);
+  const lines: string[] = [];
+  renderCommandNode(program.key, [], schema, lines);
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
 /** Generates markdown API reference from the same export as `docs schema`. */
 export function generateApiGuide(program: CliProgram): string {
   const schema = cliSchemaExport(program);
@@ -133,6 +141,6 @@ export function generateApiGuide(program: CliProgram): string {
     lines.push(formatNotesBlockquote(schema.notes, program.key), "");
   }
 
-  renderCommandNode(program.key, [], schema, lines);
+  lines.push(generateApiGuideBody(program).trimEnd(), "");
   return `${lines.join("\n").trimEnd()}\n`;
 }

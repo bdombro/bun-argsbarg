@@ -2,10 +2,10 @@
 This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
 */
 
-import { collectOptionDefs } from "../parse.ts";
+import { generateApiGuideBody } from "../docs/api-guide.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { collectMcpTools, sanitizeToolSegment } from "../mcp/tools.ts";
-import { CliProgram, CliOptionKind } from "../types.ts";
+import { CliProgram } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
 
@@ -31,31 +31,10 @@ function skillDescription(root: CliProgram): string {
   return truncate(desc, 1024);
 }
 
-/** Formats one command line for the catalog section. */
-function formatCommandEntry(root: CliProgram, tool: ReturnType<typeof collectMcpTools>[number]): string {
-  const cliPath = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
-  let line = `- **\`${cliPath}\`** — ${tool.description}`;
-  const opts = collectOptionDefs(root, tool.path);
-  const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
-  if (flags.length > 0) {
-    line += ` (flags: ${flags.join(", ")})`;
-  }
-  const enums = opts.filter((o) => o.kind === CliOptionKind.Enum && o.choices?.length);
-  for (const e of enums) {
-    line += ` (\`--${e.name}\`: ${e.choices!.join(" | ")})`;
-  }
-  const varargs = (tool.leaf.positionals ?? []).filter((p) => (p.argMax ?? 1) === 0);
-  if (varargs.length > 0) {
-    line += ` (varargs: ${varargs.map((p) => p.name).join(", ")})`;
-  }
-  return line;
-}
-
 /** Builds SKILL.md body for the given target. */
 function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): string {
   const name = sanitizeToolSegment(root.key);
   const description = skillDescription(root);
-  const tools = collectMcpTools(root);
 
   const lines: string[] = [
     "---",
@@ -75,20 +54,12 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     "Invoke via shell:",
     "",
-  ];
-
-  lines.push("```bash", `${root.key} <subcommand> [options] [args]`, "```", "", "## Commands", "");
-
-  if (tools.length === 0) {
-    lines.push("(No leaf commands in schema.)", "");
-  } else {
-    for (const tool of tools) {
-      lines.push(formatCommandEntry(root, tool));
-    }
-    lines.push("");
-  }
-
-  lines.push(
+    "```bash",
+    `${root.key} <subcommand> [options] [args]`,
+    "```",
+    "",
+    generateApiGuideBody(root).trimEnd(),
+    "",
     "## Pitfalls",
     "",
     "- Use `--` before tokens that look like flags when they are positional arguments.",
@@ -98,7 +69,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     "See `reference.md` in this skill directory for the full `docs schema` JSON export.",
     "",
-  );
+  ];
 
   if (target === "cursor") {
     lines.push(
