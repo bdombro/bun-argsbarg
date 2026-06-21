@@ -25,13 +25,29 @@ Package docs: `node_modules/argsbarg/readme.md`, `node_modules/argsbarg/docs/cli
   - **`json`** — machine-readable stdout
 - ArgsBarg auto-appends MCP agent hints for `yes`, `dry-run`, and `json` (no extra config).
 
-## `mcpTool` (only when needed)
+## `mcpTool` — escape hatches (rare)
+
+**Default: omit `mcpTool`.** ArgsBarg already generates tool names, descriptions (with `yes` / `dry-run` / `json` hints), and `inputSchema`.
+
+Reach for `mcpTool` only when the schema cannot express the constraint. **Before adding an escape hatch, fix the underlying CLI design** if the motivation is an anti-pattern:
+
+| Temptation | Prefer instead |
+| --- | --- |
+| `mcpTool.description` explaining custom flags | Rename to **`yes`**, **`dry-run`**, or **`json`** when semantics match (auto hints) |
+| `mcpTool.description` saying "pass `--json`" | Implement headless/`--json` in the **handler**; ensure the option exists on the leaf |
+| `mcpTool.enabled: false` because prompts block MCP | Add **`--yes`** / flag resolution so MCP can run headless; hide only if headless is impossible |
+| `mcpTool.description` duplicating help with MCP caveats | Rewrite leaf **`description`** and option text for agents; one description for both audiences |
+| `enabled: false` to hide incomplete commands | Finish headless path or split into a dedicated scriptable subcommand |
+
+Legitimate escape hatches:
 
 | Field | When |
 | --- | --- |
-| `enabled: false` | Ink-only, browser, or otherwise not callable headlessly |
-| `requiresEnv: ["VAR"]` | Secrets required at runtime |
-| `description: "..."` | MCP behavior differs from help (replaces auto description + hints) |
+| `enabled: false` | Truly CLI-only (browser, TUI with no headless equivalent, internal debug) |
+| `requiresEnv: ["VAR"]` | Secrets — cannot live in the schema |
+| `description: "..."` | **Genuine** MCP limitation that cannot be fixed in schema/handler (e.g. streaming/`--watch` not supported on the wire yet) |
+
+If you add `mcpTool`, leave a short comment in code **why** a schema/handler fix was not enough.
 
 ## Handlers
 

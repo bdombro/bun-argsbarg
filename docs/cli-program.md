@@ -50,19 +50,37 @@ Prefer these names when the semantics match. Mutating commands that need scripta
 
 ## When to use `mcpTool` (escape hatches only)
 
+**Omit `mcpTool` unless you have a specific reason.** Overrides replace the entire auto-generated MCP description (including `yes` / `dry-run` / `json` hints).
+
+### Fix the CLI first
+
+Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches:
+
+| Problem | Fix (not `mcpTool`) |
+| --- | --- |
+| Agents don't know which flags to pass | Use standard option names (`yes`, `dry-run`, `json`); improve option `description` strings |
+| MCP calls hang on prompts | Add `--yes` and a headless code path; use `shouldRunHeadlessWithYes` |
+| Help text describes Ink UI | Rewrite leaf `description` as the action ("Reserve an environment.") |
+| MCP needs different args than humans | Expose the same flags; resolve defaults in the handler for both `cli` and `mcp` |
+| Command "doesn't work" over MCP | Branch on `ctx.invocation === "mcp"` in the handler (stdio is the wire) |
+
+### When escape hatches are appropriate
+
 | Field | Use when |
 | --- | --- |
-| `enabled: false` | Command is CLI-only (Ink UI, browser open, internal debug) |
+| `enabled: false` | Command is **genuinely** CLI-only (open browser, Ink-only flow with no scriptable equivalent) |
 | `requiresEnv: [...]` | Runtime secrets; appended to MCP description and enforced at `tools/call` |
-| `description: "..."` | MCP contract **differs** from help text (e.g. "`--watch` is CLI-only") |
+| `description: "..."` | **Irreducible** MCP limitation (e.g. live tail / `--watch` cannot be streamed on the MCP wire yet) |
 
-If help text and MCP behavior match, **omit `mcpTool`** — overrides replace auto hints entirely.
+Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard flag names, or handlers that only work interactively — fix those instead.
+
+If help text and MCP behavior match after your fixes, **omit `mcpTool` entirely**.
 
 ## Interactive / Ink CLIs
 
 - Branch on `ctx.invocation === "mcp"` or use ArgsBarg headless helpers (`shouldRunHeadless`, `shouldRunHeadlessWithYes`).
 - MCP invocation is always headless; do not mount TUI on the MCP wire.
-- Hide commands that cannot work headless with `mcpTool: { enabled: false }`.
+- Hide commands that **cannot** work headless even with `--yes` / resolved flags — use `mcpTool: { enabled: false }` only after confirming a headless path is infeasible.
 
 ## Reserved names
 

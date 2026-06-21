@@ -135,6 +135,8 @@ Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/l
 
 Omitted or `enabled: true` exposes the command (default). `mcpTool` is only valid on leaves — not on the program root or routing groups.
 
+**Prefer fixing schema and handlers over `mcpTool` overrides** — standard option names (`yes`, `dry-run`, `json`), headless paths, and clear descriptions usually make MCP work without per-leaf config. See [cli-program.md](cli-program.md).
+
 ### Per-leaf tool metadata
 
 ```typescript
