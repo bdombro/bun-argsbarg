@@ -25,6 +25,40 @@ const cli = {
 
 No `mcpTool` blocks required. Every leaf becomes an MCP tool; `inputSchema` comes from options and positionals.
 
+## Inline schema by default
+
+ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliProgram` and leaf fields inline** (`key`, `description`, `options`, `positionals`, `handler`) so a reader sees the full command contract in one place.
+
+**Inline by default:**
+
+```typescript
+{
+  key: "reserve",
+  description: "Reserve a QA environment.",
+  options: [
+    { name: "yes", description: "Skip confirmation; use for non-interactive runs.", kind: CliOptionKind.Presence },
+    { name: "dry-run", description: "Preview without mutating.", kind: CliOptionKind.Presence },
+  ],
+  positionals: [
+    { name: "env", description: "Environment name.", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
+  ],
+  handler: async (ctx) => { /* … */ },
+}
+```
+
+**Extract only when well justified:**
+
+| Extract | When |
+| --- | --- |
+| Shared option objects (`DRY_RUN_OPTION`, `JSON_OPTION`) | Identical flag reused on many leaves |
+| Shared spreads (`...MCP_TOOL_MUTATOR`) | Same `mcpTool` metadata on a family of commands |
+| `somethingCommand()` factory | Entry file is large; handler/body is substantial (Ink page, headless dispatch) |
+| `docs.topics` text imports | Compile-time markdown bundling — not schema shape |
+
+**Avoid extracting** thin indirection: a file that only re-exports `{ key, description, options }` with no logic, or splitting every leaf into its own module when the handler is a few lines. If extraction does not reduce duplication or file size materially, keep it inline.
+
+**`satisfies CliProgram`** on the root (or on extracted command factories) preserves type-checking whether inline or not.
+
 ## Descriptions
 
 Write for **what the command does**, not how the UI works:

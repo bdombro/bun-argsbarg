@@ -16,6 +16,14 @@ Package docs: `node_modules/argsbarg/readme.md`, `node_modules/argsbarg/docs/cli
 - **Do not add `mcpTool` on every leaf** — ArgsBarg exposes leaves automatically with descriptions and `inputSchema` derived from the schema.
 - Write **`description`** on the root, each command, and each option/positional for `-h`; those strings feed MCP and skills.
 
+## Inline schema (default)
+
+Keep **`CliProgram` and leaf params inline** (`options`, `positionals`, `handler`) unless extraction is justified — the schema should be readable at a glance.
+
+**Extract when:** shared options (`DRY_RUN_OPTION`), shared `mcpTool` spreads, or a command factory because the handler is large (Ink + headless dispatch). **Do not extract** thin wrappers that only move static schema to another file.
+
+Use **`satisfies CliProgram`** on the root or on command factories.
+
 ## Leaf commands (`CliLeaf`)
 
 - One clear **`description`** per leaf (verb + object; no UI jargon unless CLI-only).
