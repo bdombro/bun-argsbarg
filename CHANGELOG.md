@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.5] - 2026-06-21
+
+### Changed
+
+- **`notes` placeholders** — use `{argsbarg:program}` for the root program key in consumer `notes`. Built-in copy (e.g. `install` notes) interpolates the program key directly.
+
+### Removed
+
+- **`{app}` notes placeholder** — use `{argsbarg:program}` instead.
+
+### Fixed
+
+- **`docs schema` / `docs api` / MCP schema resource** — `{argsbarg:program}` in `notes` is resolved to the program key (same as help). Schema export uses the root program key for built-in subtrees on nested leaves.
+
 ## [3.3.4] - 2026-06-21
 
 
@@ -262,7 +276,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.4...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.3.5...HEAD
+[3.3.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.5
 [3.3.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.4
 [3.3.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.3
 [3.3.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.2

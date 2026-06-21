@@ -224,7 +224,7 @@ export interface CliNodeBase {
 	key: string;
 	/** Short description shown in help. */
 	description: string;
-	/** Additional notes shown in help (supports {app} placeholder). */
+	/** Additional notes shown in help (`{argsbarg:program}` → program key). */
 	notes?: string;
 	/** Global or command-level flags/options. */
 	options?: CliOption[];

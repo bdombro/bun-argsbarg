@@ -185,6 +185,14 @@ export function cliOptionLabel(o: CliOption, color: boolean): string {
   return style.aquaBold(left) + " " + style.greenBright(right);
 }
 
+/** Placeholder in `notes` for the root program key (resolved in help, schema, and docs api). */
+export const CLI_NOTES_PROGRAM = "{argsbarg:program}";
+
+/** Replaces `{argsbarg:program}` in notes/help text with the program key. */
+export function cliResolveNotes(notes: string, appKey: string): string {
+  return notes.replaceAll(CLI_NOTES_PROGRAM, appKey);
+}
+
 /** Formats a positional slot label (`<n>`, `[n]`, or varargs) for help. */
 export function cliPositionalLabel(p: CliPositional, color: boolean): string {
   const { argMin = 1, argMax = 1 } = p;
@@ -471,12 +479,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
   }
 
   if ((node.notes ?? "").length > 0) {
-    let resolved = node.notes!;
-    while (true) {
-      const r = resolved.indexOf("{app}");
-      if (r === -1) break;
-      resolved = resolved.slice(0, r) + schema.key + resolved.slice(r + 5);
-    }
+    const resolved = cliResolveNotes(node.notes!, schema.key);
     lines.push("");
     lines.push(
       renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"),

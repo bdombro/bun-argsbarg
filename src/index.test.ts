@@ -597,6 +597,44 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
   expect(schema).not.toHaveProperty("handler");
 });
 
+test("cliSchemaExport resolves program key in install notes", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "demo",
+    commands: [
+      {
+        key: "run",
+        description: "run",
+        handler: () => {},
+      },
+    ],
+  });
+
+  const json = cliSchemaJson(root);
+  expect(json).not.toContain("{argsbarg:program}");
+  expect(json).toContain("myapp install --all --yes");
+});
+
+test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "demo",
+    commands: [
+      {
+        key: "run",
+        description: "run",
+        notes: "Run `{argsbarg:program} run` to start.",
+        handler: () => {},
+      },
+    ],
+  });
+
+  const schema = JSON.parse(cliSchemaJson(root));
+  expect(schema.commands[0].notes).toBe("Run `myapp run` to start.");
+});
+
 test("docs help lists schema, api, and skill subcommands", () => {
   const root = testProgram({
     key: "app",

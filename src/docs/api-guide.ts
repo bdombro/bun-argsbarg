@@ -1,5 +1,5 @@
 import type { CliSchemaExport } from "../builtins/export.ts";
-import { cliPositionalLabel } from "../help.ts";
+import { cliPositionalLabel, cliResolveNotes } from "../help.ts";
 import { cliSchemaExport } from "../schema.ts";
 import type { CliOption, CliPositional, CliProgram } from "../types.ts";
 import { CliFallbackMode, CliOptionKind } from "../types.ts";
@@ -43,6 +43,15 @@ function formatPositionalRow(p: CliPositional): string {
   return `| \`${label}\` | ${p.kind} | ${req} | ${p.description} |`;
 }
 
+/** Markdown blockquote for command notes (`{argsbarg:program}` resolved to root key). */
+function formatNotesBlockquote(notes: string, appKey: string): string {
+  const resolved = cliResolveNotes(notes, appKey);
+  return resolved
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+}
+
 /** Fallback routing note when present on a router node. */
 function fallbackLine(node: CliSchemaExport): string | null {
   if (node.fallbackCommand === undefined) {
@@ -66,7 +75,7 @@ function renderCommandNode(
   lines.push(`${heading} \`${cmd}\``, "", node.description, "");
 
   if (node.notes) {
-    lines.push(`> ${node.notes}`, "");
+    lines.push(formatNotesBlockquote(node.notes, rootKey), "");
   }
 
   const fb = fallbackLine(node);
@@ -121,7 +130,7 @@ export function generateApiGuide(program: CliProgram): string {
   ];
 
   if (schema.notes) {
-    lines.push(`> ${schema.notes}`, "");
+    lines.push(formatNotesBlockquote(schema.notes, program.key), "");
   }
 
   renderCommandNode(program.key, [], schema, lines);

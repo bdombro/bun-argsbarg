@@ -79,7 +79,7 @@ const cli = {
     {
       key: "read",
       description: "Print the first line of each file.",
-      notes: "Pass one or more file paths. {app} prints the first line of each.",
+      notes: "Pass one or more file paths. The program prints the first line of each.",
       positionals: [
         {
           name: "files",
