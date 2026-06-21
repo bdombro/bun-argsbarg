@@ -77,6 +77,24 @@ export function docsTopicText(program: CliProgram, topic: string): string {
   return entry.text;
 }
 
+/** Full file body for a docs topic (stdout or `--save`). */
+export function docsTopicContent(program: CliProgram, topic: string): string {
+  if (topic === "schema") {
+    return cliSchemaJson(program);
+  }
+  if (topic === "api") {
+    return generateApiGuide(program);
+  }
+  if (topic === "skill") {
+    return `${generateSkillBundle(program, "cursor").skillMd}\n`;
+  }
+  if (topic === "all") {
+    return `${combineAllDocs(program)}\n`;
+  }
+  const text = docsTopicText(program, topic);
+  return text.endsWith("\n") ? text : `${text}\n`;
+}
+
 /** All bundled docs concatenated with horizontal rules. */
 export function combineAllDocs(program: CliProgram): string {
   return docsPrintOrder(program)
@@ -84,36 +102,7 @@ export function combineAllDocs(program: CliProgram): string {
     .join("\n\n---\n\n");
 }
 
-/** Writes CLI schema JSON to stdout (`docs schema`). */
-export function printDocsSchema(program: CliProgram): void {
-  process.stdout.write(cliSchemaJson(program));
-}
-
-/** Writes markdown API reference to stdout (`docs api`). */
-export function printDocsApi(program: CliProgram): void {
-  process.stdout.write(generateApiGuide(program));
-}
-
-/** Writes generated Cursor SKILL.md to stdout (`docs skill`). */
-export function printDocsSkill(program: CliProgram): void {
-  const bundle = generateSkillBundle(program, "cursor");
-  process.stdout.write(`${bundle.skillMd}\n`);
-}
-
 /** Writes one docs topic (or `all`) to stdout. */
 export function printDocsTopic(program: CliProgram, topic: string): void {
-  if (topic === "schema") {
-    printDocsSchema(program);
-    return;
-  }
-  if (topic === "api") {
-    printDocsApi(program);
-    return;
-  }
-  if (topic === "skill") {
-    printDocsSkill(program);
-    return;
-  }
-  const content = topic === "all" ? combineAllDocs(program) : docsTopicText(program, topic);
-  process.stdout.write(`${content}\n`);
+  process.stdout.write(docsTopicContent(program, topic));
 }

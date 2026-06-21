@@ -1,4 +1,4 @@
-import { CliFallbackMode, type CliLeaf, type CliProgram, type CliRouter } from "../types.ts";
+import { CliFallbackMode, CliOptionKind, type CliLeaf, type CliOption, type CliProgram, type CliRouter } from "../types.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
   docsEffectiveDefaultTopic,
@@ -8,14 +8,32 @@ import {
   docsUserTopicKeys,
   printDocsTopic,
 } from "./resolve.ts";
+import { saveDocsTopics } from "./save.ts";
+
+const DOCS_SAVE_OPTION: CliOption = {
+  name: "save",
+  description: "Write documentation to ./docs/ (`docs all` writes one file per topic).",
+  kind: CliOptionKind.Presence,
+};
+
+function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: string): boolean }): void {
+  if (ctx.hasFlag("save")) {
+    for (const path of saveDocsTopics(program, topic)) {
+      process.stdout.write(`${path}\n`);
+    }
+    return;
+  }
+  printDocsTopic(program, topic);
+}
 
 function docsLeaf(program: CliProgram, key: string, description: string): CliLeaf {
   return {
     key,
     description,
+    options: [DOCS_SAVE_OPTION],
     mcpTool: { enabled: false },
-    handler: () => {
-      printDocsTopic(program, key);
+    handler: (ctx) => {
+      runDocsTopic(program, key, ctx);
     },
   };
 }
@@ -46,6 +64,7 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   return {
     key: "docs",
     description: docs.description ?? DOCS_ROUTER_DESCRIPTION,
+    options: [DOCS_SAVE_OPTION],
     fallbackCommand: docsEffectiveDefaultTopic(docs),
     fallbackMode: CliFallbackMode.MissingOnly,
     commands: leaves,
