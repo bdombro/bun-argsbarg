@@ -1,5 +1,5 @@
 ---
-description: Argsbarg CliProgram authoring — schema, descriptions, MCP defaults; copy to .cursor/rules/argsbarg-cli.mdc in consumer apps.
+description: Argsbarg CliProgram authoring — schema, descriptions, MCP defaults; copy to .cursor/rules/cli-program.mdc in consumer apps.
 globs: "**/*.{ts,tsx}"
 alwaysApply: false
 ---

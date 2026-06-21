@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **MCP schema hints** — auto-append agent hints to tool descriptions when leaves define `yes`, `dry-run`, or `json` options.
 - **`docs/cli-program.md`** — authoring guide for `CliProgram` and leaves (MCP-free defaults).
-- **`docs/templates/cursor-cli-program.mdc`** — copy-paste Cursor rule template for consumer apps.
+- **`docs/templates/cursor/rules/cli-program.mdc`** — copy to `.cursor/rules/cli-program.mdc` in consumer apps.
 
 ## [3.3.0] - 2026-06-21
 

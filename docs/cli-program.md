@@ -70,7 +70,7 @@ Do not declare user commands named `completion`, `install`, `mcp`, `version`, `d
 
 ## Cursor rule for consumer repos
 
-Copy [docs/templates/cursor-cli-program.mdc](templates/cursor-cli-program.mdc) to your app as `.cursor/rules/argsbarg-cli.mdc` so agents editing your CLI schema follow these conventions.
+Copy `node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc` to `.cursor/rules/cli-program.mdc` so agents editing your CLI schema follow these conventions.
 
 ## See also
 
