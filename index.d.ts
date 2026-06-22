@@ -69,6 +69,8 @@ export declare enum CliFallbackMode {
 export interface CliOption {
 	/** Option name (e.g., "name", "verbose"). */
 	name: string;
+	/** When `true`, omit from help, schema, completions, and MCP tool inputSchema (still parseable). */
+	hidden?: boolean;
 	/** Description shown in help. */
 	description: string;
 	/** Option kind: presence flag, string value, or number value. */
@@ -104,6 +106,18 @@ export interface CliPositional {
 	 */
 	argMax?: number;
 }
+/** Optional metadata for `mcp bundle` MCP Bundle output (program root `mcpServer.bundle` only). */
+export interface CliMcpBundleConfig {
+	author?: {
+		name: string;
+		email?: string;
+		url?: string;
+	};
+	/** Repo-relative path to a PNG icon copied into the bundle. */
+	icon?: string;
+	/** Manifest `long_description` (defaults to program description). */
+	longDescription?: string;
+}
 /**
  * Enables `myapp mcp` and MCP stdio server metadata (program root only).
  * Must include `enabled: true`; omit `mcpServer` entirely to disable MCP.
@@ -130,6 +144,8 @@ export interface CliMcpServerConfig {
 	 * URIs must be unique and must not equal schemaResourceUri.
 	 */
 	resources?: CliMcpResource[];
+	/** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
+	bundle?: CliMcpBundleConfig;
 }
 /**
  * A custom MCP resource exposed under resources/list and resources/read.
@@ -226,6 +242,8 @@ export interface CliDocsConfig {
 export interface CliNodeBase {
 	/** Program or command key (e.g., "myapp", "stat", "owner"). */
 	key: string;
+	/** When `true`, omit from help listings, schema, completions, and MCP tools (still invocable). */
+	hidden?: boolean;
 	/** Short description shown in help. */
 	description: string;
 	/** Additional notes shown in help (`{argsbarg:program}` → program key). */
@@ -387,5 +405,25 @@ export declare function createGhVersionCheck(config: GhVersionCheckConfig): {
 };
 /** Shared `gh release view` fetcher for hooks and version-check refresh. */
 export declare function createGhFetchLatest(config: Pick<GhReleaseUpdateConfig, "repo" | "repoEnvHint">): () => Promise<string>;
+/** Resolved paths for `mcp bundle`. */
+export interface McpBundlePaths {
+	binaryPath: string;
+	outPath: string;
+	binaryName: string;
+}
+/** Default `dist/<key>` binary and `dist/<key>.mcpb` output under cwd. */
+export declare function defaultMcpBundlePaths(program: CliProgram, cwd?: string): McpBundlePaths;
+/** Generates MCPB `manifest.json` object from program schema and MCP tools. */
+export declare function generateMcpManifest(program: CliProgram, binaryName: string): Record<string, unknown>;
+export interface PackMcpBundleOpts {
+	cwd?: string;
+	binaryPath?: string;
+	outPath?: string;
+}
+/**
+ * Stages manifest + binary (+ optional icon) and writes a `.mcpb` ZIP.
+ * macOS-only v1; requires the compiled binary to exist.
+ */
+export declare function packMcpBundle(program: CliProgram, opts?: PackMcpBundleOpts): string;
 
 export {};
