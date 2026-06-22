@@ -1,6 +1,6 @@
 import { resolveCapabilities } from "../capabilities.ts";
 import { docsEnabled } from "../docs/resolve.ts";
-import { type CliLeaf, type CliProgram, type CliRouter, CliFallbackMode } from "../types.ts";
+import { CliFallbackMode, type CliLeaf, type CliProgram, type CliRouter } from "../types.ts";
 
 /** Built-in `mcp` router: bare `myapp mcp` runs stdio (via hidden `serve` fallback); `mcp bundle` packs `.mcpb`. */
 export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {

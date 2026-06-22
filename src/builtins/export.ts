@@ -1,12 +1,12 @@
 import { type CliCapabilities, resolveCapabilities } from "../capabilities.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
+import { visibleOptions } from "../hidden.ts";
 import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "../types.ts";
 import { isCliRouter } from "../types.ts";
-import { visibleOptions } from "../hidden.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
@@ -55,22 +55,31 @@ function exportBuiltinNode(cmd: CliNode): CliSchemaExport | null {
   return out;
 }
 
+function pushExportedBuiltin(builtins: CliSchemaExport[], cmd: CliNode): void {
+  const node = exportBuiltinNode(cmd);
+  if (node) {
+    builtins.push(node);
+  }
+}
+
 /** Built-in subtrees matching help visibility for `--schema` export. */
-export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabilities): CliSchemaExport[] {
+export function exportPresentationBuiltins(
+  program: CliProgram,
+  caps?: CliCapabilities,
+): CliSchemaExport[] {
   const resolved = caps ?? resolveCapabilities(program);
-  const builtins: CliSchemaExport[] = [
-    exportBuiltinNode(cliBuiltinCompletionGroup(program))!,
-    exportBuiltinNode(cliBuiltinVersionCommand())!,
-  ];
+  const builtins: CliSchemaExport[] = [];
+  pushExportedBuiltin(builtins, cliBuiltinCompletionGroup(program));
+  pushExportedBuiltin(builtins, cliBuiltinVersionCommand());
   if (resolved.install) {
-    builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program))!);
+    pushExportedBuiltin(builtins, cliBuiltinInstallCommand(program));
   }
   const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
   if (docsGroup) {
-    builtins.push(exportBuiltinNode(docsGroup)!);
+    pushExportedBuiltin(builtins, docsGroup);
   }
   if (resolved.mcp) {
-    builtins.push(exportBuiltinNode(cliBuiltinMcpCommand(program))!);
+    pushExportedBuiltin(builtins, cliBuiltinMcpCommand(program));
   }
   return builtins;
 }

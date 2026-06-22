@@ -3,17 +3,17 @@ This module validates CLI schemas before execution.
 */
 
 import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
+import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
+import { resolveMcpSchemaUri } from "./mcp/tools.ts";
 import {
   type CliLeaf,
   type CliNode,
-  type CliProgram,
   CliOptionKind,
+  type CliProgram,
   CliSchemaValidationError,
   isCliLeaf,
   isCliRouter,
 } from "./types.ts";
-import { resolveMcpSchemaUri } from "./mcp/tools.ts";
-import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
 
 /** Validates `docs` configuration on the program root. */
 function validateDocsConfig(docs: import("./types.ts").CliDocsConfig): void {
@@ -93,17 +93,17 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     const rogue = node as CliProgram;
     if (rogue.mcpServer !== undefined) {
       throw new CliSchemaValidationError(
-        "mcpServer is only supported on the program root (not on " + node.key + ")",
+        `mcpServer is only supported on the program root (not on ${node.key})`,
       );
     }
     if (rogue.install !== undefined) {
       throw new CliSchemaValidationError(
-        "install is only supported on the program root (not on " + node.key + ")",
+        `install is only supported on the program root (not on ${node.key})`,
       );
     }
     if (rogue.docs !== undefined) {
       throw new CliSchemaValidationError(
-        "docs is only supported on the program root (not on " + node.key + ")",
+        `docs is only supported on the program root (not on ${node.key})`,
       );
     }
   }
@@ -115,9 +115,7 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     const outputSchema = node.outputSchema;
     const legacyOutputSchema = node.mcpTool?.outputSchema;
     if (outputSchema !== undefined && legacyOutputSchema !== undefined) {
-      throw new CliSchemaValidationError(
-        "Set outputSchema on the leaf only, not under mcpTool",
-      );
+      throw new CliSchemaValidationError("Set outputSchema on the leaf only, not under mcpTool");
     }
     const resolved = outputSchema ?? legacyOutputSchema;
     if (
@@ -132,7 +130,7 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     const rogue = node as unknown as CliLeaf;
     if (rogue.mcpTool !== undefined) {
       throw new CliSchemaValidationError(
-        "mcpTool is only supported on leaf commands (not on " + node.key + ")",
+        `mcpTool is only supported on leaf commands (not on ${node.key})`,
       );
     }
   }
@@ -160,9 +158,7 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     }
 
     if (node.fallbackMode !== undefined && node.fallbackCommand === undefined) {
-      throw new CliSchemaValidationError(
-        `fallbackMode requires fallbackCommand on '${node.key}'`,
-      );
+      throw new CliSchemaValidationError(`fallbackMode requires fallbackCommand on '${node.key}'`);
     }
 
     if (node.fallbackCommand !== undefined) {
@@ -233,10 +229,15 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
   }
 }
 
-function validatePositionals(scopeKey: string, positionals: import("./types.ts").CliPositional[]): void {
+function validatePositionals(
+  scopeKey: string,
+  positionals: import("./types.ts").CliPositional[],
+): void {
   for (const p of positionals) {
     if (p.argMin !== undefined && p.argMin < 0) {
-      throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${scopeKey}/${p.name}`);
+      throw new CliSchemaValidationError(
+        `argMin must be >= 0 for positional ${scopeKey}/${p.name}`,
+      );
     }
     if (p.argMax !== undefined && p.argMax < 0) {
       throw new CliSchemaValidationError(
@@ -262,7 +263,11 @@ function validatePositionals(scopeKey: string, positionals: import("./types.ts")
   }
 
   for (let idx = 0; idx < positionals.length; idx++) {
-    const { argMax = 1 } = positionals[idx]!;
+    const positional = positionals[idx];
+    if (!positional) {
+      continue;
+    }
+    const { argMax = 1 } = positional;
     if (argMax === 0 && idx + 1 < positionals.length) {
       throw new CliSchemaValidationError(
         `Unlimited positional (argMax == 0) must be last in scope ${scopeKey}`,

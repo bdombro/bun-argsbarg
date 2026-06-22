@@ -17,11 +17,15 @@ function escapeRegExp(s: string): string {
 }
 
 function parseTomlStringArray(inner: string): string[] {
-  const out: string[] = [];
   const re = /"([^"]*)"/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(inner)) !== null) {
-    out.push(m[1]!);
+  const out: string[] = [];
+  let m = re.exec(inner);
+  while (m !== null) {
+    const value = m[1];
+    if (value !== undefined) {
+      out.push(value);
+    }
+    m = re.exec(inner);
   }
   return out;
 }
@@ -42,12 +46,12 @@ export function readCodexMcpEntry(path: string, name: string): McpServerEntry | 
   const search = transport ?? block;
 
   const cmd =
-    search.match(/command\s*=\s*"([^"]*)"/)?.[1] ??
-    search.match(/command\s*=\s*'([^']*)'/)?.[1];
+    search.match(/command\s*=\s*"([^"]*)"/)?.[1] ?? search.match(/command\s*=\s*'([^']*)'/)?.[1];
   if (!cmd) return undefined;
 
   const argsMatch = search.match(/args\s*=\s*\[([^\]]*)\]/s);
-  const args = argsMatch ? parseTomlStringArray(argsMatch[1]!) : [];
+  const argsInner = argsMatch?.[1];
+  const args = argsInner !== undefined ? parseTomlStringArray(argsInner) : [];
   return { command: cmd, args };
 }
 

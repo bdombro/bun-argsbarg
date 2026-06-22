@@ -4,12 +4,12 @@ It parses argv against the user schema, captures stdout/stderr, and patches
 process.exit so MCP tool calls can run handlers repeatedly.
 */
 
-import { CliContext } from "./context.ts";
+import { format } from "node:util";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
-import { parse, postParseValidate, ParseKind } from "./parse.ts";
+import { CliContext } from "./context.ts";
+import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { type CliNode, type CliProgram, type CliRouter, isCliLeaf, isCliRouter } from "./types.ts";
-import { format } from "node:util";
 
 /** Outcome of a non-exiting CLI invocation. */
 export type CliInvokeKind = "ok" | "help" | "error";
@@ -159,21 +159,24 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
   }) as typeof process.stderr.write;
 
   console.log = (...args: unknown[]) => {
-    stdout += format(...args) + "\n";
+    stdout += `${format(...args)}\n`;
   };
   console.info = (...args: unknown[]) => {
-    stdout += format(...args) + "\n";
+    stdout += `${format(...args)}\n`;
   };
   console.warn = (...args: unknown[]) => {
-    stderr += format(...args) + "\n";
+    stderr += `${format(...args)}\n`;
   };
   console.error = (...args: unknown[]) => {
-    stderr += format(...args) + "\n";
+    stderr += `${format(...args)}\n`;
   };
 
   try {
     if (pr.kind === ParseKind.Ok) {
-      await dispatchBuiltin(root, pr, { isLeafCompletionIntercept, parseRoot: completionParseRoot });
+      await dispatchBuiltin(root, pr, {
+        isLeafCompletionIntercept,
+        parseRoot: completionParseRoot,
+      });
     }
 
     await Promise.resolve(handler(ctx));
@@ -191,7 +194,7 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
         kind: "error",
         exitCode: 1,
         stdout,
-        stderr: err.message + "\n",
+        stderr: `${err.message}\n`,
         errorMsg: err.message,
       };
     }

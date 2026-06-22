@@ -1,19 +1,14 @@
 import { readSync } from "node:fs";
 import { resolveCapabilities } from "../capabilities.ts";
-import { CliProgram } from "../types.ts";
 import { cliSkillInstall } from "../skill/install.ts";
-import { checkMcpConflict, expectedMcpEntry } from "./mcp-config.ts";
+import type { CliProgram } from "../types.ts";
 import { checkCodexMcpConflict } from "./mcp-codex.ts";
+import { checkMcpConflict, expectedMcpEntry } from "./mcp-config.ts";
 import { checkOpenCodeMcpConflict, expectedOpenCodeMcpEntry } from "./mcp-opencode.ts";
-import {
-  buildInstallPlan,
-  buildUpdatePlan,
-  type InstallAction,
-  type InstallOpts,
-} from "./plan.ts";
 import { resolveInstallPaths, userHome } from "./paths.ts";
+import { buildInstallPlan, buildUpdatePlan, type InstallAction, type InstallOpts } from "./plan.ts";
 import { installErr, installInfo, installOut, printInstallStatus } from "./status.ts";
-import { buildUninstallPlan, uninstallSkillDir, type UninstallAction } from "./uninstall.ts";
+import { buildUninstallPlan, type UninstallAction, uninstallSkillDir } from "./uninstall.ts";
 import { cliUpdate } from "./update.ts";
 
 export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
@@ -56,19 +51,39 @@ export function validateInstallOpts(opts: InstallOpts): string | null {
   }
 
   const mutationFlags =
-    opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.reinstall || opts.update || opts.uninstall;
+    opts.all ||
+    opts.bin ||
+    opts.completions ||
+    opts.skill ||
+    opts.mcp ||
+    opts.reinstall ||
+    opts.update ||
+    opts.uninstall;
   if (opts.status && mutationFlags) {
     return "--status is mutually exclusive with install/reinstall/uninstall targets.";
   }
   if (
     opts.reinstall &&
-    (opts.all || opts.completions || opts.skill || opts.mcp || opts.uninstall || opts.status || opts.update)
+    (opts.all ||
+      opts.completions ||
+      opts.skill ||
+      opts.mcp ||
+      opts.uninstall ||
+      opts.status ||
+      opts.update)
   ) {
     return "--reinstall cannot be combined with other target flags.";
   }
   if (
     opts.update &&
-    (opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.uninstall || opts.status || opts.reinstall)
+    (opts.all ||
+      opts.bin ||
+      opts.completions ||
+      opts.skill ||
+      opts.mcp ||
+      opts.uninstall ||
+      opts.status ||
+      opts.reinstall)
   ) {
     return "--update cannot be combined with other target flags.";
   }
@@ -136,7 +151,11 @@ function executePlan(
 export async function runInstallMutation(
   root: CliProgram,
   rawOpts: Record<string, string>,
-): Promise<{ changed: string[]; opts: InstallOpts; paths: ReturnType<typeof resolveInstallPaths> }> {
+): Promise<{
+  changed: string[];
+  opts: InstallOpts;
+  paths: ReturnType<typeof resolveInstallPaths>;
+}> {
   const opts = parseInstallOpts(rawOpts);
   const err = validateInstallOpts(opts);
   if (err) {
@@ -165,7 +184,12 @@ export async function runInstallMutation(
         throw new Error(conflict);
       }
     }
-    const openCodeConflict = checkOpenCodeMcpConflict(paths.opencodeMcpPath, paths.mcpName, openCodeEntry, yes);
+    const openCodeConflict = checkOpenCodeMcpConflict(
+      paths.opencodeMcpPath,
+      paths.mcpName,
+      openCodeEntry,
+      yes,
+    );
     if (openCodeConflict) {
       throw new Error(openCodeConflict);
     }
@@ -189,9 +213,12 @@ export async function runInstallMutation(
   }
 
   if (!opts.quiet && !opts.json) {
-    installOut("About to " + (opts.uninstall ? "remove" : opts.reinstall ? "reinstall" : "install") + ":", opts);
+    installOut(
+      `About to ${opts.uninstall ? "remove" : opts.reinstall ? "reinstall" : "install"}:`,
+      opts,
+    );
     for (const a of actions) {
-      installOut("  - " + a.summary, opts);
+      installOut(`  - ${a.summary}`, opts);
     }
   }
 
@@ -210,7 +237,10 @@ export async function runInstallMutation(
 }
 
 /** Main install command orchestrator. */
-export async function cliInstall(root: CliProgram, rawOpts: Record<string, string>): Promise<never> {
+export async function cliInstall(
+  root: CliProgram,
+  rawOpts: Record<string, string>,
+): Promise<never> {
   const opts = parseInstallOpts(rawOpts);
   const err = validateInstallOpts(opts);
   if (err) {
@@ -241,12 +271,16 @@ export async function cliInstall(root: CliProgram, rawOpts: Record<string, strin
   }
 
   if (mutationOpts.json) {
-    process.stdout.write(JSON.stringify(changed, null, 2) + "\n");
+    process.stdout.write(`${JSON.stringify(changed, null, 2)}\n`);
     process.exit(0);
   }
 
   if (!mutationOpts.quiet && changed.length > 0) {
-    const verb = mutationOpts.uninstall ? "Removed" : mutationOpts.reinstall ? "Reinstalled" : "Installed";
+    const verb = mutationOpts.uninstall
+      ? "Removed"
+      : mutationOpts.reinstall
+        ? "Reinstalled"
+        : "Installed";
     installOut(`${verb} ${changed.length} file(s).`, mutationOpts);
     if (
       !mutationOpts.uninstall &&

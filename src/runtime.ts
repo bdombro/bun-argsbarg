@@ -2,26 +2,29 @@
 This module runs parsed commands, help, errors, completion, and leaf handlers.
 */
 
-import { resolveCapabilities } from "./capabilities.ts";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
-import type { CliRouter } from "./types.ts";
-import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
+import { resolveCapabilities } from "./capabilities.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
-import { parse, postParseValidate, ParseKind } from "./parse.ts";
+import { ParseKind, parse, postParseValidate } from "./parse.ts";
+import type { CliRouter } from "./types.ts";
+import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";
 
 function cliRootMergedWithBuiltins(program: CliProgram): CliRouter {
   return cliParseRoot(program);
 }
 
-export async function cliRun(program: CliProgram, argv: string[] = process.argv.slice(2)): Promise<never> {
+export async function cliRun(
+  program: CliProgram,
+  argv: string[] = process.argv.slice(2),
+): Promise<never> {
   try {
     cliValidateProgram(program);
   } catch (err) {
     if (err instanceof Error) {
-      process.stderr.write(err.message + "\n");
+      process.stderr.write(`${err.message}\n`);
     } else {
       process.stderr.write("Invalid CLI definition.\n");
     }
@@ -31,12 +34,16 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
   const caps = resolveCapabilities(program);
 
   if (argv.length >= 1 && argv[0] === "mcp" && !caps.mcp) {
-    process.stderr.write("MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n");
+    process.stderr.write(
+      "MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n",
+    );
     process.exit(1);
   }
 
   if (argv.length >= 1 && argv[0] === "install" && !caps.install) {
-    process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
+    process.stderr.write(
+      "install is disabled. Remove install.enabled: false from the program root.\n",
+    );
     process.exit(1);
   }
 
@@ -75,13 +82,16 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
   if (pr.kind === "error") {
     const color = process.stderr.isTTY;
     const msg = color ? `\u001B[31m${pr.errorMsg}\u001B[0m` : pr.errorMsg;
-    process.stderr.write(msg + "\n");
+    process.stderr.write(`${msg}\n`);
     process.stderr.write(cliHelpRender(cliPresentationRoot(program), pr.errorHelpPath, true));
     process.exit(1);
   }
 
   if (pr.kind === ParseKind.Ok) {
-    await dispatchBuiltin(program, pr, { isLeafCompletionIntercept, parseRoot: completionParseRoot });
+    await dispatchBuiltin(program, pr, {
+      isLeafCompletionIntercept,
+      parseRoot: completionParseRoot,
+    });
   }
 
   let current: CliNode = parseRoot;
@@ -109,7 +119,7 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
     process.exit(0);
   } catch (err) {
     if (err instanceof Error) {
-      process.stderr.write(err.message + "\n");
+      process.stderr.write(`${err.message}\n`);
     }
     process.exit(1);
   }
@@ -118,7 +128,7 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
 export function cliErrWithHelp(ctx: CliContext, msg: string): never {
   const color = process.stderr.isTTY;
   const line = color ? `\u001B[31m${msg}\u001B[0m` : msg;
-  process.stderr.write(line + "\n");
+  process.stderr.write(`${line}\n`);
   process.stderr.write(cliHelpRender(cliPresentationRoot(ctx.program), ctx.commandPath, true));
   process.exit(1);
 }

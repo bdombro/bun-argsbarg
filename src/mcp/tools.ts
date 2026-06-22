@@ -4,10 +4,19 @@ flat JSON tool arguments into argv for cliInvoke.
 */
 
 import { cliResolveNotes } from "../help.ts";
-import { collectOptionDefs } from "../parse.ts";
 import { visibleOptions } from "../hidden.ts";
+import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
-import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter, leafOutputSchema } from "../types.ts";
+import {
+  type CliLeaf,
+  type CliNode,
+  type CliOption,
+  CliOptionKind,
+  type CliPositional,
+  type CliProgram,
+  isCliLeaf,
+  leafOutputSchema,
+} from "../types.ts";
 
 /** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
 export function defaultMcpSchemaUri(mcpId: string): string {
@@ -80,7 +89,11 @@ function positionalProperty(p: CliPositional): Record<string, unknown> {
 }
 
 /** Builds inputSchema for a leaf command. */
-function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Record<string, unknown> {
+function buildInputSchema(
+  root: CliProgram,
+  path: string[],
+  leaf: CliLeaf,
+): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
@@ -252,7 +265,10 @@ export function mcpToolCallToArgv(
         items = raw.map(String);
       } else if (typeof raw === "string") {
         items = raw.includes(",")
-          ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+          ? raw
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
           : raw.trim()
             ? [raw.trim()]
             : [];

@@ -1,15 +1,15 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { CliProgram } from "../types.ts";
+import { join } from "node:path";
+import type { CliProgram } from "../types.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
-import { resolveInstallPaths, resolveClaudeDesktopMcpPath } from "./paths.ts";
-import { opencodeConfigDir } from "./mcp-opencode.ts";
-import { buildInstallPlan } from "./plan.ts";
-import { buildUninstallPlan } from "./uninstall.ts";
-import { printInstallStatus } from "./status.ts";
 import { parseInstallOpts, runInstallMutation, validateInstallOpts } from "./index.ts";
+import { opencodeConfigDir } from "./mcp-opencode.ts";
+import { resolveClaudeDesktopMcpPath, resolveInstallPaths } from "./paths.ts";
+import { buildInstallPlan } from "./plan.ts";
+import { printInstallStatus } from "./status.ts";
+import { buildUninstallPlan } from "./uninstall.ts";
 
 const fixture: CliProgram = {
   key: "testapp",
@@ -232,6 +232,6 @@ describe("uninstall plan", () => {
 
     const plan = buildUninstallPlan(fixture, paths, parseInstallOpts({ uninstall: "1", bin: "1" }));
     expect(plan).toHaveLength(1);
-    expect(plan[0]!.summary.startsWith("binary:")).toBe(true);
+    expect(plan[0]?.summary.startsWith("binary:")).toBe(true);
   });
 });

@@ -2,8 +2,8 @@
 This module bootstraps process.env for MCP servers from login shell and .env files.
 */
 
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 /** Parses `env` stdout from a login shell into a key/value map. */
 export function captureShellEnv(shell: string): Record<string, string> {
@@ -42,9 +42,7 @@ export function applyShellEnv(env: Record<string, string>): void {
 
 /** Loads a .env file into process.env (always overwrites). Warns on stderr if missing. */
 export function loadEnvFile(envFile: string): void {
-  const resolved = envFile.startsWith("~")
-    ? envFile.replace("~", process.env.HOME ?? "")
-    : envFile;
+  const resolved = envFile.startsWith("~") ? envFile.replace("~", process.env.HOME ?? "") : envFile;
   let text: string;
   try {
     text = readFileSync(resolved, "utf8");
@@ -63,10 +61,7 @@ export function loadEnvFile(envFile: string): void {
     }
     const key = trimmed.slice(0, eq).trim();
     let val = trimmed.slice(eq + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     if (key) {
@@ -76,10 +71,7 @@ export function loadEnvFile(envFile: string): void {
 }
 
 /** Applies mcpServer shellEnv and envFile bootstrap in order. */
-export function bootstrapMcpEnv(config: {
-  shellEnv?: boolean | string;
-  envFile?: string;
-}): void {
+export function bootstrapMcpEnv(config: { shellEnv?: boolean | string; envFile?: string }): void {
   const shellEnvCfg = config.shellEnv;
   if (shellEnvCfg) {
     const shell =
@@ -88,7 +80,9 @@ export function bootstrapMcpEnv(config: {
         : (process.env.SHELL ?? (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash"));
     const captured = captureShellEnv(shell);
     if (Object.keys(captured).length === 0) {
-      process.stderr.write(`[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`);
+      process.stderr.write(
+        `[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`,
+      );
     } else {
       applyShellEnv(captured);
     }

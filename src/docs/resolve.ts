@@ -1,6 +1,6 @@
-import type { CliDocsConfig, CliProgram } from "../types.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { generateSkillBundle } from "../skill/generate.ts";
+import type { CliDocsConfig, CliProgram } from "../types.ts";
 import { generateApiGuide } from "./api-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 
@@ -31,7 +31,11 @@ export function docsEffectiveDefaultTopic(docs: CliDocsConfig): string {
   if (keys.length === 0) {
     throw new Error("docs.topics must be non-empty");
   }
-  return keys[0]!;
+  const first = keys[0];
+  if (first === undefined) {
+    throw new Error("docs.topics must be non-empty");
+  }
+  return first;
 }
 
 /** Whether MCP auto-guide topic is included. */
@@ -53,7 +57,10 @@ export function docsTopicDescription(key: string, custom?: string): string {
 
 /** Markdown body for one docs topic key. */
 export function docsTopicText(program: CliProgram, topic: string): string {
-  const docs = program.docs!;
+  const docs = program.docs;
+  if (!docs) {
+    throw new Error("docs not enabled");
+  }
   if (topic === "mcp") {
     if (!docsIncludesMcpTopic(program)) {
       throw new Error("Unknown docs topic 'mcp'.");

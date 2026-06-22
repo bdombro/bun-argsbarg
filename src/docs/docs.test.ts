@@ -1,14 +1,14 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { completionBashScript } from "../completion.ts";
 import { cliInvoke } from "../index.ts";
 import type { CliProgram } from "../types.ts";
 import { cliValidateProgram } from "../validate.ts";
-import { docsEffectiveDefaultTopic } from "./resolve.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
+import { docsEffectiveDefaultTopic } from "./resolve.ts";
 import { saveDocsTopic } from "./save.ts";
 
 let workDir: string;
@@ -64,13 +64,15 @@ test("docs reserved when enabled", () => {
 
 test("docs rejects reserved topic keys", () => {
   const root = docsFixture();
-  root.docs!.topics.schema = { text: "nope" };
+  const docs = root.docs;
+  if (!docs) throw new Error("expected docs fixture");
+  docs.topics.schema = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
-  delete root.docs!.topics.schema;
-  root.docs!.topics.skill = { text: "nope" };
+  delete docs.topics.schema;
+  docs.topics.skill = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
-  delete root.docs!.topics.skill;
-  root.docs!.topics.api = { text: "nope" };
+  delete docs.topics.skill;
+  docs.topics.api = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
 });
 
@@ -127,9 +129,9 @@ test("presentation includes docs subtree", () => {
   const presentation = cliPresentationRoot(docsFixture());
   const docsNode = presentation.commands.find((c) => c.key === "docs");
   expect(docsNode).toBeDefined();
-  expect(docsNode && "commands" in docsNode && docsNode.commands.some((c) => c.key === "readme")).toBe(
-    true,
-  );
+  expect(
+    docsNode && "commands" in docsNode && docsNode.commands.some((c) => c.key === "readme"),
+  ).toBe(true);
 });
 
 test("docs schema prints JSON", async () => {

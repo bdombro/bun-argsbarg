@@ -22,28 +22,20 @@ test("shouldRunHeadless is true for MCP and json", () => {
 });
 
 test("shouldRunHeadlessWithPositionals requires positionals in non-tty", () => {
-  expect(
-    shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, [], false, false),
-  ).toBe(false);
-  expect(
-    shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, ["a"], false, false),
-  ).toBe(true);
+  expect(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, [], false, false)).toBe(
+    false,
+  );
+  expect(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, ["a"], false, false)).toBe(
+    true,
+  );
 });
 
 test("shouldRunHeadlessWithYes requires yes in non-tty", () => {
   expect(
-    shouldRunHeadlessWithYes(
-      { invocation: "cli" },
-      { yes: true, hasRequiredArgs: true },
-      false,
-    ),
+    shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: true, hasRequiredArgs: true }, false),
   ).toBe(true);
   expect(
-    shouldRunHeadlessWithYes(
-      { invocation: "cli" },
-      { yes: false, hasRequiredArgs: true },
-      false,
-    ),
+    shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: false, hasRequiredArgs: true }, false),
   ).toBe(false);
   expect(
     shouldRunHeadlessWithYes(

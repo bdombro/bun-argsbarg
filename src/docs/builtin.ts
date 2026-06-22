@@ -1,4 +1,11 @@
-import { CliFallbackMode, CliOptionKind, type CliLeaf, type CliOption, type CliProgram, type CliRouter } from "../types.ts";
+import {
+  CliFallbackMode,
+  type CliLeaf,
+  type CliOption,
+  CliOptionKind,
+  type CliProgram,
+  type CliRouter,
+} from "../types.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
   docsEffectiveDefaultTopic,
@@ -16,7 +23,11 @@ const DOCS_SAVE_OPTION: CliOption = {
   kind: CliOptionKind.Presence,
 };
 
-function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: string): boolean }): void {
+function runDocsTopic(
+  program: CliProgram,
+  topic: string,
+  ctx: { hasFlag(name: string): boolean },
+): void {
   if (ctx.hasFlag("save")) {
     process.stdout.write(`${saveDocsTopic(program, topic)}\n`);
     return;
@@ -43,24 +54,32 @@ function docsRouterNotes(): string {
 
 /** Built-in `docs` router with bundled topic subcommands. */
 export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
-  const docs = program.docs!;
+  const docs = program.docs;
+  if (!docs) {
+    throw new Error("docs not enabled");
+  }
   const leaves: CliLeaf[] = [];
 
   for (const key of docsUserTopicKeys(docs)) {
-    const topic = docs.topics[key]!;
+    const topic = docs.topics[key];
+    if (!topic) {
+      throw new Error(`docs topic missing: ${key}`);
+    }
     leaves.push(docsLeaf(program, key, docsTopicDescription(key, topic.description)));
   }
 
   if (docsIncludesMcpTopic(program)) {
-    leaves.push(
-      docsLeaf(program, "mcp", "Print MCP server setup and tool guidance."),
-    );
+    leaves.push(docsLeaf(program, "mcp", "Print MCP server setup and tool guidance."));
   }
 
   leaves.push(
     docsLeaf(program, "schema", "Print the full command tree as JSON."),
     docsLeaf(program, "api", "Print the full command reference as markdown."),
-    docsLeaf(program, "skill", "Print a reference agent SKILL, use `install --skill` for optimized."),
+    docsLeaf(
+      program,
+      "skill",
+      "Print a reference agent SKILL, use `install --skill` for optimized.",
+    ),
   );
 
   return {

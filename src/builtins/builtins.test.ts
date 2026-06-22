@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import type { CliProgram } from "../types.ts";
+import { exportPresentationBuiltins } from "./export.ts";
+import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
-import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
-import { exportPresentationBuiltins } from "./export.ts";
-import { CliProgram } from "../types.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
@@ -114,7 +114,12 @@ describe("completion emitters", () => {
   });
 
   test("zsh script registers compdef", () => {
-    const schema = cliPresentationRoot({ key: "zapp", version: "0.0.0", description: "z", handler: () => {} });
+    const schema = cliPresentationRoot({
+      key: "zapp",
+      version: "0.0.0",
+      description: "z",
+      handler: () => {},
+    });
     const zsh = completionZshScript(schema);
     expect(zsh).toContain("#compdef zapp");
     expect(zsh).toContain("compdef _zapp zapp");

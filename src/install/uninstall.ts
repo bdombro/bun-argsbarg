@@ -1,18 +1,18 @@
 import { existsSync, rmSync } from "node:fs";
-import { CliProgram } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
+import { removeCodexMcpConfig } from "./mcp-codex.ts";
 import { removeMcpConfig } from "./mcp-config.ts";
 import { detectOpenCodeMcpConfigPath, removeOpenCodeMcpConfig } from "./mcp-opencode.ts";
-import { removeCodexMcpConfig } from "./mcp-codex.ts";
-import { InstallPaths, userHome } from "./paths.ts";
+import { type InstallPaths, userHome } from "./paths.ts";
 import {
+  type InstallOpts,
   wantsInstallBin,
   wantsInstallCompletions,
   wantsInstallMcp,
   wantsInstallSkill,
-  type InstallOpts,
 } from "./plan.ts";
 
 export interface UninstallAction {
@@ -114,7 +114,8 @@ export function buildUninstallPlan(
       });
     }
     if (detected.opencodeMcp) {
-      const openCodePath = detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
+      const openCodePath =
+        detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
       actions.push({
         summary: `opencode mcp: ${openCodePath}`,
         message: `Removing MCP server "${paths.mcpName}" from ${openCodePath}`,
@@ -153,5 +154,5 @@ export function buildUninstallPlan(
 export function uninstallSkillDir(dir: string, dry: boolean): string[] {
   if (!existsSync(dir)) return [];
   if (!dry) rmSync(dir, { recursive: true, force: true });
-  return [dir + "/"];
+  return [`${dir}/`];
 }

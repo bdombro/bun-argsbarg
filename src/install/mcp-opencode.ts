@@ -6,7 +6,11 @@ import { expectedMcpEntry } from "./mcp-config.ts";
 export const OPENCODE_CONFIG_SCHEMA = "https://opencode.ai/config.json";
 
 /** Global OpenCode config filenames, in precedence order (matches OpenCode). */
-export const OPENCODE_CONFIG_FILENAMES = ["opencode.jsonc", "opencode.json", "config.json"] as const;
+export const OPENCODE_CONFIG_FILENAMES = [
+  "opencode.jsonc",
+  "opencode.json",
+  "config.json",
+] as const;
 
 export interface OpenCodeLocalMcpEntry {
   type: "local";
@@ -67,7 +71,10 @@ function readConfig(path: string): Record<string, unknown> {
 }
 
 /** Reads `mcp[name]` when it is a local stdio server. */
-export function readOpenCodeMcpEntry(path: string, name: string): OpenCodeLocalMcpEntry | undefined {
+export function readOpenCodeMcpEntry(
+  path: string,
+  name: string,
+): OpenCodeLocalMcpEntry | undefined {
   if (!existsSync(path)) return undefined;
   try {
     const data = readConfig(path);
@@ -128,7 +135,7 @@ export function mergeOpenCodeMcpConfig(
   servers[name] = entry;
   data.mcp = servers;
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf8");
+  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
 /** Removes `mcp[name]` from an OpenCode config file. */
@@ -138,5 +145,5 @@ export function removeOpenCodeMcpConfig(path: string, name: string, dry: boolean
   const servers = data.mcp as Record<string, unknown> | undefined;
   if (!servers?.[name]) return;
   delete servers[name];
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf8");
+  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }

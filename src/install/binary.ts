@@ -1,7 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
-import { CliProgram } from "../types.ts";
-import { InstallPaths } from "./paths.ts";
+import type { CliProgram } from "../types.ts";
+import type { InstallPaths } from "./paths.ts";
 import {
   buildPathRcBlock,
   buildZshFpathRcBlock,
@@ -39,7 +46,7 @@ export function installBinary(
     let content = existsSync(paths.bashRc) ? readFileSync(paths.bashRc, "utf8") : "";
     if (!hasRcBlock(content, root.key, "path")) {
       if (!content.endsWith("\n") && content.length > 0) content += "\n";
-      content += block + "\n";
+      content += `${block}\n`;
       if (!dry) writeFileSync(paths.bashRc, content, "utf8");
       changed.push(paths.bashRc);
       patchedBashRc = true;
@@ -52,7 +59,7 @@ export function installBinary(
     let content = existsSync(paths.zshRc) ? readFileSync(paths.zshRc, "utf8") : "";
     if (!hasRcBlock(content, root.key, "fpath")) {
       if (!content.endsWith("\n") && content.length > 0) content += "\n";
-      content += block + "\n";
+      content += `${block}\n`;
       if (!dry) writeFileSync(paths.zshRc, content, "utf8");
       changed.push(paths.zshRc);
       patchedZshRc = true;

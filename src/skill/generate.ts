@@ -3,9 +3,9 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 */
 
 import { generateApiGuide } from "../docs/api-guide.ts";
+import { collectMcpTools, type McpToolDef, sanitizeToolSegment } from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
-import { collectMcpTools, sanitizeToolSegment, type McpToolDef } from "../mcp/tools.ts";
-import { CliProgram, CliOptionKind } from "../types.ts";
+import { CliOptionKind, type CliProgram } from "../types.ts";
 
 export type SkillTarget = "cursor" | "claude";
 
@@ -18,7 +18,7 @@ export interface SkillBundle {
 /** Truncates text to maxLen with ellipsis. */
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen - 1) + "…";
+  return `${text.slice(0, maxLen - 1)}…`;
 }
 
 /** Builds third-person skill description for YAML frontmatter. */
@@ -54,7 +54,7 @@ function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
   }
   const enums = opts.filter((o) => o.kind === CliOptionKind.Enum && o.choices?.length);
   for (const e of enums) {
-    line += ` (\`--${e.name}\`: ${e.choices!.join(" | ")})`;
+    line += ` (\`--${e.name}\`: ${e.choices?.join(" | ")})`;
   }
   const varargs = (tool.leaf.positionals ?? []).filter((p) => (p.argMax ?? 1) === 0);
   if (varargs.length > 0) {

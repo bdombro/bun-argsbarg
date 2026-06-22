@@ -1,7 +1,7 @@
-import { expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { cliInvoke } from "../index.ts";
 import type { CliProgram, CliUpdateArtifact } from "../types.ts";

@@ -3,11 +3,19 @@ Packs a CLI program into an MCP Bundle (`.mcpb`) for Claude Desktop.
 Expects `dist/<program.key>` as the compiled binary input.
 */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { collectMcpTools, mcpServerId } from "./tools.ts";
 import type { CliMcpBundleConfig, CliProgram } from "../types.ts";
+import { collectMcpTools, mcpServerId } from "./tools.ts";
 
 const MANIFEST_VERSION = "0.3";
 const DIST_DIR = "dist";
@@ -51,7 +59,11 @@ function buildUserConfig(program: CliProgram): Record<string, unknown> | undefin
   }
   const out: Record<string, unknown> = {};
   for (const name of envVars) {
-    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "env_var";
+    const key =
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "") || "env_var";
     out[key] = {
       type: "string",
       title: name,
@@ -64,12 +76,19 @@ function buildUserConfig(program: CliProgram): Record<string, unknown> | undefin
 }
 
 /** Default author when `mcpServer.bundle.author` is unset. */
-function defaultAuthor(bundle?: CliMcpBundleConfig): { name: string; email?: string; url?: string } {
+function defaultAuthor(bundle?: CliMcpBundleConfig): {
+  name: string;
+  email?: string;
+  url?: string;
+} {
   return bundle?.author ?? { name: "Unknown" };
 }
 
 /** Generates MCPB `manifest.json` object from program schema and MCP tools. */
-export function generateMcpManifest(program: CliProgram, binaryName: string): Record<string, unknown> {
+export function generateMcpManifest(
+  program: CliProgram,
+  binaryName: string,
+): Record<string, unknown> {
   const bundle = program.mcpServer?.bundle;
   const tools = collectMcpTools(program).map((t) => ({
     name: t.name,
@@ -119,7 +138,11 @@ export function generateMcpManifest(program: CliProgram, binaryName: string): Re
 function crc32(data: Buffer): number {
   let crc = 0xffffffff;
   for (let i = 0; i < data.length; i++) {
-    crc ^= data[i]!;
+    const byte = data[i];
+    if (byte === undefined) {
+      continue;
+    }
+    crc ^= byte;
     for (let j = 0; j < 8; j++) {
       crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
     }
@@ -208,7 +231,9 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
   const binaryName = basename(binaryPath);
 
   if (!existsSync(binaryPath)) {
-    throw new Error(`Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`);
+    throw new Error(
+      `Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`,
+    );
   }
 
   const staging = mkdtempSync(join(tmpdir(), "mcpb-"));
@@ -218,7 +243,10 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
 
     const manifest = generateMcpManifest(program, binaryName);
     const files: { name: string; data: Buffer }[] = [
-      { name: "manifest.json", data: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8") },
+      {
+        name: "manifest.json",
+        data: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8"),
+      },
       { name: binaryName, data: readFileSync(stagedBinary) },
     ];
 

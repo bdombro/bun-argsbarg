@@ -1,13 +1,13 @@
-import { collectOptionDefs } from "../parse.ts";
-import {
-  collectMcpTools,
-  mcpServerId,
-  resolveMcpSchemaUri,
-  type McpToolDef,
-} from "../mcp/tools.ts";
-import { type CliProgram, CliOptionKind } from "../types.ts";
 import { resolveCapabilities } from "../capabilities.ts";
 import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../install/mcp-opencode.ts";
+import {
+  collectMcpTools,
+  type McpToolDef,
+  mcpServerId,
+  resolveMcpSchemaUri,
+} from "../mcp/tools.ts";
+import { collectOptionDefs } from "../parse.ts";
+import { CliOptionKind, type CliProgram } from "../types.ts";
 
 /** Extra host notes for generated `docs mcp` (manual fallbacks and ChatGPT Connectors). */
 function appendManualHostSetup(lines: string[], root: CliProgram, serverId: string): void {
@@ -54,7 +54,7 @@ function appendManualHostSetup(lines: string[], root: CliProgram, serverId: stri
     'args = ["mcp"]',
     "```",
     "",
-    "Or after installing Codex CLI: `codex mcp add " + serverId + " -- " + root.key + " mcp`.",
+    `Or after installing Codex CLI: \`codex mcp add ${serverId} -- ${root.key} mcp\`.`,
     "",
     "### ChatGPT web (Connectors)",
     "",
@@ -62,7 +62,7 @@ function appendManualHostSetup(lines: string[], root: CliProgram, serverId: stri
     "",
     "For local stdio, bridge and tunnel, then register the HTTPS URL in Connectors:",
     "",
-    "1. Expose `" + root.key + " mcp` over HTTP (e.g. `mcp-remote`).",
+    `1. Expose \`${root.key} mcp\` over HTTP (e.g. \`mcp-remote\`).`,
     "2. Tunnel if needed (ngrok, Cloudflare Tunnel).",
     "3. Add the public URL as a custom connector.",
     "",
@@ -88,7 +88,10 @@ export function generateMcpGuide(root: CliProgram): string {
   const tools = collectMcpTools(root);
   const schemaUri = resolveMcpSchemaUri(root);
   const serverId = mcpServerId(root);
-  const mcp = root.mcpServer!;
+  const mcp = root.mcpServer;
+  if (!mcp) {
+    throw new Error("MCP server not enabled");
+  }
   const caps = resolveCapabilities(root);
 
   const lines: string[] = [
@@ -169,7 +172,7 @@ export function generateMcpGuide(root: CliProgram): string {
     }
     if (mcp.envFile) {
       lines.push(
-        "- **`envFile`** — loads `" + mcp.envFile + "` after shell env (overrides for its keys).",
+        `- **\`envFile\`** — loads \`${mcp.envFile}\` after shell env (overrides for its keys).`,
       );
     }
     lines.push("");

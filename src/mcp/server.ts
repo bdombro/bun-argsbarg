@@ -4,7 +4,7 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import { cliInvoke } from "../invoke.ts";
-import { CliProgram } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 import { buildToolCallSuccess } from "./result.ts";
 import {
   allMcpResources,
@@ -25,7 +25,7 @@ interface JsonRpcRequest {
 
 /** Writes a JSON-RPC response line to stdout. */
 function writeResponse(msg: Record<string, unknown>): void {
-  process.stdout.write(JSON.stringify(msg) + "\n");
+  process.stdout.write(`${JSON.stringify(msg)}\n`);
 }
 
 /** Writes a JSON-RPC error response. */
@@ -108,7 +108,10 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
         return;
       }
       const rawArgs = params.arguments;
-      if (rawArgs !== undefined && (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs))) {
+      if (
+        rawArgs !== undefined &&
+        (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs))
+      ) {
         writeError(id, -32602, "Invalid params: arguments must be an object");
         return;
       }
@@ -151,7 +154,8 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
         });
         return;
       }
-      const errText = invokeResult.stderr.trim() || invokeResult.errorMsg || `Exit code ${invokeResult.exitCode}`;
+      const errText =
+        invokeResult.stderr.trim() || invokeResult.errorMsg || `Exit code ${invokeResult.exitCode}`;
       writeResponse({
         jsonrpc: "2.0",
         id,
@@ -222,14 +226,16 @@ export async function mcpServeStdioLoop(root: CliProgram): Promise<void> {
   let buffer = "";
   for await (const chunk of Bun.stdin.stream()) {
     buffer += new TextDecoder().decode(chunk);
-    let nl: number;
-    while ((nl = buffer.indexOf("\n")) !== -1) {
+    let nl = buffer.indexOf("\n");
+    while (nl !== -1) {
       const line = buffer.slice(0, nl).trim();
       buffer = buffer.slice(nl + 1);
       if (line.length === 0) {
+        nl = buffer.indexOf("\n");
         continue;
       }
       await handleRequestLine(root, line);
+      nl = buffer.indexOf("\n");
     }
   }
   const trailing = buffer.trim();

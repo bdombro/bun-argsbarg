@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CliProgram } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 
 export interface McpServerEntry {
   command: string;
@@ -19,7 +19,9 @@ function entriesEqual(a: McpServerEntry, b: McpServerEntry): boolean {
 export function readMcpServerEntry(path: string, name: string): McpServerEntry | undefined {
   if (!existsSync(path)) return undefined;
   try {
-    const data = JSON.parse(readFileSync(path, "utf8")) as { mcpServers?: Record<string, McpServerEntry> };
+    const data = JSON.parse(readFileSync(path, "utf8")) as {
+      mcpServers?: Record<string, McpServerEntry>;
+    };
     return data.mcpServers?.[name];
   } catch {
     return undefined;
@@ -46,7 +48,12 @@ export function checkMcpConflict(
 }
 
 /** Merges MCP server entry into config file. */
-export function mergeMcpConfig(path: string, name: string, entry: McpServerEntry, dry: boolean): void {
+export function mergeMcpConfig(
+  path: string,
+  name: string,
+  entry: McpServerEntry,
+  dry: boolean,
+): void {
   if (dry) return;
   let data: Record<string, unknown> = {};
   if (existsSync(path)) {
@@ -56,7 +63,7 @@ export function mergeMcpConfig(path: string, name: string, entry: McpServerEntry
   servers[name] = entry;
   data.mcpServers = servers;
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf8");
+  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
 /** Removes MCP server entry from config file (keeps file if other keys remain). */
@@ -65,5 +72,5 @@ export function removeMcpConfig(path: string, name: string, dry: boolean): void 
   const data = JSON.parse(readFileSync(path, "utf8")) as { mcpServers?: Record<string, unknown> };
   if (!data.mcpServers?.[name]) return;
   delete data.mcpServers[name];
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf8");
+  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }

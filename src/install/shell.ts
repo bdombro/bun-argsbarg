@@ -39,10 +39,7 @@ export function buildZshFpathRcBlock(appKey: string, completionsDir: string): st
 export function removeRcBlock(content: string, appKey: string, tag: string): string {
   const start = rcMarkerStart(appKey, tag);
   const end = rcMarkerEnd(appKey, tag);
-  const re = new RegExp(
-    `${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}\\n?`,
-    "g",
-  );
+  const re = new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}\\n?`, "g");
   return content.replace(re, "");
 }
 

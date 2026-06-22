@@ -1,20 +1,20 @@
 import { resolveCapabilities } from "../capabilities.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
+import { cliInstall } from "../install/index.ts";
+import { runMcpBundle } from "../mcp/bundle.ts";
+import { cliMcpServeStdio } from "../mcp.ts";
+import type { ParseResult } from "../parse.ts";
+import { ParseKind } from "../parse.ts";
 import type { CliNode, CliProgram, CliRouter } from "../types.ts";
-import { isCliLeaf, isCliRouter } from "../types.ts";
+import { isCliLeaf } from "../types.ts";
 import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
+import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinVersionCommand } from "./version.ts";
-import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { cliPresentationRoot } from "./presentation.ts";
-import { runMcpBundle } from "../mcp/bundle.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import { cliMcpServeStdio } from "../mcp.ts";
-import { cliInstall } from "../install/index.ts";
-import type { ParseResult } from "../parse.ts";
-import { ParseKind } from "../parse.ts";
+import { cliBuiltinVersionCommand } from "./version.ts";
 
 export interface DispatchBuiltinOpts {
   isLeafCompletionIntercept: boolean;
@@ -61,16 +61,18 @@ export async function dispatchBuiltin(
 
   if (pr.path[0] === "version") {
     if (pr.path.length !== 1) {
-      process.stderr.write("Unknown subcommand: version " + pr.path.slice(1).join(" ") + "\n");
+      process.stderr.write(`Unknown subcommand: version ${pr.path.slice(1).join(" ")}\n`);
       process.exit(1);
     }
-    process.stdout.write(program.version + "\n");
+    process.stdout.write(`${program.version}\n`);
     process.exit(0);
   }
 
   if (pr.path[0] === "mcp") {
     if (!caps.mcp) {
-      process.stderr.write("MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n");
+      process.stderr.write(
+        "MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n",
+      );
       process.exit(1);
     }
     const sub = pr.path[1];
@@ -82,22 +84,24 @@ export async function dispatchBuiltin(
       try {
         runMcpBundle(program);
       } catch (err) {
-        process.stderr.write(err instanceof Error ? err.message + "\n" : "mcp bundle failed.\n");
+        process.stderr.write(err instanceof Error ? `${err.message}\n` : "mcp bundle failed.\n");
         process.exit(1);
       }
       process.exit(0);
     }
-    process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
+    process.stderr.write(`Unknown subcommand: mcp ${pr.path.slice(1).join(" ")}\n`);
     process.exit(1);
   }
 
   if (pr.path[0] === "install") {
     if (!caps.install) {
-      process.stderr.write("install is disabled. Remove install.enabled: false from the program root.\n");
+      process.stderr.write(
+        "install is disabled. Remove install.enabled: false from the program root.\n",
+      );
       process.exit(1);
     }
     if (pr.path.length !== 1) {
-      process.stderr.write("Unknown subcommand: install " + pr.path.slice(1).join(" ") + "\n");
+      process.stderr.write(`Unknown subcommand: install ${pr.path.slice(1).join(" ")}\n`);
       process.exit(1);
     }
     await cliInstall(program, pr.opts);

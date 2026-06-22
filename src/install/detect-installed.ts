@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { InstallPaths, userHome } from "./paths.ts";
-import { detectOpenCodeMcpConfigPath } from "./mcp-opencode.ts";
 import { codexMcpHasServer } from "./mcp-codex.ts";
+import { detectOpenCodeMcpConfigPath } from "./mcp-opencode.ts";
+import { type InstallPaths, userHome } from "./paths.ts";
 
 export interface InstalledArtifacts {
   binary: boolean;
@@ -66,21 +66,25 @@ export interface InstallStatus {
 }
 
 /** Builds a status inventory from detected artifacts. */
-export function buildInstallStatus(paths: InstallPaths, detected: InstalledArtifacts): InstallStatus {
+export function buildInstallStatus(
+  paths: InstallPaths,
+  detected: InstalledArtifacts,
+): InstallStatus {
   const status: InstallStatus = {};
   if (detected.binary) status.binary = paths.binaryPath;
   if (detected.bashCompletion) status.bashCompletion = paths.bashCompletion;
   if (detected.zshCompletion) status.zshCompletion = paths.zshCompletion;
   if (detected.fishCompletion) status.fishCompletion = paths.fishCompletion;
-  if (detected.cursorSkill) status.cursorSkill = paths.cursorSkillDir + "/";
-  if (detected.claudeSkill) status.claudeSkill = paths.claudeSkillDir + "/";
+  if (detected.cursorSkill) status.cursorSkill = `${paths.cursorSkillDir}/`;
+  if (detected.claudeSkill) status.claudeSkill = `${paths.claudeSkillDir}/`;
   if (detected.cursorMcp) status.cursorMcp = `${paths.cursorMcpPath} (server "${paths.mcpName}")`;
   if (detected.claudeMcp) status.claudeMcp = `${paths.claudeMcpPath} (server "${paths.mcpName}")`;
   if (detected.claudeDesktopMcp) {
     status.claudeDesktopMcp = `${paths.claudeDesktopMcpPath} (server "${paths.mcpName}")`;
   }
   if (detected.opencodeMcp) {
-    const openCodePath = detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
+    const openCodePath =
+      detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
     status.opencodeMcp = `${openCodePath} (server "${paths.mcpName}")`;
   }
   if (detected.codexMcp) {

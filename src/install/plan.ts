@@ -1,25 +1,23 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { resolveCapabilities } from "../capabilities.ts";
-import { CliProgram } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 import { installBinary } from "./binary.ts";
 import { installCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
+import { codexOnPath, mergeCodexMcpConfig } from "./mcp-codex.ts";
 import { expectedMcpEntry, mergeMcpConfig } from "./mcp-config.ts";
 import {
-  checkCodexMcpConflict,
-  codexMcpHasServer,
-  codexOnPath,
-  mergeCodexMcpConfig,
-  removeCodexMcpConfig,
-} from "./mcp-codex.ts";
-import {
-  checkOpenCodeMcpConflict,
   expectedOpenCodeMcpEntry,
   mergeOpenCodeMcpConfig,
   opencodePresent,
 } from "./mcp-opencode.ts";
-import { InstallPaths, userHome, chatGptDesktopPresent, claudeDesktopPresent } from "./paths.ts";
+import {
+  chatGptDesktopPresent,
+  claudeDesktopPresent,
+  type InstallPaths,
+  userHome,
+} from "./paths.ts";
 import { detectShells } from "./shell.ts";
 
 export interface InstallOpts {
@@ -76,7 +74,11 @@ export function wantsInstallMcp(opts: InstallOpts, root: CliProgram): boolean {
 }
 
 /** Builds install actions for normal mode (--all / scoped targets). */
-export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
+export function buildInstallPlan(
+  root: CliProgram,
+  paths: InstallPaths,
+  opts: InstallOpts,
+): InstallAction[] {
   const actions: InstallAction[] = [];
   const dry = !!opts.dry;
 
@@ -220,7 +222,11 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
 }
 
 /** Builds update actions for artifacts already installed. */
-export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
+export function buildUpdatePlan(
+  root: CliProgram,
+  paths: InstallPaths,
+  opts: InstallOpts,
+): InstallAction[] {
   const detected = detectInstalledArtifacts(paths);
   const scoped: InstallOpts = {
     bin: true,

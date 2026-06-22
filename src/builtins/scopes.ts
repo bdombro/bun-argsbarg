@@ -25,7 +25,7 @@ function walkScopes(cmdPath: string, cmd: CliNode, acc: ScopeRec[]): void {
     wantsFiles: hasPositionalArguments(cmd),
   });
   for (const ch of kids) {
-    const nextPath = cmdPath === "" ? ch.key : cmdPath + "/" + ch.key;
+    const nextPath = cmdPath === "" ? ch.key : `${cmdPath}/${ch.key}`;
     walkScopes(nextPath, ch, acc);
   }
 }

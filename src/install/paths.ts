@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { CliProgram } from "../types.ts";
-import { sanitizeToolSegment, mcpServerId } from "../mcp/tools.ts";
+import { mcpServerId, sanitizeToolSegment } from "../mcp/tools.ts";
+import type { CliProgram } from "../types.ts";
 import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
 export interface InstallPaths {
@@ -63,7 +63,7 @@ export function resolveClaudeDesktopMcpPath(home: string): string {
 }
 
 /** True when Claude Desktop app data exists (config file or app support directory). */
-export function claudeDesktopPresent(home: string, configPath: string): boolean {
+export function claudeDesktopPresent(_home: string, configPath: string): boolean {
   return existsSync(configPath) || existsSync(dirname(configPath));
 }
 
@@ -81,7 +81,7 @@ export function resolveChatGptMcpPath(home: string): string {
 }
 
 /** True when ChatGPT desktop app data exists (config file or app support directory). */
-export function chatGptDesktopPresent(home: string, configPath: string): boolean {
+export function chatGptDesktopPresent(_home: string, configPath: string): boolean {
   return existsSync(configPath) || existsSync(dirname(configPath));
 }
 

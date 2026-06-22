@@ -7,12 +7,11 @@ It keeps handler dispatch and help on one parser so the CLI behavior stays consi
 across every entry path.
 */
 
-import { CliContext } from "./context.ts";
 import {
-  type CliLeaf,
-  CliNode,
   CliFallbackMode,
-  CliOption,
+  type CliLeaf,
+  type CliNode,
+  type CliOption,
   CliOptionKind,
   isCliLeaf,
   isCliRouter,
@@ -191,17 +190,30 @@ function consumeOptions(
 
     if (tok === "--") {
       idx += 1;
-      return { report: { err: null, stoppedOnUnknown: false, sawDoubleDash: true }, nextIndex: idx };
+      return {
+        report: { err: null, stoppedOnUnknown: false, sawDoubleDash: true },
+        nextIndex: idx,
+      };
     }
 
     if (tok.startsWith("--")) {
       const err = consumeLong(tok);
-      if (err === "") return { report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false }, nextIndex: idx };
-      if (err) return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
+      if (err === "")
+        return {
+          report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false },
+          nextIndex: idx,
+        };
+      if (err)
+        return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
     } else {
       const err = consumeShort(tok);
-      if (err === "") return { report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false }, nextIndex: idx };
-      if (err) return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
+      if (err === "")
+        return {
+          report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false },
+          nextIndex: idx,
+        };
+      if (err)
+        return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
     }
   }
 
@@ -212,7 +224,7 @@ function consumeOptions(
 
 /** Merges option defs from the program root along the routed command path. */
 export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
-  let defs = [...(root.options ?? [])];
+  const defs = [...(root.options ?? [])];
   let node: CliNode = root;
 
   for (const seg of path) {
@@ -343,7 +355,16 @@ function finishLeaf(
     }
   }
 
-  return { kind: ParseKind.Ok, path, opts, args, helpExplicit: false, helpPath: [], errorMsg: "", errorHelpPath: [] };
+  return {
+    kind: ParseKind.Ok,
+    path,
+    opts,
+    args,
+    helpExplicit: false,
+    helpPath: [],
+    errorMsg: "",
+    errorHelpPath: [],
+  };
 }
 
 // ── Main Parser ───────────────────────────────────────────────────────────────
@@ -414,7 +435,16 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       cmdName = root.fallbackCommand;
       node = findChild(root.commands, cmdName);
       if (!node) {
-        return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
+        return {
+          kind: ParseKind.Error,
+          path: [],
+          opts: {},
+          args: [],
+          helpExplicit: false,
+          helpPath: [],
+          errorMsg: `Unknown command: ${cmdName}`,
+          errorHelpPath: path,
+        };
       }
     } else {
       return helpResult([], false);
@@ -428,16 +458,26 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       i += 1;
       node = childPick;
     } else {
+      const fallbackCommand = root.fallbackCommand;
       const canRouteUnknown =
-        root.fallbackCommand !== undefined &&
+        fallbackCommand !== undefined &&
         ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown ||
           (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
 
       if (canRouteUnknown) {
-        cmdName = root.fallbackCommand!;
+        cmdName = fallbackCommand;
         node = findChild(root.commands, cmdName);
         if (!node) {
-          return { kind: ParseKind.Error, path: [], opts: {}, args: [], helpExplicit: false, helpPath: [], errorMsg: `Unknown command: ${cmdName}`, errorHelpPath: path };
+          return {
+            kind: ParseKind.Error,
+            path: [],
+            opts: {},
+            args: [],
+            helpExplicit: false,
+            helpPath: [],
+            errorMsg: `Unknown command: ${cmdName}`,
+            errorHelpPath: path,
+          };
         }
       } else {
         cmdName = peek;
@@ -451,7 +491,9 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
             args: [],
             helpExplicit: false,
             helpPath: [],
-            errorMsg: forcePositionals ? `Expected subcommand but got positional: ${cmdName}` : `Unknown command: ${cmdName}`,
+            errorMsg: forcePositionals
+              ? `Expected subcommand but got positional: ${cmdName}`
+              : `Unknown command: ${cmdName}`,
             errorHelpPath: path,
           };
         }
@@ -460,7 +502,19 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   }
 
   path.push(cmdName);
-  let current = node!;
+  if (!node) {
+    return {
+      kind: ParseKind.Error,
+      path,
+      opts: {},
+      args: [],
+      helpExplicit: false,
+      helpPath: [],
+      errorMsg: `Unknown command: ${cmdName}`,
+      errorHelpPath: path,
+    };
+  }
+  let current = node;
 
   // Walk the command tree
   while (true) {
@@ -508,7 +562,15 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       if (!isCliLeaf(current)) {
         return helpResult(path, false);
       }
-      return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
+      return finishLeaf(
+        current,
+        i,
+        argv,
+        path,
+        opts,
+        collectOptionDefs(root, path),
+        forcePositionals,
+      );
     }
 
     const tok = argv[i];
@@ -542,10 +604,10 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         fb !== undefined &&
         (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
 
-      if (canRouteUnknown) {
-        const fbNode = findChild(current.commands, fb!);
+      if (canRouteUnknown && fb !== undefined) {
+        const fbNode = findChild(current.commands, fb);
         if (fbNode) {
-          path.push(fb!);
+          path.push(fb);
           current = fbNode;
           continue;
         }
@@ -558,7 +620,9 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         args: [],
         helpExplicit: false,
         helpPath: [],
-        errorMsg: forcePositionals ? `Expected subcommand but got positional: ${tok}` : `Unknown subcommand: ${tok}`,
+        errorMsg: forcePositionals
+          ? `Expected subcommand but got positional: ${tok}`
+          : `Unknown subcommand: ${tok}`,
         errorHelpPath: path,
       };
     }
@@ -566,7 +630,15 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     if (!isCliLeaf(current)) {
       return helpResult(path, false);
     }
-    return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
+    return finishLeaf(
+      current,
+      i,
+      argv,
+      path,
+      opts,
+      collectOptionDefs(root, path),
+      forcePositionals,
+    );
   }
 }
 
@@ -578,7 +650,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
   if (pr.kind !== ParseKind.Ok) return pr;
 
-  let defs = [...(root.options ?? [])];
+  const defs = [...(root.options ?? [])];
   let node: CliNode = root;
 
   for (const seg of pr.path) {

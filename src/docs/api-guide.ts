@@ -101,7 +101,7 @@ function renderCommandNode(
     lines.push("#### Options", "");
     lines.push("| Option | Type | Required | Description |");
     lines.push("| --- | --- | --- | --- |");
-    for (const opt of node.options!) {
+    for (const opt of node.options ?? []) {
       lines.push(formatOptionRow(opt));
     }
     lines.push("");
@@ -111,7 +111,7 @@ function renderCommandNode(
     lines.push("#### Positionals", "");
     lines.push("| Argument | Type | Required | Description |");
     lines.push("| --- | --- | --- | --- |");
-    for (const p of node.positionals!) {
+    for (const p of node.positionals ?? []) {
       lines.push(formatPositionalRow(p));
     }
     lines.push("");

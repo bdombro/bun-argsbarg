@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
+import { cliSchemaExport } from "../schema.ts";
 import type { CliProgram } from "../types.ts";
 import { CliOptionKind } from "../types.ts";
 import { generateApiGuide, generateApiGuideBody } from "./api-guide.ts";
-import { cliSchemaExport } from "../schema.ts";
 
 const nestedFixture: CliProgram = {
   key: "nested.ts",
@@ -125,7 +125,7 @@ test("generateApiGuide and cliSchemaExport include leaf outputSchema", () => {
     ],
   };
   const schema = cliSchemaExport(fixture);
-  expect(schema.commands![0]!.outputSchema).toEqual({
+  expect(schema.commands?.[0]?.outputSchema).toEqual({
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],

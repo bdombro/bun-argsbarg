@@ -1,4 +1,12 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { CliUpdateGetLatest } from "../types.ts";
@@ -113,7 +121,8 @@ export function createGhVersionCheck(config: GhVersionCheckConfig): {
         return;
       }
 
-      void config.fetchLatest()
+      void config
+        .fetchLatest()
         .then((latest) => {
           writeVersionCheckCache(config.cachePath, { fetchedAt: Date.now(), latest });
         })
@@ -125,26 +134,22 @@ export function createGhVersionCheck(config: GhVersionCheckConfig): {
 }
 
 /** Shared `gh release view` fetcher for hooks and version-check refresh. */
-export function createGhFetchLatest(config: Pick<GhReleaseUpdateConfig, "repo" | "repoEnvHint">): () => Promise<string> {
+export function createGhFetchLatest(
+  config: Pick<GhReleaseUpdateConfig, "repo" | "repoEnvHint">,
+): () => Promise<string> {
   return async () => {
-    const result = await runGh([
-      "release",
-      "view",
-      "--repo",
-      config.repo,
-      "--json",
-      "tagName",
-    ]);
+    const result = await runGh(["release", "view", "--repo", config.repo, "--json", "tagName"]);
 
     if (result.exitCode !== 0) {
       const detail = result.stderr.trim() || result.stdout.trim();
-      const hint = detail.includes("auth") || detail.includes("401")
-        ? " Run `gh auth login` and try again."
-        : detail.includes("release not found") || detail.includes("Not Found")
-          ? config.repoEnvHint
-            ? ` ${config.repoEnvHint}`
-            : ` No releases found for ${config.repo}.`
-          : "";
+      const hint =
+        detail.includes("auth") || detail.includes("401")
+          ? " Run `gh auth login` and try again."
+          : detail.includes("release not found") || detail.includes("Not Found")
+            ? config.repoEnvHint
+              ? ` ${config.repoEnvHint}`
+              : ` No releases found for ${config.repo}.`
+            : "";
       throw new Error(
         `Failed to fetch latest release from ${config.repo}: ${detail || "unknown error"}.${hint}`,
       );
@@ -173,7 +178,10 @@ function ensureGhAvailable(): void {
   }
 }
 
-async function downloadReleaseAsset(config: GhReleaseUpdateConfig, tempDir: string): Promise<string> {
+async function downloadReleaseAsset(
+  config: GhReleaseUpdateConfig,
+  tempDir: string,
+): Promise<string> {
   const result = await runGh([
     "release",
     "download",
@@ -187,9 +195,7 @@ async function downloadReleaseAsset(config: GhReleaseUpdateConfig, tempDir: stri
 
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim();
-    throw new Error(
-      `Failed to download release from ${config.repo}: ${detail || "unknown error"}`,
-    );
+    throw new Error(`Failed to download release from ${config.repo}: ${detail || "unknown error"}`);
   }
 
   const downloadedPath = join(tempDir, config.asset);
@@ -200,7 +206,9 @@ async function downloadReleaseAsset(config: GhReleaseUpdateConfig, tempDir: stri
   return downloadedPath;
 }
 
-async function runGh(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runGh(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn(["gh", ...args], { stdout: "pipe", stderr: "pipe" });
   const [exitCode, stdout, stderr] = await Promise.all([
     proc.exited,

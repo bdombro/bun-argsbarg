@@ -1,5 +1,5 @@
 import { resolveCapabilities } from "../capabilities.ts";
-import { type CliLeaf, type CliProgram, type CliRouter } from "../types.ts";
+import type { CliProgram, CliRouter } from "../types.ts";
 
 /**
  * Builds the static `completion` / `bash` / `zsh` / `fish` command subtree (merged into the program root at runtime).

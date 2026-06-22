@@ -1,22 +1,22 @@
-import { CliProgram } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
-import type { InstallOpts } from "./plan.ts";
 import { resolveInstallPaths } from "./paths.ts";
+import type { InstallOpts } from "./plan.ts";
 
 export function installOut(msg: string, opts: InstallOpts): void {
   if (opts.quiet || opts.json) return;
-  process.stdout.write(msg + "\n");
+  process.stdout.write(`${msg}\n`);
 }
 
 export function installInfo(msg: string, opts: InstallOpts): void {
   if (opts.quiet) return;
   if (opts.json && !opts.dry) return;
   const prefix = opts.dry ? "[dry run] " : "";
-  process.stderr.write(prefix + msg + "\n");
+  process.stderr.write(`${prefix + msg}\n`);
 }
 
 export function installErr(msg: string): void {
-  process.stderr.write(msg + "\n");
+  process.stderr.write(`${msg}\n`);
 }
 
 /** Prints install status to stdout (human or JSON). */
@@ -39,7 +39,7 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
     if (status.opencodeMcp) json.opencodeMcp = status.opencodeMcp;
     if (status.codexMcp) json.codexMcp = status.codexMcp;
     if (status.chatGptMcp) json.chatGptMcp = status.chatGptMcp;
-    process.stdout.write(JSON.stringify(json, null, 2) + "\n");
+    process.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
     return;
   }
 

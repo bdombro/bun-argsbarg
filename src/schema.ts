@@ -2,10 +2,16 @@
 This module serializes the CLI schema tree to JSON for machine-readable introspection.
 */
 
-import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
-import { exportPresentationBuiltins, type CliSchemaExport } from "./builtins/export.ts";
+import { type CliSchemaExport, exportPresentationBuiltins } from "./builtins/export.ts";
 import { cliResolveNotes } from "./help.ts";
 import { visibleOptions } from "./hidden.ts";
+import {
+  type CliNode,
+  type CliProgram,
+  isCliLeaf,
+  isCliRouter,
+  leafOutputSchema,
+} from "./types.ts";
 
 const RESERVED = new Set(["completion", "install", "docs", "mcp", "version"]);
 
@@ -60,8 +66,8 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
 /** Resolves `{argsbarg:program}` in exported notes using the root program key. */
 function resolveSchemaNotes(node: CliSchemaExport, appKey: string): CliSchemaExport {
   const out: CliSchemaExport = { ...node };
-  if ((out.notes ?? "").length > 0) {
-    out.notes = cliResolveNotes(out.notes!, appKey);
+  if ((out.notes ?? "").length > 0 && out.notes !== undefined) {
+    out.notes = cliResolveNotes(out.notes, appKey);
   }
   if (out.commands) {
     out.commands = out.commands.map((ch) => resolveSchemaNotes(ch, appKey));
@@ -83,7 +89,7 @@ export function cliSchemaExport(root: CliProgram): CliSchemaExport {
 }
 
 export function cliSchemaJson(root: CliProgram): string {
-  return JSON.stringify(cliSchemaExport(root), null, 2) + "\n";
+  return `${JSON.stringify(cliSchemaExport(root), null, 2)}\n`;
 }
 
 export type { CliSchemaExport };

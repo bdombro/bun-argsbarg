@@ -1,12 +1,8 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import {
-  codexMcpHasServer,
-  readCodexMcpEntry,
-  resolveCodexConfigPath,
-} from "./mcp-codex.ts";
+import { join } from "node:path";
+import { codexMcpHasServer, readCodexMcpEntry, resolveCodexConfigPath } from "./mcp-codex.ts";
 
 let home: string;
 let prevHome: string | undefined;

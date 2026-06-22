@@ -1,5 +1,5 @@
 import { resolveCapabilities } from "../capabilities.ts";
-import { CliProgram, CliOption, CliOptionKind, type CliLeaf } from "../types.ts";
+import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram } from "../types.ts";
 
 /** Install command options (dynamic: `--mcp` only when MCP is enabled). */
 export function installBuiltinOptions(root: CliProgram): CliOption[] {
@@ -42,12 +42,14 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "uninstall",
-      description: "Remove installed artifacts (use --all or scoped flags; skips targets not on disk).",
+      description:
+        "Remove installed artifacts (use --all or scoped flags; skips targets not on disk).",
       kind: CliOptionKind.Presence,
     },
     {
       name: "prefix",
-      description: "Install directory for the binary (default ~/.local/bin; overrides INSTALL_PREFIX).",
+      description:
+        "Install directory for the binary (default ~/.local/bin; overrides INSTALL_PREFIX).",
       kind: CliOptionKind.String,
     },
     {
@@ -67,7 +69,8 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "quiet",
-      description: "Suppress informational output (requires --yes, --json, --reinstall, or --update).",
+      description:
+        "Suppress informational output (requires --yes, --json, --reinstall, or --update).",
       kind: CliOptionKind.Presence,
     },
   ];
@@ -103,11 +106,7 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
     `  ${app} install --reinstall`,
   ];
   if (resolveCapabilities(root).update) {
-    notesLines.push(
-      "",
-      "Upgrade to latest release:",
-      `  ${app} install --update`,
-    );
+    notesLines.push("", "Upgrade to latest release:", `  ${app} install --update`);
   }
   notesLines.push(
     "",
@@ -122,7 +121,8 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   );
   return {
     key: "install",
-    description: "Install the binary, shell completions, agent skills, and MCP config to your user environment.",
+    description:
+      "Install the binary, shell completions, agent skills, and MCP config to your user environment.",
     notes: notesLines.join("\n"),
     options: installBuiltinOptions(root),
     handler: () => {},

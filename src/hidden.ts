@@ -3,8 +3,8 @@ Filters hidden commands and options from presentation surfaces (help, schema, co
 Parsing still uses the full tree via cliParseRoot.
 */
 
-import type { CliNode, CliOption, CliRouter } from "./types.ts";
-import { isCliLeaf, isCliRouter } from "./types.ts";
+import type { CliNode, CliOption } from "./types.ts";
+import { isCliRouter } from "./types.ts";
 
 /** Options visible in help, schema, completions, and MCP tool schemas. */
 export function visibleOptions(options: CliOption[] | undefined): CliOption[] {

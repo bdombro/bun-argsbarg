@@ -7,8 +7,16 @@ It keeps help formatting shared across help and error paths so users see one con
 style no matter how help is reached.
 */
 
-import { CliNode, CliOption, CliOptionKind, CliPositional, CliRouter, isCliLeaf, isCliRouter } from "./types.ts";
 import { visibleOptions, visibleSubcommands } from "./hidden.ts";
+import {
+  type CliNode,
+  type CliOption,
+  CliOptionKind,
+  type CliPositional,
+  type CliRouter,
+  isCliLeaf,
+  isCliRouter,
+} from "./types.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
 
@@ -52,10 +60,10 @@ const style = {
 
 const kBoxTL = "\u256D"; // ╭
 const kBoxTR = "\u256E"; // ╮
-const kBoxV = "\u2502";  // │
+const kBoxV = "\u2502"; // │
 const kBoxBL = "\u2570"; // ╰
 const kBoxBR = "\u256F"; // ╯
-const kBoxH = "\u2500";  // ─
+const kBoxH = "\u2500"; // ─
 
 // ── Terminal Detection ────────────────────────────────────────────────────────
 
@@ -119,7 +127,7 @@ function wrapParagraph(text: string, width: number): string[] {
       continue;
     }
     if (cur.length + 1 + word.length <= available) {
-      cur += " " + word;
+      cur += ` ${word}`;
     } else {
       out.push(cur);
       cur = word;
@@ -166,24 +174,24 @@ function optKindLabel(k: CliOptionKind, o?: CliOption): string {
         return " <choice>";
       }
       if (choices.length <= 4) {
-        return " <" + choices.join("|") + ">";
+        return ` <${choices.join("|")}>`;
       }
-      return " <" + choices.slice(0, 3).join("|") + "|…>";
+      return ` <${choices.slice(0, 3).join("|")}|…>`;
     }
   }
 }
 
 /** Formats a flag/value option for help tables: `--name`, optional short, optional kind hint. */
 export function cliOptionLabel(o: CliOption, color: boolean): string {
-  let r = "--" + o.name + optKindLabel(o.kind, o);
-  if (o.shortName) r += ", -" + o.shortName;
+  let r = `--${o.name}${optKindLabel(o.kind, o)}`;
+  if (o.shortName) r += `, -${o.shortName}`;
   if (!color) return r;
 
   const sepIdx = r.indexOf(", ");
   if (sepIdx === -1) return style.aquaBold(r);
   const left = r.slice(0, sepIdx);
   const right = r.slice(sepIdx + 2);
-  return style.aquaBold(left) + " " + style.greenBright(right);
+  return `${style.aquaBold(left)} ${style.greenBright(right)}`;
 }
 
 /** Placeholder in `notes` for the root program key (resolved in help, schema, and docs api). */
@@ -199,9 +207,9 @@ export function cliPositionalLabel(p: CliPositional, color: boolean): string {
   const { argMin = 1, argMax = 1 } = p;
   let r: string;
   if (argMax === 1) {
-    r = argMin === 0 ? "[" + p.name + "]" : "<" + p.name + ">";
+    r = argMin === 0 ? `[${p.name}]` : `<${p.name}>`;
   } else {
-    r = argMin === 0 ? "[" + p.name + "...]" : "<" + p.name + "...>";
+    r = argMin === 0 ? `[${p.name}...]` : `<${p.name}...>`;
   }
   if (!color) return r;
   return style.aquaBold(r);
@@ -222,8 +230,8 @@ function renderTextBox(title: string, lines: string[], hw: number, color: boolea
   if (lines.length === 0) return [];
 
   const titleLead = color
-    ? style.gray(kBoxH + " ") + style.grayBoldTitle(title) + style.gray(" ")
-    : kBoxH + " " + title + " ";
+    ? style.gray(`${kBoxH} `) + style.grayBoldTitle(title) + style.gray(" ")
+    : `${kBoxH} ${title} `;
 
   let contentWidth = visibleWidth(titleLead) + 1;
   for (const line of lines) {
@@ -238,19 +246,25 @@ function renderTextBox(title: string, lines: string[], hw: number, color: boolea
   const out: string[] = [];
   out.push(
     (color ? style.gray(kBoxTL) : kBoxTL) +
-    titleLead +
-    (color ? style.gray(repeatBoxH(headerFill) + kBoxTR) : repeatBoxH(headerFill) + kBoxTR),
+      titleLead +
+      (color ? style.gray(repeatBoxH(headerFill) + kBoxTR) : repeatBoxH(headerFill) + kBoxTR),
   );
 
   for (const line of lines) {
     const padded = padVisible(line, contentWidth);
     out.push(
-      (color ? style.gray(kBoxV) : kBoxV) + " " + padded + " " + (color ? style.gray(kBoxV) : kBoxV),
+      (color ? style.gray(kBoxV) : kBoxV) +
+        " " +
+        padded +
+        " " +
+        (color ? style.gray(kBoxV) : kBoxV),
     );
   }
 
   out.push(
-    (color ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR) : kBoxBL + repeatBoxH(borderWidth) + kBoxBR),
+    color
+      ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR)
+      : kBoxBL + repeatBoxH(borderWidth) + kBoxBR,
   );
 
   return out;
@@ -265,7 +279,7 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
     labelWidth = Math.max(labelWidth, visibleWidth(row.label));
   }
 
-  const titleChunk = kBoxH + " " + title + " ";
+  const titleChunk = `${kBoxH} ${title} `;
   const minimumContentWidth = Math.max(visibleWidth(titleChunk) + 1, labelWidth + 2 + 18);
   let contentWidth = Math.max(hw - 2, minimumContentWidth);
   const descWidth = Math.max(1, contentWidth - labelWidth - 2);
@@ -274,20 +288,22 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
   for (const row of rows) {
     const wrapped = wrapText(row.description, descWidth);
     const first =
-      row.label + spaces(labelWidth - visibleWidth(row.label)) + "  " +
+      row.label +
+      spaces(labelWidth - visibleWidth(row.label)) +
+      "  " +
       (color ? style.white(wrapped[0]) : wrapped[0]);
     bodyLines.push(first);
     for (let idx = 1; idx < wrapped.length; idx++) {
       const pad = color ? style.gray(spaces(labelWidth)) : spaces(labelWidth);
-      bodyLines.push(pad + "  " + (color ? style.white(wrapped[idx]) : wrapped[idx]));
+      bodyLines.push(`${pad}  ${color ? style.white(wrapped[idx]) : wrapped[idx]}`);
     }
   }
 
   let titleLead: string;
   if (color) {
-    titleLead = style.gray(kBoxH + " ") + style.grayBoldTitle(title) + style.gray(" ");
+    titleLead = style.gray(`${kBoxH} `) + style.grayBoldTitle(title) + style.gray(" ");
   } else {
-    titleLead = kBoxH + " " + title + " ";
+    titleLead = `${kBoxH} ${title} `;
   }
 
   contentWidth = Math.max(contentWidth, visibleWidth(titleLead) + 1);
@@ -302,19 +318,25 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
   const out: string[] = [];
   out.push(
     (color ? style.gray(kBoxTL) : kBoxTL) +
-    titleLead +
-    (color ? style.gray(repeatBoxH(headerFill) + kBoxTR) : repeatBoxH(headerFill) + kBoxTR),
+      titleLead +
+      (color ? style.gray(repeatBoxH(headerFill) + kBoxTR) : repeatBoxH(headerFill) + kBoxTR),
   );
 
   for (const line of bodyLines) {
     const padded = padVisible(line, contentWidth);
     out.push(
-      (color ? style.gray(kBoxV) : kBoxV) + " " + padded + " " + (color ? style.gray(kBoxV) : kBoxV),
+      (color ? style.gray(kBoxV) : kBoxV) +
+        " " +
+        padded +
+        " " +
+        (color ? style.gray(kBoxV) : kBoxV),
     );
   }
 
   out.push(
-    (color ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR) : kBoxBL + repeatBoxH(borderWidth) + kBoxBR),
+    color
+      ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR)
+      : kBoxBL + repeatBoxH(borderWidth) + kBoxBR,
   );
 
   return out;
@@ -332,7 +354,7 @@ function usageLines(
 ): string[] {
   let fullPath = appName;
   for (const seg of helpPath) {
-    fullPath += " " + seg;
+    fullPath += ` ${seg}`;
   }
   const usageOpts = color ? style.aquaBold("[OPTIONS]") : "[OPTIONS]";
   const usageCmd = color ? style.aquaBold("COMMAND") : "COMMAND";
@@ -341,15 +363,15 @@ function usageLines(
   const out: string[] = [];
   if (helpPath.length === 0) {
     if (hasCommands) {
-      out.push(fullPath + " " + usageOpts + " " + usageCmd + " " + usageArgs);
+      out.push(`${fullPath} ${usageOpts} ${usageCmd} ${usageArgs}`);
     } else {
-      out.push(fullPath + " " + usageOpts);
+      out.push(`${fullPath} ${usageOpts}`);
     }
     return out;
   }
-  out.push(fullPath + " " + usageOpts + (hasArgs ? (" " + usageArgs) : ""));
+  out.push(`${fullPath} ${usageOpts}${hasArgs ? ` ${usageArgs}` : ""}`);
   if (hasCommands) {
-    out.push(fullPath + " " + usageCmd + " " + usageArgs);
+    out.push(`${fullPath} ${usageCmd} ${usageArgs}`);
   }
   return out;
 }
@@ -357,12 +379,10 @@ function usageLines(
 /** Table rows for named options, including synthetic built-in rows. */
 function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
   const rows: HelpRow[] = [];
-  const helpLabel = color
-    ? style.aquaBold("--help, ") + style.greenBright("-h")
-    : "--help, -h";
+  const helpLabel = color ? style.aquaBold("--help, ") + style.greenBright("-h") : "--help, -h";
   rows.push({ label: helpLabel, description: "Show help for this command." });
   for (const o of defs) {
-    const desc = o.required ? "(required) " + o.description : o.description;
+    const desc = o.required ? `(required) ${o.description}` : o.description;
     rows.push({ label: cliOptionLabel(o, color), description: desc });
   }
   return rows;
@@ -392,7 +412,7 @@ function appendNotesBox(
   if ((notes ?? "").length === 0) {
     return;
   }
-  const resolved = cliResolveNotes(notes!, appKey);
+  const resolved = cliResolveNotes(notes ?? "", appKey);
   lines.push("");
   lines.push(renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"));
 }
@@ -401,7 +421,7 @@ function appendNotesBox(
  * Renders full help for the app root or a nested command, following `helpPath` from the root key.
  * `useStderr` is reserved for call-site consistency; width and color use stdout TTY.
  */
-export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: boolean): string {
+export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr: boolean): string {
   const hw = getHelpWidth();
   const color = isStdoutTTY();
 
@@ -421,7 +441,12 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
       ).join("\n"),
     );
 
-    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(schema.options), color), hw, color);
+    const optBox = renderTableBox(
+      "Options",
+      rowsForOptions(visibleOptions(schema.options), color),
+      hw,
+      color,
+    );
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
@@ -433,7 +458,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
       );
     }
     appendNotesBox(lines, schema.notes, schema.key, hw, color);
-    return lines.join("\n") + "\n\n";
+    return `${lines.join("\n")}\n\n`;
   }
 
   let layer = schema.commands ?? [];
@@ -441,13 +466,13 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
   for (const seg of helpPath) {
     const ch = layer.find((c: CliNode) => c.key === seg);
     if (!ch) {
-      return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
+      return `${color ? style.red("Unknown help path.") : "Unknown help path."}\n`;
     }
     node = ch;
     layer = isCliRouter(ch) ? ch.commands : [];
   }
   if (!node) {
-    return (color ? style.red("Unknown help path.") : "Unknown help path.") + "\n";
+    return `${color ? style.red("Unknown help path.") : "Unknown help path."}\n`;
   }
 
   const lines: string[] = [];
@@ -471,7 +496,12 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
     ).join("\n"),
   );
 
-  const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
+  const optBox = renderTableBox(
+    "Options",
+    rowsForOptions(visibleOptions(node.options), color),
+    hw,
+    color,
+  );
   if (optBox.length > 0) {
     lines.push("");
     lines.push(optBox.join("\n"));
@@ -499,5 +529,5 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
     appendNotesBox(lines, node.notes, schema.key, hw, color);
   }
 
-  return lines.join("\n") + "\n\n";
+  return `${lines.join("\n")}\n\n`;
 }

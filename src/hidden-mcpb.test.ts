@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { cliPresentationRoot, cliParseRoot } from "./builtins/presentation.ts";
+import { join } from "node:path";
 import { exportPresentationBuiltins } from "./builtins/export.ts";
+import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import { cliHelpRender } from "./help.ts";
-import { cliSchemaExport } from "./schema.ts";
-import { collectMcpTools } from "./mcp/tools.ts";
 import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+import { collectMcpTools } from "./mcp/tools.ts";
+import { cliSchemaExport } from "./schema.ts";
 import { CliOptionKind, type CliProgram } from "./types.ts";
 
 const hiddenFixture: CliProgram = {
@@ -116,7 +116,8 @@ describe("mcp bundle", () => {
     expect(manifest.manifest_version).toBe("0.3");
     expect((manifest.server as { type: string }).type).toBe("binary");
     expect((manifest.server as { entry_point: string }).entry_point).toBe("myapp");
-    const mcpConfig = (manifest.server as { mcp_config: { command: string; args: string[] } }).mcp_config;
+    const mcpConfig = (manifest.server as { mcp_config: { command: string; args: string[] } })
+      .mcp_config;
     expect(mcpConfig.command).toBe("${__dirname}/myapp");
     expect(mcpConfig.args).toEqual(["mcp"]);
     expect((manifest.compatibility as { platforms: string[] }).platforms).toEqual(["darwin"]);

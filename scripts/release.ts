@@ -12,7 +12,7 @@
  * repo changes (`git add -A`), not only the version and CHANGELOG edits from this script.
  */
 
-import { unlink } from "fs/promises";
+import { unlink } from "node:fs/promises";
 
 /** Returns the parent directory of an absolute file path. */
 function parentDir(absolute: string): string {
@@ -96,9 +96,13 @@ function githubRepoBaseFromOrigin(origin: string): string | null {
 function releasedSemverVersionsFromChangelog(md: string): string[] {
   const re = /^## \[(\d+\.\d+\.\d+)\] /gm;
   const out: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(md)) !== null) {
-    out.push(m[1]!);
+  let m = re.exec(md);
+  while (m !== null) {
+    const version = m[1];
+    if (version !== undefined) {
+      out.push(version);
+    }
+    m = re.exec(md);
   }
   return out;
 }
@@ -108,14 +112,18 @@ function releasedSemverVersionsFromChangelog(md: string): string[] {
  * (`[...]: http...`) at the end of the file.
  */
 function stripChangelogLinkDefinitions(md: string): string {
-  let s = md.replace(/\r?\n## Links\r?\n/, "\n");
+  const s = md.replace(/\r?\n## Links\r?\n/, "\n");
   const lines = s.split(/\r?\n/);
   let i = lines.length;
   while (i > 0 && lines[i - 1] === "") {
     i -= 1;
   }
   const refLine = /^\[[^\]]+\]: .+$/;
-  while (i > 0 && refLine.test(lines[i - 1]!)) {
+  while (i > 0) {
+    const line = lines[i - 1];
+    if (line === undefined || !refLine.test(line)) {
+      break;
+    }
     i -= 1;
   }
   while (i > 0 && lines[i - 1] === "") {
@@ -143,7 +151,10 @@ function appendChangelogLinkDefinitions(md: string, repoBase: string): string {
   if (versions.length === 0) {
     return `${body}\n`;
   }
-  const newest = versions[0]!;
+  const newest = versions[0];
+  if (newest === undefined) {
+    return `${body}\n`;
+  }
   const lines = [
     "",
     "",
@@ -178,7 +189,9 @@ function promoteChangelog(content: string, version: string, date: string): strin
   const bodyStart = lineEnd + 1;
   const nextIdx = content.indexOf("\n## [", bodyStart);
   const body =
-    nextIdx === -1 ? content.slice(bodyStart).trimEnd() : content.slice(bodyStart, nextIdx).trimEnd();
+    nextIdx === -1
+      ? content.slice(bodyStart).trimEnd()
+      : content.slice(bodyStart, nextIdx).trimEnd();
   const tail = nextIdx === -1 ? "" : content.slice(nextIdx + 1);
   const before = content.slice(0, idx);
   const newBlock = `${header}\n\n## [${version}] - ${date}\n${body}\n\n`;
@@ -240,7 +253,11 @@ try {
   run("git tag", ["git", "tag", "-a", tag, "-m", msg], repoRoot);
   run("git push", ["git", "push"], repoRoot);
   run("git push tags", ["git", "push", "--tags"], repoRoot);
-  run("gh release", ["gh", "release", "create", tag, "--title", tag, "--notes-file", notesPath], repoRoot);
+  run(
+    "gh release",
+    ["gh", "release", "create", tag, "--title", tag, "--notes-file", notesPath],
+    repoRoot,
+  );
   run("npm publish", ["npm", "publish"], repoRoot);
 } finally {
   await unlink(notesPath).catch(() => {});

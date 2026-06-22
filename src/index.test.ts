@@ -7,12 +7,19 @@ It keeps the CLI contract stable by catching routing, option handling, and gener
 shell output regressions.
 */
 
+import { expect, test } from "bun:test";
 import { cliPresentationRoot } from "./builtins/presentation.ts";
 import { completionBashScript, completionZshScript } from "./completion.ts";
 import { cliHelpRender } from "./help.ts";
-import { CliProgram, CliFallbackMode, CliOptionKind, cliInvoke, CliContext } from "./index.ts";
-import type { CliLeaf } from "./types.ts";
-import { isCliRouter } from "./types.ts";
+import {
+  type CliContext,
+  CliFallbackMode,
+  CliOptionKind,
+  type CliProgram,
+  cliInvoke,
+} from "./index.ts";
+import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
+import { buildToolCallSuccess } from "./mcp/result.ts";
 import {
   allMcpResources,
   collectMcpTools,
@@ -21,25 +28,27 @@ import {
   resolveMcpSchemaUri,
   sanitizeToolSegment,
 } from "./mcp/tools.ts";
-import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
-import { buildToolCallSuccess } from "./mcp/result.ts";
-import { generateSkillBundle } from "./skill/generate.ts";
-import { cliSkillInstall } from "./skill/install.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaExport, cliSchemaJson } from "./schema.ts";
+import { generateSkillBundle } from "./skill/generate.ts";
+import { cliSkillInstall } from "./skill/install.ts";
+import type { CliLeaf } from "./types.ts";
+import { isCliRouter } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";
-import { expect, test } from "bun:test";
 
-function testProgram(prog: Record<string, unknown> & { key: string; description: string }): CliProgram {
+function testProgram(
+  prog: Record<string, unknown> & { key: string; description: string },
+): CliProgram {
   return { version: "0.0.0", ...prog } as CliProgram;
 }
-import { $ } from "bun";
+
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { $ } from "bun";
 
 test("bundled short presence flags", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -67,12 +76,12 @@ test("bundled short presence flags", () => {
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "-ab"]));
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.opts["a"]).toBe("1");
-  expect(pr.opts["b"]).toBe("1");
+  expect(pr.opts.a).toBe("1");
+  expect(pr.opts.b).toBe("1");
 });
 
 test("long option equals", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -93,11 +102,11 @@ test("long option equals", () => {
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--name=pat"]));
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.opts["name"]).toBe("pat");
+  expect(pr.opts.name).toBe("pat");
 });
 
 test("fallback missing or unknown root flags", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -121,11 +130,11 @@ test("fallback missing or unknown root flags", () => {
   const pr = postParseValidate(root, parse(root, ["--name", "bob"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["hello"]);
-  expect(pr.opts["name"]).toBe("bob");
+  expect(pr.opts.name).toBe("bob");
 });
 
 test("unknown command", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [{ key: "hello", description: "", handler: () => {} }],
@@ -137,7 +146,7 @@ test("unknown command", () => {
 });
 
 test("implicit help empty", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [{ key: "x", description: "", handler: () => {} }],
@@ -149,7 +158,7 @@ test("implicit help empty", () => {
 });
 
 test("invalid number post validate", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -175,7 +184,7 @@ test("invalid number post validate", () => {
 });
 
 test("supports scientific notation in numbers", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -197,13 +206,11 @@ test("supports scientific notation in numbers", () => {
   let pr = parse(root, ["x", "--n", "1.23e4"]);
   pr = postParseValidate(root, pr);
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(Number(pr.opts["n"])).toBe(12300);
+  expect(Number(pr.opts.n)).toBe(12300);
 });
 
-
-
 test("completion scripts contain app name", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "myapp",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
@@ -220,7 +227,7 @@ test("completion scripts contain app name", () => {
 });
 
 test("completion scripts do not emit invalid bash substitutions", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
@@ -231,7 +238,7 @@ test("completion scripts do not emit invalid bash substitutions", () => {
 });
 
 test("completion scripts escape shell-sensitive command text in zsh", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "Test",
     commands: [
@@ -248,7 +255,7 @@ test("completion scripts escape shell-sensitive command text in zsh", () => {
 });
 
 test("completion scripts keep dotted app names in registration names", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "minimal.ts",
     description: "Test",
     commands: [{ key: "hello", description: "Say hello.", handler: () => {} }],
@@ -263,7 +270,7 @@ test("completion scripts keep dotted app names in registration names", () => {
 });
 
 test("trailing options after bounded positionals", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -292,11 +299,11 @@ test("trailing options after bounded positionals", () => {
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--verbose"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["./file"]);
-  expect(pr.opts["verbose"]).toBe("1");
+  expect(pr.opts.verbose).toBe("1");
 });
 
 test("trailing options include parent-scoped flags", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -336,16 +343,19 @@ test("trailing options include parent-scoped flags", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
+  const pr = postParseValidate(
+    root,
+    parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]),
+  );
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["group", "leaf"]);
   expect(pr.args).toEqual(["./file"]);
-  expect(pr.opts["user"]).toBe("alice");
-  expect(pr.opts["json"]).toBe("1");
+  expect(pr.opts.user).toBe("alice");
+  expect(pr.opts.json).toBe("1");
 });
 
 test("varargs tail parses trailing options", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -376,11 +386,11 @@ test("varargs tail parses trailing options", () => {
   const pr = postParseValidate(root, parse(root, ["x", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["./file"]);
-  expect(pr.opts["json"]).toBe("1");
+  expect(pr.opts.json).toBe("1");
 });
 
 test("stops parsing options at --", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -408,14 +418,17 @@ test("stops parsing options at --", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = postParseValidate(root, parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]));
+  const pr = postParseValidate(
+    root,
+    parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]),
+  );
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.opts["name"]).toBe("pat");
+  expect(pr.opts.name).toBe("pat");
   expect(pr.args).toEqual(["--name", "bob", "-x"]);
 });
 
 test("missing required option returns error", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     options: [
@@ -441,7 +454,7 @@ test("missing required option returns error", () => {
 });
 
 test("provided required option parses ok", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -463,11 +476,11 @@ test("provided required option parses ok", () => {
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["x", "--req", "val"]));
   expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.opts["req"]).toBe("val");
+  expect(pr.opts.req).toBe("val");
 });
 
 test("presence option cannot be required", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     options: [
@@ -492,7 +505,9 @@ test("presence option cannot be required", () => {
 test("leaf completion help prints correctly", async () => {
   // Test the fix where `completion zsh -h` on a leaf root was incorrectly ignored.
   // We run this as a subprocess so we don't accidentally exit the test runner.
-  const { stdout, stderr, exitCode } = await $`bun run examples/minimal.ts completion zsh -h`.nothrow().quiet();
+  const { stdout, stderr, exitCode } = await $`bun run examples/minimal.ts completion zsh -h`
+    .nothrow()
+    .quiet();
   const out = stdout.toString();
   expect(exitCode).toBe(0);
   expect(out).toContain("Show help for this command.");
@@ -501,7 +516,9 @@ test("leaf completion help prints correctly", async () => {
 });
 
 test("docs schema exports JSON for nested CLIs", async () => {
-  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`.nothrow().quiet();
+  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`
+    .nothrow()
+    .quiet();
   expect(exitCode).toBe(0);
   expect(stderr.toString()).toBe("");
 
@@ -568,7 +585,7 @@ test("root --schema is no longer a flag", () => {
 });
 
 test("cliSchemaJson omits handlers and completion built-ins", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "demo",
     commands: [
@@ -805,7 +822,7 @@ async function mcpRequest(
     env: opts?.env ? { ...process.env, ...opts.env } : process.env,
   });
 
-  const input = requests.map((r) => JSON.stringify(r) + "\n").join("");
+  const input = requests.map((r) => `${JSON.stringify(r)}\n`).join("");
   proc.stdin.write(input);
   proc.stdin.end();
 
@@ -869,7 +886,7 @@ test("collectMcpTools appends leaf notes to MCP tool description", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toBe("run — Run.\n\nUse `--json` for structured output.");
+  expect(tools[0]?.description).toBe("run — Run.\n\nUse `--json` for structured output.");
 });
 
 test("collectMcpTools appends notes after mcpTool.description override", () => {
@@ -889,7 +906,7 @@ test("collectMcpTools appends notes after mcpTool.description override", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toBe("Custom MCP text.\n\nOperational hint.");
+  expect(tools[0]?.description).toBe("Custom MCP text.\n\nOperational hint.");
 });
 
 test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
@@ -908,7 +925,7 @@ test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toContain("See `myapp docs api`.");
+  expect(tools[0]?.description).toContain("See `myapp docs api`.");
 });
 
 test("cliSchemaExport includes leaf outputSchema", () => {
@@ -930,7 +947,7 @@ test("cliSchemaExport includes leaf outputSchema", () => {
     ],
   });
   const schema = cliSchemaExport(root);
-  expect(schema.commands![0]!.outputSchema).toEqual({
+  expect(schema.commands?.[0]?.outputSchema).toEqual({
     type: "object",
     properties: { ok: { type: "boolean" } },
   });
@@ -952,7 +969,7 @@ test("cliSchemaExport accepts legacy mcpTool.outputSchema", () => {
       },
     ],
   });
-  expect(cliSchemaExport(root).commands![0]!.outputSchema).toEqual({
+  expect(cliSchemaExport(root).commands?.[0]?.outputSchema).toEqual({
     type: "object",
     properties: { id: { type: "string" } },
   });
@@ -1022,7 +1039,7 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
   });
   const tools = collectMcpTools(root);
   expect(tools).toHaveLength(1);
-  expect(tools[0]!.outputSchema).toEqual({
+  expect(tools[0]?.outputSchema).toEqual({
     type: "object",
     properties: { ok: { type: "boolean" } },
     required: ["ok"],
@@ -1054,7 +1071,7 @@ test("mcpToolCallToArgv expands varargs positionals", () => {
 });
 
 test("reserved command name install is rejected", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1069,7 +1086,7 @@ test("reserved command name install is rejected", () => {
 });
 
 test("top-level command name mcp is allowed without mcpServer", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1117,7 +1134,7 @@ test("mcpServer on non-root node is rejected", () => {
 });
 
 test("mcpTool on root is rejected", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     mcpTool: { enabled: false },
@@ -1127,7 +1144,7 @@ test("mcpTool on root is rejected", () => {
 });
 
 test("mcpTool on routing node is rejected", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1175,7 +1192,7 @@ test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
 test("buildToolCallSuccess parses JSON structuredContent", () => {
   const result = buildToolCallSuccess('{"a":1}\n', "");
   expect(result.structuredContent).toEqual({ a: 1 });
-  expect(result.content[0]!.text).toBe('{"a":1}\n');
+  expect(result.content[0]?.text).toBe('{"a":1}\n');
 });
 
 test("buildToolCallSuccess skips structuredContent for plain text", () => {
@@ -1197,10 +1214,12 @@ test("MCP initialize returns tools and resources capabilities", async () => {
 
 test("MCP tools/list includes stat_owner_lookup", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }]);
-  const res = responses.get(2) as { result: { tools: { name: string; inputSchema: { required?: string[] } }[] } };
+  const res = responses.get(2) as {
+    result: { tools: { name: string; inputSchema: { required?: string[] } }[] };
+  };
   const lookup = res.result.tools.find((t) => t.name === "stat_owner_lookup");
   expect(lookup).toBeDefined();
-  expect(lookup!.inputSchema.required).toContain("path");
+  expect(lookup?.inputSchema.required).toContain("path");
 });
 
 test("MCP resources/read returns schema JSON", async () => {
@@ -1208,7 +1227,7 @@ test("MCP resources/read returns schema JSON", async () => {
     { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "nested_ts://schema" } },
   ]);
   const res = responses.get(3) as { result: { contents: { text: string }[] } };
-  const schema = JSON.parse(res.result.contents[0]!.text);
+  const schema = JSON.parse(res.result.contents[0]?.text);
   expect(schema.key).toBe("nested.ts");
 });
 
@@ -1227,7 +1246,7 @@ test("MCP tools/call runs stat_owner_lookup", async () => {
   ]);
   const res = responses.get(4) as { result: { content: { text: string }[]; isError: boolean } };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]!.text).toContain("lookup user=test");
+  expect(res.result.content[0]?.text).toContain("lookup user=test");
 });
 
 test("MCP tools/call returns structuredContent for JSON stdout", async () => {
@@ -1252,7 +1271,7 @@ test("MCP tools/call returns structuredContent for JSON stdout", async () => {
   };
   expect(res.result.isError).toBe(false);
   expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
-  expect(JSON.parse(res.result.content[0]!.text.trim())).toEqual({ user: "test", path: readme });
+  expect(JSON.parse(res.result.content[0]?.text.trim())).toEqual({ user: "test", path: readme });
 });
 
 test("MCP tools/call errors on missing required positional", async () => {
@@ -1266,7 +1285,7 @@ test("MCP tools/call errors on missing required positional", async () => {
   ]);
   const res = responses.get(5) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(true);
-  expect(res.result.content[0]!.text).toContain("Missing argument: path");
+  expect(res.result.content[0]?.text).toContain("Missing argument: path");
 });
 
 test("MCP ping returns empty result", async () => {
@@ -1293,7 +1312,7 @@ await cliRun(cli, []);
 
 test("ctx.invocation is mcp via cliInvoke", async () => {
   let seen = "";
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     handler: (ctx: CliContext) => {
@@ -1336,7 +1355,7 @@ test("Enum option inputSchema includes enum array", () => {
 });
 
 test("cliInvoke rejects invalid Enum value", async () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     handler: () => {},
@@ -1357,7 +1376,7 @@ test("cliInvoke rejects invalid Enum value", async () => {
 });
 
 test("cliInvoke accepts valid Enum value", async () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     handler: (ctx: CliContext) => {
@@ -1380,7 +1399,7 @@ test("cliInvoke accepts valid Enum value", async () => {
 });
 
 test("cliValidateProgram rejects Enum with no choices", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     handler: () => {},
@@ -1390,7 +1409,7 @@ test("cliValidateProgram rejects Enum with no choices", () => {
 });
 
 test("cliValidateProgram rejects Enum with duplicate choices", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     handler: () => {},
@@ -1400,7 +1419,7 @@ test("cliValidateProgram rejects Enum with duplicate choices", () => {
 });
 
 test("mcpTool.description override wins without requiresEnv suffix", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     mcpServer: { enabled: true },
@@ -1414,11 +1433,11 @@ test("mcpTool.description override wins without requiresEnv suffix", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toBe("custom");
+  expect(tools[0]?.description).toBe("custom");
 });
 
 test("mcpTool.requiresEnv appended to auto description", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     mcpServer: { enabled: true },
@@ -1432,7 +1451,7 @@ test("mcpTool.requiresEnv appended to auto description", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]!.description).toContain("[requires env: TOKEN]");
+  expect(tools[0]?.description).toContain("[requires env: TOKEN]");
 });
 
 test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
@@ -1553,7 +1572,7 @@ test("loadEnvFile overwrites existing keys", () => {
 });
 
 test("Enum completions list choices in bash script", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1590,7 +1609,7 @@ test("MCP resources/read returns custom resource body", async () => {
     { script: "examples/mcp-test.ts" },
   );
   const res = responses.get(11) as { result: { contents: { text: string }[] } };
-  expect(res.result.contents[0]!.text).toBe("hello resource");
+  expect(res.result.contents[0]?.text).toBe("hello resource");
 });
 
 test("MCP resources/read unknown URI returns error", async () => {
@@ -1616,7 +1635,7 @@ test("MCP requiresEnv fails when env missing", async () => {
   );
   const res = responses.get(13) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(true);
-  expect(res.result.content[0]!.text).toContain("ARGS_TEST_SECRET");
+  expect(res.result.content[0]?.text).toContain("ARGS_TEST_SECRET");
 });
 
 test("MCP requiresEnv succeeds when env present", async () => {
@@ -1633,7 +1652,7 @@ test("MCP requiresEnv succeeds when env present", async () => {
   );
   const res = responses.get(14) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]!.text.trim()).toBe("sekrit");
+  expect(res.result.content[0]?.text.trim()).toBe("sekrit");
 });
 
 test("MCP envFile loads vars for tool handlers", async () => {
@@ -1649,11 +1668,14 @@ test("MCP envFile loads vars for tool handlers", async () => {
         params: { name: "echo_env", arguments: { name: "ARGS_FILE_TOKEN" } },
       },
     ],
-    { script: "examples/mcp-test.ts", env: { ARGS_TEST_ENV_FILE: envFile, ARGS_TEST_SECRET: "present" } },
+    {
+      script: "examples/mcp-test.ts",
+      env: { ARGS_TEST_ENV_FILE: envFile, ARGS_TEST_SECRET: "present" },
+    },
   );
   const res = responses.get(15) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]!.text.trim()).toBe("file-value");
+  expect(res.result.content[0]?.text.trim()).toBe("file-value");
 });
 
 // ── v1.3 parser ergonomics ────────────────────────────────────────────────────
@@ -1724,7 +1746,7 @@ test("nested fallback routes to default when argv exhausted at router", () => {
 });
 
 test("nested fallback MissingOrUnknown routes unknown token to default", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1773,7 +1795,7 @@ test("nested fallback MissingOnly errors on unknown subcommand", () => {
 });
 
 test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1791,7 +1813,9 @@ test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
+  expect(() => cliValidateProgram(root)).toThrow(
+    /fallbackCommand 'missing' is not a child of 'docs'/,
+  );
 });
 
 test("cliValidateProgram accepts nested fallbackCommand when child exists", () => {
@@ -1817,7 +1841,7 @@ test("varargs trailing option after positionals via cliInvoke", async () => {
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt"]);
-  expect(pr.opts["json"]).toBe("1");
+  expect(pr.opts.json).toBe("1");
 });
 
 test("varargs option before positionals", () => {
@@ -1826,7 +1850,7 @@ test("varargs option before positionals", () => {
   const pr = postParseValidate(root, parse(root, ["read", "--json", "file.txt"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt"]);
-  expect(pr.opts["json"]).toBe("1");
+  expect(pr.opts.json).toBe("1");
 });
 
 test("varargs multiple files then trailing option", () => {
@@ -1835,7 +1859,7 @@ test("varargs multiple files then trailing option", () => {
   const pr = postParseValidate(root, parse(root, ["read", "a.txt", "b.txt", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["a.txt", "b.txt"]);
-  expect(pr.opts["json"]).toBe("1");
+  expect(pr.opts.json).toBe("1");
 });
 
 test("varargs double dash forces positional", () => {
@@ -1844,7 +1868,7 @@ test("varargs double dash forces positional", () => {
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.args).toEqual(["file.txt", "--json"]);
-  expect(pr.opts["json"]).toBeUndefined();
+  expect(pr.opts.json).toBeUndefined();
 });
 
 test("varargs unknown flag errors", async () => {
@@ -1865,7 +1889,7 @@ test("varargs scoped help in tail", () => {
 });
 
 test("ctx.positional returns single slot value", async () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [
@@ -1899,7 +1923,7 @@ test("ctx.positional returns varargs array", async () => {
 });
 
 test("ctx.positional returns undefined for absent optional slot", async () => {
-  const root= testProgram({
+  const root = testProgram({
     key: "app",
     description: "",
     commands: [

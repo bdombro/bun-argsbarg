@@ -1,9 +1,13 @@
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CliProgram } from "../types.ts";
-import { completionBashScript, completionFishScript, completionZshScript } from "../builtins/index.ts";
+import {
+  completionBashScript,
+  completionFishScript,
+  completionZshScript,
+} from "../builtins/index.ts";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
-import { InstallPaths } from "./paths.ts";
+import type { CliProgram } from "../types.ts";
+import type { InstallPaths } from "./paths.ts";
 import { detectShells } from "./shell.ts";
 
 /** Writes shell completion scripts for detected shells. */

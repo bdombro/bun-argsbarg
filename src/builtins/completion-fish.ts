@@ -1,11 +1,6 @@
-import { CliNode, CliRouter, CliOptionKind } from "../types.ts";
+import { CliOptionKind, type CliRouter } from "../types.ts";
 import { collectScopes } from "./scopes.ts";
-import {
-  escFishSingleQuoted,
-  identToken,
-  kHelpLong,
-  kHelpShort,
-} from "./shell-helpers.ts";
+import { escFishSingleQuoted, identToken } from "./shell-helpers.ts";
 
 function scopeCondition(ident: string, scopeIndex: number, path: string): string {
   const fn = `__${ident}_scope_${scopeIndex}`;
@@ -30,7 +25,7 @@ export function completionFishScript(schema: CliRouter): string {
   const app = schema.key;
   const scopes = collectScopes(schema);
 
-  let out = "# Fish completion for " + app + "\n\n";
+  let out = `# Fish completion for ${app}\n\n`;
 
   for (const [i, sc] of scopes.entries()) {
     out += scopeCondition(ident, i, sc.path);

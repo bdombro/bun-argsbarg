@@ -1,7 +1,7 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { CliProgram } from "../types.ts";
 import {
   detectOpenCodeMcpConfigPath,
@@ -52,7 +52,9 @@ describe("opencode mcp config", () => {
 
   test("resolveOpenCodeConfigPathForInstall defaults to config.json", () => {
     mkdirSync(opencodeConfigDir(home), { recursive: true });
-    expect(resolveOpenCodeConfigPathForInstall(home)).toBe(join(opencodeConfigDir(home), "config.json"));
+    expect(resolveOpenCodeConfigPathForInstall(home)).toBe(
+      join(opencodeConfigDir(home), "config.json"),
+    );
   });
 
   test("mergeOpenCodeMcpConfig writes mcp block", () => {
