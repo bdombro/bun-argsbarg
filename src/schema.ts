@@ -5,10 +5,15 @@ This module serializes the CLI schema tree to JSON for machine-readable introspe
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
 import { exportPresentationBuiltins, type CliSchemaExport } from "./builtins/export.ts";
 import { cliResolveNotes } from "./help.ts";
+import { visibleOptions } from "./hidden.ts";
 
 const RESERVED = new Set(["completion", "install", "docs", "mcp", "version"]);
 
-function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport {
+function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
+  if (cmd.hidden) {
+    return null;
+  }
+
   const out: CliSchemaExport = {
     key: cmd.key,
     description: cmd.description,
@@ -18,8 +23,9 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport {
     out.notes = cmd.notes;
   }
 
-  if ((cmd.options ?? []).length > 0) {
-    out.options = cmd.options;
+  const options = visibleOptions(cmd.options);
+  if (options.length > 0) {
+    out.options = options;
   }
 
   if (isCliLeaf(cmd)) {
@@ -43,7 +49,9 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport {
 
   const children = isCliRouter(cmd) ? cmd.commands.filter((ch) => !RESERVED.has(ch.key)) : [];
   if (children.length > 0) {
-    out.commands = children.map((ch) => exportCommand(ch, root));
+    out.commands = children
+      .map((ch) => exportCommand(ch, root))
+      .filter((ch): ch is CliSchemaExport => ch !== null);
   }
 
   return out;
@@ -63,7 +71,15 @@ function resolveSchemaNotes(node: CliSchemaExport, appKey: string): CliSchemaExp
 
 /** Returns the JSON-safe command tree (handlers omitted). */
 export function cliSchemaExport(root: CliProgram): CliSchemaExport {
-  return resolveSchemaNotes(exportCommand(root, root), root.key);
+  const exported = exportCommand(root, root);
+  if (!exported) {
+    return {
+      key: root.key,
+      description: root.description,
+      commands: exportPresentationBuiltins(root),
+    };
+  }
+  return resolveSchemaNotes(exported, root.key);
 }
 
 export function cliSchemaJson(root: CliProgram): string {

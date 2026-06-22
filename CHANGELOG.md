@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`hidden`** — boolean on commands and options; omitted from help listings, `docs schema` / `docs api`, shell completions, and MCP `tools/list`, but still parseable and invocable. Direct `-h` on a hidden command still works.
+- **`mcp bundle`** — built-in subcommand when `mcpServer.enabled` (macOS-only v1). Runs `myapp mcp bundle` to pack `dist/<key>.mcpb` from `dist/<key>`. Bare `myapp mcp` still starts the stdio server.
+- **`mcpServer.bundle`** — optional author, icon, and `longDescription` for MCP Bundle metadata.
 - **Leaf `outputSchema`** — optional JSON Schema for structured stdout; exported in `docs schema`, `docs api`, skill `reference.md`, and MCP `tools/list` (stdout not validated at runtime yet). Legacy `mcpTool.outputSchema` still works.
 - **MCP tool descriptions** — leaf `notes` are appended to `tools/list` descriptions (`{argsbarg:program}` resolved).
 

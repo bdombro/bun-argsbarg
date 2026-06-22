@@ -18,6 +18,7 @@ export type {
   CliInvocation,
   CliMcpResource,
   CliMcpServerConfig,
+  CliMcpBundleConfig,
   CliMcpToolConfig,
   CliInstallConfig,
   CliUpdateArtifact,
@@ -45,3 +46,5 @@ export {
   parseReleaseTag,
 } from "./install/gh-release-update.ts";
 export type { GhReleaseUpdateConfig, GhVersionCheckConfig } from "./install/gh-release-update.ts";
+export { generateMcpManifest, packMcpBundle, defaultMcpBundlePaths } from "./mcp/bundle.ts";
+export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";

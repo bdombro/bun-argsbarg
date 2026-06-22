@@ -5,6 +5,7 @@ flat JSON tool arguments into argv for cliInvoke.
 
 import { cliResolveNotes } from "../help.ts";
 import { collectOptionDefs } from "../parse.ts";
+import { visibleOptions } from "../hidden.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter, leafOutputSchema } from "../types.ts";
 
@@ -83,7 +84,7 @@ function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Reco
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
-  for (const opt of collectOptionDefs(root, path)) {
+  for (const opt of visibleOptions(collectOptionDefs(root, path))) {
     properties[opt.name] = optionProperty(opt);
     if (opt.required) {
       required.push(opt.name);
@@ -164,10 +165,15 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
   /** Walks the command tree and appends leaf tools. */
   function walk(cmd: CliNode, path: string[]): void {
     if (isCliLeaf(cmd)) {
-      if (cmd.key === "completion" || cmd.key === "install" || cmd.key === "mcp" || cmd.key === "version") {
+      if (
+        cmd.key === "completion" ||
+        cmd.key === "install" ||
+        cmd.key === "mcp" ||
+        cmd.key === "version"
+      ) {
         return;
       }
-      if (cmd.mcpTool?.enabled === false) {
+      if (cmd.hidden || cmd.mcpTool?.enabled === false) {
         return;
       }
       const outputSchema = leafOutputSchema(cmd);

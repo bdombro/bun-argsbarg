@@ -4,7 +4,7 @@ This module runs parsed commands, help, errors, completion, and leaf handlers.
 
 import { resolveCapabilities } from "./capabilities.ts";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
-import { cliPresentationRoot } from "./builtins/presentation.ts";
+import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import type { CliRouter } from "./types.ts";
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter } from "./types.ts";
 import { CliContext } from "./context.ts";
@@ -13,7 +13,7 @@ import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { cliValidateProgram } from "./validate.ts";
 
 function cliRootMergedWithBuiltins(program: CliProgram): CliRouter {
-  return cliPresentationRoot(program);
+  return cliParseRoot(program);
 }
 
 export async function cliRun(program: CliProgram, argv: string[] = process.argv.slice(2)): Promise<never> {
@@ -68,7 +68,7 @@ export async function cliRun(program: CliProgram, argv: string[] = process.argv.
   pr = postParseValidate(parseRoot, pr);
 
   if (pr.kind === ParseKind.Help) {
-    process.stdout.write(cliHelpRender(cliPresentationRoot(program), pr.helpPath, false));
+    process.stdout.write(cliHelpRender(cliParseRoot(program), pr.helpPath, false));
     process.exit(pr.helpExplicit ? 0 : 1);
   }
 

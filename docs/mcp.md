@@ -293,11 +293,29 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bun
 
 You should get one JSON line on stdout with `result.capabilities` and `result.serverInfo`.
 
+## MCP Bundle (`mcp bundle`)
+
+When `mcpServer.enabled` is true, **`mcp bundle`** packs a Claude Desktop **`.mcpb`** bundle (macOS-only v1):
+
+```bash
+just build
+./dist/myapp mcp bundle
+# → dist/myapp.mcpb
+```
+
+Expects the compiled binary at **`dist/<program.key>`** and writes **`dist/<program.key>.mcpb`**. Manifest metadata is generated from your schema (`mcpServerId`, tools, `requiresEnv`). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
+
+Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor / Claude Code JSON config.
+
+## Hidden commands and options
+
+Set **`hidden: true`** on a command or option to omit it from help listings, `docs schema` / `docs api`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
+
 ## Reserved names
 
 When MCP is enabled:
 
-- Do not declare a top-level command named **`completion`** — reserved for shell completions.
+- Do not declare top-level commands named **`completion`** or **`mcp`** — reserved for platform builtins.
 
 Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1).
 

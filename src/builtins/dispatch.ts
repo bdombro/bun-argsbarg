@@ -9,6 +9,7 @@ import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { cliPresentationRoot } from "./presentation.ts";
+import { runMcpBundle } from "../mcp/bundle.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { cliMcpServeStdio } from "../mcp.ts";
 import { cliInstall } from "../install/index.ts";
@@ -72,12 +73,22 @@ export async function dispatchBuiltin(
       process.stderr.write("MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n");
       process.exit(1);
     }
-    if (pr.path.length !== 1) {
-      process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
-      process.exit(1);
+    const sub = pr.path[1];
+    if (pr.path.length === 1 || sub === "serve") {
+      await cliMcpServeStdio(program);
+      process.exit(0);
     }
-    await cliMcpServeStdio(program);
-    process.exit(0);
+    if (pr.path.length === 2 && sub === "bundle") {
+      try {
+        runMcpBundle(program);
+      } catch (err) {
+        process.stderr.write(err instanceof Error ? err.message + "\n" : "mcp bundle failed.\n");
+        process.exit(1);
+      }
+      process.exit(0);
+    }
+    process.stderr.write("Unknown subcommand: mcp " + pr.path.slice(1).join(" ") + "\n");
+    process.exit(1);
   }
 
   if (pr.path[0] === "install") {

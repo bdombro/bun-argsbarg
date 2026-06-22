@@ -1,5 +1,7 @@
 import { type CliCapabilities, resolveCapabilities } from "../capabilities.ts";
-import type { CliFallbackMode, CliOption, CliPositional, CliProgram } from "../types.ts";
+import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "../types.ts";
+import { isCliRouter } from "../types.ts";
+import { visibleOptions } from "../hidden.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
@@ -20,13 +22,11 @@ export interface CliSchemaExport {
   positionals?: CliPositional[];
 }
 
-function exportBuiltinNode(cmd: {
-  key: string;
-  description: string;
-  notes?: string;
-  options?: CliOption[];
-  commands?: CliSchemaExport[];
-}): CliSchemaExport {
+function exportBuiltinNode(cmd: CliNode): CliSchemaExport | null {
+  if (cmd.hidden) {
+    return null;
+  }
+
   const out: CliSchemaExport = {
     key: cmd.key,
     description: cmd.description,
@@ -34,11 +34,23 @@ function exportBuiltinNode(cmd: {
   if ((cmd.notes ?? "").length > 0) {
     out.notes = cmd.notes;
   }
-  if ((cmd.options ?? []).length > 0) {
-    out.options = cmd.options;
+  const options = visibleOptions(cmd.options);
+  if (options.length > 0) {
+    out.options = options;
   }
-  if ((cmd.commands ?? []).length > 0) {
-    out.commands = (cmd.commands ?? []).map((ch) => exportBuiltinNode(ch));
+  if (isCliRouter(cmd)) {
+    if (cmd.fallbackCommand !== undefined) {
+      out.fallbackCommand = cmd.fallbackCommand;
+    }
+    if (cmd.fallbackMode !== undefined) {
+      out.fallbackMode = cmd.fallbackMode;
+    }
+    const children = cmd.commands
+      .map((ch) => exportBuiltinNode(ch))
+      .filter((ch): ch is CliSchemaExport => ch !== null);
+    if (children.length > 0) {
+      out.commands = children;
+    }
   }
   return out;
 }
@@ -47,18 +59,18 @@ function exportBuiltinNode(cmd: {
 export function exportPresentationBuiltins(program: CliProgram, caps?: CliCapabilities): CliSchemaExport[] {
   const resolved = caps ?? resolveCapabilities(program);
   const builtins: CliSchemaExport[] = [
-    exportBuiltinNode(cliBuiltinCompletionGroup(program)),
-    exportBuiltinNode(cliBuiltinVersionCommand()),
+    exportBuiltinNode(cliBuiltinCompletionGroup(program))!,
+    exportBuiltinNode(cliBuiltinVersionCommand())!,
   ];
   if (resolved.install) {
-    builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program)));
+    builtins.push(exportBuiltinNode(cliBuiltinInstallCommand(program))!);
   }
   const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
   if (docsGroup) {
-    builtins.push(exportBuiltinNode(docsGroup));
+    builtins.push(exportBuiltinNode(docsGroup)!);
   }
   if (resolved.mcp) {
-    builtins.push(exportBuiltinNode(cliBuiltinMcpCommand(program)));
+    builtins.push(exportBuiltinNode(cliBuiltinMcpCommand(program))!);
   }
   return builtins;
 }

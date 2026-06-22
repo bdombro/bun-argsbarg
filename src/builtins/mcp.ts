@@ -1,9 +1,9 @@
 import { resolveCapabilities } from "../capabilities.ts";
 import { docsEnabled } from "../docs/resolve.ts";
-import { type CliLeaf, type CliProgram } from "../types.ts";
+import { type CliLeaf, type CliProgram, type CliRouter, CliFallbackMode } from "../types.ts";
 
-/** Presence options for the top-level `mcp` built-in (leaf). */
-export function cliBuiltinMcpCommand(program: CliProgram): CliLeaf {
+/** Built-in `mcp` router: bare `myapp mcp` runs stdio (via hidden `serve` fallback); `mcp bundle` packs `.mcpb`. */
+export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
   const caps = resolveCapabilities(program);
   const lines = [
     "Stdio MCP server. Add to Cursor or Claude:",
@@ -18,10 +18,26 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliLeaf {
   if (docsEnabled(program)) {
     lines.push("Full setup guide: {argsbarg:program} docs mcp");
   }
+
+  const serve: CliLeaf = {
+    key: "serve",
+    hidden: true,
+    description: "Run as an MCP server over stdio for AI agents.",
+    handler: () => {},
+  };
+
+  const bundle: CliLeaf = {
+    key: "bundle",
+    description: "Pack a Claude Desktop MCP Bundle (.mcpb) from dist/<key> (macOS-only v1).",
+    handler: () => {},
+  };
+
   return {
     key: "mcp",
-    description: "Run as an MCP server over stdio for AI agents.",
+    description: "MCP server and bundle tools.",
     notes: lines.join("\n"),
-    handler: () => {},
+    fallbackCommand: "serve",
+    fallbackMode: CliFallbackMode.MissingOnly,
+    commands: [serve, bundle],
   };
 }

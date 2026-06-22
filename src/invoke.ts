@@ -6,7 +6,7 @@ process.exit so MCP tool calls can run handlers repeatedly.
 
 import { CliContext } from "./context.ts";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
-import { cliPresentationRoot } from "./builtins/presentation.ts";
+import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import { parse, postParseValidate, ParseKind } from "./parse.ts";
 import { type CliNode, type CliProgram, type CliRouter, isCliLeaf, isCliRouter } from "./types.ts";
 import { format } from "node:util";
@@ -65,7 +65,7 @@ export async function cliInvoke(root: CliProgram, argv: string[]): Promise<CliIn
       isLeafCompletionIntercept = intercept.isLeafCompletionIntercept;
     }
   } else {
-    parseRoot = cliPresentationRoot(root);
+    parseRoot = cliParseRoot(root);
   }
 
   let pr = parse(parseRoot, argv);

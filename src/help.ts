@@ -8,6 +8,7 @@ style no matter how help is reached.
 */
 
 import { CliNode, CliOption, CliOptionKind, CliPositional, CliRouter, isCliLeaf, isCliRouter } from "./types.ts";
+import { visibleOptions, visibleSubcommands } from "./hidden.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
 
@@ -372,9 +373,9 @@ function rowsForPositionals(defs: CliPositional[], color: boolean): HelpRow[] {
   return defs.map((p) => ({ label: cliPositionalLabel(p, color), description: p.description }));
 }
 
-/** Table rows for subcommands, sorted by key. */
+/** Table rows for subcommands, sorted by key (hidden commands omitted). */
 function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
-  return cmds
+  return visibleSubcommands(cmds)
     .sort((a, b) => a.key.localeCompare(b.key))
     .map((c) => ({ label: c.key, description: c.description }));
 }
@@ -420,7 +421,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
       ).join("\n"),
     );
 
-    const optBox = renderTableBox("Options", rowsForOptions(schema.options ?? [], color), hw, color);
+    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(schema.options), color), hw, color);
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
@@ -470,7 +471,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], useStderr: 
     ).join("\n"),
   );
 
-  const optBox = renderTableBox("Options", rowsForOptions(node.options ?? [], color), hw, color);
+  const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
   if (optBox.length > 0) {
     lines.push("");
     lines.push(optBox.join("\n"));

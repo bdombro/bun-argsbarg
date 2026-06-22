@@ -1,5 +1,6 @@
 import type { CliCapabilities } from "../capabilities.ts";
 import { resolveCapabilities } from "../capabilities.ts";
+import { presentationNode, visibleOptions } from "../hidden.ts";
 import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../types.ts";
 import { isCliLeaf, isCliRouter } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
@@ -8,8 +9,8 @@ import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 
-/** Built-in command nodes injected for help, schema, and completions. */
-export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
+/** All built-in command nodes for argv parsing (includes hidden builtins). */
+export function parseBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
   const builtins: CliNode[] = [
     cliBuiltinCompletionGroup(program),
     cliBuiltinVersionCommand(),
@@ -27,9 +28,44 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
   return builtins;
 }
 
+/** Built-in subtrees visible in help, schema, and completions (hidden builtins omitted). */
+export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
+  return parseBuiltins(program, caps).filter((b) => !b.hidden);
+}
+
+/**
+ * Full command tree for argv parsing, including hidden commands and builtins.
+ * Routing programs merge user commands with builtins; leaf programs wrap builtins only.
+ */
+export function cliParseRoot(program: CliProgram): CliRouter {
+  const caps = resolveCapabilities(program);
+  const builtins = parseBuiltins(program, caps);
+
+  if (isCliLeaf(program)) {
+    return {
+      key: program.key,
+      description: program.description,
+      notes: program.notes,
+      options: program.options,
+      commands: builtins,
+    };
+  }
+
+  return {
+    key: program.key,
+    description: program.description,
+    notes: program.notes,
+    options: program.options,
+    fallbackCommand: program.fallbackCommand,
+    fallbackMode: program.fallbackMode,
+    commands: [...program.commands, ...builtins],
+  };
+}
+
 /**
  * Returns a schema suitable for help display, including capability-built-in subtrees.
- * Routing programs get builtins merged; leaf programs are wrapped as a tiny router.
+ * Hidden commands and options are omitted. Routing programs get builtins merged;
+ * leaf programs are wrapped as a tiny router.
  */
 export function cliPresentationRoot(program: CliProgram): CliRouter {
   const caps = resolveCapabilities(program);
@@ -41,19 +77,23 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
       key: program.key,
       description: program.description,
       notes,
-      options: program.options,
+      options: visibleOptions(program.options),
       commands: builtins,
     };
   }
+
+  const userCommands = program.commands
+    .map((ch) => presentationNode(ch))
+    .filter((ch): ch is CliNode => ch !== null);
 
   return {
     key: program.key,
     description: program.description,
     notes,
-    options: program.options,
+    options: visibleOptions(program.options),
     fallbackCommand: program.fallbackCommand,
     fallbackMode: program.fallbackMode,
-    commands: [...program.commands, ...builtins],
+    commands: [...userCommands, ...builtins],
   };
 }
 
@@ -74,4 +114,3 @@ export function presentationRootNotes(program: CliProgram, caps: CliCapabilities
 
 /** Presentation tree may include builtin leaf stubs. */
 export type CliPresentationNode = CliNode | CliLeaf;
-
