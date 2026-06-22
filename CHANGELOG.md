@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-06-22
+
+
 ## [3.4.0] - 2026-06-22
 
 ### Added
@@ -345,7 +348,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.4.1...HEAD
+[3.4.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.1
 [3.4.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.0
 [3.3.14]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.14
 [3.3.13]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.13

@@ -57,7 +57,7 @@ function formatOutputSchemaSection(schema: Record<string, unknown>): string[] {
   return [
     "#### Output",
     "",
-    "JSON Schema for structured stdout (typically with `--json`, or via MCP when the handler emits JSON):",
+    "JSON Schema for output when/if handler emits JSON",
     "",
     "```json",
     JSON.stringify(schema, null, 2),
