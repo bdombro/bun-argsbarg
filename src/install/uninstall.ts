@@ -4,7 +4,9 @@ import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { removeMcpConfig } from "./mcp-config.ts";
-import { InstallPaths } from "./paths.ts";
+import { detectOpenCodeMcpConfigPath, removeOpenCodeMcpConfig } from "./mcp-opencode.ts";
+import { removeCodexMcpConfig } from "./mcp-codex.ts";
+import { InstallPaths, userHome } from "./paths.ts";
 import {
   wantsInstallBin,
   wantsInstallCompletions,
@@ -108,6 +110,37 @@ export function buildUninstallPlan(
         run: () => {
           removeMcpConfig(paths.claudeDesktopMcpPath, paths.mcpName, dry);
           return [paths.claudeDesktopMcpPath];
+        },
+      });
+    }
+    if (detected.opencodeMcp) {
+      const openCodePath = detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
+      actions.push({
+        summary: `opencode mcp: ${openCodePath}`,
+        message: `Removing MCP server "${paths.mcpName}" from ${openCodePath}`,
+        run: () => {
+          removeOpenCodeMcpConfig(openCodePath, paths.mcpName, dry);
+          return [openCodePath];
+        },
+      });
+    }
+    if (detected.codexMcp) {
+      actions.push({
+        summary: `codex mcp: ${paths.codexConfigPath}`,
+        message: `Removing MCP server "${paths.mcpName}" from Codex via codex mcp remove`,
+        run: () => {
+          removeCodexMcpConfig(userHome(), paths.mcpName, dry);
+          return [paths.codexConfigPath];
+        },
+      });
+    }
+    if (detected.chatGptMcp) {
+      actions.push({
+        summary: `chatgpt desktop mcp: ${paths.chatGptMcpPath}`,
+        message: `Removing MCP server "${paths.mcpName}" from ${paths.chatGptMcpPath}`,
+        run: () => {
+          removeMcpConfig(paths.chatGptMcpPath, paths.mcpName, dry);
+          return [paths.chatGptMcpPath];
         },
       });
     }

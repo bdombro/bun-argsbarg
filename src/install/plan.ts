@@ -6,7 +6,20 @@ import { installBinary } from "./binary.ts";
 import { installCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { expectedMcpEntry, mergeMcpConfig } from "./mcp-config.ts";
-import { InstallPaths, userHome, claudeDesktopPresent } from "./paths.ts";
+import {
+  checkCodexMcpConflict,
+  codexMcpHasServer,
+  codexOnPath,
+  mergeCodexMcpConfig,
+  removeCodexMcpConfig,
+} from "./mcp-codex.ts";
+import {
+  checkOpenCodeMcpConflict,
+  expectedOpenCodeMcpEntry,
+  mergeOpenCodeMcpConfig,
+  opencodePresent,
+} from "./mcp-opencode.ts";
+import { InstallPaths, userHome, chatGptDesktopPresent, claudeDesktopPresent } from "./paths.ts";
 import { detectShells } from "./shell.ts";
 
 export interface InstallOpts {
@@ -34,7 +47,10 @@ export type InstallActionKind =
   | "claude-skill"
   | "cursor-mcp"
   | "claude-mcp"
-  | "claude-desktop-mcp";
+  | "claude-desktop-mcp"
+  | "opencode-mcp"
+  | "codex-mcp"
+  | "chatgpt-desktop-mcp";
 
 export interface InstallAction {
   kind: InstallActionKind;
@@ -164,6 +180,40 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
         },
       });
     }
+    if (opencodePresent(userHome())) {
+      const openCodeEntry = expectedOpenCodeMcpEntry(root);
+      actions.push({
+        kind: "opencode-mcp",
+        summary: `opencode mcp: ${paths.opencodeMcpPath} (server "${paths.mcpName}")`,
+        message: `Merging MCP server "${paths.mcpName}" into ${paths.opencodeMcpPath}`,
+        run: () => {
+          mergeOpenCodeMcpConfig(paths.opencodeMcpPath, paths.mcpName, openCodeEntry, dry);
+          return [paths.opencodeMcpPath];
+        },
+      });
+    }
+    if (codexOnPath()) {
+      actions.push({
+        kind: "codex-mcp",
+        summary: `codex mcp: ${paths.codexConfigPath} (server "${paths.mcpName}")`,
+        message: `Registering MCP server "${paths.mcpName}" via codex mcp add`,
+        run: () => {
+          const configPath = mergeCodexMcpConfig(userHome(), paths.mcpName, entry, dry, !!opts.yes);
+          return [configPath];
+        },
+      });
+    }
+    if (chatGptDesktopPresent(userHome(), paths.chatGptMcpPath)) {
+      actions.push({
+        kind: "chatgpt-desktop-mcp",
+        summary: `chatgpt desktop mcp: ${paths.chatGptMcpPath} (server "${paths.mcpName}")`,
+        message: `Merging MCP server "${paths.mcpName}" into ${paths.chatGptMcpPath}`,
+        run: () => {
+          mergeMcpConfig(paths.chatGptMcpPath, paths.mcpName, entry, dry);
+          return [paths.chatGptMcpPath];
+        },
+      });
+    }
   }
 
   return actions;
@@ -177,7 +227,12 @@ export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: Ins
     completions: detected.bashCompletion || detected.zshCompletion || detected.fishCompletion,
     skill: detected.cursorSkill || detected.claudeSkill,
     mcp:
-      (detected.cursorMcp || detected.claudeMcp || detected.claudeDesktopMcp) &&
+      (detected.cursorMcp ||
+        detected.claudeMcp ||
+        detected.claudeDesktopMcp ||
+        detected.opencodeMcp ||
+        detected.codexMcp ||
+        detected.chatGptMcp) &&
       resolveCapabilities(root).mcp,
     dry: opts.dry,
   };
@@ -202,6 +257,12 @@ export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: Ins
         return detected.claudeMcp;
       case "claude-desktop-mcp":
         return detected.claudeDesktopMcp;
+      case "opencode-mcp":
+        return detected.opencodeMcp;
+      case "codex-mcp":
+        return detected.codexMcp;
+      case "chatgpt-desktop-mcp":
+        return detected.chatGptMcp;
       default:
         return false;
     }

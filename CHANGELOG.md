@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`install --mcp`** — OpenCode: merges local MCP entry into `~/.config/opencode` config (`mcp` key, OpenCode `type: "local"` format).
+- **`install --mcp`** — Codex: runs `codex mcp add` when `codex` is on PATH.
+- **`install --mcp`** — ChatGPT desktop: merges into `chatgpt_mcp_config.json` when ChatGPT app data exists.
+
+### Changed
+
+- **`docs mcp`** — Codex/ChatGPT guidance: Connectors for web (remote MCP); gated desktop JSON auto-install.
+
 ## [3.4.2] - 2026-06-22
 
 ### Added

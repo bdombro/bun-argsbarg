@@ -36,6 +36,9 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
     if (status.cursorMcp) json.cursorMcp = status.cursorMcp;
     if (status.claudeMcp) json.claudeMcp = status.claudeMcp;
     if (status.claudeDesktopMcp) json.claudeDesktopMcp = status.claudeDesktopMcp;
+    if (status.opencodeMcp) json.opencodeMcp = status.opencodeMcp;
+    if (status.codexMcp) json.codexMcp = status.codexMcp;
+    if (status.chatGptMcp) json.chatGptMcp = status.chatGptMcp;
     process.stdout.write(JSON.stringify(json, null, 2) + "\n");
     return;
   }
@@ -51,6 +54,9 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
     ["cursor mcp", status.cursorMcp],
     ["claude code mcp", status.claudeMcp],
     ["claude desktop mcp", status.claudeDesktopMcp],
+    ["opencode mcp", status.opencodeMcp],
+    ["codex mcp", status.codexMcp],
+    ["chatgpt desktop mcp", status.chatGptMcp],
   ];
   let any = false;
   for (const [label, value] of lines) {

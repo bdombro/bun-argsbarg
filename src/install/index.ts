@@ -3,13 +3,15 @@ import { resolveCapabilities } from "../capabilities.ts";
 import { CliProgram } from "../types.ts";
 import { cliSkillInstall } from "../skill/install.ts";
 import { checkMcpConflict, expectedMcpEntry } from "./mcp-config.ts";
+import { checkCodexMcpConflict } from "./mcp-codex.ts";
+import { checkOpenCodeMcpConflict, expectedOpenCodeMcpEntry } from "./mcp-opencode.ts";
 import {
   buildInstallPlan,
   buildUpdatePlan,
   type InstallAction,
   type InstallOpts,
 } from "./plan.ts";
-import { resolveInstallPaths } from "./paths.ts";
+import { resolveInstallPaths, userHome } from "./paths.ts";
 import { installErr, installInfo, installOut, printInstallStatus } from "./status.ts";
 import { buildUninstallPlan, uninstallSkillDir, type UninstallAction } from "./uninstall.ts";
 import { cliUpdate } from "./update.ts";
@@ -150,12 +152,26 @@ export async function runInstallMutation(
 
   if (!opts.uninstall && resolveCapabilities(root).mcp && (opts.all || opts.mcp)) {
     const entry = expectedMcpEntry(root);
+    const openCodeEntry = expectedOpenCodeMcpEntry(root);
     const yes = !!opts.yes;
-    for (const p of [paths.cursorMcpPath, paths.claudeMcpPath, paths.claudeDesktopMcpPath]) {
+    for (const p of [
+      paths.cursorMcpPath,
+      paths.claudeMcpPath,
+      paths.claudeDesktopMcpPath,
+      paths.chatGptMcpPath,
+    ]) {
       const conflict = checkMcpConflict(p, paths.mcpName, entry, yes);
       if (conflict) {
         throw new Error(conflict);
       }
+    }
+    const openCodeConflict = checkOpenCodeMcpConflict(paths.opencodeMcpPath, paths.mcpName, openCodeEntry, yes);
+    if (openCodeConflict) {
+      throw new Error(openCodeConflict);
+    }
+    const codexConflict = checkCodexMcpConflict(userHome(), paths.mcpName, entry, yes);
+    if (codexConflict) {
+      throw new Error(codexConflict);
     }
   }
 

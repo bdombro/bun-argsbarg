@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { CliProgram } from "../types.ts";
 import { sanitizeToolSegment, mcpServerId } from "../mcp/tools.ts";
+import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
 export interface InstallPaths {
   bindir: string;
@@ -15,6 +16,9 @@ export interface InstallPaths {
   cursorMcpPath: string;
   claudeMcpPath: string;
   claudeDesktopMcpPath: string;
+  opencodeMcpPath: string;
+  chatGptMcpPath: string;
+  codexConfigPath: string;
   bashRc: string;
   zshRc: string;
   mcpName: string;
@@ -63,6 +67,24 @@ export function claudeDesktopPresent(home: string, configPath: string): boolean 
   return existsSync(configPath) || existsSync(dirname(configPath));
 }
 
+/** Resolves ChatGPT desktop `chatgpt_mcp_config.json` for the current OS. */
+export function resolveChatGptMcpPath(home: string): string {
+  if (process.platform === "darwin") {
+    return join(home, "Library", "Application Support", "ChatGPT", "chatgpt_mcp_config.json");
+  }
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA ?? join(home, "AppData", "Roaming");
+    return join(appData, "OpenAI", "ChatGPT", "chatgpt_mcp_config.json");
+  }
+  const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
+  return join(xdgConfig, "ChatGPT", "chatgpt_mcp_config.json");
+}
+
+/** True when ChatGPT desktop app data exists (config file or app support directory). */
+export function chatGptDesktopPresent(home: string, configPath: string): boolean {
+  return existsSync(configPath) || existsSync(dirname(configPath));
+}
+
 /** Resolves all install artifact paths for a program root. */
 export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string }): InstallPaths {
   const home = userHome();
@@ -71,6 +93,7 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
   const skillDirName = sanitizeToolSegment(root.key);
   const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
   const claudeDesktopMcpPath = resolveClaudeDesktopMcpPath(home);
+  const chatGptMcpPath = resolveChatGptMcpPath(home);
 
   return {
     bindir,
@@ -83,6 +106,9 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
     cursorMcpPath: join(home, ".cursor", "mcp.json"),
     claudeMcpPath: join(home, ".claude.json"),
     claudeDesktopMcpPath,
+    opencodeMcpPath: resolveOpenCodeConfigPathForInstall(home),
+    chatGptMcpPath,
+    codexConfigPath: join(home, ".codex", "config.toml"),
     bashRc: join(home, ".bashrc"),
     zshRc: join(home, ".zshrc"),
     mcpName: mcpServerId(root),

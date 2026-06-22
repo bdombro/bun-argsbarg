@@ -75,6 +75,50 @@ Use your real binary or script path. For a compiled CLI, `command` can be the in
 
 Restart Claude Desktop after config changes. You can also install a **`.mcpb`** bundle via **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
 
+### OpenCode
+
+When `~/.config/opencode` exists, **`install --mcp`** merges a local server under the top-level **`mcp`** key (not `mcpServers`):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "myapp": {
+      "type": "local",
+      "command": ["myapp", "mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+OpenCode reads `opencode.jsonc`, `opencode.json`, or `config.json` in that directory. Argsbarg updates the first existing file, or creates `config.json`. JSON-with-comments (`.jsonc`) is not auto-edited — add the block manually or use a `.json` config file.
+
+### OpenAI Codex
+
+When **`codex`** is on PATH, **`install --mcp`** runs `codex mcp add <server> -- <binary> mcp`, which writes **`~/.codex/config.toml`**. Otherwise add manually:
+
+```toml
+[mcp_servers.myapp]
+command = "myapp"
+args = ["mcp"]
+```
+
+Use **`codex mcp`** to list/add/remove servers, or **Settings → MCP → Open config.toml** in the Codex app. CLI and IDE extension share the same file.
+
+### ChatGPT
+
+**Web / Connectors (OpenAI’s documented path)** — **Settings → Connectors → Developer mode** with a **remote HTTPS MCP URL**. ChatGPT does not spawn local stdio binaries; bridge and tunnel local servers when needed.
+
+**Desktop JSON (gated auto-install)** — when ChatGPT app data exists, **`install --mcp`** also merges `mcpServers` into:
+
+| Platform | Path |
+| --- | --- |
+| macOS | `~/Library/Application Support/ChatGPT/chatgpt_mcp_config.json` |
+| Windows | `%APPDATA%\OpenAI\ChatGPT\chatgpt_mcp_config.json` |
+
+Local JSON support varies by desktop build. Prefer **Connectors** for ChatGPT web or when tools do not appear after install.
+
 ### Other MCP hosts
 
 Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
@@ -321,7 +365,7 @@ just build
 
 Expects the compiled binary at **`dist/<program.key>`** and writes **`dist/<program.key>.mcpb`**. Manifest metadata is generated from your schema (`mcpServerId`, tools, `requiresEnv`). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
 
-Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor, Claude Code, and Claude Desktop JSON config.
+Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
 
 ## Hidden commands and options
 

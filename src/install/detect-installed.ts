@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { InstallPaths } from "./paths.ts";
+import { InstallPaths, userHome } from "./paths.ts";
+import { detectOpenCodeMcpConfigPath } from "./mcp-opencode.ts";
+import { codexMcpHasServer } from "./mcp-codex.ts";
 
 export interface InstalledArtifacts {
   binary: boolean;
@@ -11,6 +13,9 @@ export interface InstalledArtifacts {
   cursorMcp: boolean;
   claudeMcp: boolean;
   claudeDesktopMcp: boolean;
+  opencodeMcp: boolean;
+  codexMcp: boolean;
+  chatGptMcp: boolean;
   bashRcPath: boolean;
   zshRcFpath: boolean;
 }
@@ -37,6 +42,9 @@ export function detectInstalledArtifacts(paths: InstallPaths): InstalledArtifact
     cursorMcp: mcpConfigHasServer(paths.cursorMcpPath, paths.mcpName),
     claudeMcp: mcpConfigHasServer(paths.claudeMcpPath, paths.mcpName),
     claudeDesktopMcp: mcpConfigHasServer(paths.claudeDesktopMcpPath, paths.mcpName),
+    opencodeMcp: detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) !== undefined,
+    codexMcp: codexMcpHasServer(userHome(), paths.mcpName),
+    chatGptMcp: mcpConfigHasServer(paths.chatGptMcpPath, paths.mcpName),
     bashRcPath: false,
     zshRcFpath: false,
   };
@@ -52,6 +60,9 @@ export interface InstallStatus {
   cursorMcp?: string;
   claudeMcp?: string;
   claudeDesktopMcp?: string;
+  opencodeMcp?: string;
+  codexMcp?: string;
+  chatGptMcp?: string;
 }
 
 /** Builds a status inventory from detected artifacts. */
@@ -67,6 +78,16 @@ export function buildInstallStatus(paths: InstallPaths, detected: InstalledArtif
   if (detected.claudeMcp) status.claudeMcp = `${paths.claudeMcpPath} (server "${paths.mcpName}")`;
   if (detected.claudeDesktopMcp) {
     status.claudeDesktopMcp = `${paths.claudeDesktopMcpPath} (server "${paths.mcpName}")`;
+  }
+  if (detected.opencodeMcp) {
+    const openCodePath = detectOpenCodeMcpConfigPath(userHome(), paths.mcpName) ?? paths.opencodeMcpPath;
+    status.opencodeMcp = `${openCodePath} (server "${paths.mcpName}")`;
+  }
+  if (detected.codexMcp) {
+    status.codexMcp = `${paths.codexConfigPath} (server "${paths.mcpName}")`;
+  }
+  if (detected.chatGptMcp) {
+    status.chatGptMcp = `${paths.chatGptMcpPath} (server "${paths.mcpName}")`;
   }
   return status;
 }

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { CliProgram } from "../types.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths, resolveClaudeDesktopMcpPath } from "./paths.ts";
+import { opencodeConfigDir } from "./mcp-opencode.ts";
 import { buildInstallPlan } from "./plan.ts";
 import { buildUninstallPlan } from "./uninstall.ts";
 import { printInstallStatus } from "./status.ts";
@@ -21,15 +22,21 @@ const fixture: CliProgram = {
 let home: string;
 let prevHome: string | undefined;
 
+let prevXdg: string | undefined;
+
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), "argsbarg-install-"));
   prevHome = process.env.HOME;
+  prevXdg = process.env.XDG_CONFIG_HOME;
   process.env.HOME = home;
+  delete process.env.XDG_CONFIG_HOME;
 });
 
 afterEach(() => {
   if (prevHome === undefined) delete process.env.HOME;
   else process.env.HOME = prevHome;
+  if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+  else process.env.XDG_CONFIG_HOME = prevXdg;
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -93,6 +100,22 @@ describe("install plan", () => {
     const paths = resolveInstallPaths(fixture, {});
     const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
     expect(plan.some((a) => a.kind === "claude-desktop-mcp")).toBe(false);
+  });
+
+  test("buildInstallPlan --mcp includes opencode when config dir exists", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    mkdirSync(opencodeConfigDir(home), { recursive: true });
+    const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
+    expect(plan.some((a) => a.kind === "opencode-mcp")).toBe(true);
+  });
+
+  test("buildInstallPlan --mcp includes chatgpt when app data exists", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    if (process.platform === "darwin") {
+      mkdirSync(join(home, "Library", "Application Support", "ChatGPT"), { recursive: true });
+      const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
+      expect(plan.some((a) => a.kind === "chatgpt-desktop-mcp")).toBe(true);
+    }
   });
 });
 

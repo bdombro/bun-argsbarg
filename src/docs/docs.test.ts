@@ -199,6 +199,11 @@ test("generateMcpGuide includes schema URI and install targets", () => {
   expect(guide).toContain("myapp://schema");
   expect(guide).toContain("~/.cursor/mcp.json");
   expect(guide).toContain("claude_desktop_config.json");
+  expect(guide).toContain("## Installation");
+  expect(guide).toContain("## Running directly");
+  expect(guide).toContain("install --bin");
+  expect(guide).toContain("OpenAI Codex");
+  expect(guide).toContain("ChatGPT");
 });
 
 test("docs --save writes topic file", async () => {
