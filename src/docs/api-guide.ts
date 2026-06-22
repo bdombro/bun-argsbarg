@@ -52,6 +52,20 @@ function formatNotesBlockquote(notes: string, appKey: string): string {
     .join("\n");
 }
 
+/** Markdown section for leaf outputSchema (docs api / skill reference). */
+function formatOutputSchemaSection(schema: Record<string, unknown>): string[] {
+  return [
+    "#### Output",
+    "",
+    "JSON Schema for structured stdout (typically with `--json`, or via MCP when the handler emits JSON):",
+    "",
+    "```json",
+    JSON.stringify(schema, null, 2),
+    "```",
+    "",
+  ];
+}
+
 /** Fallback routing note when present on a router node. */
 function fallbackLine(node: CliSchemaExport): string | null {
   if (node.fallbackCommand === undefined) {
@@ -101,6 +115,10 @@ function renderCommandNode(
       lines.push(formatPositionalRow(p));
     }
     lines.push("");
+  }
+
+  if (node.outputSchema !== undefined) {
+    lines.push(...formatOutputSchemaSection(node.outputSchema));
   }
 
   const children = node.commands ?? [];

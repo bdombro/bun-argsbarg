@@ -103,7 +103,7 @@ Tool names are derived from the command path, with each segment sanitized (non-a
 
 ### Tool descriptions
 
-Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. Tool arguments are defined in `inputSchema` (options and positionals with their descriptions). `mcpTool.requiresEnv` is appended as `[requires env: …]`.
+Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. Leaf **`notes`** are appended after a blank line (with `{argsbarg:program}` resolved). Tool arguments are defined in `inputSchema` (options and positionals with their descriptions). `mcpTool.requiresEnv` is appended as `[requires env: …]` on auto-generated descriptions.
 
 | CLI path | MCP `description` (example) |
 | --- | --- |
@@ -137,6 +137,8 @@ mcpTool: {
   requiresEnv: ["API_TOKEN", "DATABASE_URL"],
 }
 ```
+
+Set **`outputSchema` on the leaf** (not under `mcpTool`) — see [cli-program.md — Structured stdout](cli-program.md#structured-stdout).
 
 - **`description`** — when set, replaces the auto-generated `path — help` description entirely (no automatic `requiresEnv` suffix; mention vars in your text if needed).
 - **`requiresEnv`** — on auto-generated descriptions, appended as `[requires env: …]`. Enforced at `tools/call` time before the handler runs. Empty or unset env values count as missing.
@@ -276,7 +278,7 @@ mcpServer: {
 | `initialize` | Returns capabilities (`tools`, `resources`) and `serverInfo`. |
 | `notifications/initialized` | Acknowledged; no response (notification). |
 | `ping` | Returns `{}`. |
-| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`. |
+| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and optional `outputSchema`. |
 | `tools/call` | Runs a leaf handler; params: `name`, `arguments` (object). |
 | `resources/list` | Lists schema + custom resources. |
 | `resources/read` | Returns resource body; params: `uri`. |

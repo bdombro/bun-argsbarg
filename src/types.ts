@@ -148,6 +148,10 @@ export interface CliMcpToolConfig {
    * Empty string counts as absent.
    */
   requiresEnv?: string[];
+  /**
+   * @deprecated Set `outputSchema` on the leaf command instead.
+   */
+  outputSchema?: Record<string, unknown>;
 }
 
 /**
@@ -227,6 +231,11 @@ export type CliLeaf = CliNodeBase & {
   handler: CliHandler;
   /** Positional argument definitions. */
   positionals?: CliPositional[];
+  /**
+   * JSON Schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
+   * Exported in `docs schema`, `docs api`, and MCP `tools/list`; not validated at runtime yet.
+   */
+  outputSchema?: Record<string, unknown>;
   /** Per-tool MCP exposure and metadata. */
   mcpTool?: CliMcpToolConfig;
 };
@@ -271,6 +280,11 @@ export function isCliLeaf(node: CliNode): node is CliLeaf {
 /** True when the node is a router (has subcommands). */
 export function isCliRouter(node: CliNode): node is CliRouter {
   return "commands" in node && Array.isArray(node.commands);
+}
+
+/** Resolves structured stdout schema from the leaf (prefers leaf field over legacy `mcpTool.outputSchema`). */
+export function leafOutputSchema(leaf: CliLeaf): Record<string, unknown> | undefined {
+  return leaf.outputSchema ?? leaf.mcpTool?.outputSchema;
 }
 
 /**

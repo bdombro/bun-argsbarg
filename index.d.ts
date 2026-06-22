@@ -163,6 +163,10 @@ export interface CliMcpToolConfig {
 	 * Empty string counts as absent.
 	 */
 	requiresEnv?: string[];
+	/**
+	 * @deprecated Set `outputSchema` on the leaf command instead.
+	 */
+	outputSchema?: Record<string, unknown>;
 }
 /**
  * Opt-out and defaults for the `install` built-in (program root only).
@@ -237,6 +241,11 @@ export type CliLeaf = CliNodeBase & {
 	handler: CliHandler;
 	/** Positional argument definitions. */
 	positionals?: CliPositional[];
+	/**
+	 * JSON Schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
+	 * Exported in `docs schema`, `docs api`, and MCP `tools/list`; not validated at runtime yet.
+	 */
+	outputSchema?: Record<string, unknown>;
 	/** Per-tool MCP exposure and metadata. */
 	mcpTool?: CliMcpToolConfig;
 };

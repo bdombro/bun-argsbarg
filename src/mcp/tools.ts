@@ -3,9 +3,10 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for cliInvoke.
 */
 
+import { cliResolveNotes } from "../help.ts";
 import { collectOptionDefs } from "../parse.ts";
 import { cliSchemaJson } from "../schema.ts";
-import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter } from "../types.ts";
+import { CliProgram, CliLeaf, CliNode, CliOption, CliOptionKind, CliPositional, isCliLeaf, isCliRouter, leafOutputSchema } from "../types.ts";
 
 /** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
 export function defaultMcpSchemaUri(mcpId: string): string {
@@ -34,6 +35,8 @@ export interface McpToolDef {
   leaf: CliLeaf;
   /** JSON Schema for tools/call arguments. */
   inputSchema: Record<string, unknown>;
+  /** JSON Schema for structured tool results when set on the leaf `mcpTool`. */
+  outputSchema?: Record<string, unknown>;
 }
 
 /** Builds MCP tool description: "{cli path} — {description}". */
@@ -106,15 +109,21 @@ function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Reco
   return schema;
 }
 
-/** Resolves MCP tool description with optional override and requiresEnv suffix. */
+/** Resolves MCP tool description with optional override, requiresEnv suffix, and leaf notes. */
 function resolveToolDescription(root: CliProgram, path: string[], leaf: CliLeaf): string {
+  let desc: string;
   if (leaf.mcpTool?.description) {
-    return leaf.mcpTool.description;
+    desc = leaf.mcpTool.description;
+  } else {
+    desc = mcpToolDescription(path, root.key, leaf.description);
+    const env = leaf.mcpTool?.requiresEnv;
+    if (env && env.length > 0) {
+      desc += ` [requires env: ${env.join(", ")}]`;
+    }
   }
-  let desc = mcpToolDescription(path, root.key, leaf.description);
-  const env = leaf.mcpTool?.requiresEnv;
-  if (env && env.length > 0) {
-    desc += ` [requires env: ${env.join(", ")}]`;
+  const notes = (leaf.notes ?? "").trim();
+  if (notes.length > 0) {
+    desc += `\n\n${cliResolveNotes(notes, root.key)}`;
   }
   return desc;
 }
@@ -161,12 +170,14 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
       if (cmd.mcpTool?.enabled === false) {
         return;
       }
+      const outputSchema = leafOutputSchema(cmd);
       out.push({
         name: mcpToolName(root, path),
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
         inputSchema: buildInputSchema(root, path, cmd),
+        ...(outputSchema === undefined ? {} : { outputSchema }),
       });
       return;
     }

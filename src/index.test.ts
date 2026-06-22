@@ -26,7 +26,7 @@ import { buildToolCallSuccess } from "./mcp/result.ts";
 import { generateSkillBundle } from "./skill/generate.ts";
 import { cliSkillInstall } from "./skill/install.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
-import { cliSchemaJson } from "./schema.ts";
+import { cliSchemaExport, cliSchemaJson } from "./schema.ts";
 import { cliValidateProgram } from "./validate.ts";
 import { expect, test } from "bun:test";
 
@@ -853,12 +853,186 @@ test("collectMcpTools lists user leaf commands only", () => {
   expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
 });
 
+test("collectMcpTools appends leaf notes to MCP tool description", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Notes demo.",
+    mcpServer: { enabled: true },
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        notes: "Use `--json` for structured output.",
+        handler: () => {},
+      },
+    ],
+  });
+  const tools = collectMcpTools(root);
+  expect(tools[0]!.description).toBe("run — Run.\n\nUse `--json` for structured output.");
+});
+
+test("collectMcpTools appends notes after mcpTool.description override", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Notes demo.",
+    mcpServer: { enabled: true },
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        notes: "Operational hint.",
+        mcpTool: { description: "Custom MCP text." },
+        handler: () => {},
+      },
+    ],
+  });
+  const tools = collectMcpTools(root);
+  expect(tools[0]!.description).toBe("Custom MCP text.\n\nOperational hint.");
+});
+
+test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
+  const root = testProgram({
+    key: "myapp",
+    version: "1.0.0",
+    description: "Notes demo.",
+    mcpServer: { enabled: true },
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        notes: "See `{argsbarg:program} docs api`.",
+        handler: () => {},
+      },
+    ],
+  });
+  const tools = collectMcpTools(root);
+  expect(tools[0]!.description).toContain("See `myapp docs api`.");
+});
+
+test("cliSchemaExport includes leaf outputSchema", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Schema export demo.",
+    mcpServer: { enabled: true },
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        outputSchema: {
+          type: "object",
+          properties: { ok: { type: "boolean" } },
+        },
+        handler: () => {},
+      },
+    ],
+  });
+  const schema = cliSchemaExport(root);
+  expect(schema.commands![0]!.outputSchema).toEqual({
+    type: "object",
+    properties: { ok: { type: "boolean" } },
+  });
+});
+
+test("cliSchemaExport accepts legacy mcpTool.outputSchema", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Schema export demo.",
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        mcpTool: {
+          outputSchema: { type: "object", properties: { id: { type: "string" } } },
+        },
+        handler: () => {},
+      },
+    ],
+  });
+  expect(cliSchemaExport(root).commands![0]!.outputSchema).toEqual({
+    type: "object",
+    properties: { id: { type: "string" } },
+  });
+});
+
+test("outputSchema must be a JSON Schema object", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Bad output schema.",
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        outputSchema: [] as unknown as Record<string, unknown>,
+        handler: () => {},
+      },
+    ],
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/outputSchema must be a JSON Schema object/);
+});
+
+test("outputSchema cannot be set on both leaf and mcpTool", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Duplicate output schema.",
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        outputSchema: { type: "object" },
+        mcpTool: { outputSchema: { type: "object" } },
+        handler: () => {},
+      },
+    ],
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/Set outputSchema on the leaf only/);
+});
+
 test("collectMcpTools merges parent options into inputSchema", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
   const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
   expect(schema.properties.json).toBeDefined();
   expect(schema.required).toContain("path");
+});
+
+test("collectMcpTools includes outputSchema when set on leaf", () => {
+  const root = testProgram({
+    key: "app",
+    version: "1.0.0",
+    description: "Output schema demo.",
+    mcpServer: { enabled: true },
+    commands: [
+      {
+        key: "run",
+        description: "Run with JSON output.",
+        outputSchema: {
+          type: "object",
+          properties: { ok: { type: "boolean" } },
+          required: ["ok"],
+        },
+        handler: () => {},
+      },
+    ],
+  });
+  const tools = collectMcpTools(root);
+  expect(tools).toHaveLength(1);
+  expect(tools[0]!.outputSchema).toEqual({
+    type: "object",
+    properties: { ok: { type: "boolean" } },
+    required: ["ok"],
+  });
+});
+
+test("collectMcpTools omits outputSchema when leaf has none", () => {
+  const tools = collectMcpTools(nestedMcpFixture);
+  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  expect(lookup.outputSchema).toBeUndefined();
 });
 
 test("mcpToolCallToArgv builds nested lookup argv", () => {

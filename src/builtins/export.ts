@@ -11,6 +11,8 @@ export interface CliSchemaExport {
   key: string;
   description: string;
   notes?: string;
+  /** JSON Schema for structured stdout when set on the leaf `mcpTool`. */
+  outputSchema?: Record<string, unknown>;
   options?: CliOption[];
   fallbackCommand?: string;
   fallbackMode?: CliFallbackMode;

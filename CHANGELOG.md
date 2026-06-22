@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Leaf `outputSchema`** — optional JSON Schema for structured stdout; exported in `docs schema`, `docs api`, skill `reference.md`, and MCP `tools/list` (stdout not validated at runtime yet). Legacy `mcpTool.outputSchema` still works.
+- **MCP tool descriptions** — leaf `notes` are appended to `tools/list` descriptions (`{argsbarg:program}` resolved).
+
 ## [3.3.14] - 2026-06-21
 
 ### Changed

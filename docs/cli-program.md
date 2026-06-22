@@ -113,6 +113,25 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 | `requiresEnv: [...]` | Runtime secrets; appended to MCP description and enforced at `tools/call` |
 | `description: "..."` | **Irreducible** MCP limitation (e.g. live tail / `--watch` cannot be streamed on the MCP wire yet) |
 
+### Structured stdout
+
+On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when the handler emits JSON (typically with `--json`, or via MCP on the headless path):
+
+```typescript
+{
+  key: "lookup",
+  description: "Resolve owner info.",
+  outputSchema: {
+    type: "object",
+    properties: { user: { type: "string" }, path: { type: "string" } },
+    required: ["user", "path"],
+  },
+  handler: (ctx) => { /* ... */ },
+}
+```
+
+Exported in `docs schema`, `docs api`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
+
 Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard flag names, or handlers that only work interactively — fix those instead.
 
 If help text and MCP behavior match after your fixes, **omit `mcpTool` entirely**.

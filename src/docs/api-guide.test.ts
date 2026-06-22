@@ -105,3 +105,33 @@ test("generateApiGuide resolves {argsbarg:program} in consumer notes", () => {
   const md = generateApiGuide(fixture);
   expect(md).toContain("Invoke `myapp run`.");
 });
+
+test("generateApiGuide and cliSchemaExport include leaf outputSchema", () => {
+  const fixture: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo app.",
+    commands: [
+      {
+        key: "run",
+        description: "Run.",
+        outputSchema: {
+          type: "object",
+          properties: { id: { type: "string" } },
+          required: ["id"],
+        },
+        handler: () => {},
+      },
+    ],
+  };
+  const schema = cliSchemaExport(fixture);
+  expect(schema.commands![0]!.outputSchema).toEqual({
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+  });
+  const md = generateApiGuide(fixture);
+  expect(md).toContain("#### Output");
+  expect(md).toContain('"id"');
+  expect(md).toContain('"type": "string"');
+});

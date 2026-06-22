@@ -112,6 +112,22 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (isRoot && node.mcpTool !== undefined) {
       throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
     }
+    const outputSchema = node.outputSchema;
+    const legacyOutputSchema = node.mcpTool?.outputSchema;
+    if (outputSchema !== undefined && legacyOutputSchema !== undefined) {
+      throw new CliSchemaValidationError(
+        "Set outputSchema on the leaf only, not under mcpTool",
+      );
+    }
+    const resolved = outputSchema ?? legacyOutputSchema;
+    if (
+      resolved !== undefined &&
+      (typeof resolved !== "object" || resolved === null || Array.isArray(resolved))
+    ) {
+      throw new CliSchemaValidationError(
+        "outputSchema must be a JSON Schema object (not null or an array)",
+      );
+    }
   } else {
     const rogue = node as unknown as CliLeaf;
     if (rogue.mcpTool !== undefined) {

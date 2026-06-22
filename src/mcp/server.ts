@@ -95,6 +95,7 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
+        ...(t.outputSchema === undefined ? {} : { outputSchema: t.outputSchema }),
       }));
       writeResponse({ jsonrpc: "2.0", id, result: { tools } });
       return;
