@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { CliProgram } from "../types.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
-import { resolveInstallPaths } from "./paths.ts";
+import { resolveInstallPaths, resolveClaudeDesktopMcpPath } from "./paths.ts";
 import { buildInstallPlan } from "./plan.ts";
 import { buildUninstallPlan } from "./uninstall.ts";
 import { printInstallStatus } from "./status.ts";
@@ -45,6 +45,18 @@ describe("install paths", () => {
     const paths = resolveInstallPaths(fixture, {});
     expect(paths.fishCompletion).toBe(join(xdg, "fish", "completions", "testapp.fish"));
   });
+
+  test("claude desktop mcp path on darwin", () => {
+    const prev = process.platform;
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    try {
+      expect(resolveClaudeDesktopMcpPath(home)).toBe(
+        join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
+      );
+    } finally {
+      Object.defineProperty(process, "platform", { value: prev });
+    }
+  });
 });
 
 describe("detect installed", () => {
@@ -67,6 +79,20 @@ describe("install plan", () => {
     const paths = resolveInstallPaths(fixture, {});
     const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ all: "1" }));
     expect(plan.some((a) => a.kind === "binary")).toBe(true);
+  });
+
+  test("buildInstallPlan --mcp includes claude desktop when app data exists", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    mkdirSync(join(home, "Library", "Application Support", "Claude"), { recursive: true });
+    const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
+    expect(plan.some((a) => a.kind === "claude-desktop-mcp")).toBe(process.platform === "darwin");
+    expect(plan.some((a) => a.kind === "claude-mcp")).toBe(true);
+  });
+
+  test("buildInstallPlan --mcp skips claude desktop without app data", () => {
+    const paths = resolveInstallPaths(fixture, {});
+    const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
+    expect(plan.some((a) => a.kind === "claude-desktop-mcp")).toBe(false);
   });
 });
 

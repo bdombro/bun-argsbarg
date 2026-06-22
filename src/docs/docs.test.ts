@@ -102,6 +102,8 @@ test("docs mcp when MCP enabled", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("MCP server (myapp)");
   expect(result.stdout).toContain("myapp mcp");
+  expect(result.stdout).toContain("claude_desktop_config.json");
+  expect(result.stdout).toContain("install --mcp --yes");
 });
 
 test("docs rejects unknown subcommand", async () => {
@@ -192,9 +194,11 @@ test("completions offer docs subcommands", () => {
   expect(bash).toContain("skill) echo");
 });
 
-test("generateMcpGuide includes schema URI", () => {
+test("generateMcpGuide includes schema URI and install targets", () => {
   const guide = generateMcpGuide(docsFixture(true));
   expect(guide).toContain("myapp://schema");
+  expect(guide).toContain("~/.cursor/mcp.json");
+  expect(guide).toContain("claude_desktop_config.json");
 });
 
 test("docs --save writes topic file", async () => {

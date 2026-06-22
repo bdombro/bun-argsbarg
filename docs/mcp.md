@@ -57,7 +57,23 @@ Add a server entry under `mcpServers` in your Cursor MCP config:
 }
 ```
 
-Use your real binary or script path. For a compiled CLI, `command` can be the installed binary and `args` can be `["ai", "mcp"]`.
+Use your real binary or script path. For a compiled CLI, `command` can be the installed binary and `args` can be `["mcp"]`.
+
+### Claude Code
+
+`install --mcp` merges into `~/.claude.json` under `mcpServers`.
+
+### Claude Desktop
+
+`install --mcp` also merges into Claude Desktop config when app data is present:
+
+| Platform | Path |
+| --- | --- |
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+Restart Claude Desktop after config changes. You can also install a **`.mcpb`** bundle via **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
 
 ### Other MCP hosts
 
@@ -295,7 +311,7 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 
 ## MCP Bundle (`mcp bundle`)
 
-When `mcpServer.enabled` is true, **`mcp bundle`** packs a Claude Desktop **`.mcpb`** bundle (macOS-only v1):
+When `mcpServer.enabled` is true, **`mcp bundle`** packs a Claude Desktop **`.mcpb`** bundle:
 
 ```bash
 just build
@@ -305,7 +321,7 @@ just build
 
 Expects the compiled binary at **`dist/<program.key>`** and writes **`dist/<program.key>.mcpb`**. Manifest metadata is generated from your schema (`mcpServerId`, tools, `requiresEnv`). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
 
-Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor / Claude Code JSON config.
+Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor, Claude Code, and Claude Desktop JSON config.
 
 ## Hidden commands and options
 

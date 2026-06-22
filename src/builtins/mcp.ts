@@ -6,7 +6,7 @@ import { type CliLeaf, type CliProgram, type CliRouter, CliFallbackMode } from "
 export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
   const caps = resolveCapabilities(program);
   const lines = [
-    "Stdio MCP server. Add to Cursor or Claude:",
+    "Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:",
     "",
     "  command: {argsbarg:program}",
     "  args: mcp",
@@ -28,7 +28,7 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
 
   const bundle: CliLeaf = {
     key: "bundle",
-    description: "Pack a Claude Desktop MCP Bundle (.mcpb) from dist/<key> (macOS-only v1).",
+    description: "Pack a Claude Desktop MCP Bundle (.mcpb) from dist/<key>.",
     handler: () => {},
   };
 

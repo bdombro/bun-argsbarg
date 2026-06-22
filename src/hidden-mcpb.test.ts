@@ -129,10 +129,7 @@ describe("mcp bundle", () => {
     expect(paths.outPath).toBe(join(cwd, "dist", "myapp.mcpb"));
   });
 
-  test("packMcpBundle writes zip with manifest and binary on darwin", () => {
-    if (process.platform !== "darwin") {
-      return;
-    }
+  test("packMcpBundle writes zip with manifest and binary", () => {
     const work = mkdtempSync(join(tmpdir(), "mcpb-test-"));
     try {
       const dist = join(work, "dist");

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.2] - 2026-06-22
+
+### Added
+
+- **`install --mcp`** — also merges into Claude Desktop `claude_desktop_config.json` when Claude Desktop app data is present (macOS, Windows, Linux paths).
+
+### Changed
+
+- **`docs mcp`** — generated guide documents Cursor, Claude Code, and Claude Desktop install targets and platform config paths.
+- **`mcp bundle`** — no longer macOS-only; packs `.mcpb` on any platform when the compiled binary exists.
+
 ## [3.4.1] - 2026-06-22
 
 
@@ -348,7 +359,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.4.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.4.2...HEAD
+[3.4.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.2
 [3.4.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.1
 [3.4.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.0
 [3.3.14]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.3.14

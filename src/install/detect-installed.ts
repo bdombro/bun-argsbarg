@@ -10,6 +10,7 @@ export interface InstalledArtifacts {
   claudeSkill: boolean;
   cursorMcp: boolean;
   claudeMcp: boolean;
+  claudeDesktopMcp: boolean;
   bashRcPath: boolean;
   zshRcFpath: boolean;
 }
@@ -35,6 +36,7 @@ export function detectInstalledArtifacts(paths: InstallPaths): InstalledArtifact
     claudeSkill: existsSync(paths.claudeSkillDir),
     cursorMcp: mcpConfigHasServer(paths.cursorMcpPath, paths.mcpName),
     claudeMcp: mcpConfigHasServer(paths.claudeMcpPath, paths.mcpName),
+    claudeDesktopMcp: mcpConfigHasServer(paths.claudeDesktopMcpPath, paths.mcpName),
     bashRcPath: false,
     zshRcFpath: false,
   };
@@ -49,6 +51,7 @@ export interface InstallStatus {
   claudeSkill?: string;
   cursorMcp?: string;
   claudeMcp?: string;
+  claudeDesktopMcp?: string;
 }
 
 /** Builds a status inventory from detected artifacts. */
@@ -62,5 +65,8 @@ export function buildInstallStatus(paths: InstallPaths, detected: InstalledArtif
   if (detected.claudeSkill) status.claudeSkill = paths.claudeSkillDir + "/";
   if (detected.cursorMcp) status.cursorMcp = `${paths.cursorMcpPath} (server "${paths.mcpName}")`;
   if (detected.claudeMcp) status.claudeMcp = `${paths.claudeMcpPath} (server "${paths.mcpName}")`;
+  if (detected.claudeDesktopMcp) {
+    status.claudeDesktopMcp = `${paths.claudeDesktopMcpPath} (server "${paths.mcpName}")`;
+  }
   return status;
 }

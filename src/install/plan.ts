@@ -6,7 +6,7 @@ import { installBinary } from "./binary.ts";
 import { installCompletions } from "./completions.ts";
 import { detectInstalledArtifacts } from "./detect-installed.ts";
 import { expectedMcpEntry, mergeMcpConfig } from "./mcp-config.ts";
-import { InstallPaths, userHome } from "./paths.ts";
+import { InstallPaths, userHome, claudeDesktopPresent } from "./paths.ts";
 import { detectShells } from "./shell.ts";
 
 export interface InstallOpts {
@@ -27,7 +27,14 @@ export interface InstallOpts {
   prefix?: string;
 }
 
-export type InstallActionKind = "binary" | "completions" | "cursor-skill" | "claude-skill" | "cursor-mcp" | "claude-mcp";
+export type InstallActionKind =
+  | "binary"
+  | "completions"
+  | "cursor-skill"
+  | "claude-skill"
+  | "cursor-mcp"
+  | "claude-mcp"
+  | "claude-desktop-mcp";
 
 export interface InstallAction {
   kind: InstallActionKind;
@@ -139,13 +146,24 @@ export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: In
     }
     actions.push({
       kind: "claude-mcp",
-      summary: `claude mcp: ${paths.claudeMcpPath} (server "${paths.mcpName}")`,
+      summary: `claude code mcp: ${paths.claudeMcpPath} (server "${paths.mcpName}")`,
       message: `Merging MCP server "${paths.mcpName}" into ${paths.claudeMcpPath}`,
       run: () => {
         mergeMcpConfig(paths.claudeMcpPath, paths.mcpName, entry, dry);
         return [paths.claudeMcpPath];
       },
     });
+    if (claudeDesktopPresent(userHome(), paths.claudeDesktopMcpPath)) {
+      actions.push({
+        kind: "claude-desktop-mcp",
+        summary: `claude desktop mcp: ${paths.claudeDesktopMcpPath} (server "${paths.mcpName}")`,
+        message: `Merging MCP server "${paths.mcpName}" into ${paths.claudeDesktopMcpPath}`,
+        run: () => {
+          mergeMcpConfig(paths.claudeDesktopMcpPath, paths.mcpName, entry, dry);
+          return [paths.claudeDesktopMcpPath];
+        },
+      });
+    }
   }
 
   return actions;
@@ -158,7 +176,9 @@ export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: Ins
     bin: true,
     completions: detected.bashCompletion || detected.zshCompletion || detected.fishCompletion,
     skill: detected.cursorSkill || detected.claudeSkill,
-    mcp: (detected.cursorMcp || detected.claudeMcp) && resolveCapabilities(root).mcp,
+    mcp:
+      (detected.cursorMcp || detected.claudeMcp || detected.claudeDesktopMcp) &&
+      resolveCapabilities(root).mcp,
     dry: opts.dry,
   };
   const plan = buildInstallPlan(root, paths, scoped);
@@ -180,6 +200,8 @@ export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: Ins
         return detected.cursorMcp;
       case "claude-mcp":
         return detected.claudeMcp;
+      case "claude-desktop-mcp":
+        return detected.claudeDesktopMcp;
       default:
         return false;
     }

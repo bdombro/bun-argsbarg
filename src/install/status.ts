@@ -35,6 +35,7 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
     if (status.claudeSkill) json.claudeSkill = status.claudeSkill;
     if (status.cursorMcp) json.cursorMcp = status.cursorMcp;
     if (status.claudeMcp) json.claudeMcp = status.claudeMcp;
+    if (status.claudeDesktopMcp) json.claudeDesktopMcp = status.claudeDesktopMcp;
     process.stdout.write(JSON.stringify(json, null, 2) + "\n");
     return;
   }
@@ -48,7 +49,8 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
     ["cursor skill", status.cursorSkill],
     ["claude skill", status.claudeSkill],
     ["cursor mcp", status.cursorMcp],
-    ["claude mcp", status.claudeMcp],
+    ["claude code mcp", status.claudeMcp],
+    ["claude desktop mcp", status.claudeDesktopMcp],
   ];
   let any = false;
   for (const [label, value] of lines) {

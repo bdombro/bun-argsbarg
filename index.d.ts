@@ -422,7 +422,7 @@ export interface PackMcpBundleOpts {
 }
 /**
  * Stages manifest + binary (+ optional icon) and writes a `.mcpb` ZIP.
- * macOS-only v1; requires the compiled binary to exist.
+ * Requires the compiled binary to exist.
  */
 export declare function packMcpBundle(program: CliProgram, opts?: PackMcpBundleOpts): string;
 

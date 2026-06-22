@@ -151,7 +151,7 @@ export async function runInstallMutation(
   if (!opts.uninstall && resolveCapabilities(root).mcp && (opts.all || opts.mcp)) {
     const entry = expectedMcpEntry(root);
     const yes = !!opts.yes;
-    for (const p of [paths.cursorMcpPath, paths.claudeMcpPath]) {
+    for (const p of [paths.cursorMcpPath, paths.claudeMcpPath, paths.claudeDesktopMcpPath]) {
       const conflict = checkMcpConflict(p, paths.mcpName, entry, yes);
       if (conflict) {
         throw new Error(conflict);

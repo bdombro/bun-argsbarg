@@ -31,7 +31,7 @@ myapp install --uninstall --all --yes
 | Fish completion | `--completions` | `~/.config/fish/completions/<key>.fish` |
 | Cursor skill | `--skill` | `~/.cursor/skills/<dir>/` when `~/.cursor` exists |
 | Claude skill | `--skill` | `~/.claude/skills/<dir>/` when `~/.claude` exists |
-| MCP config | `--mcp` | `~/.cursor/mcp.json` and `~/.claude.json` when MCP is enabled |
+| MCP config | `--mcp` | `~/.cursor/mcp.json` (when `~/.cursor` exists), `~/.claude.json` (Claude Code), and Claude Desktop `claude_desktop_config.json` when Claude Desktop app data exists |
 
 `--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer.enabled` is `true`) for both install and uninstall. Missing targets are skipped silently (no error if nothing is on disk or a shell/agent directory does not exist).
 

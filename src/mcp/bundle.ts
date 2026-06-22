@@ -1,6 +1,6 @@
 /*
 Packs a CLI program into an MCP Bundle (`.mcpb`) for Claude Desktop.
-macOS-only v1: expects `dist/<program.key>` as the compiled binary input.
+Expects `dist/<program.key>` as the compiled binary input.
 */
 
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -198,13 +198,9 @@ export interface PackMcpBundleOpts {
 
 /**
  * Stages manifest + binary (+ optional icon) and writes a `.mcpb` ZIP.
- * macOS-only v1; requires the compiled binary to exist.
+ * Requires the compiled binary to exist.
  */
 export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {}): string {
-  if (process.platform !== "darwin") {
-    throw new Error("mcp bundle is macOS-only in this release. Build the bundle on darwin.");
-  }
-
   const cwd = opts.cwd ?? process.cwd();
   const defaults = defaultMcpBundlePaths(program, cwd);
   const binaryPath = resolve(cwd, opts.binaryPath ?? defaults.binaryPath);

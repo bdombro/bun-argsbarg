@@ -1,5 +1,6 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { CliProgram } from "../types.ts";
 import { sanitizeToolSegment, mcpServerId } from "../mcp/tools.ts";
 
@@ -13,6 +14,7 @@ export interface InstallPaths {
   claudeSkillDir: string;
   cursorMcpPath: string;
   claudeMcpPath: string;
+  claudeDesktopMcpPath: string;
   bashRc: string;
   zshRc: string;
   mcpName: string;
@@ -43,6 +45,24 @@ export function resolveBindir(root: CliProgram, prefix?: string): string {
   return join(userHome(), ".local", "bin");
 }
 
+/** Resolves Claude Desktop `claude_desktop_config.json` for the current OS. */
+export function resolveClaudeDesktopMcpPath(home: string): string {
+  if (process.platform === "darwin") {
+    return join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json");
+  }
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA ?? join(home, "AppData", "Roaming");
+    return join(appData, "Claude", "claude_desktop_config.json");
+  }
+  const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
+  return join(xdgConfig, "Claude", "claude_desktop_config.json");
+}
+
+/** True when Claude Desktop app data exists (config file or app support directory). */
+export function claudeDesktopPresent(home: string, configPath: string): boolean {
+  return existsSync(configPath) || existsSync(dirname(configPath));
+}
+
 /** Resolves all install artifact paths for a program root. */
 export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string }): InstallPaths {
   const home = userHome();
@@ -50,6 +70,7 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
   const key = root.key;
   const skillDirName = sanitizeToolSegment(root.key);
   const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
+  const claudeDesktopMcpPath = resolveClaudeDesktopMcpPath(home);
 
   return {
     bindir,
@@ -61,6 +82,7 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
     claudeSkillDir: join(home, ".claude", "skills", skillDirName),
     cursorMcpPath: join(home, ".cursor", "mcp.json"),
     claudeMcpPath: join(home, ".claude.json"),
+    claudeDesktopMcpPath,
     bashRc: join(home, ".bashrc"),
     zshRc: join(home, ".zshrc"),
     mcpName: mcpServerId(root),

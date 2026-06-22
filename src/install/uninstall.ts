@@ -93,11 +93,21 @@ export function buildUninstallPlan(
     }
     if (detected.claudeMcp) {
       actions.push({
-        summary: `claude mcp: ${paths.claudeMcpPath}`,
+        summary: `claude code mcp: ${paths.claudeMcpPath}`,
         message: `Removing MCP server "${paths.mcpName}" from ${paths.claudeMcpPath}`,
         run: () => {
           removeMcpConfig(paths.claudeMcpPath, paths.mcpName, dry);
           return [paths.claudeMcpPath];
+        },
+      });
+    }
+    if (detected.claudeDesktopMcp) {
+      actions.push({
+        summary: `claude desktop mcp: ${paths.claudeDesktopMcpPath}`,
+        message: `Removing MCP server "${paths.mcpName}" from ${paths.claudeDesktopMcpPath}`,
+        run: () => {
+          removeMcpConfig(paths.claudeDesktopMcpPath, paths.mcpName, dry);
+          return [paths.claudeDesktopMcpPath];
         },
       });
     }
