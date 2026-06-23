@@ -195,6 +195,59 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs()
 
 Cross-field rules (e.g. `--match-remote` requires `--branch`) stay in consumer `resolve*` layers — argsbarg does not validate those.
 
+## Read flags once, resolve once
+
+For apps with **Ink + headless + MCP** (multiple surfaces per leaf), avoid scattering `ctx.hasFlag` / `ctx.stringOpt` through the handler. Use two layers:
+
+| Layer | Responsibility |
+| --- | --- |
+| **`read*Flags(ctx)`** | Read coerced values from `ctx` (`readLeafInputs()`, `durationOpt`, `commaListOpt`, shared mutator flags) into one typed struct |
+| **`resolve*Input(flags)`** | Cross-field validation and defaults; returns `{ ok, input }` or `{ ok: false, error }` |
+
+The handler calls **`read*Flags` once**, passes the struct to **`resolve*Input`**, then branches to Ink, headless, or MCP with the same resolved input.
+
+**Shared reads** — when many leaves share options (`yes`, `dry-run`, `json`), one app-level helper (e.g. `readMutatingFlags(ctx)`) plus per-command extensions:
+
+```typescript
+// cli/flags.ts
+export function readMutatingFlags(ctx: CliContext) {
+  const dryRun = ctx.hasFlag("dry-run");
+  return {
+    dryRun,
+    yes: ctx.hasFlag("yes"),
+    explicitJson: wantsExplicitJson(ctx, ctx.hasFlag("json")),
+  };
+}
+
+// commands/reset/resolve.ts
+export function readResetFlags(ctx: CliContext) {
+  return {
+    ...readMutatingFlags(ctx),
+    env: ctx.args[0],
+    force: ctx.hasFlag("force"),
+    services: ctx.commaListOpt("services"),
+  };
+}
+
+export function resolveResetInput(flags: ReturnType<typeof readResetFlags>) {
+  if (!flags.env) return { ok: false, error: "…" };
+  return { ok: true, input: { env: flags.env, force: flags.force, services: flags.services } };
+}
+
+// command handler
+handler: async (ctx) => {
+  const flags = readResetFlags(ctx);
+  await dispatchMutatingCommand({
+    dryRun: flags.dryRun,
+    headless: shouldRunHeadlessWithYes(ctx, { yes: flags.yes, hasRequiredArgs: !!flags.env, dryRun: flags.dryRun }),
+    resolve: () => resolveResetInput(flags),
+    /* … */
+  });
+};
+```
+
+**JSON-only CLIs** — a single `readCommandOptions(ctx)` wrapping `readLeafInputs()` per shared option set is usually enough; full `resolve*` layering is optional.
+
 ## Headless-capable handlers
 
 Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:

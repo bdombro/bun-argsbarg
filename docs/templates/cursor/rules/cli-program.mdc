@@ -19,5 +19,6 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 - Interactive leaves: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
 - String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
 - Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
+- Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
 
 **App-specific conventions:** add below or in a separate `.cursor/rules/` file (shared flags path, Ink vs JSON-only, etc.).
