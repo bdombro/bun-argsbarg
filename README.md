@@ -155,7 +155,7 @@ mkdir -p .cursor/rules
 cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
 ```
 
-Add app-specific conventions in a second rule if needed. Full guide: **[docs/cli-program.md](docs/cli-program.md)**.
+Add app-specific conventions in a second rule if needed. Documentation map: **[docs/README.md](docs/README.md)**. Authoring guide: **[docs/cli-program.md](docs/cli-program.md)**.
 
 
 ## How it works
@@ -214,6 +214,7 @@ Check the `examples/` directory for full working scripts:
 | --- | --- | --- |
 | `ArgsBargMinimal` | `examples/minimal.ts` | String + presence flags, `MissingOrUnknown` fallback. |
 | `ArgsBargNested` | `examples/nested.ts` | Nested command tree, positional tails, async handlers. |
+| `ArgsBargFormats` | `examples/formats.ts` | `CliValueFormat`, `default`, `readLeafInputs()`. |
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -225,6 +226,8 @@ minimal.ts hello --name world
 eval "$(nested.ts completion zsh)"
 nested.ts stat owner lookup -u alice ./README.md
 nested.ts read ./README.md
+
+bun ./examples/formats.ts run --tags demo,docs --on 2026-06-22
 ```
 
 
@@ -238,7 +241,8 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `CliProgram`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
 | `CliOptionKind`, `CliValueFormat`, `CliFallbackMode` | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior. |
 | `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
-| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.readLeafInputs`, `ctx.invocation`, …). |
+| `CliContext` | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.readLeafInputs`, `ctx.invocation`, …). |
+| `CliLeafInputs` | Record type returned by `readLeafInputs()` — coerced option/positional values keyed by schema name. |
 | `cliRun(root, [argv])` | Validate, parse argv, dispatch, exit. |
 | `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |

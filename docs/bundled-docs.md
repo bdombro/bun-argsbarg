@@ -2,6 +2,19 @@
 
 ArgsBarg can expose bundled markdown topics as the built-in `docs` command group. Opt in on the program root with `docs: { enabled: true, topics: { ... } }`.
 
+## Framework docs vs your app's docgen
+
+Two documentation layers often coexist in a consumer repo:
+
+| Layer | Contents | How agents/humans get it |
+| --- | --- | --- |
+| **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wire via [Cursor rule](templates/cursor/rules/cli-program.mdc) or `AGENTS.md` |
+| **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs api`, `docs schema`, `docs mcp` — save with `--save` to `./docs/` |
+
+Do not confuse them: editing `./docs/api.md` after docgen updates **your** app reference; it does not change argsbarg's framework guides. When MCP behavior changes (e.g. varargs arrays in 3.6+), update consumer `docs/mcp.md` via **`myapp docs mcp --save`** and bump the `argsbarg` dependency.
+
+See [docs/README.md](README.md) for the full documentation map.
+
 ## Quick start
 
 ```typescript

@@ -2,6 +2,8 @@
 
 ArgsBarg turns your schema into help, shell completions, MCP tools, and agent skills. **The same `description` fields you write for humans are the agent contract** for basic apps.
 
+**Documentation map:** [docs/README.md](README.md) — which guide to read for MCP, install, consumer docgen, and Cursor setup.
+
 ## Minimal app (MCP is free)
 
 ```typescript
@@ -193,6 +195,26 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs()
 // duration → number (ms); comma-list → string[]; presence → boolean; number → number
 ```
 
+**`CliLeafInputs`** — return type of `readLeafInputs()` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
+
+| Schema | Value in `CliLeafInputs` |
+| --- | --- |
+| Presence | `boolean` |
+| Number | `number` or `undefined` if omitted |
+| String (plain) | `string` or `undefined` |
+| `format: duration` | `number` (milliseconds) |
+| `format: comma-list` | `string[]` |
+| `format: date` | `string` (`YYYY-MM-DD`) |
+| `format: date-time` | `string` (normalized UTC ISO) |
+| Single positional | `string` or `undefined` |
+| Varargs positional | `string[]` or `undefined` |
+
+Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `readLeafInputs()` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `readLeafInputs()` for coerced values.
+
+`CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.
+
+See [examples/formats.ts](../examples/formats.ts) for a runnable demo.
+
 Cross-field rules (e.g. `--match-remote` requires `--branch`) stay in consumer `resolve*` layers — argsbarg does not validate those.
 
 ## Read flags once, resolve once
@@ -247,6 +269,30 @@ handler: async (ctx) => {
 ```
 
 **JSON-only CLIs** — a single `readCommandOptions(ctx)` wrapping `readLeafInputs()` per shared option set is usually enough; full `resolve*` layering is optional.
+
+## Upgrading to 3.6+
+
+### MCP varargs (breaking)
+
+Varargs positionals (`argMax: 0`) must be a **JSON array** in `tools/call` — comma-separated strings are no longer accepted.
+
+```json
+// before (removed)
+{ "uids": "a,b,c" }
+
+// after
+{ "uids": ["a", "b", "c"] }
+```
+
+CLI argv is unchanged: space-separated words. Use `format: comma-list` on an **option** when a single flag should accept `a,b` or `["a","b"]` over MCP.
+
+### Value formats (optional)
+
+Add `format`, `default`, or `pattern` on string **options**; read with `ctx.durationOpt`, `ctx.commaListOpt`, `ctx.readLeafInputs()`, etc. Replace hand-rolled `split(",")` / `parseDurationMs` try/catch where the schema can declare the shape.
+
+### Handler layering (optional)
+
+Ink + headless + MCP apps benefit from `read*Flags(ctx)` + `resolve*Input(flags)` — see above.
 
 ## Headless-capable handlers
 
@@ -350,6 +396,8 @@ The template is ~25 lines: when to read which doc, plus hard rules agents often 
 
 ## See also
 
+- [Documentation map](README.md) — which doc to read when
+- [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
 - [MCP server](mcp.md) — tools, schema resource, env bootstrapping
 - [Agent skills](ai-skills.md) — `install --skill`
-- [Bundled docs](bundled-docs.md) — `docs` topics and `docs mcp`
+- [Bundled docs](bundled-docs.md) — `docs` topics, consumer docgen vs framework docs
