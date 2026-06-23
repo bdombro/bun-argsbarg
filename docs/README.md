@@ -6,6 +6,7 @@ Start here to pick the right guide.
 | --- | --- |
 | **New to argsbarg** | [../README.md](../README.md) — install, minimal usage, public API |
 | **Authoring a `CliProgram`** (humans or agents) | [cli-program.md](cli-program.md) — schema, formats, headless, `read*Flags` |
+| **JSON stdout / `outputSchema`** | [output-schema.md](output-schema.md) — codegen pipeline, JSDoc, narrowing |
 | **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `install --mcp` |
 | **Shipping install / completions / skills** | [install.md](install.md) — `myapp install`, shell completions |
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |

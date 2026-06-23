@@ -11,6 +11,8 @@ Two documentation layers often coexist in a consumer repo:
 | **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wire via [Cursor rule](templates/cursor/rules/cli-program.mdc) or `AGENTS.md` |
 | **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs api`, `docs schema`, `docs mcp` — save with `--save` to `./docs/` |
 
+`docs api` and `docs schema` embed each leaf’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.
+
 Do not confuse them: editing `./docs/api.md` after docgen updates **your** app reference; it does not change argsbarg's framework guides. When MCP behavior changes (e.g. varargs arrays in 3.6+), update consumer `docs/mcp.md` via **`myapp docs mcp --save`** and bump the `argsbarg` dependency.
 
 See [docs/README.md](README.md) for the full documentation map.

@@ -8,8 +8,9 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 
 1. **Read** `node_modules/argsbarg/docs/cli-program.md` (required — authoritative guide).
 2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
-3. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
-4. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
+3. JSON stdout / `outputSchema` guide and codegen → `node_modules/argsbarg/docs/output-schema.md`.
+4. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
+5. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
 
 **Hard rules** (details and examples are in the docs above — do not contradict them):
 
@@ -20,5 +21,6 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 - String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
 - Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
 - Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
+- JSON stdout: `outputSchema` on the leaf from generated constants — see `output-schema.md`; do not hand-edit `src/schemas/generated/`.
 
 **App-specific conventions:** replace this line with a `**<your-app> conventions:**` section (bullets only). Keep it at the bottom of this file — `just consumer-dev` / `just consumers-sync` in the argsbarg repo refresh the template above and preserve this block. Do not duplicate `cli-program.md` here; link paths and patterns only. For a second rule file (e.g. `.cursor/argsbarg.mdc`), that is fine too.

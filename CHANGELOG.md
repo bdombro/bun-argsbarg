@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.4] - 2026-06-23
+
+### Added
+
+- **`docs/output-schema.md`** — recommended TypeScript → JSON Schema codegen pipeline for leaf `outputSchema` (manifest, bridge, JSDoc, narrowing, CI).
+
+### Changed
+
+- **`docs/README.md`**, **`cli-program.md`**, **`bundled-docs.md`**, Cursor rule template — cross-links to output-schema guide.
+
 ## [3.6.3] - 2026-06-23
 
 ### Added
@@ -414,7 +424,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.6.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.6.4...HEAD
+[3.6.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.4
 [3.6.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.3
 [3.6.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.2
 [3.6.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.1

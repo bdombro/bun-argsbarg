@@ -134,6 +134,8 @@ On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when
 
 Exported in `docs schema`, `docs api`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
 
+For a **outputSchema codegen guidelines** (TypeScript types → JSON Schema → `outputSchema` constants), see [output-schema.md](output-schema.md).
+
 Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard flag names, or handlers that only work interactively — fix those instead.
 
 If help text and MCP behavior match after your fixes, **omit `mcpTool` entirely**.
@@ -408,6 +410,7 @@ If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just co
 ## See also
 
 - [Documentation map](README.md) — which doc to read when
+- [Output schemas](output-schema.md) — codegen pipeline for leaf `outputSchema`
 - [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
 - [MCP server](mcp.md) — tools, schema resource, env bootstrapping
 - [Agent skills](ai-skills.md) — `install --skill`
