@@ -18,6 +18,20 @@ export declare enum CliOptionKind {
 	Enum = "enum"
 }
 /**
+ * Named validation/coercion for string options (`format` on `CliOption`).
+ * Positionals do not use `format`; varargs use space-separated CLI tokens and JSON arrays over MCP.
+ */
+export declare enum CliValueFormat {
+	/** Duration text such as `30s`, `20m`, `1h`, `2d` (default unit minutes when omitted). */
+	Duration = "duration",
+	/** Comma-separated list on a single option value (`--services a,b`). */
+	CommaList = "comma-list",
+	/** Calendar date `YYYY-MM-DD`. */
+	Date = "date",
+	/** RFC 3339 instant with `Z` or numeric offset. */
+	DateTime = "date-time"
+}
+/**
  * When `fallbackCommand` is used for missing or unknown subcommand tokens at a routing node.
  */
 export declare enum CliFallbackMode {
@@ -56,6 +70,15 @@ export interface CliOption {
 	 * Must be a non-empty array of distinct non-empty strings.
 	 */
 	choices?: string[];
+	/**
+	 * Named string validation for `kind: String` options. Mutually exclusive with `pattern`.
+	 * Not supported on positionals.
+	 */
+	format?: CliValueFormat;
+	/** Default value applied in post-parse when the option is omitted. */
+	default?: string;
+	/** Regex pattern for string options. Mutually exclusive with `format`. */
+	pattern?: string;
 }
 /**
  * An ordered positional argument slot, listed on leaf `positionals`.
@@ -280,6 +303,8 @@ export declare class CliSchemaValidationError extends Error {
 	/** Creates a schema validation error with a human-readable rule violation. */
 	constructor(message: string);
 }
+/** Coerced leaf inputs keyed by option and positional names. */
+export type CliLeafInputs = Record<string, boolean | number | string | string[] | undefined>;
 /**
  * Values passed to a leaf command handler after parsing: app name, routed path, args, and merged options.
  */
@@ -303,11 +328,31 @@ export declare class CliContext {
 	 * This is the TypeScript-native advantage over the Swift version.
 	 */
 	typedOpt<T>(name: string, parse: (s: string) => T): T | null;
+	/** Duration option in milliseconds (post-parse validated). */
+	durationOpt(name: string): number | undefined;
+	/** Comma-list option as a string array (post-parse validated). */
+	commaListOpt(name: string): string[] | undefined;
+	/** Date option as canonical YYYY-MM-DD (post-parse validated). */
+	dateOpt(name: string): string | undefined;
+	/** Date-time option as normalized ISO 8601 UTC (post-parse validated). */
+	dateTimeOpt(name: string): string | undefined;
 	/** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
 	positional(name: string): string | string[] | undefined;
+	/** Reads coerced option and positional values for the current leaf from schema metadata. */
+	readLeafInputs(): CliLeafInputs;
+	private _readOptionValue;
+	private _leafNode;
 	private _posMap;
 	private _positionalMap;
 }
+/** Parses a duration string (e.g. 20m, 1h, 30s) into milliseconds. */
+export declare function parseDurationMs(durationStr: string): number;
+/** Splits a comma-separated string into trimmed non-empty tokens. */
+export declare function parseCommaList(s: string): string[];
+/** Returns canonical YYYY-MM-DD after validation. */
+export declare function parseDate(s: string): string;
+/** Returns normalized ISO 8601 UTC after validation. */
+export declare function parseDateTime(s: string): string;
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;
 /** True when `--json` was passed or the handler was invoked via MCP. */

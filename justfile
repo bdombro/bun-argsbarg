@@ -13,14 +13,11 @@ consumers-sync *apps:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
     ss="$root/../../ss"
-    apps=({{apps}})
-    if [[ ${#apps[@]} -eq 0 ]]; then
-      apps=(idp-trees sqsp-qa-tools sqsp-i18n-tools)
-    fi
+    apps=(idp-trees sqsp-qa-tools sqsp-i18n-tools)
     for app in "${apps[@]}"; do
       dir="$(cd "$ss/$app" && pwd)"
       echo "==> $app ($dir)"
-      (cd "$dir" && npm i argsbarg@latest --no-package-lock && just build && just docgen)
+      (cd "$dir" && bun i argsbarg@latest && just build && just docgen && just install)
     done
 
 # run the minimal example

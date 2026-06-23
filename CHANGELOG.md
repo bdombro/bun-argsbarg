@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-06-23
+
+### Added
+
+- **`CliValueFormat`** — optional `format` on string options: `duration`, `comma-list`, `date`, `date-time`; optional `default` and `pattern` (mutually exclusive with `format`).
+- **`CliContext`** — `durationOpt`, `commaListOpt`, `dateOpt`, `dateTimeOpt`, and `readLeafInputs()` for schema-driven handler reads.
+- **`formats` exports** — `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` for reuse outside handlers.
+
+### Changed
+
+- **Post-parse validation** — applies option `default` values and validates `format` / `pattern` before handlers run.
+- **MCP varargs** — `tools/call` positional arrays must be JSON arrays (comma-separated strings no longer accepted).
+- **MCP comma-list options** — `format: comma-list` accepts string or array in `tools/call`.
+- **`docs mcp`**, **`docs api`**, and **`docs/cli-program.md`** — document value formats and varargs policy.
+- **Cursor rule template** (`docs/templates/cursor/rules/cli-program.mdc`) — thin tripwire that directs agents to read `node_modules/argsbarg/docs/cli-program.md` instead of duplicating authoring guidance.
+
 ## [3.5.0] - 2026-06-22
 
 ### Added
@@ -371,7 +387,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.6.0...HEAD
+[3.6.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.0
 [3.5.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.5.0
 [3.4.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.2
 [3.4.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.4.1

@@ -7,9 +7,14 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
-import type { CliInvocation, CliNode, CliProgram } from "./types.ts";
-import { isCliLeaf, isCliRouter } from "./types.ts";
+import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
+import { collectOptionDefs } from "./parse.ts";
+import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
+import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
+
+/** Coerced leaf inputs keyed by option and positional names. */
+export type CliLeafInputs = Record<string, boolean | number | string | string[] | undefined>;
 
 /**
  * Values passed to a leaf command handler after parsing: app name, routed path, args, and merged options.
@@ -70,9 +75,93 @@ export class CliContext {
     }
   }
 
+  /** Duration option in milliseconds (post-parse validated). */
+  durationOpt(name: string): number | undefined {
+    const s = this.opts[name];
+    if (s === undefined) return undefined;
+    return parseDurationMs(s);
+  }
+
+  /** Comma-list option as a string array (post-parse validated). */
+  commaListOpt(name: string): string[] | undefined {
+    const s = this.opts[name];
+    if (s === undefined) return undefined;
+    return parseCommaList(s);
+  }
+
+  /** Date option as canonical YYYY-MM-DD (post-parse validated). */
+  dateOpt(name: string): string | undefined {
+    const s = this.opts[name];
+    if (s === undefined) return undefined;
+    return parseDate(s);
+  }
+
+  /** Date-time option as normalized ISO 8601 UTC (post-parse validated). */
+  dateTimeOpt(name: string): string | undefined {
+    const s = this.opts[name];
+    if (s === undefined) return undefined;
+    return parseDateTime(s);
+  }
+
   /** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
   positional(name: string): string | string[] | undefined {
     return this._positionalMap()[name];
+  }
+
+  /** Reads coerced option and positional values for the current leaf from schema metadata. */
+  readLeafInputs(): CliLeafInputs {
+    const leaf = this._leafNode();
+    if (!leaf) return {};
+
+    const out: CliLeafInputs = {};
+    for (const opt of collectOptionDefs(this.program, this.commandPath)) {
+      out[opt.name] = this._readOptionValue(opt);
+    }
+    for (const p of leaf.positionals ?? []) {
+      const val = this.positional(p.name);
+      if (val === undefined) {
+        out[p.name] = undefined;
+      } else if (Array.isArray(val)) {
+        out[p.name] = val;
+      } else {
+        out[p.name] = val;
+      }
+    }
+    return out;
+  }
+
+  private _readOptionValue(opt: CliOption): boolean | number | string | string[] | undefined {
+    if (opt.kind === CliOptionKind.Presence) {
+      return this.hasFlag(opt.name);
+    }
+    if (opt.kind === CliOptionKind.Number) {
+      const n = this.numberOpt(opt.name);
+      return n === null ? undefined : n;
+    }
+    if (opt.format === CliValueFormat.Duration) {
+      return this.durationOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.CommaList) {
+      return this.commaListOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.Date) {
+      return this.dateOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.DateTime) {
+      return this.dateTimeOpt(opt.name);
+    }
+    return this.stringOpt(opt.name);
+  }
+
+  private _leafNode(): CliLeaf | undefined {
+    let node: CliNode = this.program;
+    for (const seg of this.commandPath) {
+      if (!isCliRouter(node)) return undefined;
+      const child = node.commands.find((c) => c.key === seg);
+      if (!child) return undefined;
+      node = child;
+    }
+    return isCliLeaf(node) ? node : undefined;
   }
 
   private _posMap: Record<string, string | string[]> | undefined;
@@ -80,28 +169,15 @@ export class CliContext {
   private _positionalMap(): Record<string, string | string[]> {
     if (this._posMap) return this._posMap;
 
-    let node: CliNode = this.program;
-    for (const seg of this.commandPath) {
-      if (!isCliRouter(node)) {
-        this._posMap = {};
-        return {};
-      }
-      const child = node.commands.find((c) => c.key === seg);
-      if (!child) {
-        this._posMap = {};
-        return {};
-      }
-      node = child;
-    }
-
-    if (!isCliLeaf(node)) {
+    const leaf = this._leafNode();
+    if (!leaf) {
       this._posMap = {};
       return {};
     }
 
     const map: Record<string, string | string[]> = {};
     let argIdx = 0;
-    for (const p of node.positionals ?? []) {
+    for (const p of leaf.positionals ?? []) {
       const { argMax = 1 } = p;
       if (argMax === 0) {
         map[p.name] = this.args.slice(argIdx);

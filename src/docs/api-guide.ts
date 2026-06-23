@@ -23,6 +23,20 @@ function optionType(opt: CliOption): string {
   return opt.kind;
 }
 
+function optionFormatDefault(opt: CliOption): string {
+  const parts: string[] = [];
+  if (opt.format !== undefined) {
+    parts.push(opt.format);
+  }
+  if (opt.default !== undefined) {
+    parts.push(`default \`${opt.default}\``);
+  }
+  if (opt.pattern !== undefined) {
+    parts.push(`pattern \`${opt.pattern}\``);
+  }
+  return parts.length > 0 ? parts.join("; ") : "—";
+}
+
 /** Markdown table cell for one option flag. */
 function optionLabel(opt: CliOption): string {
   const long = `\`--${opt.name}\``;
@@ -33,7 +47,7 @@ function optionLabel(opt: CliOption): string {
 /** One options table row. */
 function formatOptionRow(opt: CliOption): string {
   const req = opt.required ? "required" : "optional";
-  return `| ${optionLabel(opt)} | ${optionType(opt)} | ${req} | ${opt.description} |`;
+  return `| ${optionLabel(opt)} | ${optionType(opt)} | ${req} | ${optionFormatDefault(opt)} | ${opt.description} |`;
 }
 
 /** One positionals table row. */
@@ -99,8 +113,8 @@ function renderCommandNode(
 
   if ((node.options ?? []).length > 0) {
     lines.push("#### Options", "");
-    lines.push("| Option | Type | Required | Description |");
-    lines.push("| --- | --- | --- | --- |");
+    lines.push("| Option | Type | Required | Format / default | Description |");
+    lines.push("| --- | --- | --- | --- | --- |");
     for (const opt of node.options ?? []) {
       lines.push(formatOptionRow(opt));
     }

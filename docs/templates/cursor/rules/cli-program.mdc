@@ -1,29 +1,23 @@
 ---
-description: Argsbarg CliProgram authoring; copy to .cursor/rules/cli-program.mdc
-globs: "**/*.{ts,tsx}"
+description: Argsbarg schema — read framework docs before editing CLI commands
+globs: "src/**/commands/**/*.{ts,tsx},src/index.{ts,tsx}"
 alwaysApply: false
 ---
 
-**argsbarg** — `CliProgram` drives help, MCP, and skills. Full guide: `node_modules/argsbarg/docs/cli-program.md`.
+When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 
-## Defaults
-- `mcpServer: { enabled: true }` for MCP; **omit `mcpTool`** unless an escape hatch is required
-- `description` on root, commands, options, and positionals (→ `-h`, MCP `inputSchema`, skills)
-- `satisfies CliProgram`; root: `key`, `version`, `description`
-- Reserved root commands (do not declare): `completion`, `install`, `mcp`, `version`, `docs`, `update`
+1. **Read** `node_modules/argsbarg/docs/cli-program.md` (required — authoritative guide).
+2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
+3. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
+4. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
 
-## Schema
-- **Inline** options, positionals, and handler schema; extract to `export const …Command = { … } satisfies CliLeaf` (or router type) when shared flags, `mcpTool` spreads, or large handlers justify a module — not zero-arg wrapper functions
-- Leaf descriptions: action-oriented, not UI jargon
-- Prefer option names `yes`, `dry-run`, `json` when semantics match; describe non-interactive use on the option
+**Hard rules** (details and examples are in the docs above — do not contradict them):
 
-## `mcpTool` (rare)
-Fix schema/handler first — not for missing `--yes`, wrong flag names, or unfinished headless paths.
-Only: `enabled: false` (CLI-only), `requiresEnv`, or irreducible limits (e.g. streaming `--watch`). Comment why if used.
+- Reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`.
+- `satisfies CliProgram` / `CliLeaf`; action-oriented `description` on root, commands, options, and positionals.
+- Omit `mcpTool` unless genuinely CLI-only (`enabled: false`), `requiresEnv`, or an irreducible wire limit — fix schema and headless handlers first.
+- Interactive leaves: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
+- String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
+- Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
 
-## Headless
-Interactive commands need one fast path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json`.
-- Mutators: `requireYesInNonTty`, `shouldRunHeadlessWithYes`
-- Queries: `shouldRunHeadless`, `wantsExplicitJson`
-- Varargs/positionals: `shouldRunHeadlessWithPositionals`
-- `ctx.invocation === "mcp"` only for subprocess/TTY wire behavior; use argsbarg headless helpers, not raw `isTTY`
+**App-specific conventions:** add below or in a separate `.cursor/rules/` file (shared flags path, Ink vs JSON-only, etc.).

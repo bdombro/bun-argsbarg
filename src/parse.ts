@@ -7,6 +7,7 @@ It keeps handler dispatch and help on one parser so the CLI behavior stays consi
 across every entry path.
 */
 
+import { formatValidationError, validateFormatValue } from "./formats.ts";
 import {
   CliFallbackMode,
   type CliLeaf,
@@ -683,8 +684,15 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
     node = ch;
   }
 
+  const opts = { ...pr.opts };
   for (const d of defs) {
-    if (d.required && !(d.name in pr.opts)) {
+    if (d.default !== undefined && !(d.name in opts)) {
+      opts[d.name] = d.default;
+    }
+  }
+
+  for (const d of defs) {
+    if (d.required && !(d.name in opts)) {
       return {
         kind: ParseKind.Error,
         path: pr.path,
@@ -698,7 +706,7 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
     }
   }
 
-  for (const [k, v] of Object.entries(pr.opts)) {
+  for (const [k, v] of Object.entries(opts)) {
     const d = findOptionByName(defs, k);
     if (!d) {
       return {
@@ -741,7 +749,29 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
         };
       }
     }
+    if (d.kind === CliOptionKind.String && (d.format !== undefined || d.pattern !== undefined)) {
+      try {
+        validateFormatValue(v, d.format, d.pattern);
+      } catch (err) {
+        const msg =
+          d.format !== undefined
+            ? formatValidationError(d.format, v)
+            : err instanceof Error
+              ? err.message
+              : String(err);
+        return {
+          kind: ParseKind.Error,
+          path: pr.path,
+          opts: {},
+          args: [],
+          helpExplicit: false,
+          helpPath: [],
+          errorMsg: `Invalid value for option --${k}: ${msg}`,
+          errorHelpPath: pr.path,
+        };
+      }
+    }
   }
 
-  return pr;
+  return { ...pr, opts };
 }

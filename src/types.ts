@@ -26,6 +26,21 @@ export enum CliOptionKind {
 }
 
 /**
+ * Named validation/coercion for string options (`format` on `CliOption`).
+ * Positionals do not use `format`; varargs use space-separated CLI tokens and JSON arrays over MCP.
+ */
+export enum CliValueFormat {
+  /** Duration text such as `30s`, `20m`, `1h`, `2d` (default unit minutes when omitted). */
+  Duration = "duration",
+  /** Comma-separated list on a single option value (`--services a,b`). */
+  CommaList = "comma-list",
+  /** Calendar date `YYYY-MM-DD`. */
+  Date = "date",
+  /** RFC 3339 instant with `Z` or numeric offset. */
+  DateTime = "date-time",
+}
+
+/**
  * When `fallbackCommand` is used for missing or unknown subcommand tokens at a routing node.
  */
 export enum CliFallbackMode {
@@ -65,6 +80,15 @@ export interface CliOption {
    * Must be a non-empty array of distinct non-empty strings.
    */
   choices?: string[];
+  /**
+   * Named string validation for `kind: String` options. Mutually exclusive with `pattern`.
+   * Not supported on positionals.
+   */
+  format?: CliValueFormat;
+  /** Default value applied in post-parse when the option is omitted. */
+  default?: string;
+  /** Regex pattern for string options. Mutually exclusive with `format`. */
+  pattern?: string;
 }
 
 /**

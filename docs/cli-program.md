@@ -136,6 +136,65 @@ Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard
 
 If help text and MCP behavior match after your fixes, **omit `mcpTool` entirely**.
 
+## Value formats
+
+On **string options**, optional metadata improves validation, MCP `inputSchema`, and handler reads:
+
+| Field | Purpose |
+| --- | --- |
+| `format: CliValueFormat.Duration` | Values like `30s`, `20m`, `1h`; read with `ctx.durationOpt(name)` (milliseconds) |
+| `format: CliValueFormat.CommaList` | Single-flag lists (`--services a,b`); MCP may pass string or array; read with `ctx.commaListOpt(name)` |
+| `format: CliValueFormat.Date` | `YYYY-MM-DD`; read with `ctx.dateOpt(name)` |
+| `format: CliValueFormat.DateTime` | RFC 3339 instant; read with `ctx.dateTimeOpt(name)` |
+| `default: "..."` | Applied in post-parse when the option is omitted (not valid with `required: true`) |
+| `pattern: "..."` | Regex validation (mutually exclusive with `format`) |
+
+`format` applies to **string options only** — not positionals. Post-parse keeps raw strings in `ctx.opts`; typed readers return coerced values.
+
+**Example** (duration with default, comma-list flag):
+
+```typescript
+import { CliOptionKind, CliValueFormat } from "argsbarg";
+
+options: [
+  {
+    name: "timeout",
+    description: "Maximum wait time.",
+    kind: CliOptionKind.String,
+    format: CliValueFormat.Duration,
+    default: "20m",
+  },
+  {
+    name: "services",
+    description: "Service names to reset (single env only).",
+    kind: CliOptionKind.String,
+    format: CliValueFormat.CommaList,
+  },
+],
+handler: async (ctx) => {
+  const timeoutMs = ctx.durationOpt("timeout")!; // always set via default
+  const services = ctx.commaListOpt("services"); // string[] | undefined
+},
+```
+
+**Varargs positionals** (`argMax: 0`):
+
+| Surface | Multiple values |
+| --- | --- |
+| CLI | Space-separated words: `myapp uids uid-a uid-b` |
+| MCP | JSON array on the positional key: `{ "uids": ["uid-a", "uid-b"] }` |
+
+Read varargs with `ctx.positional("uids")` (returns `string[]`) or `ctx.args`. Do not comma-split argv tokens or use `format` on positionals.
+
+**`readLeafInputs()`** — for leaves with several flags, one schema-driven read instead of hand-rolled `hasFlag` / `stringOpt` lines:
+
+```typescript
+const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs();
+// duration → number (ms); comma-list → string[]; presence → boolean; number → number
+```
+
+Cross-field rules (e.g. `--match-remote` requires `--branch`) stay in consumer `resolve*` layers — argsbarg does not validate those.
+
 ## Headless-capable handlers
 
 Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
@@ -219,7 +278,22 @@ Do not declare user commands named `completion`, `install`, `mcp`, `version`, or
 
 ## Cursor rule for consumer repos
 
-Copy `node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc` to `.cursor/rules/cli-program.mdc` so agents editing your CLI schema follow these conventions.
+Argsbarg ships framework docs under `node_modules/argsbarg/docs/` (same files as this repo’s `docs/`). **This file is the authoritative guide** — the Cursor rule is a thin tripwire that tells agents to read it.
+
+Agents do **not** discover package docs automatically. Wire them in after `bun add argsbarg`:
+
+1. **Copy the Cursor rule** (recommended):
+
+```bash
+mkdir -p .cursor/rules
+cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
+```
+
+The template is ~25 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide — re-copy after upgrading argsbarg when the template changes.
+
+2. **Optional:** a second rule for app-only conventions (e.g. `src/cli/shared.ts` flag names, JSON-only handlers, Ink patterns).
+
+3. **Optional:** `.cursor/argsbarg.mdc` or `AGENTS.md` pointing at `node_modules/argsbarg/docs/cli-program.md` for broader context.
 
 ## See also
 

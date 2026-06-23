@@ -14,9 +14,12 @@ import {
   CliOptionKind,
   type CliPositional,
   type CliProgram,
+  CliValueFormat,
   isCliLeaf,
   leafOutputSchema,
 } from "../types.ts";
+
+const DURATION_PATTERN = "^\\d+[hdms]?$";
 
 /** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
 export function defaultMcpSchemaUri(mcpId: string): string {
@@ -65,17 +68,59 @@ export function mcpToolName(root: CliProgram, path: string[]): string {
 
 /** JSON Schema property for one option. */
 function optionProperty(opt: CliOption): Record<string, unknown> {
-  const base = { description: opt.description };
+  const base: Record<string, unknown> = { description: opt.description };
+  if (opt.default !== undefined) {
+    base.default = opt.default;
+  }
   switch (opt.kind) {
     case CliOptionKind.Presence:
       return { type: "boolean", ...base };
-    case CliOptionKind.String:
-      return { type: "string", ...base };
+    case CliOptionKind.String: {
+      if (opt.format === CliValueFormat.CommaList) {
+        return {
+          oneOf: [
+            { type: "string", ...base },
+            { type: "array", items: { type: "string" }, ...base },
+          ],
+        };
+      }
+      const stringBase = { type: "string", ...base };
+      if (opt.format === CliValueFormat.Duration) {
+        return { ...stringBase, pattern: DURATION_PATTERN };
+      }
+      if (opt.format === CliValueFormat.Date) {
+        return { ...stringBase, format: "date" };
+      }
+      if (opt.format === CliValueFormat.DateTime) {
+        return { ...stringBase, format: "date-time" };
+      }
+      if (opt.pattern !== undefined) {
+        return { ...stringBase, pattern: opt.pattern };
+      }
+      return stringBase;
+    }
     case CliOptionKind.Number:
       return { type: "number", ...base };
     case CliOptionKind.Enum:
       return { type: "string", enum: opt.choices, ...base };
   }
+}
+
+function formatMcpOptionValue(opt: CliOption, val: unknown): string | { error: string } {
+  if (opt.format === CliValueFormat.CommaList) {
+    if (Array.isArray(val)) {
+      const items = val.map(String).filter(Boolean);
+      if (items.length === 0) {
+        return { error: `Option --${opt.name} requires at least one value` };
+      }
+      return items.join(",");
+    }
+    if (typeof val === "string") {
+      return val;
+    }
+    return { error: `Option --${opt.name} must be a string or array of strings` };
+  }
+  return String(val);
 }
 
 /** JSON Schema property for one positional slot. */
@@ -251,7 +296,11 @@ export function mcpToolCallToArgv(
       }
       continue;
     }
-    argv.push(`--${opt.name}`, String(val));
+    const formatted = formatMcpOptionValue(opt, val);
+    if (typeof formatted !== "string") {
+      return formatted;
+    }
+    argv.push(`--${opt.name}`, formatted);
   }
 
   for (const p of tool.leaf.positionals ?? []) {
@@ -260,20 +309,20 @@ export function mcpToolCallToArgv(
 
     if (argMax === 0) {
       const raw = args[p.name];
-      let items: string[];
-      if (Array.isArray(raw)) {
-        items = raw.map(String);
-      } else if (typeof raw === "string") {
-        items = raw.includes(",")
-          ? raw
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : raw.trim()
-            ? [raw.trim()]
-            : [];
-      } else {
-        items = [];
+      if (raw === undefined) {
+        if (argMin >= 1) {
+          return { error: `Missing argument: ${p.name} (use a JSON array)` };
+        }
+        continue;
+      }
+      if (!Array.isArray(raw)) {
+        return {
+          error: `Argument ${p.name} must be a JSON array of strings (not a comma-separated string)`,
+        };
+      }
+      const items = raw.map(String).filter(Boolean);
+      if (items.length === 0 && argMin >= 1) {
+        return { error: `Missing argument: ${p.name}` };
       }
       argv.push(...items);
       continue;

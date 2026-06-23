@@ -4,6 +4,7 @@ This module validates CLI schemas before execution.
 
 import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
+import { validateFormatValue } from "./formats.ts";
 import { resolveMcpSchemaUri } from "./mcp/tools.ts";
 import {
   type CliLeaf,
@@ -11,6 +12,7 @@ import {
   CliOptionKind,
   type CliProgram,
   CliSchemaValidationError,
+  CliValueFormat,
   isCliLeaf,
   isCliRouter,
 } from "./types.ts";
@@ -225,6 +227,58 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
       throw new CliSchemaValidationError(
         `Option '${opt.name}' on '${scopeKey}': choices is only valid for Enum kind`,
       );
+    }
+
+    if (opt.format !== undefined || opt.pattern !== undefined || opt.default !== undefined) {
+      validateOptionValueMetadata(scopeKey, opt);
+    }
+  }
+}
+
+function validateOptionValueMetadata(scopeKey: string, opt: import("./types.ts").CliOption): void {
+  const label = `${scopeKey}/${opt.name}`;
+
+  if (opt.default !== undefined) {
+    if (opt.kind === CliOptionKind.Presence) {
+      throw new CliSchemaValidationError(`default is not valid on presence option ${label}`);
+    }
+    if (opt.required) {
+      throw new CliSchemaValidationError(`default cannot be set on required option ${label}`);
+    }
+  }
+
+  if (opt.format !== undefined && opt.pattern !== undefined) {
+    throw new CliSchemaValidationError(
+      `Option ${label}: format and pattern are mutually exclusive`,
+    );
+  }
+
+  if (opt.format !== undefined) {
+    if (opt.kind !== CliOptionKind.String) {
+      throw new CliSchemaValidationError(`Option ${label}: format is only valid on String kind`);
+    }
+    if (!Object.values(CliValueFormat).includes(opt.format)) {
+      throw new CliSchemaValidationError(`Option ${label}: unknown format '${opt.format}'`);
+    }
+  }
+
+  if (opt.pattern !== undefined) {
+    if (opt.kind !== CliOptionKind.String) {
+      throw new CliSchemaValidationError(`Option ${label}: pattern is only valid on String kind`);
+    }
+    try {
+      new RegExp(opt.pattern);
+    } catch {
+      throw new CliSchemaValidationError(`Option ${label}: invalid pattern regex`);
+    }
+  }
+
+  if (opt.default !== undefined) {
+    try {
+      validateFormatValue(opt.default, opt.format, opt.pattern);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new CliSchemaValidationError(`Option ${label}: invalid default: ${msg}`);
     }
   }
 }

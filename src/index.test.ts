@@ -1960,18 +1960,18 @@ test("ctx.positional varargs matches ctx.args", async () => {
   expect(positional).toEqual(args);
 });
 
-test("mcpToolCallToArgv coerces comma-separated string for varargs", () => {
+test("mcpToolCallToArgv rejects comma-separated string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a,b" });
-  expect(argv).toEqual(["read", "a", "b"]);
+  expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
-test("mcpToolCallToArgv coerces single string for varargs", () => {
+test("mcpToolCallToArgv rejects bare string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a" });
-  expect(argv).toEqual(["read", "a"]);
+  expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
 test("mcpToolCallToArgv array varargs unchanged", () => {
@@ -1981,11 +1981,11 @@ test("mcpToolCallToArgv array varargs unchanged", () => {
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
-test("mcpToolCallToArgv empty string varargs appends nothing", () => {
+test("mcpToolCallToArgv empty array varargs errors when required", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
-  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "" });
-  expect(argv).toEqual(["read"]);
+  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: [] });
+  expect(argv).toEqual({ error: "Missing argument: files" });
 });
 
 // ── Skills ────────────────────────────────────────────────────────────────────

@@ -112,9 +112,9 @@ Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp 
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: copy **`docs/templates/cursor/rules/cli-program.mdc`** to **`.cursor/rules/cli-program.mdc`**).
 
-### Install
+### Install CLI
 
-After `bun build --compile` (or when running via `bun`), ship your CLI and let users run:
+argsbarg includes CLI features to manage installation of your compiled bun app. After `bun build --compile` (or when running via `bun`), ship your CLI and let users run:
 
 ```bash
 myapp install --all --yes
@@ -140,11 +140,22 @@ myapp completion fish > ~/.config/fish/completions/myapp.fish
 
 
 
-## Install
+## Quick Start
 
 ```bash
-bun add bun-argsbarg
+bun add argsbarg
 ```
+
+### Cursor / AI agents
+
+Argsbarg ships authoring docs in `node_modules/argsbarg/docs/`. Agents do not load them unless your repo points there — copy the thin Cursor rule after install (it tells agents to **read** `cli-program.md`, not duplicate it):
+
+```bash
+mkdir -p .cursor/rules
+cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
+```
+
+Add app-specific conventions in a second rule if needed. Full guide: **[docs/cli-program.md](docs/cli-program.md)**.
 
 
 ## How it works
@@ -178,9 +189,13 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Reading values (`CliContext`)
 
-- `ctx.flag("verbose")` — presence options (`boolean`).
+- `ctx.flag("verbose")` / `ctx.hasFlag("verbose")` — presence options (`boolean`).
 - `ctx.stringOpt("name")` / `ctx.numberOpt("count")` — `string | undefined` / `number | null`.
-- `ctx.typedOpt<T>("custom", parseFn)` — pass a custom parsing function for type-safe option resolution.
+- `ctx.durationOpt("timeout")` — duration options (`format: CliValueFormat.Duration`) as milliseconds.
+- `ctx.commaListOpt("services")` — comma-list options as `string[] | undefined`.
+- `ctx.dateOpt("on")` / `ctx.dateTimeOpt("since")` — ISO date / date-time options.
+- `ctx.readLeafInputs()` — coerced option and positional values for the current leaf (schema-driven).
+- `ctx.typedOpt<T>("custom", parseFn)` — custom parsing for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
 - `ctx.program` — program root (`CliProgram`) for contextual help.
@@ -221,12 +236,13 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | Symbol | Role |
 | --- | --- |
 | `CliProgram`, `CliOption`, `CliPositional`, `CliHandler` | Schema and handler types. |
-| `CliOptionKind`, `CliFallbackMode` | Option kinds (`Presence`, `String`, `Number`, `Enum`) and root fallback behavior. |
+| `CliOptionKind`, `CliValueFormat`, `CliFallbackMode` | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior. |
 | `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
-| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.args`, `ctx.invocation`, …). |
+| `CliContext` | Handler context (`ctx.flag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.readLeafInputs`, `ctx.invocation`, …). |
 | `cliRun(root, [argv])` | Validate, parse argv, dispatch, exit. |
 | `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
+| `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` | Optional format parsers for use outside handlers. |
 
 Reserved identifiers (validated at startup): root commands **`completion`**, **`version`**, **`install`**, **`docs`** (when `docs.enabled` is `true`), and **`mcp`** (when `mcpServer.enabled` is `true`).
 

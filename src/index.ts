@@ -7,7 +7,14 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
+export type { CliLeafInputs } from "./context.ts";
 export { CliContext } from "./context.ts";
+export {
+  parseCommaList,
+  parseDate,
+  parseDateTime,
+  parseDurationMs,
+} from "./formats.ts";
 export type { HeadlessContext } from "./headless.ts";
 export {
   formatDryRunMessage,
@@ -46,5 +53,10 @@ export type {
   CliUpdateArtifact,
   CliUpdateGetLatest,
 } from "./types.ts";
-export { CliFallbackMode, CliOptionKind, CliSchemaValidationError } from "./types.ts";
+export {
+  CliFallbackMode,
+  CliOptionKind,
+  CliSchemaValidationError,
+  CliValueFormat,
+} from "./types.ts";
 export { isInteractiveTty } from "./utils.ts";
