@@ -155,7 +155,7 @@ mkdir -p .cursor/rules
 cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
 ```
 
-Add app-specific conventions in a second rule if needed. Documentation map: **[docs/README.md](docs/README.md)**. Authoring guide: **[docs/cli-program.md](docs/cli-program.md)**.
+Add app-specific conventions in a second rule if needed. Copy the rule from the template, then add a `**<your-app> conventions:**` block at the bottom (see **Cursor rule** in [docs/cli-program.md](docs/cli-program.md)). Documentation map: **[docs/README.md](docs/README.md)**.
 
 
 ## How it works

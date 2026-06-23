@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`cli-program.md`** — `CliLeafInputs` / `readLeafInputs()` semantics, upgrading to 3.6+, read-once-resolve-once cross-links.
 - **`bundled-docs.md`** — framework docs vs consumer docgen.
 - **`docs/mcp.md`** — varargs JSON array only (fixes stale comma-string guidance).
+- **`consumers-dev` / `consumers-sync`** — refresh consumer `.cursor/rules/cli-program.mdc` from template via `scripts/merge-cli-program-rule.ts`.
 
 ## [3.6.2] - 2026-06-23
 

@@ -388,11 +388,22 @@ mkdir -p .cursor/rules
 cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
 ```
 
-The template is ~25 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide — re-copy after upgrading argsbarg when the template changes.
+The template is ~25 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide.
 
-2. **Optional:** a second rule for app-only conventions (e.g. `src/cli/shared.ts` flag names, JSON-only handlers, Ink patterns).
+2. **Add an app-specific block at the bottom** (recommended). Replace the template placeholder with a heading like `**myapp conventions:**` and short bullets — shared flag modules, `read*Flags` / `resolve*` paths, Ink vs JSON-only, etc. Example:
 
-3. **Optional:** `.cursor/argsbarg.mdc` or `AGENTS.md` pointing at `node_modules/argsbarg/docs/cli-program.md` for broader context.
+```markdown
+**sqsp-qa conventions:**
+
+- Shared mutator flags: `readQaMutatingFlags(ctx)` in `src/cli/shared.ts`.
+- Per command: `read*Flags` + `resolve*Input` in `commands/<name>/resolve.ts`.
+```
+
+If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just consumers-sync` refresh the shared template and **keep** this footer (matched by the `**… conventions:**` heading). Commit `.cursor/rules/cli-program.mdc` in your repo.
+
+3. **Optional:** a separate rule (e.g. `.cursor/argsbarg.mdc` or `AGENTS.md`) for broader package API notes.
+
+**Not this file:** `myapp install --skill` writes the **app** skill (`SKILL.md` under `~/.cursor/skills/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
 
 ## See also
 

@@ -32,12 +32,16 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumer-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>` in each consumer |
-| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, `just build`, `just docgen`, `just install` |
+| `just consumer-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` from template (keeps app-specific suffix) |
+| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **argsbarg Cursor rule**, `just build`, `just docgen`, `just install` (consumer app binary, completions, and **app** skill) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-Re-copy `docs/templates/cursor/rules/cli-program.mdc` into consumer repos when the template changes (append app-specific conventions; do not fork the whole guide).
+**Argsbarg authoring rule** — `scripts/merge-cli-program-rule.ts` copies `docs/templates/cursor/rules/cli-program.mdc` into each consumer’s `.cursor/rules/cli-program.mdc`, preserving any existing `**… conventions:**` footer block.
+
+**Recommended in each consumer:** replace the template placeholder with `**<app> conventions:**` bullets (paths to `read*Flags`, shared flags, Ink vs JSON-only). Commit that file; merges refresh the shared top, not your footer.
+
+**Consumer app skill** — `just install` in each consumer (part of `consumers-sync`) runs `myapp install --skill`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
 
 ## npm package contents
 

@@ -8,6 +8,21 @@ _:
 # check the codebase
 check: typecheck format
 
+# Point local consumer apps at this repo (file: dep) for pre-publish development
+consumers-dev *apps:
+    #!/usr/bin/env bash
+    root="$(cd "{{justfile_directory()}}" && pwd)"
+    ss="$root/../../ss"
+    apps=(idp-trees sqsp-qa-tools sqsp-i18n-tools)
+    template="${root}/docs/templates/cursor/rules/cli-program.mdc"
+    echo "argsbarg@file:<relative-to-consumer> → ${root}"
+    for app in "${apps[@]}"; do
+      dir="$(cd "$ss/$app" && pwd)"
+      rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
+      echo "==> $app ($dir) → file:${rel}"
+      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" "$template")
+    done
+
 # Update local consumer apps: pin argsbarg to ^<this repo version> in package.json, install, build, docgen
 consumers-sync *apps:
     #!/usr/bin/env bash
@@ -24,22 +39,12 @@ consumers-sync *apps:
         const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
         pkg.dependencies.argsbarg = '^${latest}';
         fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-      " && bun install && just build && just docgen && just install)
+      " && bun install \
+        && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" \
+        && just build && just docgen && just install)
     done
 
-# Point local consumer apps at this repo (file: dep) for pre-publish development
-consumer-dev *apps:
-    #!/usr/bin/env bash
-    root="$(cd "{{justfile_directory()}}" && pwd)"
-    ss="$root/../../ss"
-    apps=(idp-trees sqsp-qa-tools sqsp-i18n-tools)
-    echo "argsbarg@file:<relative-to-consumer> → ${root}"
-    for app in "${apps[@]}"; do
-      dir="$(cd "$ss/$app" && pwd)"
-      rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
-      echo "==> $app ($dir) → file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}")
-    done
+
 
 # run the minimal example
 example *ARGS:
