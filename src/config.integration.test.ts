@@ -98,3 +98,47 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
   expect(res.result.isError).toBe(false);
   expect(res.result.content[0]?.text.trim()).toBe("present");
 });
+
+test("Cli.run docs api skips required appConfig exit", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "argsbarg-docs-skip-"));
+  const configFile = join(dir, "config");
+  writeFileSync(configFile, "{}\n");
+  const entry = join(import.meta.dir, "index.ts");
+  const mainPath = join(dir, "run-docs.ts");
+  writeFileSync(
+    mainPath,
+    `import { Cli, type CliProgram } from ${JSON.stringify(entry)};
+const program = {
+  key: "docs-skip-test",
+  version: "1.0.0",
+  description: "test",
+  docs: { enabled: true, topics: { readme: { text: "# readme\\n" } } },
+  appConfig: {
+    path: ${JSON.stringify(configFile)},
+    entries: { token: { description: "Token.", env: "DOCS_SKIP_RUN_TOKEN" } },
+  },
+  handler: () => {},
+} satisfies CliProgram;
+await new Cli(program).run(process.argv.slice(2));
+`,
+  );
+  const env = { ...process.env };
+  delete env.DOCS_SKIP_RUN_TOKEN;
+  try {
+    const proc = Bun.spawn(["bun", "run", mainPath, "docs", "api"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env,
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("# docs-skip-test — CLI API reference");
+    expect(stderr).not.toContain("Missing required configuration");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

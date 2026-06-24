@@ -5,7 +5,12 @@ Runtime entry point: validate program, cache derived state, run / invoke / MCP s
 import { format } from "node:util";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
-import { assertBuiltinAllowed, type CliCapabilities, resolveCapabilities } from "./capabilities.ts";
+import {
+  assertBuiltinAllowed,
+  type CliCapabilities,
+  resolveCapabilities,
+  skipsRequiredAppConfigExit,
+} from "./capabilities.ts";
 import {
   bootstrapAppConfig,
   type EnsureAppConfigOpts,
@@ -113,10 +118,10 @@ export class Cli {
       });
     }
 
-    const isConfigCmd = pr.path[0] === "config" && this.caps.configCommands;
+    const skipRequiredConfig = skipsRequiredAppConfigExit(pr.path, this.caps);
     const snapshot = this.buildAppConfigSnapshot({
-      interactive: !isConfigCmd && !!process.stdin.isTTY,
-      exitOnMissing: !isConfigCmd,
+      interactive: !skipRequiredConfig && !!process.stdin.isTTY,
+      exitOnMissing: !skipRequiredConfig,
     });
 
     const ctx = new CliContext(

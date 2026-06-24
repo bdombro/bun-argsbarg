@@ -425,7 +425,7 @@ await cli.run();
 - Default: `$XDG_CONFIG_HOME/<sanitized-key>/config` or `%APPDATA%/<key>/config`.
 - JSON: flat object keyed by schema names — `{ "apiToken": "…", "maxRetries": 5 }`.
 - **Strict:** unknown keys rejected on load.
-- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `config get`/`set` skip this exit.
+- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `config get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
 - **Configure:** `myapp install --configure` (not part of `--all`).
 

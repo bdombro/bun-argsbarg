@@ -47,6 +47,18 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   return names;
 }
 
+/** Commands that may run without required appConfig values (read-only / config introspection). */
+export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities): boolean {
+  const root = path[0];
+  if (root === "config" && caps.configCommands) {
+    return true;
+  }
+  if (root === "docs" && caps.docs) {
+    return true;
+  }
+  return false;
+}
+
 export type CapabilityFeature = "mcp" | "install" | "docs" | "config";
 
 /** Stderr message when a disabled built-in is invoked from the CLI. */

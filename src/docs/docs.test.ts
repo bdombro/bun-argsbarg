@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { completionBashScript } from "../builtins/index.ts";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
+import { resolveCapabilities, skipsRequiredAppConfigExit } from "../capabilities.ts";
 import { Cli } from "../index.ts";
 import type { CliProgram } from "../types.ts";
 import { cliValidateProgram } from "../validate.ts";
@@ -149,6 +150,19 @@ test("docs api prints markdown reference", async () => {
   expect(result.stdout).toContain("## `myapp run`");
   expect(result.stdout).toContain("Run something.");
   expect(result.stdout).toContain("myapp docs schema");
+});
+
+test("skipsRequiredAppConfigExit includes docs and config builtins", () => {
+  const program = {
+    ...docsFixture(),
+    appConfig: {
+      entries: { token: { description: "Token.", env: "DOCS_SKIP_TOKEN" } },
+    },
+  };
+  const caps = resolveCapabilities(program);
+  expect(skipsRequiredAppConfigExit(["docs", "api"], caps)).toBe(true);
+  expect(skipsRequiredAppConfigExit(["config", "get"], caps)).toBe(true);
+  expect(skipsRequiredAppConfigExit(["run"], caps)).toBe(false);
 });
 
 test("docs skill prints Cursor SKILL.md", async () => {
