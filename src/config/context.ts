@@ -3,7 +3,7 @@ Handler-facing resolved app config snapshot (ctx.appConfig).
 */
 
 import type { CliProgram } from "../types.ts";
-import { resolveAppConfigPath, writeAppConfigFile } from "./file.ts";
+import { resolveAppConfigDir, resolveAppConfigPath, writeAppConfigFile } from "./file.ts";
 import type { ResolvedConfig } from "./resolve.ts";
 import { exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
@@ -30,6 +30,11 @@ export class EmptyAppConfigSnapshot {
   /** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
   get path(): string {
     return resolveAppConfigPath(this.program);
+  }
+
+  /** Resolved absolute directory containing the config file. */
+  get dir(): string {
+    return resolveAppConfigDir(this.program);
   }
 }
 
@@ -80,6 +85,11 @@ export class AppConfigSnapshot {
   /** Resolved absolute path to the app JSON config file (honors `program.appConfig.path` or OS default). */
   get path(): string {
     return resolveAppConfigPath(this.program);
+  }
+
+  /** Resolved absolute directory containing the config file. */
+  get dir(): string {
+    return resolveAppConfigDir(this.program);
   }
 
   /** Replace snapshot after external bootstrap (internal). */

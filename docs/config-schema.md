@@ -42,7 +42,7 @@ await cli.run();
 | `install --configure` / `--status` | Interactive setup and status |
 | Built-in `config get` / `config set` | Read/write resolved values (opt-out via `commands: false`) |
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
-| `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path` — prefer over `process.env` |
+| `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` |
 
 **Validation at runtime** — argsbarg validates the config file and `config set` / `ctx.appConfig.set` against the effective JSON Schema (block `jsonSchema` or synthesized all-string schema).
 

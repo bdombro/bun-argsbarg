@@ -10,6 +10,8 @@ declare class EmptyAppConfigSnapshot {
 	read(): ResolvedConfig;
 	/** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
 	get path(): string;
+	/** Resolved absolute directory containing the config file. */
+	get dir(): string;
 }
 declare class AppConfigSnapshot {
 	private readonly program;
@@ -22,6 +24,8 @@ declare class AppConfigSnapshot {
 	read(): ResolvedConfig;
 	/** Resolved absolute path to the app JSON config file (honors `program.appConfig.path` or OS default). */
 	get path(): string;
+	/** Resolved absolute directory containing the config file. */
+	get dir(): string;
 	/** Replace snapshot after external bootstrap (internal). */
 	refresh(fileData: Record<string, unknown>, resolved: ResolvedConfig): void;
 	private assertEntryKey;

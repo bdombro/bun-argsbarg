@@ -22,6 +22,11 @@ export function resolveAppConfigPath(program: CliProgram): string {
   return join(appConfigHome(), dirName, "config");
 }
 
+/** Resolved absolute directory containing the app JSON config file. */
+export function resolveAppConfigDir(program: CliProgram): string {
+  return dirname(resolveAppConfigPath(program));
+}
+
 /** Human-readable config path for error messages (`~` when under home). */
 export function displayAppConfigPath(program: CliProgram): string {
   const resolved = resolveAppConfigPath(program);
