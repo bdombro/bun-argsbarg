@@ -1,28 +1,13 @@
 import type { CliCapabilities } from "../capabilities.ts";
 import { resolveCapabilities } from "../capabilities.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { presentationNode, visibleOptions } from "../hidden.ts";
 import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../types.ts";
 import { isCliLeaf } from "../types.ts";
-import { cliBuiltinCompletionGroup } from "./completion-group.ts";
-import { cliBuiltinInstallCommand } from "./install.ts";
-import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinVersionCommand } from "./version.ts";
+import { resolveBuiltins } from "./registry.ts";
 
 /** All built-in command nodes for argv parsing (includes hidden builtins). */
 export function parseBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
-  const builtins: CliNode[] = [cliBuiltinCompletionGroup(program), cliBuiltinVersionCommand()];
-  if (caps.install) {
-    builtins.push(cliBuiltinInstallCommand(program));
-  }
-  const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
-  if (docsGroup) {
-    builtins.push(docsGroup);
-  }
-  if (caps.mcp) {
-    builtins.push(cliBuiltinMcpCommand(program));
-  }
-  return builtins;
+  return resolveBuiltins(program, caps);
 }
 
 /** Built-in subtrees visible in help, schema, and completions (hidden builtins omitted). */

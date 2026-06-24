@@ -3,8 +3,9 @@ This module implements the MCP JSON-RPC server over stdio: initialize, tools,
 resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
-import { cliInvoke } from "../invoke.ts";
-import type { CliProgram } from "../types.ts";
+import type { Cli } from "../cli.ts";
+import { bootstrapAppConfig } from "../config/bootstrap.ts";
+import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
 import { buildToolCallSuccess } from "./result.ts";
 import {
   allMcpResources,
@@ -41,7 +42,8 @@ function writeError(id: string | number | null | undefined, code: number, messag
 }
 
 /** Handles one NDJSON request line. */
-async function handleRequestLine(root: CliProgram, line: string): Promise<void> {
+async function handleRequestLine(cli: Cli, line: string): Promise<void> {
+  const root = cli.program;
   let req: JsonRpcRequest;
   try {
     req = JSON.parse(line) as JsonRpcRequest;
@@ -121,13 +123,19 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
         writeError(id, -32602, `Unknown tool: ${name}`);
         return;
       }
-      const missingEnv = (tool.leaf.mcpTool?.requiresEnv ?? []).filter((k) => !process.env[k]);
-      if (missingEnv.length > 0) {
+      const { resolved } = bootstrapAppConfig(root, { validateFile: false });
+      const missingConfig = missingRequiredConfig(root, resolved);
+      if (missingConfig.length > 0) {
         writeResponse({
           jsonrpc: "2.0",
           id,
           result: {
-            content: [{ type: "text", text: `Missing required env: ${missingEnv.join(", ")}` }],
+            content: [
+              {
+                type: "text",
+                text: formatMcpMissingConfigMessage(root, missingConfig),
+              },
+            ],
             isError: true,
           },
         });
@@ -145,7 +153,7 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
         });
         return;
       }
-      const invokeResult = await cliInvoke(root, argvResult);
+      const invokeResult = await cli.invoke(argvResult);
       if (invokeResult.kind === "ok" && invokeResult.exitCode === 0) {
         writeResponse({
           jsonrpc: "2.0",
@@ -222,7 +230,7 @@ async function handleRequestLine(root: CliProgram, line: string): Promise<void> 
 }
 
 /** Runs the MCP NDJSON read loop on stdin until EOF. */
-export async function mcpServeStdioLoop(root: CliProgram): Promise<void> {
+export async function mcpServeStdioLoop(cli: Cli): Promise<void> {
   let buffer = "";
   for await (const chunk of Bun.stdin.stream()) {
     buffer += new TextDecoder().decode(chunk);
@@ -234,12 +242,12 @@ export async function mcpServeStdioLoop(root: CliProgram): Promise<void> {
         nl = buffer.indexOf("\n");
         continue;
       }
-      await handleRequestLine(root, line);
+      await handleRequestLine(cli, line);
       nl = buffer.indexOf("\n");
     }
   }
   const trailing = buffer.trim();
   if (trailing.length > 0) {
-    await handleRequestLine(root, trailing);
+    await handleRequestLine(cli, trailing);
   }
 }

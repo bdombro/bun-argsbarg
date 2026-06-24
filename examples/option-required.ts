@@ -8,9 +8,9 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { cliRun, CliProgram, CliOptionKind, CliFallbackMode, isInteractiveTty } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram, isInteractiveTty } from "../src/index.ts";
 
-const cli = {
+const program = {
   key: "option-required.ts",
   version: pkg.version,
   description: "Demo of a required option.",
@@ -37,7 +37,10 @@ const cli = {
     },
   ],
   handler: (ctx) => {
-    const requiredAlways = ctx.stringOpt("requiredAlways")!;
+    const requiredAlways = ctx.stringOpt("requiredAlways");
+    if (requiredAlways === undefined) {
+      throw new Error("requiredAlways missing after validation");
+    }
     const requiredNonTty = ctx.stringOpt("requiredNonTty") ?? "valueWhenOmitted";
     const optional = ctx.stringOpt("optional") ?? "valueWhenOmitted";
     console.log(`requiredAlways: ${requiredAlways}`);
@@ -46,4 +49,5 @@ const cli = {
   },
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();

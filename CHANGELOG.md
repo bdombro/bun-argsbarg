@@ -7,11 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-06-24
+
+### Added
+
+- **`Cli` class** — single runtime entry: eager `cliValidateProgram` + `Object.freeze(program)` in constructor; `run()`, `invoke()`, `serveMcp()`; lazy `cli.appConfig` getter (refreshed on dispatch); `exportCommandSchema()` and `exportAppConfigSchema()`.
+- **`program.appConfig` + `CliAppConfig` / `CliAppConfigEntry`** — config-first model: flat JSON file, block `jsonSchema` (or all-string fallback), metadata overlay per key (`entries`), strict load (reject unknown keys), `ctx.appConfig` (`get`, `require`, `set`, `read`), built-in `config get`/`set`, zero-deps draft-07 subset validation.
+- **`docs/config-schema.md`** — recommended TypeScript → JSON Schema codegen for `program.appConfig.jsonSchema` (parallel to output-schema guide).
+- **`examples/consumer-app/`** — kitchen-sink copy template: all builtins, schemagen discovery, `outputSchema`, `from "argsbarg"`.
+- **`mcp bundle` Claude Code plugin** — writes `dist/<key>-plugin/` (`.claude-plugin/plugin.json`, `.mcp.json`, `bin/<key>`, skills) alongside `dist/<key>.mcpb`.
+
+### Changed
+
+- **Breaking:** **`cliRun`, `cliInvoke`, `cliMcpServeStdio` removed** — use `new Cli(program).run()`, `.invoke(argv)`, `.serveMcp()` instead.
+- **Breaking:** **`program.config` → `program.appConfig`**, **`schema` → `entries`**, **`CliConfig` → `CliAppConfig`**, **`ctx.config` → `ctx.appConfig`**.
+- **Breaking:** **`program.env` + `CliEnvVarConfig` removed** — use `program.appConfig.entries`; root `configFile` → `appConfig.path`; nested env bag → flat schema keys; no extra file keys / `raw()`.
+- **Breaking:** Handler config access — prefer `ctx.appConfig.get/require` over `process.env` for app config (env export remains for subprocesses).
+- **`mcp bundle`** — stdout prints both `.mcpb` and plugin directory paths (one line each).
+- **MCP config enforcement** — required keys from `program.appConfig` checked at `tools/call` (MCP) or before leaf dispatch (CLI).
+
+### Removed
+
+- **`mcpTool.requiresEnv`** — use `program.appConfig` schema entries with `env` instead.
+- **`mcpServer.envFile`** — use `program.appConfig` + JSON config file instead.
+- **`loadAppConfigEnv`, `ensureProgramEnv`** — replaced internally by `ensureAppConfig`, `exportConfigToEnv`.
+
 ## [3.6.4] - 2026-06-23
 
 ### Added
 
-- **`docs/output-schema.md`** — recommended TypeScript → JSON Schema codegen pipeline for leaf `outputSchema` (manifest, bridge, JSDoc, narrowing, CI).
+- **`docs/output-schema.md`** — recommended TypeScript → JSON Schema codegen for leaf `outputSchema`: `JSON payload` JSDoc discovery in `src/**/types.ts`, auto-generated `outputSchemas.ts` bridge, naming suffixes, JSDoc quality bar, narrowing, CI.
 
 ### Changed
 
@@ -424,7 +449,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v3.6.4...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.0
 [3.6.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.4
 [3.6.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.3
 [3.6.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v3.6.2

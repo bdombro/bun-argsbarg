@@ -142,12 +142,6 @@ export interface CliMcpServerConfig {
    */
   shellEnv?: boolean | string;
   /**
-   * Path to a .env file loaded into process.env at MCP server start, after shellEnv.
-   * Supports `~` expansion. Warns on stderr if the file does not exist.
-   * Always overwrites — envFile is authoritative for its keys.
-   */
-  envFile?: string;
-  /**
    * Custom MCP resources exposed alongside the built-in schema resource.
    * URIs must be unique and must not equal schemaResourceUri.
    */
@@ -184,12 +178,6 @@ export interface CliMcpToolConfig {
    */
   description?: string;
   /**
-   * Environment variable names required at runtime.
-   * Appended to auto-generated MCP tool descriptions; enforced at tools/call time.
-   * Empty string counts as absent.
-   */
-  requiresEnv?: string[];
-  /**
    * @deprecated Set `outputSchema` on the leaf command instead.
    */
   outputSchema?: Record<string, unknown>;
@@ -209,6 +197,42 @@ export interface CliUpdateArtifact {
 
 /** Fetches the latest release binary for `install --update`. */
 export type CliUpdateGetLatest = (ctx: { version: string }) => Promise<CliUpdateArtifact>;
+
+/**
+ * Metadata overlay for one key in {@link CliAppConfig.entries}.
+ * Types and validation come from {@link CliAppConfig.jsonSchema} when set; otherwise all values are strings.
+ */
+export interface CliAppConfigEntry {
+  /** Help text for prompts, MCP manifests, and generated docs. */
+  description: string;
+  /** Short label in host UIs and CLI prompts. Default: the config key. */
+  title?: string;
+  /** Default when `jsonSchema` is omitted (all-string mode). */
+  default?: string;
+  /** When `false`, optional for bootstrap and MCP enforcement. Default: `true`. */
+  required?: boolean;
+  /**
+   * Mask stdin during prompts and redact on `config get`.
+   * Default: `/key|token|secret|password/i.test(name)`.
+   */
+  sensitive?: boolean;
+  /** When set: non-empty `process.env[env]` overrides file; value exported after resolve. */
+  env?: string;
+}
+
+/**
+ * App configuration block on the program root ({@link CliProgram.appConfig}).
+ */
+export interface CliAppConfig {
+  /** Default: `~/.config/<sanitized-key>/config` (or `%APPDATA%/<key>/config` on Windows). */
+  path?: string;
+  /** Built-in `config get` / `config set`. Default: enabled when `appConfig` is set. */
+  commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
+  /** Block JSON Schema (draft-07). When omitted, synthesize all-string schema from `entries`. */
+  jsonSchema?: Record<string, unknown>;
+  /** Per-key metadata; keys must match `jsonSchema.properties` when `jsonSchema` is set. */
+  entries: Record<string, CliAppConfigEntry>;
+}
 
 export interface CliInstallConfig {
   /** When `false`, hide/disable `install` (default: enabled). */
@@ -301,12 +325,14 @@ export type CliRouter = CliNodeBase & {
 export type CliNode = CliLeaf | CliRouter;
 
 /**
- * Program root passed to `cliRun` / `cliInvoke`.
+ * Program root passed to {@link Cli}.
  * May be a leaf or router, plus optional program-level MCP and install config.
  */
 export type CliProgram = CliNode & {
   /** Program version (printed by the `version` built-in and MCP serverInfo). */
   version: string;
+  /** Schema-driven app config file, bootstrap, and MCP metadata. */
+  appConfig?: CliAppConfig;
   /** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
   mcpServer?: CliMcpServerConfig;
   /** Opt-out and defaults for `install`. */

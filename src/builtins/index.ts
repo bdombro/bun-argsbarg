@@ -12,4 +12,5 @@ export {
   parseBuiltins,
   presentationBuiltins,
 } from "./presentation.ts";
+export { resolveBuiltins } from "./registry.ts";
 export { collectScopes, type ScopeRec } from "./scopes.ts";

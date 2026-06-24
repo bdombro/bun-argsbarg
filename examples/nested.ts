@@ -8,9 +8,9 @@ It demonstrates how the schema scales beyond one command.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { cliRun, CliProgram, CliOptionKind, CliFallbackMode } from "../src/index.ts";
+import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../src/index.ts";
 
-const cli = {
+const program = {
   key: "nested.ts",
   version: pkg.version,
   description: "Nested groups demo.",
@@ -99,7 +99,7 @@ const cli = {
             const text = await file.text();
             const firstLine = text.split("\n")[0];
             console.log(`${path}: ${firstLine}`);
-          } catch (err) {
+          } catch {
             console.error(`Cannot open: ${path}`);
           }
         }
@@ -110,4 +110,5 @@ const cli = {
   fallbackMode: CliFallbackMode.MissingOrUnknown,
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();

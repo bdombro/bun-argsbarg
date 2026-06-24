@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "apiToken": {
+      "type": "string",
+      "description": "API token from the provider dashboard."
+    },
+    "defaultRegion": {
+      "type": "string",
+      "description": "AWS region (default us-east-1).",
+      "default": "us-east-1"
+    },
+    "maxRetries": {
+      "type": "number",
+      "description": "HTTP retry count (default 3).",
+      "default": 3
+    },
+    "prefs": {
+      "type": "object",
+      "properties": {
+        "ttl": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ttl"
+      ],
+      "additionalProperties": false,
+      "description": "Local preferences (file-only; not mapped to process.env)."
+    }
+  },
+  "required": [
+    "apiToken",
+    "maxRetries"
+  ],
+  "additionalProperties": false,
+  "description": "Config schema\n\nApplication settings for `consumer-app` (`program.appConfig`).",
+  "definitions": {}
+}

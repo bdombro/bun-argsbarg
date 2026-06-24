@@ -87,7 +87,7 @@ When `docs.enabled` is `true`:
 
 ## MCP guide (`docs mcp`)
 
-When both `docs.enabled` and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `requiresEnv`, schema resource URI, `install --mcp`, and protocol notes.
+When both `docs.enabled` and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `install --mcp`, and protocol notes.
 
 There is no override API in v1 — customize behavior via `mcpTool.description` on leaf commands.
 

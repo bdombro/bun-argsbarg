@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
-import { cliInvoke } from "../index.ts";
+import { Cli } from "../index.ts";
 import type { CliProgram, CliUpdateArtifact } from "../types.ts";
 import { cliValidateProgram } from "../validate.ts";
 import { parseInstallOpts, runInstallMutation } from "./index.ts";
@@ -80,7 +80,7 @@ test("runInstallMutation honors --from for binary copy", async () => {
   expect(readFileSync(dest, "utf8")).toContain("echo hi");
 });
 
-test("cliInvoke install --update uses hook and reinstalls", async () => {
+test("Cli.invoke install --update uses hook and reinstalls", async () => {
   const source = join(home, "new-binary");
   writeFileSync(source, "#!/bin/sh\necho hi\n", "utf8");
   chmodSync(source, 0o755);
@@ -90,19 +90,19 @@ test("cliInvoke install --update uses hook and reinstalls", async () => {
     version: "2.0.0",
   }));
 
-  const result = await cliInvoke(root, ["install", "--update"]);
+  const result = await new Cli(root).invoke(["install", "--update"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Updated testapp 1.0.0 → 2.0.0");
   expect(existsSync(join(home, ".local", "bin", "testapp"))).toBe(true);
 });
 
-test("cliInvoke install --update reports already current", async () => {
+test("Cli.invoke install --update reports already current", async () => {
   const root = fixtureWithUpdate(async () => ({
     path: process.execPath,
     version: "1.0.0",
   }));
 
-  const result = await cliInvoke(root, ["install", "--update"]);
+  const result = await new Cli(root).invoke(["install", "--update"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Already at v1.0.0");
 });

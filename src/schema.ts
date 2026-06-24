@@ -13,7 +13,7 @@ import {
   leafOutputSchema,
 } from "./types.ts";
 
-const RESERVED = new Set(["completion", "install", "docs", "mcp", "version"]);
+const RESERVED = new Set(["completion", "install", "docs", "mcp", "version", "config"]);
 
 function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
   if (cmd.hidden) {

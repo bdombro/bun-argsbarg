@@ -112,7 +112,6 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 | Field | Use when |
 | --- | --- |
 | `enabled: false` | Command is **genuinely** CLI-only (open browser, Ink-only flow with no scriptable equivalent) |
-| `requiresEnv: [...]` | Runtime secrets; appended to MCP description and enforced at `tools/call` |
 | `description: "..."` | **Irreducible** MCP limitation (e.g. live tail / `--watch` cannot be streamed on the MCP wire yet) |
 
 ### Structured stdout
@@ -373,9 +372,70 @@ handler: async (ctx) => {
 
 Basic synchronous handlers do not need this structure — only commands with an interactive branch.
 
+## Configuration (`program.appConfig`)
+
+Declare app configuration on the **program root** (not on leaves). Values persist in a flat JSON file; handlers read resolved values via `ctx.appConfig`.
+
+```typescript
+import { Cli, type CliProgram } from "argsbarg";
+import { APP_CONFIG_JSON_SCHEMA } from "./schemas/configSchemas.js";
+
+const program = {
+  key: "myapp",
+  version: "1.0.0",
+  description: "…",
+  appConfig: {
+    path: "~/.config/myapp/config", // optional override
+    jsonSchema: APP_CONFIG_JSON_SCHEMA, // optional; omit for all-string mode
+    entries: {
+      apiToken: {
+        description: "Create at https://example.com/settings/tokens",
+        env: "API_TOKEN",
+        sensitive: true,
+      },
+      defaultRegion: {
+        title: "Default region",
+        description: "AWS region (default us-east-1).",
+        required: false,
+      },
+      maxRetries: { description: "Retry count." },
+    },
+  },
+  handler: (ctx) => {
+    const token = ctx.appConfig.require("apiToken");
+    const region = ctx.appConfig.get("defaultRegion");
+  },
+} satisfies CliProgram;
+
+const cli = new Cli(program);
+await cli.run();
+```
+
+| Field | Default | Purpose |
+| --- | --- | --- |
+| `description` | *(required)* | Shown in prompts, `config get`, and bundle manifests |
+| `title` | config key | Short label in `install --configure` |
+| `default` | — | Used when `jsonSchema` omitted (all-string mode) |
+| `required` | `true` | When `false`, optional unless required by `jsonSchema` |
+| `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `config get`, and status |
+| `env` | — | When set: non-empty host env overrides file; exported to `process.env` after resolve |
+
+**Config file** (created on demand):
+
+- Default: `$XDG_CONFIG_HOME/<sanitized-key>/config` or `%APPDATA%/<key>/config`.
+- JSON: flat object keyed by schema names — `{ "apiToken": "…", "maxRetries": 5 }`.
+- **Strict:** unknown keys rejected on load.
+- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `config get`/`set` skip this exit.
+- **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
+- **Configure:** `myapp install --configure` (not part of `--all`).
+
+See [config-schema.md](config-schema.md) for codegen, [install.md](install.md), and [mcp.md](mcp.md).
+
+**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` — prefer over `process.env` in handlers; env export remains for subprocess inheritance.
+
 ## Reserved names
 
-Do not declare user commands named `completion`, `install`, `mcp`, `version`, or `docs` at the root — ArgsBarg injects these when configured.
+Do not declare user commands named `completion`, `install`, `mcp`, `version`, `docs`, or `config` at the root — ArgsBarg injects these when configured.
 
 ## Cursor rule for consumer repos
 

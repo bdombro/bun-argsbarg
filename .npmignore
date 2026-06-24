@@ -1,0 +1,5 @@
+.cursor
+.private
+examples/**/node_modules/
+examples/**/bun.lock
+examples/**/bun.lockb

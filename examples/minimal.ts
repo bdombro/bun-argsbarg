@@ -8,9 +8,9 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { cliRun, CliProgram, CliOptionKind } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram } from "../src/index.ts";
 
-const cli = {
+const program = {
   key: "minimal.ts",
   version: pkg.version,
   description: "Tiny demo.",
@@ -46,4 +46,5 @@ const cli = {
   },
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();

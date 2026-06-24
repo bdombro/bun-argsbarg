@@ -31,6 +31,8 @@ export interface InstallOpts {
   from?: string;
   status?: boolean;
   uninstall?: boolean;
+  configure?: boolean;
+  config?: boolean;
   yes?: boolean;
   dry?: boolean;
   json?: boolean;
@@ -71,6 +73,10 @@ export function wantsInstallSkill(opts: InstallOpts): boolean {
 
 export function wantsInstallMcp(opts: InstallOpts, root: CliProgram): boolean {
   return !!(opts.mcp || opts.all) && resolveCapabilities(root).mcp;
+}
+
+export function wantsUninstallConfig(opts: InstallOpts, root: CliProgram): boolean {
+  return !!(opts.config || opts.all) && root.appConfig !== undefined;
 }
 
 /** Builds install actions for normal mode (--all / scoped targets). */

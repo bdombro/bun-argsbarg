@@ -1,6 +1,6 @@
 /*
 This module maps CliProgram leaf nodes to MCP tool definitions and converts
-flat JSON tool arguments into argv for cliInvoke.
+flat JSON tool arguments into argv for Cli.invoke.
 */
 
 import { cliResolveNotes } from "../help.ts";
@@ -168,17 +168,13 @@ function buildInputSchema(
   return schema;
 }
 
-/** Resolves MCP tool description with optional override, requiresEnv suffix, and leaf notes. */
+/** Resolves MCP tool description with optional override and leaf notes. */
 function resolveToolDescription(root: CliProgram, path: string[], leaf: CliLeaf): string {
   let desc: string;
   if (leaf.mcpTool?.description) {
     desc = leaf.mcpTool.description;
   } else {
     desc = mcpToolDescription(path, root.key, leaf.description);
-    const env = leaf.mcpTool?.requiresEnv;
-    if (env && env.length > 0) {
-      desc += ` [requires env: ${env.join(", ")}]`;
-    }
   }
   const notes = (leaf.notes ?? "").trim();
   if (notes.length > 0) {
@@ -277,7 +273,7 @@ export function resolveMcpSchemaUri(root: CliProgram): string {
   return defaultMcpSchemaUri(mcpServerId(root));
 }
 
-/** Converts flat MCP tool arguments to argv for cliInvoke. */
+/** Converts flat MCP tool arguments to argv for Cli.invoke. */
 export function mcpToolCallToArgv(
   root: CliProgram,
   tool: McpToolDef,

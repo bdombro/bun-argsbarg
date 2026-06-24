@@ -1,51 +1,35 @@
 /*
-This test file covers parsing, validation, and completion regressions.
-It exercises the public API rather than internal helpers so the tests follow the same
-paths that users and example CLIs take.
-
-It keeps the CLI contract stable by catching routing, option handling, and generated
-shell output regressions.
+Domain-specific regression tests (split from index.test.ts).
 */
 
 import { expect, test } from "bun:test";
-import { cliPresentationRoot } from "./builtins/presentation.ts";
-import { completionBashScript, completionZshScript } from "./completion.ts";
-import { cliHelpRender } from "./help.ts";
-import {
-  type CliContext,
-  CliFallbackMode,
-  CliOptionKind,
-  type CliProgram,
-  cliInvoke,
-} from "./index.ts";
-import { applyShellEnv, loadEnvFile } from "./mcp/env.ts";
-import { buildToolCallSuccess } from "./mcp/result.ts";
-import {
-  allMcpResources,
-  collectMcpTools,
-  mcpToolCallToArgv,
-  mcpToolDescription,
-  resolveMcpSchemaUri,
-  sanitizeToolSegment,
-} from "./mcp/tools.ts";
-import { ParseKind, parse, postParseValidate } from "./parse.ts";
-import { cliSchemaExport, cliSchemaJson } from "./schema.ts";
-import { generateSkillBundle } from "./skill/generate.ts";
-import { cliSkillInstall } from "./skill/install.ts";
-import type { CliLeaf } from "./types.ts";
-import { isCliRouter } from "./types.ts";
-import { cliValidateProgram } from "./validate.ts";
-
-function testProgram(
-  prog: Record<string, unknown> & { key: string; description: string },
-): CliProgram {
-  return { version: "0.0.0", ...prog } as CliProgram;
-}
-
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
+import { completionBashScript, completionZshScript } from "./builtins/index.ts";
+import { cliPresentationRoot } from "./builtins/presentation.ts";
+import { cliHelpRender } from "./help.ts";
+import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "./index.ts";
+import { applyShellEnv } from "./mcp/env.ts";
+import {
+  allMcpResources,
+  collectMcpTools,
+  mcpToolCallToArgv,
+  resolveMcpSchemaUri,
+} from "./mcp/tools.ts";
+import { ParseKind, parse, postParseValidate } from "./parse.ts";
+import { cliSchemaJson } from "./schema.ts";
+import { generateSkillBundle } from "./skill/generate.ts";
+import { cliSkillInstall } from "./skill/install.ts";
+import {
+  enumMcpFixture,
+  nestedDocsFallbackFixture,
+  nestedMcpFixture,
+  testProgram,
+  varargsReadFixture,
+} from "./test-fixtures.ts";
+import { cliValidateProgram } from "./validate.ts";
 
 test("bundled short presence flags", () => {
   const root = testProgram({
@@ -740,662 +724,11 @@ test("root help includes program notes and agent hint", () => {
   expect(help).toContain("myapp docs skill");
 });
 
-const nestedMcpFixture = testProgram({
-  key: "nested.ts",
-  description: "Nested groups demo.",
-  version: "1.0.0",
-  mcpServer: { enabled: true },
-  commands: [
-    {
-      key: "stat",
-      description: "File metadata.",
-      options: [
-        {
-          name: "json",
-          description: "Emit handler output as JSON.",
-          kind: CliOptionKind.Presence,
-        },
-      ],
-      commands: [
-        {
-          key: "owner",
-          description: "Ownership helpers.",
-          commands: [
-            {
-              key: "lookup",
-              description: "Resolve owner info.",
-              options: [
-                {
-                  name: "user-name",
-                  description: "User to look up.",
-                  kind: CliOptionKind.String,
-                  shortName: "u",
-                },
-              ],
-              positionals: [
-                {
-                  name: "path",
-                  description: "File or directory.",
-                  kind: CliOptionKind.String,
-                },
-              ],
-              handler: () => {},
-            },
-          ],
-        },
-      ],
-    },
-    {
-      key: "read",
-      description: "Print the first line of each file.",
-      positionals: [
-        {
-          name: "files",
-          description: "Paths to read.",
-          kind: CliOptionKind.String,
-          argMax: 0,
-        },
-      ],
-      handler: () => {},
-    },
-    {
-      key: "hidden",
-      description: "Internal debug.",
-      mcpTool: { enabled: false },
-      handler: () => {},
-    },
-  ],
-  fallbackCommand: "read",
-  fallbackMode: CliFallbackMode.MissingOrUnknown,
-});
-
-/** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
-async function mcpRequest(
-  requests: object[],
-  opts?: { script?: string; env?: Record<string, string> },
-): Promise<Map<string | number, object>> {
-  const script = opts?.script ?? "examples/nested.ts";
-  const proc = Bun.spawn(["bun", "run", script, "mcp"], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "pipe",
-    env: opts?.env ? { ...process.env, ...opts.env } : process.env,
-  });
-
-  const input = requests.map((r) => `${JSON.stringify(r)}\n`).join("");
-  proc.stdin.write(input);
-  proc.stdin.end();
-
-  const timeout = setTimeout(() => proc.kill(), 10_000);
-  const stdout = await new Response(proc.stdout).text();
-  await proc.exited;
-  clearTimeout(timeout);
-
-  const byId = new Map<string | number, object>();
-  for (const line of stdout.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-    const msg = JSON.parse(trimmed) as { id?: string | number };
-    if (msg.id !== undefined) {
-      byId.set(msg.id, msg);
-    }
-  }
-  return byId;
-}
-
-test("sanitizeToolSegment normalizes dotted app keys", () => {
-  expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");
-});
-
-test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
-  expect(mcpToolDescription(["stat", "owner", "lookup"], "nested.ts", "Resolve owner info.")).toBe(
-    "stat owner lookup — Resolve owner info.",
-  );
-  expect(mcpToolDescription(["read"], "nested.ts", "Print files.")).toBe("read — Print files.");
-  expect(mcpToolDescription([], "helloapp", "Tiny demo.")).toBe("helloapp — Tiny demo.");
-});
-
-test("collectMcpTools lists user leaf commands only", () => {
-  const tools = collectMcpTools(nestedMcpFixture);
-  const names = tools.map((t) => t.name);
-  expect(names).toContain("stat_owner_lookup");
-  expect(names).toContain("read");
-  expect(names).not.toContain("hidden");
-  expect(names).not.toContain("install");
-  expect(names).not.toContain("mcp");
-  expect(names).not.toContain("completion");
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
-});
-
-test("collectMcpTools appends leaf notes to MCP tool description", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Notes demo.",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        notes: "Use `--json` for structured output.",
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toBe("run — Run.\n\nUse `--json` for structured output.");
-});
-
-test("collectMcpTools appends notes after mcpTool.description override", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Notes demo.",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        notes: "Operational hint.",
-        mcpTool: { description: "Custom MCP text." },
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toBe("Custom MCP text.\n\nOperational hint.");
-});
-
-test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
-  const root = testProgram({
-    key: "myapp",
-    version: "1.0.0",
-    description: "Notes demo.",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        notes: "See `{argsbarg:program} docs api`.",
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toContain("See `myapp docs api`.");
-});
-
-test("cliSchemaExport includes leaf outputSchema", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Schema export demo.",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        outputSchema: {
-          type: "object",
-          properties: { ok: { type: "boolean" } },
-        },
-        handler: () => {},
-      },
-    ],
-  });
-  const schema = cliSchemaExport(root);
-  expect(schema.commands?.[0]?.outputSchema).toEqual({
-    type: "object",
-    properties: { ok: { type: "boolean" } },
-  });
-});
-
-test("cliSchemaExport accepts legacy mcpTool.outputSchema", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Schema export demo.",
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        mcpTool: {
-          outputSchema: { type: "object", properties: { id: { type: "string" } } },
-        },
-        handler: () => {},
-      },
-    ],
-  });
-  expect(cliSchemaExport(root).commands?.[0]?.outputSchema).toEqual({
-    type: "object",
-    properties: { id: { type: "string" } },
-  });
-});
-
-test("outputSchema must be a JSON Schema object", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Bad output schema.",
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        outputSchema: [] as unknown as Record<string, unknown>,
-        handler: () => {},
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/outputSchema must be a JSON Schema object/);
-});
-
-test("outputSchema cannot be set on both leaf and mcpTool", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Duplicate output schema.",
-    commands: [
-      {
-        key: "run",
-        description: "Run.",
-        outputSchema: { type: "object" },
-        mcpTool: { outputSchema: { type: "object" } },
-        handler: () => {},
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/Set outputSchema on the leaf only/);
-});
-
-test("collectMcpTools merges parent options into inputSchema", () => {
-  const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
-  expect(schema.properties.json).toBeDefined();
-  expect(schema.required).toContain("path");
-});
-
-test("collectMcpTools includes outputSchema when set on leaf", () => {
-  const root = testProgram({
-    key: "app",
-    version: "1.0.0",
-    description: "Output schema demo.",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "run",
-        description: "Run with JSON output.",
-        outputSchema: {
-          type: "object",
-          properties: { ok: { type: "boolean" } },
-          required: ["ok"],
-        },
-        handler: () => {},
-      },
-    ],
-  });
-  const tools = collectMcpTools(root);
-  expect(tools).toHaveLength(1);
-  expect(tools[0]?.outputSchema).toEqual({
-    type: "object",
-    properties: { ok: { type: "boolean" } },
-    required: ["ok"],
-  });
-});
-
-test("collectMcpTools omits outputSchema when leaf has none", () => {
-  const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  expect(lookup.outputSchema).toBeUndefined();
-});
-
-test("mcpToolCallToArgv builds nested lookup argv", () => {
-  const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  const argv = mcpToolCallToArgv(nestedMcpFixture, lookup, {
-    "user-name": "alice",
-    path: "./x",
-    json: true,
-  });
-  expect(argv).toEqual(["stat", "owner", "lookup", "--json", "--user-name", "alice", "./x"]);
-});
-
-test("mcpToolCallToArgv expands varargs positionals", () => {
-  const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
-  const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
-  expect(argv).toEqual(["read", "a", "b"]);
-});
-
-test("reserved command name install is rejected", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "install",
-        description: "bad",
-        handler: () => {},
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: install/);
-});
-
-test("top-level command name mcp is allowed without mcpServer", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "mcp",
-        description: "user command",
-        handler: () => {},
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).not.toThrow();
-});
-
-test("top-level command name mcp is rejected when mcpServer is enabled", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "mcp",
-        description: "user command",
-        handler: () => {},
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: mcp/);
-});
-
-test("mcpServer on non-root node is rejected", () => {
-  const root = {
-    key: "app",
-    version: "0.0.0",
-    description: "",
-    commands: [
-      {
-        key: "x",
-        description: "cmd",
-        mcpServer: { enabled: true },
-        handler: () => {},
-      },
-    ],
-  } as unknown as CliProgram;
-  expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the program root/);
-});
-
-test("mcpTool on root is rejected", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    mcpTool: { enabled: false },
-    handler: () => {},
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
-});
-
-test("mcpTool on routing node is rejected", () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "group",
-        description: "group",
-        mcpTool: { enabled: false },
-        commands: [
-          {
-            key: "leaf",
-            description: "leaf",
-            handler: () => {},
-          },
-        ],
-      },
-    ],
-  });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
-});
-
-test("buildToolCallSuccess returns stdout only", () => {
-  const result = buildToolCallSuccess("hello\n", "");
-  expect(result.isError).toBe(false);
-  expect(result.content).toEqual([{ type: "text", text: "hello\n" }]);
-  expect(result.structuredContent).toBeUndefined();
-});
-
-test("buildToolCallSuccess adds stderr as second content block", () => {
-  const result = buildToolCallSuccess("out\n", "warn\n");
-  expect(result.content).toEqual([
-    { type: "text", text: "out\n" },
-    { type: "text", text: "warn" },
-  ]);
-  expect(result.structuredContent).toBeUndefined();
-});
-
-test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
-  const result = buildToolCallSuccess("", "warn\n");
-  expect(result.content).toEqual([
-    { type: "text", text: "" },
-    { type: "text", text: "warn" },
-  ]);
-});
-
-test("buildToolCallSuccess parses JSON structuredContent", () => {
-  const result = buildToolCallSuccess('{"a":1}\n', "");
-  expect(result.structuredContent).toEqual({ a: 1 });
-  expect(result.content[0]?.text).toBe('{"a":1}\n');
-});
-
-test("buildToolCallSuccess skips structuredContent for plain text", () => {
-  const result = buildToolCallSuccess("lookup user=x\n", "");
-  expect(result.structuredContent).toBeUndefined();
-});
-
-test("buildToolCallSuccess parses JSON primitives", () => {
-  const result = buildToolCallSuccess("true\n", "");
-  expect(result.structuredContent).toBe(true);
-});
-
-test("MCP initialize returns tools and resources capabilities", async () => {
-  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }]);
-  const res = responses.get(1) as { result: { capabilities: Record<string, unknown> } };
-  expect(res.result.capabilities.tools).toBeDefined();
-  expect(res.result.capabilities.resources).toBeDefined();
-});
-
-test("MCP tools/list includes stat_owner_lookup", async () => {
-  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }]);
-  const res = responses.get(2) as {
-    result: { tools: { name: string; inputSchema: { required?: string[] } }[] };
-  };
-  const lookup = res.result.tools.find((t) => t.name === "stat_owner_lookup");
-  expect(lookup).toBeDefined();
-  expect(lookup?.inputSchema.required).toContain("path");
-});
-
-test("MCP resources/read returns schema JSON", async () => {
-  const responses = await mcpRequest([
-    { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "nested_ts://schema" } },
-  ]);
-  const res = responses.get(3) as { result: { contents: { text: string }[] } };
-  const schema = JSON.parse(res.result.contents[0]?.text);
-  expect(schema.key).toBe("nested.ts");
-});
-
-test("MCP tools/call runs stat_owner_lookup", async () => {
-  const readme = join(import.meta.dir, "..", "README.md");
-  const responses = await mcpRequest([
-    {
-      jsonrpc: "2.0",
-      id: 4,
-      method: "tools/call",
-      params: {
-        name: "stat_owner_lookup",
-        arguments: { path: readme, "user-name": "test" },
-      },
-    },
-  ]);
-  const res = responses.get(4) as { result: { content: { text: string }[]; isError: boolean } };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text).toContain("lookup user=test");
-});
-
-test("MCP tools/call returns structuredContent for JSON stdout", async () => {
-  const readme = join(import.meta.dir, "..", "README.md");
-  const responses = await mcpRequest([
-    {
-      jsonrpc: "2.0",
-      id: 6,
-      method: "tools/call",
-      params: {
-        name: "stat_owner_lookup",
-        arguments: { path: readme, "user-name": "test", json: true },
-      },
-    },
-  ]);
-  const res = responses.get(6) as {
-    result: {
-      content: { text: string }[];
-      structuredContent?: { user: string; path: string };
-      isError: boolean;
-    };
-  };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
-  expect(JSON.parse(res.result.content[0]?.text.trim())).toEqual({ user: "test", path: readme });
-});
-
-test("MCP tools/call errors on missing required positional", async () => {
-  const responses = await mcpRequest([
-    {
-      jsonrpc: "2.0",
-      id: 5,
-      method: "tools/call",
-      params: { name: "stat_owner_lookup", arguments: { "user-name": "test" } },
-    },
-  ]);
-  const res = responses.get(5) as { result: { isError: boolean; content: { text: string }[] } };
-  expect(res.result.isError).toBe(true);
-  expect(res.result.content[0]?.text).toContain("Missing argument: path");
-});
-
-test("MCP ping returns empty result", async () => {
-  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 99, method: "ping", params: {} }]);
-  const res = responses.get(99) as { result: Record<string, never> };
-  expect(res.result).toEqual({});
-});
-
-test("minimal.ts mcp without opt-in fails", async () => {
-  const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
-  expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("MCP is not enabled");
-});
-
-test("ctx.invocation is cli via cliRun", async () => {
-  const indexPath = join(import.meta.dir, "index.ts");
-  const { stdout } = await $`bun -e ${`
-import { cliRun, CliProgram } from ${JSON.stringify(indexPath)};
-const cli = { key: "t", description: "d", version: "0.0.0", handler: (ctx) => console.log(ctx.invocation) };
-await cliRun(cli, []);
-  `}`.quiet();
-  expect(stdout.toString().trim()).toBe("cli");
-});
-
-test("ctx.invocation is mcp via cliInvoke", async () => {
-  let seen = "";
-  const root = testProgram({
-    key: "app",
-    description: "",
-    handler: (ctx: CliContext) => {
-      seen = ctx.invocation;
-    },
-  });
-  cliValidateProgram(root);
-  const result = await cliInvoke(root, []);
-  expect(result.kind).toBe("ok");
-  expect(seen).toBe("mcp");
-});
-
-const enumMcpFixture = testProgram({
-  key: "app",
-  description: "",
-  mcpServer: { enabled: true },
-  commands: [
-    {
-      key: "run",
-      description: "Run with mode.",
-      options: [
-        {
-          name: "mode",
-          description: "Mode.",
-          kind: CliOptionKind.Enum,
-          choices: ["dev", "prod"],
-          required: true,
-        },
-      ],
-      handler: () => {},
-    },
-  ],
-});
-
 test("Enum option inputSchema includes enum array", () => {
   const tools = collectMcpTools(enumMcpFixture);
   const run = tools.find((t) => t.name === "run")!;
   const schema = run.inputSchema as { properties: { mode: { enum?: string[] } } };
   expect(schema.properties.mode.enum).toEqual(["dev", "prod"]);
-});
-
-test("cliInvoke rejects invalid Enum value", async () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    handler: () => {},
-    options: [
-      {
-        name: "mode",
-        description: "Mode.",
-        kind: CliOptionKind.Enum,
-        choices: ["dev", "prod"],
-        required: true,
-      },
-    ],
-  });
-  cliValidateProgram(root);
-  const result = await cliInvoke(root, ["--mode", "staging"]);
-  expect(result.kind).toBe("error");
-  expect(result.errorMsg).toContain("not one of");
-});
-
-test("cliInvoke accepts valid Enum value", async () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    handler: (ctx: CliContext) => {
-      console.log(ctx.stringOpt("mode"));
-    },
-    options: [
-      {
-        name: "mode",
-        description: "Mode.",
-        kind: CliOptionKind.Enum,
-        choices: ["dev", "prod"],
-        required: true,
-      },
-    ],
-  });
-  cliValidateProgram(root);
-  const result = await cliInvoke(root, ["--mode", "dev"]);
-  expect(result.kind).toBe("ok");
-  expect(result.stdout.trim()).toBe("dev");
 });
 
 test("cliValidateProgram rejects Enum with no choices", () => {
@@ -1418,7 +751,7 @@ test("cliValidateProgram rejects Enum with duplicate choices", () => {
   expect(() => cliValidateProgram(root)).toThrow(/choices must be distinct/);
 });
 
-test("mcpTool.description override wins without requiresEnv suffix", () => {
+test("mcpTool.description override wins without env suffix", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -1427,7 +760,7 @@ test("mcpTool.description override wins without requiresEnv suffix", () => {
       {
         key: "x",
         description: "Leaf desc.",
-        mcpTool: { description: "custom", requiresEnv: ["TOKEN"] },
+        mcpTool: { description: "custom" },
         handler: () => {},
       },
     ],
@@ -1436,22 +769,14 @@ test("mcpTool.description override wins without requiresEnv suffix", () => {
   expect(tools[0]?.description).toBe("custom");
 });
 
-test("mcpTool.requiresEnv appended to auto description", () => {
+test("cliValidateProgram requires program.appConfig description", () => {
   const root = testProgram({
     key: "app",
     description: "",
-    mcpServer: { enabled: true },
-    commands: [
-      {
-        key: "x",
-        description: "Leaf desc.",
-        mcpTool: { requiresEnv: ["TOKEN"] },
-        handler: () => {},
-      },
-    ],
+    appConfig: { entries: { token: {} as { description: string } } },
+    handler: () => {},
   });
-  const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toContain("[requires env: TOKEN]");
+  expect(() => cliValidateProgram(root)).toThrow(/description must be a non-empty string/);
 });
 
 test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
@@ -1561,16 +886,6 @@ test("applyShellEnv merges PATH and preserves host vars", () => {
   delete process.env.NEWVAR;
 });
 
-test("loadEnvFile overwrites existing keys", () => {
-  const dir = mkdtempSync(join(tmpdir(), "argsbarg-env-"));
-  const file = join(dir, ".env");
-  writeFileSync(file, "FOO=fromfile\n", "utf8");
-  process.env.FOO = "original";
-  loadEnvFile(file);
-  expect(process.env.FOO).toBe("fromfile");
-  delete process.env.FOO;
-});
-
 test("Enum completions list choices in bash script", () => {
   const root = testProgram({
     key: "app",
@@ -1591,151 +906,6 @@ test("Enum completions list choices in bash script", () => {
   expect(bash).toContain("dev");
   expect(bash).toContain("prod");
 });
-
-test("MCP resources/list includes custom resource", async () => {
-  const responses = await mcpRequest(
-    [{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }],
-    { script: "examples/mcp-test.ts" },
-  );
-  const res = responses.get(10) as { result: { resources: { uri: string }[] } };
-  const uris = res.result.resources.map((r) => r.uri);
-  expect(uris).toContain("mcp_test://schema");
-  expect(uris).toContain("test://hello");
-});
-
-test("MCP resources/read returns custom resource body", async () => {
-  const responses = await mcpRequest(
-    [{ jsonrpc: "2.0", id: 11, method: "resources/read", params: { uri: "test://hello" } }],
-    { script: "examples/mcp-test.ts" },
-  );
-  const res = responses.get(11) as { result: { contents: { text: string }[] } };
-  expect(res.result.contents[0]?.text).toBe("hello resource");
-});
-
-test("MCP resources/read unknown URI returns error", async () => {
-  const responses = await mcpRequest(
-    [{ jsonrpc: "2.0", id: 12, method: "resources/read", params: { uri: "missing://nope" } }],
-    { script: "examples/mcp-test.ts" },
-  );
-  const res = responses.get(12) as { error: { code: number } };
-  expect(res.error.code).toBe(-32602);
-});
-
-test("MCP requiresEnv fails when env missing", async () => {
-  const responses = await mcpRequest(
-    [
-      {
-        jsonrpc: "2.0",
-        id: 13,
-        method: "tools/call",
-        params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
-      },
-    ],
-    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "" } },
-  );
-  const res = responses.get(13) as { result: { isError: boolean; content: { text: string }[] } };
-  expect(res.result.isError).toBe(true);
-  expect(res.result.content[0]?.text).toContain("ARGS_TEST_SECRET");
-});
-
-test("MCP requiresEnv succeeds when env present", async () => {
-  const responses = await mcpRequest(
-    [
-      {
-        jsonrpc: "2.0",
-        id: 14,
-        method: "tools/call",
-        params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
-      },
-    ],
-    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "sekrit" } },
-  );
-  const res = responses.get(14) as { result: { isError: boolean; content: { text: string }[] } };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text.trim()).toBe("sekrit");
-});
-
-test("MCP envFile loads vars for tool handlers", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "argsbarg-mcp-"));
-  const envFile = join(dir, "mcp.env");
-  writeFileSync(envFile, "ARGS_FILE_TOKEN=file-value\n", "utf8");
-  const responses = await mcpRequest(
-    [
-      {
-        jsonrpc: "2.0",
-        id: 15,
-        method: "tools/call",
-        params: { name: "echo_env", arguments: { name: "ARGS_FILE_TOKEN" } },
-      },
-    ],
-    {
-      script: "examples/mcp-test.ts",
-      env: { ARGS_TEST_ENV_FILE: envFile, ARGS_TEST_SECRET: "present" },
-    },
-  );
-  const res = responses.get(15) as { result: { isError: boolean; content: { text: string }[] } };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text.trim()).toBe("file-value");
-});
-
-// ── v1.3 parser ergonomics ────────────────────────────────────────────────────
-
-function varargsReadFixture(): CliProgram {
-  return testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "read",
-        description: "Read files.",
-        options: [
-          {
-            name: "json",
-            description: "",
-            kind: CliOptionKind.Presence,
-          },
-        ],
-        positionals: [
-          {
-            name: "files",
-            description: "",
-            kind: CliOptionKind.String,
-            argMin: 0,
-            argMax: 0,
-          },
-        ],
-        handler: () => {},
-      },
-    ],
-  });
-}
-
-function nestedDocsFallbackFixture(): CliProgram {
-  return testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "docs",
-        description: "Documentation commands.",
-        fallbackCommand: "guide",
-        fallbackMode: CliFallbackMode.MissingOnly,
-        commands: [
-          {
-            key: "guide",
-            description: "User guide.",
-            handler: () => {},
-          },
-          {
-            key: "api",
-            description: "API reference.",
-            handler: () => {},
-          },
-        ],
-      },
-    ],
-  });
-}
 
 test("nested fallback routes to default when argv exhausted at router", () => {
   const root = nestedDocsFallbackFixture();
@@ -1835,7 +1005,7 @@ test("nested router scoped help does not route to fallback", () => {
   expect(help).toContain("guide");
 });
 
-test("varargs trailing option after positionals via cliInvoke", async () => {
+test("varargs trailing option after positionals via Cli.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
@@ -1874,90 +1044,9 @@ test("varargs double dash forces positional", () => {
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
-  const result = await cliInvoke(root, ["read", "--unknown"]);
+  const result = await new Cli(root).invoke(["read", "--unknown"]);
   expect(result.kind).toBe("error");
   expect(result.stderr).toContain("--unknown");
-});
-
-test("varargs scoped help in tail", () => {
-  const root = varargsReadFixture();
-  cliValidateProgram(root);
-  const pr = parse(root, ["read", "file.txt", "--help"]);
-  expect(pr.kind).toBe(ParseKind.Help);
-  expect(pr.helpPath).toContain("read");
-  expect(pr.helpExplicit).toBe(true);
-});
-
-test("ctx.positional returns single slot value", async () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "x",
-        description: "",
-        positionals: [{ name: "path", description: "", kind: CliOptionKind.String }],
-        handler: (ctx: CliContext) => {
-          captured = ctx.positional("path");
-        },
-      },
-    ],
-  });
-  let captured: string | string[] | undefined;
-  cliValidateProgram(root);
-  await cliInvoke(root, ["x", "./file"]);
-  expect(captured).toBe("./file");
-});
-
-test("ctx.positional returns varargs array", async () => {
-  const root = varargsReadFixture();
-  let captured: string | string[] | undefined;
-  if (isCliRouter(root)) {
-    (root.commands[0] as CliLeaf).handler = (ctx) => {
-      captured = ctx.positional("files");
-    };
-  }
-  cliValidateProgram(root);
-  await cliInvoke(root, ["read", "a.txt", "b.txt"]);
-  expect(captured).toEqual(["a.txt", "b.txt"]);
-});
-
-test("ctx.positional returns undefined for absent optional slot", async () => {
-  const root = testProgram({
-    key: "app",
-    description: "",
-    commands: [
-      {
-        key: "x",
-        description: "",
-        positionals: [
-          { name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
-        ],
-        handler: (ctx: CliContext) => {
-          captured = ctx.positional("opt");
-        },
-      },
-    ],
-  });
-  let captured: string | string[] | undefined;
-  cliValidateProgram(root);
-  await cliInvoke(root, ["x"]);
-  expect(captured).toBeUndefined();
-});
-
-test("ctx.positional varargs matches ctx.args", async () => {
-  const root = varargsReadFixture();
-  let positional: string | string[] | undefined;
-  let args: string[] = [];
-  if (isCliRouter(root)) {
-    (root.commands[0] as CliLeaf).handler = (ctx) => {
-      positional = ctx.positional("files");
-      args = ctx.args;
-    };
-  }
-  cliValidateProgram(root);
-  await cliInvoke(root, ["read", "a.txt", "b.txt"]);
-  expect(positional).toEqual(args);
 });
 
 test("mcpToolCallToArgv rejects comma-separated string for varargs", () => {

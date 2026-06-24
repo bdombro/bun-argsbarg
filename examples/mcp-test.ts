@@ -3,17 +3,38 @@
 MCP test fixture for subprocess integration tests only.
 */
 
-import { cliRun, CliProgram, CliOptionKind } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram } from "../src/index.ts";
 
-const envFilePath = process.env.ARGS_TEST_ENV_FILE;
+const configPath = process.env.ARGS_TEST_CONFIG_FILE;
 
-const cli = {
+const program = {
   key: "mcp-test",
   version: "0.0.0-test",
   description: "MCP integration test fixture.",
+  ...(configPath
+    ? {
+        appConfig: {
+          path: configPath,
+          entries: {
+            argsTestSecret: {
+              description: "Test secret for integration tests.",
+              env: "ARGS_TEST_SECRET",
+            },
+          },
+        },
+      }
+    : {
+        appConfig: {
+          entries: {
+            argsTestSecret: {
+              description: "Test secret for integration tests.",
+              env: "ARGS_TEST_SECRET",
+            },
+          },
+        },
+      }),
   mcpServer: {
     enabled: true,
-    ...(envFilePath ? { envFile: envFilePath } : {}),
     resources: [
       {
         uri: "test://hello",
@@ -28,9 +49,6 @@ const cli = {
     {
       key: "echo-env",
       description: "Echo an env var.",
-      mcpTool: {
-        requiresEnv: ["ARGS_TEST_SECRET"],
-      },
       options: [
         {
           name: "name",
@@ -63,4 +81,5 @@ const cli = {
   ],
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();

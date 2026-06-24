@@ -7,6 +7,8 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
+import type { AnyAppConfigSnapshot } from "./config/context.ts";
+import { EmptyAppConfigSnapshot } from "./config/context.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
 import { collectOptionDefs } from "./parse.ts";
 import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
@@ -26,6 +28,7 @@ export class CliContext {
   readonly program: CliProgram;
   readonly opts: Record<string, string>;
   readonly invocation: CliInvocation;
+  readonly appConfig: AnyAppConfigSnapshot;
 
   /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
@@ -35,6 +38,7 @@ export class CliContext {
     opts: Record<string, string>,
     program: CliProgram,
     invocation: CliInvocation = "cli",
+    appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(),
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
@@ -42,6 +46,7 @@ export class CliContext {
     this.opts = opts;
     this.program = program;
     this.invocation = invocation;
+    this.appConfig = appConfig;
   }
 
   /** Returns whether a presence flag was set (including implicit "1" for boolean options). */

@@ -1,0 +1,17 @@
+---
+description: Keep argsbarg examples in sync when changing builtins or schemagen conventions
+globs: "src/builtins/**/*,src/capabilities.ts,src/config/**/*,src/docs/**/*,src/install/**/*,src/mcp/**/*,docs/output-schema.md,docs/config-schema.md"
+alwaysApply: false
+---
+
+When changing argsbarg **builtins**, **capabilities**, or **schemagen documentation**:
+
+1. Update **`examples/consumer-app/`** so it still enables every capability (`completion`, `version`, `install`, `docs`, `mcp`, `config`, `update`).
+2. Run **`just consumer-app-schemagen`** and commit any changed `schemas/generated/` and bridge files.
+3. Run **`bun test examples/consumer-app`** (or full `just test`) — `capabilities.test.ts` must pass.
+4. If discovery or naming conventions change, update **`scripts/schemagen/discover-schema-roots.ts`** and its test in the example (and mirror the change in consumer repos per docs).
+
+**Learn** config basics: `examples/config-app/` (hand-written schema, zero setup).  
+**Copy** production layout: `examples/consumer-app/` (this sink).
+
+Do not duplicate framework docs here — see `docs/cli-program.md` and shipped `cli-program.mdc`.

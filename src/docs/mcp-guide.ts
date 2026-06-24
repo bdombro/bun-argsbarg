@@ -1,4 +1,6 @@
 import { resolveCapabilities } from "../capabilities.ts";
+import { defaultConfigEntryTitle } from "../config/entry.ts";
+import { displayAppConfigPath } from "../config/file.ts";
 import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../install/mcp-opencode.ts";
 import {
   collectMcpTools,
@@ -163,19 +165,41 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
   );
 
-  if (mcp.shellEnv || mcp.envFile) {
+  if (mcp.shellEnv) {
     lines.push("## Environment", "");
-    if (mcp.shellEnv) {
-      lines.push(
-        "- **`shellEnv`** — captures login-shell environment at MCP startup (PATH, toolchain shims, exports).",
-      );
-    }
-    if (mcp.envFile) {
-      lines.push(
-        `- **\`envFile\`** — loads \`${mcp.envFile}\` after shell env (overrides for its keys).`,
-      );
-    }
+    lines.push(
+      "- **`shellEnv`** — captures login-shell environment at MCP startup (PATH, toolchain shims, exports).",
+    );
     lines.push("");
+  }
+
+  if (root.appConfig?.entries && Object.keys(root.appConfig.entries).length > 0) {
+    lines.push("## Configuration", "");
+    lines.push(
+      `Configure before first use in Cursor or Claude Desktop (MCP hosts are non-interactive): \`${root.key} install --configure\`.`,
+      "",
+      `Default config file: \`${displayAppConfigPath(root)}\` (flat JSON keys).`,
+      "",
+    );
+    for (const [key, entry] of Object.entries(root.appConfig.entries)) {
+      const label = entry.title ?? defaultConfigEntryTitle(key);
+      const req = entry.required === false ? "optional" : "required";
+      const envNote = entry.env ? ` → env \`${entry.env}\`` : "";
+      lines.push(`- **${label}** (\`${key}\`, ${req}${envNote}) — ${entry.description}`);
+    }
+    lines.push(
+      "",
+      "Example:",
+      "",
+      "```typescript",
+      "config: {",
+      "  schema: {",
+      '    apiToken: { description: "…", env: "API_TOKEN", sensitive: true },',
+      "  },",
+      "},",
+      "```",
+      "",
+    );
   }
 
   lines.push(

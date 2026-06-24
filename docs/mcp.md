@@ -125,14 +125,13 @@ Any host that spawns a subprocess and wires stdin/stdout works the same way: the
 
 ## Configuration
 
-Set `mcpServer` on the **program root only** (the `CliProgram` passed to `cliRun`). Validation rejects `mcpServer` on nested nodes.
+Set `mcpServer` on the **program root only** (the `CliProgram` passed to `new Cli(program)`). Validation rejects `mcpServer` on nested nodes.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
 | `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
 | `shellEnv` | off | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
-| `envFile` | off | Load a `.env` file after `shellEnv` (`~` supported); warns on stderr if missing |
 | `resources` | `[]` | Custom `CliMcpResource` entries (additive; schema resource is always included) |
 
 MCP `serverInfo.name` and the default schema URI use the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `CliProgram.version` (also used by the `version` built-in).
@@ -143,7 +142,6 @@ Example with optional fields:
 mcpServer: {
   enabled: true,
   shellEnv: true,
-  envFile: "~/.config/myapp/mcp.env",
 }
 ```
 
@@ -163,7 +161,7 @@ Tool names are derived from the command path, with each segment sanitized (non-a
 
 ### Tool descriptions
 
-Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. Leaf **`notes`** are appended after a blank line (with `{argsbarg:program}` resolved). Tool arguments are defined in `inputSchema` (options and positionals with their descriptions). `mcpTool.requiresEnv` is appended as `[requires env: …]` on auto-generated descriptions.
+Each tool’s `description` includes the human CLI path and the leaf’s help text, separated by an em dash. Leaf **`notes`** are appended after a blank line (with `{argsbarg:program}` resolved). Tool arguments are defined in `inputSchema` (options and positionals with their descriptions).
 
 | CLI path | MCP `description` (example) |
 | --- | --- |
@@ -194,14 +192,12 @@ Omitted or `enabled: true` exposes the command (default). `mcpTool` is only vali
 mcpTool: {
   enabled: true,
   description: "Custom tools/list text (overrides auto-generated path + help).",
-  requiresEnv: ["API_TOKEN", "DATABASE_URL"],
 }
 ```
 
 Set **`outputSchema` on the leaf** (not under `mcpTool`) — see [cli-program.md — Structured stdout](cli-program.md#structured-stdout).
 
-- **`description`** — when set, replaces the auto-generated `path — help` description entirely (no automatic `requiresEnv` suffix; mention vars in your text if needed).
-- **`requiresEnv`** — on auto-generated descriptions, appended as `[requires env: …]`. Enforced at `tools/call` time before the handler runs. Empty or unset env values count as missing.
+- **`description`** — when set, replaces the auto-generated `path — help` description entirely.
 
 ### Tool arguments
 
@@ -269,7 +265,7 @@ URIs must be unique and must not equal `schemaResourceUri`. `load()` runs synchr
 
 ## Invocation context
 
-Handlers receive `ctx.invocation`: `"cli"` for normal `cliRun` dispatch, `"mcp"` for MCP `tools/call`.
+Handlers receive `ctx.invocation`: `"cli"` for normal `Cli.run()` dispatch, `"mcp"` for MCP `tools/call`.
 
 MCP is always non-interactive. Commands that can mount Ink or prompts should implement a **headless fast path** (same path as non-TTY CLI with `--yes` / `--json`) — see [cli-program.md — Headless-capable handlers](cli-program.md#headless-capable-handlers).
 
@@ -287,9 +283,9 @@ handler: async (ctx) => {
 
 `Bun.spawn({ stdout: "inherit" })` under MCP corrupts the wire. Prefer `"pipe"` and let argsbarg return captured handler stdout in the tool result.
 
-### `cliInvoke` (public API)
+### `Cli.invoke` (public API)
 
-`cliInvoke(root, argv)` runs a leaf handler without exiting the process — useful for tests and headless integrations. Returns `{ kind, exitCode, stdout, stderr }`. MCP tool dispatch uses this internally.
+`new Cli(root).invoke(argv)` runs a leaf handler without exiting the process — useful for tests and headless integrations. Returns `{ kind, exitCode, stdout, stderr }`. MCP tool dispatch uses this internally.
 
 **Note:** Tool output is buffered until the handler completes. Live streaming (e.g. `tail -f`) is not supported yet; see [Design notes](#design-notes).
 
@@ -297,12 +293,12 @@ handler: async (ctx) => {
 
 MCP hosts (e.g. Cursor) often spawn your server with a minimal environment — missing `PATH` entries for Homebrew, nvm, rbenv, etc.
 
-At server start (`cliMcpServeStdio`), before the NDJSON loop:
+At server start (`Cli.serveMcp()`), before the NDJSON loop:
 
 | Order | Source | Behavior |
 | --- | --- | --- |
 | 1 | `shellEnv` | Spawns `$SHELL -l -c env`; merges into `process.env` |
-| 2 | `envFile` | Loads `.env`; **overwrites** keys from step 1 |
+| 2 | App config file | Loads `program.appConfig` keys from flat JSON when unset in host env |
 
 **`shellEnv` merge rules:**
 
@@ -310,18 +306,26 @@ At server start (`cliMcpServeStdio`), before the NDJSON loop:
 - **Other vars** — set only when absent from the host environment (host wins).
 - On failure — one-line warning on **stderr**; server continues.
 
-**`envFile`:**
+**App config (`program.appConfig`):**
 
-- Supports `~` expansion.
-- Missing file — warning on stderr, server continues.
-- Keys from the file **always overwrite** `process.env`.
+- Default path: `$XDG_CONFIG_HOME/<sanitized-key>/config` (Linux/macOS) or `%APPDATA%/<key>/config` (Windows). Override with `config.path`.
+- JSON shape: flat object keyed by schema names — `{ "apiToken": "…" }`. Unknown keys rejected on load.
+- Loaded at MCP startup; host `process.env` wins for mapped env vars already set.
+- Missing required config does **not** exit the MCP server — enforced at `tools/call` with a helpful error.
+- Configure interactively: `myapp install --configure` (see [install.md](install.md)).
+- Built-in `config get` / `config set` when `program.appConfig.commands` is enabled (default). Hosts inject `user_config` → env at spawn; they never write the argsbarg config file.
 
 Example:
 
 ```typescript
+appConfig: {
+  entries: {
+    apiToken: { description: "Create at https://example.com/settings/tokens", env: "API_TOKEN", sensitive: true },
+  },
+},
 mcpServer: {
+  enabled: true,
   shellEnv: true,
-  envFile: "~/.config/myapp/mcp.env",
 },
 ```
 
@@ -355,15 +359,35 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 
 ## MCP Bundle (`mcp bundle`)
 
-When `mcpServer.enabled` is true, **`mcp bundle`** packs a Claude Desktop **`.mcpb`** bundle:
+When `mcpServer.enabled` is true, **`mcp bundle`** writes two distribution artifacts:
 
 ```bash
 just build
 ./dist/myapp mcp bundle
 # → dist/myapp.mcpb
+# → dist/claude-plugin/myapp.zip
 ```
 
-Expects the compiled binary at **`dist/<program.key>`** and writes **`dist/<program.key>.mcpb`**. Manifest metadata is generated from your schema (`mcpServerId`, tools, `requiresEnv`). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
+Expects the compiled binary at **`dist/<program.key>`**.
+
+| Output | Purpose |
+| --- | --- |
+| **`dist/<key>.mcpb`** | Claude Desktop MCP Bundle (`.mcpb` zip) |
+| **`dist/claude-plugin/<name>.zip`** | Claude Code plugin zip (`<name>` is kebab-case from `program.key`) |
+
+Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.appConfig` user config for env-mapped entries). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
+
+**Claude Code plugin zip layout** (paths at archive root):
+
+```
+.claude-plugin/plugin.json
+.mcp.json
+bin/myapp
+skills/<dirName>/SKILL.md
+skills/<dirName>/reference.md
+```
+
+Load locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
 
 Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
 

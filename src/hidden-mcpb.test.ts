@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { exportPresentationBuiltins } from "./builtins/export.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import { cliHelpRender } from "./help.ts";
-import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+import {
+  defaultMcpBundlePaths,
+  generateMcpManifest,
+  packMcpBundle,
+  runMcpBundle,
+} from "./mcp/bundle.ts";
 import { collectMcpTools } from "./mcp/tools.ts";
 import { cliSchemaExport } from "./schema.ts";
 import { CliOptionKind, type CliProgram } from "./types.ts";
@@ -146,6 +151,39 @@ describe("mcp bundle", () => {
       expect(zip.indexOf(Buffer.from("manifest.json"))).toBeGreaterThanOrEqual(0);
       expect(zip.indexOf(Buffer.from("myapp"))).toBeGreaterThanOrEqual(0);
     } finally {
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  test("runMcpBundle prints mcpb and plugin paths", () => {
+    const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
+    const stdout: string[] = [];
+    const orig = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      const dist = join(work, "dist");
+      mkdirSync(dist, { recursive: true });
+      writeFileSync(join(dist, "myapp"), "#!/bin/sh\n", { mode: 0o755 });
+      const prevCwd = process.cwd();
+      process.chdir(work);
+      try {
+        runMcpBundle(hiddenFixture);
+      } finally {
+        process.chdir(prevCwd);
+      }
+      const lines = stdout.join("").trim().split("\n");
+      const norm = (p: string) => realpathSync.native(p);
+      expect(lines.map(norm)).toEqual([
+        norm(join(dist, "myapp.mcpb")),
+        norm(join(dist, "claude-plugin", "myapp.zip")),
+      ]);
+      const zip = readFileSync(join(dist, "claude-plugin", "myapp.zip"));
+      expect(zip.indexOf(Buffer.from(".mcp.json"))).toBeGreaterThanOrEqual(0);
+    } finally {
+      process.stdout.write = orig;
       rmSync(work, { recursive: true, force: true });
     }
   });

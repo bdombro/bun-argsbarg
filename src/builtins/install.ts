@@ -92,6 +92,19 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     });
   }
 
+  if (root.appConfig) {
+    opts.push({
+      name: "configure",
+      description: "Interactively write app config (~/.config/<key>/config).",
+      kind: CliOptionKind.Presence,
+    });
+    opts.push({
+      name: "config",
+      description: "Remove app config file (with --uninstall).",
+      kind: CliOptionKind.Presence,
+    });
+  }
+
   return opts;
 }
 

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { mcpServerId, sanitizeToolSegment } from "../mcp/tools.ts";
+import { expandTilde, userHome, xdgConfigHome } from "../paths/host.ts";
 import type { CliProgram } from "../types.ts";
 import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
@@ -25,20 +25,7 @@ export interface InstallPaths {
   skillDirName: string;
 }
 
-/** Resolves the user home directory (`$HOME` when set). */
-export function userHome(): string {
-  return process.env.HOME ?? homedir();
-}
-
-function expandTilde(path: string): string {
-  if (path.startsWith("~/")) {
-    return join(userHome(), path.slice(2));
-  }
-  if (path === "~") {
-    return userHome();
-  }
-  return path;
-}
+export { userHome } from "../paths/host.ts";
 
 /** Resolves the binary install directory from CLI flag, env, or config. */
 export function resolveBindir(root: CliProgram, prefix?: string): string {
@@ -58,8 +45,7 @@ export function resolveClaudeDesktopMcpPath(home: string): string {
     const appData = process.env.APPDATA ?? join(home, "AppData", "Roaming");
     return join(appData, "Claude", "claude_desktop_config.json");
   }
-  const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
-  return join(xdgConfig, "Claude", "claude_desktop_config.json");
+  return join(xdgConfigHome(home), "Claude", "claude_desktop_config.json");
 }
 
 /** True when Claude Desktop app data exists (config file or app support directory). */
@@ -76,8 +62,7 @@ export function resolveChatGptMcpPath(home: string): string {
     const appData = process.env.APPDATA ?? join(home, "AppData", "Roaming");
     return join(appData, "OpenAI", "ChatGPT", "chatgpt_mcp_config.json");
   }
-  const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
-  return join(xdgConfig, "ChatGPT", "chatgpt_mcp_config.json");
+  return join(xdgConfigHome(home), "ChatGPT", "chatgpt_mcp_config.json");
 }
 
 /** True when ChatGPT desktop app data exists (config file or app support directory). */
@@ -91,7 +76,7 @@ export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string })
   const bindir = resolveBindir(root, opts.prefix);
   const key = root.key;
   const skillDirName = sanitizeToolSegment(root.key);
-  const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
+  const xdgConfig = xdgConfigHome(home);
   const claudeDesktopMcpPath = resolveClaudeDesktopMcpPath(home);
   const chatGptMcpPath = resolveChatGptMcpPath(home);
 

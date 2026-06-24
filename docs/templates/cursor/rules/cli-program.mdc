@@ -9,18 +9,23 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 1. **Read** `node_modules/argsbarg/docs/cli-program.md` (required — authoritative guide).
 2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
 3. JSON stdout / `outputSchema` guide and codegen → `node_modules/argsbarg/docs/output-schema.md`.
-4. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
-5. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
+4. App config / `program.appConfig` guide and codegen → `node_modules/argsbarg/docs/config-schema.md`.
+5. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
+6. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
+7. **Examples** (shipped under `node_modules/argsbarg/examples/`):
+   - Concepts / minimal config → `examples/config-app/`
+   - **Copy template** (all builtins, schemagen, `outputSchema`) → `examples/consumer-app/`
 
 **Hard rules** (details and examples are in the docs above — do not contradict them):
 
-- Reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`.
+- Reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `update`, `config`.
 - `satisfies CliProgram` / `CliLeaf`; action-oriented `description` on root, commands, options, and positionals.
-- Omit `mcpTool` unless genuinely CLI-only (`enabled: false`), `requiresEnv`, or an irreducible wire limit — fix schema and headless handlers first.
+- Omit `mcpTool` unless genuinely CLI-only (`enabled: false`) or an irreducible wire limit — fix schema and headless handlers first.
 - Interactive leaves: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
 - String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
 - Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
 - Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
-- JSON stdout: `outputSchema` on the leaf from generated constants — see `output-schema.md`; do not hand-edit `src/schemas/generated/`.
+- JSON stdout: `outputSchema` on the leaf from generated constants in `outputSchemas.ts` — see `output-schema.md`; mark roots with **`JSON payload`** JSDoc in `src/**/types.ts`; do not hand-edit `src/schemas/generated/` or `outputSchemas.ts`.
+- App config: `program.appConfig.jsonSchema` from generated `configSchemas.ts` — see `config-schema.md`; mark roots with **`Config schema`** JSDoc; prefer the layout in `node_modules/argsbarg/examples/consumer-app/` when adding new schema roots.
 
 **App-specific conventions:** replace this line with a `**<your-app> conventions:**` section (bullets only). Keep it at the bottom of this file — `just consumer-dev` / `just consumers-sync` in the argsbarg repo refresh the template above and preserve this block. Do not duplicate `cli-program.md` here; link paths and patterns only. For a second rule file (e.g. `.cursor/argsbarg.mdc`), that is fine too.

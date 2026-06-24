@@ -40,3 +40,21 @@ export function applySkillInstallHints(
     referenceMd: insertGeneratedHint(referenceMd, hint),
   };
 }
+
+/** Hint for `mcp bundle` plugin skill output. */
+export function skillBundleHint(program: CliProgram): string {
+  return generatedFileHtmlComment(`${program.key} mcp bundle`);
+}
+
+/** Applies bundle hints to SKILL.md (after frontmatter) and reference.md. */
+export function applySkillBundleHints(
+  program: CliProgram,
+  skillMd: string,
+  referenceMd: string,
+): { skillMd: string; referenceMd: string } {
+  const hint = skillBundleHint(program);
+  return {
+    skillMd: insertGeneratedHint(skillMd, hint, { afterFrontmatter: true }),
+    referenceMd: insertGeneratedHint(referenceMd, hint),
+  };
+}

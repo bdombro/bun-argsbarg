@@ -1,3 +1,4 @@
+import { appConfigStatus } from "../config/bootstrap.ts";
 import type { CliProgram } from "../types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
@@ -67,5 +68,16 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
   }
   if (!any) {
     installOut("  (none detected)", opts);
+  }
+
+  const configStatus = appConfigStatus(root);
+  if (configStatus) {
+    installOut(
+      `  app config: ${configStatus.path}${configStatus.exists ? "" : " (missing)"}`,
+      opts,
+    );
+    for (const req of configStatus.required) {
+      installOut(`    ${req.key}: ${req.set ? "set" : "missing"}`, opts);
+    }
   }
 }

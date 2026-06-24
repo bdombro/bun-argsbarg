@@ -1,4 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
+import { resolveAppConfigPath, uninstallAppConfig } from "../config/file.ts";
 import type { CliProgram } from "../types.ts";
 import { uninstallBinary } from "./binary.ts";
 import { uninstallCompletions } from "./completions.ts";
@@ -13,6 +14,7 @@ import {
   wantsInstallCompletions,
   wantsInstallMcp,
   wantsInstallSkill,
+  wantsUninstallConfig,
 } from "./plan.ts";
 
 export interface UninstallAction {
@@ -145,6 +147,15 @@ export function buildUninstallPlan(
         },
       });
     }
+  }
+
+  if (wantsUninstallConfig(opts, root)) {
+    const configPath = resolveAppConfigPath(root);
+    actions.push({
+      summary: `app config: ${configPath}`,
+      message: `Removing app config ${configPath}`,
+      run: () => (uninstallAppConfig(root, dry) ? [configPath] : []),
+    });
   }
 
   return actions;

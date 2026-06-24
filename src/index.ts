@@ -7,6 +7,8 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
+export { Cli, type CliInvokeKind, type CliInvokeResult } from "./cli.ts";
+export { cliErrWithHelp } from "./cli-errors.ts";
 export type { CliLeafInputs } from "./context.ts";
 export { CliContext } from "./context.ts";
 export {
@@ -32,12 +34,11 @@ export {
   isAlreadyCurrent,
   parseReleaseTag,
 } from "./install/gh-release-update.ts";
-export type { CliInvokeKind, CliInvokeResult } from "./invoke.ts";
-export { cliInvoke } from "./invoke.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
-export { cliErrWithHelp, cliRun } from "./runtime";
 export type {
+  CliAppConfig,
+  CliAppConfigEntry,
   CliDocsConfig,
   CliDocsTopic,
   CliHandler,

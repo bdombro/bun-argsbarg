@@ -43,6 +43,67 @@ function validateDocsConfig(docs: import("./types.ts").CliDocsConfig): void {
   }
 }
 
+/** Validates `program.appConfig` on the program root. */
+function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig): void {
+  const entries = appConfigBlock.entries;
+  if (typeof entries !== "object" || entries === null || Array.isArray(entries)) {
+    throw new CliSchemaValidationError("program.appConfig.entries must be an object");
+  }
+
+  const envNames = new Set<string>();
+  for (const [key, entry] of Object.entries(entries)) {
+    if (key.length === 0) {
+      throw new CliSchemaValidationError(
+        "program.appConfig.entries keys must be non-empty strings",
+      );
+    }
+    if (entry === undefined || typeof entry !== "object") {
+      throw new CliSchemaValidationError(`program.appConfig.entries['${key}'] must be an object`);
+    }
+    const description = entry.description;
+    if (typeof description !== "string" || description.trim().length === 0) {
+      throw new CliSchemaValidationError(
+        `program.appConfig.entries['${key}'].description must be a non-empty string`,
+      );
+    }
+    if (entry.env !== undefined) {
+      if (typeof entry.env !== "string" || entry.env.length === 0) {
+        throw new CliSchemaValidationError(
+          `program.appConfig.entries['${key}'].env must be a non-empty string when set`,
+        );
+      }
+      if (envNames.has(entry.env)) {
+        throw new CliSchemaValidationError(`Duplicate program.appConfig env mapping: ${entry.env}`);
+      }
+      envNames.add(entry.env);
+    }
+  }
+
+  const jsonSchema = appConfigBlock.jsonSchema;
+  if (jsonSchema !== undefined) {
+    if (typeof jsonSchema !== "object" || jsonSchema === null || Array.isArray(jsonSchema)) {
+      throw new CliSchemaValidationError(
+        "program.appConfig.jsonSchema must be a JSON Schema object (not null or an array)",
+      );
+    }
+    const properties = jsonSchema.properties;
+    if (properties !== undefined) {
+      if (typeof properties !== "object" || properties === null || Array.isArray(properties)) {
+        throw new CliSchemaValidationError(
+          "program.appConfig.jsonSchema.properties must be an object when set",
+        );
+      }
+      for (const key of Object.keys(entries)) {
+        if (!(key in properties)) {
+          throw new CliSchemaValidationError(
+            `program.appConfig.entries key '${key}' is missing from jsonSchema.properties`,
+          );
+        }
+      }
+    }
+  }
+}
+
 /** Validates a program schema. */
 export function cliValidateProgram(program: CliProgram): void {
   if (!program.version || program.version.trim().length === 0) {
@@ -63,6 +124,10 @@ export function cliValidateProgram(program: CliProgram): void {
 
   if (program.docs?.enabled === true) {
     validateDocsConfig(program.docs);
+  }
+
+  if (program.appConfig !== undefined) {
+    validateConfigBlock(program.appConfig);
   }
 
   if (program.install?.updateGetLatest !== undefined) {
@@ -106,6 +171,11 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (rogue.docs !== undefined) {
       throw new CliSchemaValidationError(
         `docs is only supported on the program root (not on ${node.key})`,
+      );
+    }
+    if (rogue.appConfig !== undefined) {
+      throw new CliSchemaValidationError(
+        `appConfig is only supported on the program root (not on ${node.key})`,
       );
     }
   }

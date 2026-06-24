@@ -6,9 +6,15 @@
  */
 
 import pkg from "../package.json" with { type: "json" };
-import { cliRun, CliFallbackMode, CliOptionKind, CliValueFormat, type CliProgram } from "../src/index.ts";
+import {
+  Cli,
+  CliFallbackMode,
+  CliOptionKind,
+  type CliProgram,
+  CliValueFormat,
+} from "../src/index.ts";
 
-const cli = {
+const program = {
   key: "formats.ts",
   version: pkg.version,
   description: "Value formats and readLeafInputs demo.",
@@ -63,4 +69,5 @@ const cli = {
   ],
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();

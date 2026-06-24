@@ -2,6 +2,7 @@
 This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
 */
 
+import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { generateApiGuide } from "../docs/api-guide.ts";
 import { collectMcpTools, type McpToolDef, sanitizeToolSegment } from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
@@ -60,11 +61,22 @@ function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
   if (varargs.length > 0) {
     line += ` (varargs: ${varargs.map((p) => p.name).join(", ")})`;
   }
-  const env = tool.leaf.mcpTool?.requiresEnv;
-  if (env && env.length > 0) {
-    line += ` [requires env: ${env.join(", ")}]`;
-  }
   return line;
+}
+
+function buildConfigurationSection(root: CliProgram): string[] {
+  const schema = root.appConfig?.entries;
+  if (!schema || Object.keys(schema).length === 0) {
+    return [];
+  }
+  const lines = ["## Configuration", ""];
+  for (const [key, entry] of Object.entries(schema)) {
+    const label = entry.title ?? defaultConfigEntryTitle(key);
+    const envNote = entry.env ? ` (env: \`${entry.env}\`)` : "";
+    lines.push(`- **${label}** (\`${key}\`${envNote}) — ${entry.description}`);
+  }
+  lines.push("");
+  return lines;
 }
 
 /** Builds SKILL.md body for the given target. */
@@ -104,11 +116,12 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     lines.push("");
   }
 
+  lines.push(...buildConfigurationSection(root));
+
   lines.push(
     "## Pitfalls",
     "",
     "- Pass `--` before arguments that look like flags.",
-    "- Commands marked `[requires env: ...]` need those variables set in the shell.",
     "",
     "## Reference",
     "",

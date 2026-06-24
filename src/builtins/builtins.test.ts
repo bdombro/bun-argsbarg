@@ -127,6 +127,19 @@ describe("completion emitters", () => {
 });
 
 describe("schema export builtins", () => {
+  test("exportPresentationBuiltins includes config when appConfig set", () => {
+    const withConfig: CliProgram = {
+      ...fixture,
+      appConfig: {
+        entries: {
+          apiToken: { description: "Token.", env: "API_TOKEN" },
+        },
+      },
+    };
+    const builtins = exportPresentationBuiltins(withConfig);
+    expect(builtins.map((b) => b.key)).toContain("config");
+  });
+
   test("exportPresentationBuiltins includes install options", () => {
     const builtins = exportPresentationBuiltins(fixture);
     const install = builtins.find((b) => b.key === "install");

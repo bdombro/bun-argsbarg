@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { userHome } from "../paths/host.ts";
 import type { CliProgram } from "../types.ts";
 import { generateSkillBundle, type SkillTarget } from "./generate.ts";
 import { applySkillInstallHints } from "./hint.ts";
@@ -11,10 +11,6 @@ export interface SkillInstallOpts {
   rimraf?: boolean;
   /** When true, skip writes but return paths that would change. */
   dry?: boolean;
-}
-
-function userHome(): string {
-  return process.env.HOME ?? homedir();
 }
 
 function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean): string {

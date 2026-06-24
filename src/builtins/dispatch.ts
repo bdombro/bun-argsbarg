@@ -1,8 +1,8 @@
-import { resolveCapabilities } from "../capabilities.ts";
+import { capabilityDeniedMessage, resolveCapabilities } from "../capabilities.ts";
+import { Cli } from "../cli.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { cliInstall } from "../install/index.ts";
 import { runMcpBundle } from "../mcp/bundle.ts";
-import { cliMcpServeStdio } from "../mcp.ts";
 import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
 import type { CliNode, CliProgram, CliRouter } from "../types.ts";
@@ -11,6 +11,7 @@ import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
+import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
@@ -70,14 +71,12 @@ export async function dispatchBuiltin(
 
   if (pr.path[0] === "mcp") {
     if (!caps.mcp) {
-      process.stderr.write(
-        "MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n",
-      );
+      process.stderr.write(capabilityDeniedMessage("mcp"));
       process.exit(1);
     }
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
-      await cliMcpServeStdio(program);
+      await new Cli(program).serveMcp();
       process.exit(0);
     }
     if (pr.path.length === 2 && sub === "bundle") {
@@ -95,9 +94,7 @@ export async function dispatchBuiltin(
 
   if (pr.path[0] === "install") {
     if (!caps.install) {
-      process.stderr.write(
-        "install is disabled. Remove install.enabled: false from the program root.\n",
-      );
+      process.stderr.write(capabilityDeniedMessage("install"));
       process.exit(1);
     }
     if (pr.path.length !== 1) {
@@ -171,6 +168,18 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [docsGroup],
+      },
+      isLeafCompletionIntercept: false,
+    };
+  }
+
+  const configGroup = cliBuiltinConfigGroupIfEnabled(program);
+  if (first === "config" && configGroup) {
+    return {
+      parseRoot: {
+        key: program.key,
+        description: program.description,
+        commands: [configGroup],
       },
       isLeafCompletionIntercept: false,
     };

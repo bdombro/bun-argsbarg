@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "defaultRegion": {
+      "type": "string",
+      "description": "Resolved AWS region."
+    },
+    "maxRetries": {
+      "type": "number",
+      "description": "Resolved retry count."
+    },
+    "apiTokenSet": {
+      "type": "boolean",
+      "description": "Whether apiToken is set (value never included)."
+    },
+    "version": {
+      "type": "string",
+      "description": "App version from program root."
+    }
+  },
+  "required": [
+    "apiTokenSet",
+    "version"
+  ],
+  "description": "JSON payload for `consumer-app status --json`.",
+  "definitions": {}
+}

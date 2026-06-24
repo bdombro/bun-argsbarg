@@ -14,6 +14,11 @@
   },
   "overrides": [
     {
+      "includes": ["**/*.json"],
+      "formatter": { "enabled": false },
+      "linter": { "enabled": false }
+    },
+    {
       "includes": ["**/completion-bash.ts", "**/completion-zsh.ts"],
       "linter": {
         "rules": {

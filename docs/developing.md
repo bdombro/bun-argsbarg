@@ -49,6 +49,19 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 
 When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`docs/`, `examples/`, `src/`, etc.).
 
+Exclude `examples/consumer-app/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
+
+## Kitchen-sink example
+
+[`examples/consumer-app/`](../examples/consumer-app/) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
+
+```bash
+just consumer-app-schemagen
+just test
+```
+
+See [`.cursor/rules/examples.mdc`](../.cursor/rules/examples.mdc) for maintainer guidance.
+
 ## Docs
 
 See [README.md](README.md) for the documentation map. Framework authoring guide: [cli-program.md](cli-program.md).

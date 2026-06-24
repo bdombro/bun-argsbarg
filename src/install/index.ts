@@ -1,5 +1,6 @@
 import { readSync } from "node:fs";
 import { resolveCapabilities } from "../capabilities.ts";
+import { displayAppConfigPath, runInstallConfigure } from "../config/bootstrap.ts";
 import { cliSkillInstall } from "../skill/install.ts";
 import type { CliProgram } from "../types.ts";
 import { checkCodexMcpConflict } from "./mcp-codex.ts";
@@ -24,6 +25,8 @@ export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
     from: raw.from,
     status: flag("status"),
     uninstall: flag("uninstall"),
+    configure: flag("configure"),
+    config: flag("config"),
     yes: flag("yes"),
     dry: flag("dry"),
     json: flag("json"),
@@ -33,6 +36,23 @@ export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
 }
 
 export function validateInstallOpts(opts: InstallOpts): string | null {
+  if (opts.configure) {
+    if (
+      opts.all ||
+      opts.bin ||
+      opts.completions ||
+      opts.skill ||
+      opts.mcp ||
+      opts.config ||
+      opts.reinstall ||
+      opts.update ||
+      opts.uninstall ||
+      opts.status
+    ) {
+      return "--configure cannot be combined with other install flags.";
+    }
+    return null;
+  }
   if (opts.quiet && opts.dry) {
     return "--quiet cannot be combined with --dry.";
   }
@@ -90,10 +110,18 @@ export function validateInstallOpts(opts: InstallOpts): string | null {
   if (opts.uninstall && (opts.reinstall || opts.update || opts.status)) {
     return "--uninstall cannot be combined with --reinstall, --update, or --status.";
   }
-  if (!opts.status && !opts.reinstall && !opts.update) {
-    const hasTarget = opts.all || opts.bin || opts.completions || opts.skill || opts.mcp;
+  if (opts.uninstall) {
+    const hasUninstallTarget =
+      opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.config;
+    if (!hasUninstallTarget) {
+      return "Specify at least one target: --all, --bin, --completions, --skill, --mcp, or --config.";
+    }
+  }
+  if (!opts.status && !opts.reinstall && !opts.update && !opts.uninstall) {
+    const hasTarget =
+      opts.all || opts.bin || opts.completions || opts.skill || opts.mcp || opts.config;
     if (!hasTarget) {
-      return "Specify at least one target: --all, --bin, --completions, --skill, or --mcp.";
+      return "Specify at least one target: --all, --bin, --completions, --skill, --mcp, or --config.";
     }
   }
   return null;
@@ -242,6 +270,21 @@ export async function cliInstall(
   rawOpts: Record<string, string>,
 ): Promise<never> {
   const opts = parseInstallOpts(rawOpts);
+
+  if (opts.configure) {
+    if (!root.appConfig) {
+      installErr("install --configure requires program.appConfig on the program root.");
+      process.exit(1);
+    }
+    const result = runInstallConfigure(root);
+    if (result.changed) {
+      installOut(`Wrote config: ${displayAppConfigPath(root)}`, opts);
+    } else {
+      installOut(`Config unchanged: ${displayAppConfigPath(root)}`, opts);
+    }
+    process.exit(0);
+  }
+
   const err = validateInstallOpts(opts);
   if (err) {
     installErr(err);

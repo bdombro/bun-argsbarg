@@ -1,0 +1,17 @@
+{
+  "name": "consumer-app-example",
+  "private": true,
+  "type": "module",
+  "description": "Argsbarg kitchen-sink reference app (copy template; not published to npm).",
+  "scripts": {
+    "schemagen": "bun run scripts/schemagen.ts",
+    "start": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "argsbarg": "file:../.."
+  },
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.3.0",
+    "typescript": "^5.9.3"
+  }
+}

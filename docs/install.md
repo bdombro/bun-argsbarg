@@ -32,6 +32,7 @@ myapp install --uninstall --all --yes
 | Cursor skill | `--skill` | `~/.cursor/skills/<dir>/` when `~/.cursor` exists |
 | Claude skill | `--skill` | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | MCP config | `--mcp` | Cursor, Claude Code/Desktop, OpenCode (`~/.config/opencode`), Codex (`codex` on PATH), ChatGPT desktop (when app data exists). ChatGPT web uses Connectors — see `docs mcp` |
+| App config | `--config` | JSON config file for `program.appConfig` (with `--uninstall`; included in `--uninstall --all`) |
 
 `--all` expands to `--bin`, `--completions`, `--skill`, and `--mcp` (when `mcpServer.enabled` is `true`) for both install and uninstall. Missing targets are skipped silently (no error if nothing is on disk or a shell/agent directory does not exist).
 
@@ -95,6 +96,42 @@ Environment:
 
 - `INSTALL_PREFIX` — same as `install.prefix` / `--prefix`
 
+## App config (`program.appConfig`)
+
+When `program.appConfig` is set on the program root, ArgsBarg manages a flat JSON config file:
+
+```typescript
+appConfig: {
+  entries: {
+    apiToken: {
+      description: "Create at https://example.com/settings/tokens",
+      env: "API_TOKEN",
+      sensitive: true,
+    },
+  },
+  path: "~/.config/myapp/config", // optional; default is OS-specific
+},
+```
+
+Default path: `$XDG_CONFIG_HOME/<sanitized-key>/config` (Linux/macOS) or `%APPDATA%/<key>/config` (Windows).
+
+| Flag | Description |
+| --- | --- |
+| `--configure` | Interactive prompt for each schema entry; writes or updates the config file (standalone — not part of `--all`) |
+| `--uninstall --config` | Remove the config file (included in `--uninstall --all`) |
+| `--status` | Shows config path and which required keys are set or missing |
+
+**Configure UX** (TTY):
+
+```
+API token
+  Create at https://example.com/settings/tokens
+Current: REDACTED
+Value (Enter to keep):
+```
+
+Non-sensitive vars show the current value; first-time setup omits the `Current:` line.
+
 ## Flags
 
 | Flag | Description |
@@ -108,7 +145,7 @@ Environment:
 | `--update` | Download latest release and reinstall installed artifacts (requires `install.updateGetLatest`; implies `--yes`) |
 | `--from <path>` | Binary to copy with `--reinstall` (default: running executable) |
 | `--status` | Read-only inventory |
-| `--uninstall` | Remove artifacts in scope (`--all`, `--bin`, `--completions`, `--skill`, `--mcp`); skips targets not installed |
+| `--uninstall` | Remove artifacts in scope (`--all`, `--bin`, `--completions`, `--skill`, `--mcp`, `--config`); skips targets not installed |
 
 ## MCP merge behavior
 

@@ -35,9 +35,9 @@ Shell completions! -->
 ## Usage
 
 ```typescript
-import { cliRun, type CliProgram, CliOptionKind } from "argsbarg";
+import { Cli, type CliProgram, CliOptionKind } from "argsbarg";
 
-const cli = {
+const program = {
   key: "helloapp",
   version: "1.0.0",
   description: "Tiny demo.",
@@ -67,10 +67,11 @@ const cli = {
   },
 } satisfies CliProgram;
 
-await cliRun(cli);
+const cli = new Cli(program);
+await cli.run();
 ```
 
-`cliRun` parses `process.argv`, prints help or errors, dispatches the leaf handler, and **exits the process**.
+`Cli.run()` parses `process.argv`, prints help or errors, dispatches the leaf handler, and **exits the process**.
 
 
 
@@ -95,7 +96,7 @@ Everything you need for a first-class CLI:
 Every app gets:
 
 - `-h` / `--help` at any routing depth (scoped help).
-- **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `cliRun`).
+- **`completion bash` / `completion zsh` / `completion fish`** — print shell completion scripts to stdout (injected by `Cli.run()`).
 - **`version`** — print `CliProgram.version` (`myapp version`).
 - **`mcp`** — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
 - **`docs`** — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
@@ -108,7 +109,7 @@ When **`docs.enabled`** is `true`, do not declare a top-level command named **`d
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation` and use `cliInvoke` for headless testing.
+Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation`; use `cli.invoke(argv)` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: copy **`docs/templates/cursor/rules/cli-program.mdc`** to **`.cursor/rules/cli-program.mdc`**).
 
@@ -161,7 +162,7 @@ Add app-specific conventions in a second rule if needed. Copy the rule from the 
 ## How it works
 
 1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
-2. Call `await cliRun(root)` with that root — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
+2. Call `await new Cli(program).run()` — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
 
 ### Fallback modes (`CliFallbackMode`)
@@ -215,6 +216,10 @@ Check the `examples/` directory for full working scripts:
 | `ArgsBargMinimal` | `examples/minimal.ts` | String + presence flags, `MissingOrUnknown` fallback. |
 | `ArgsBargNested` | `examples/nested.ts` | Nested command tree, positional tails, async handlers. |
 | `ArgsBargFormats` | `examples/formats.ts` | `CliValueFormat`, `default`, `readLeafInputs()`. |
+| `ArgsBargConfigApp` | `examples/config-app/` | `program.appConfig`, `ctx.appConfig`, built-in `config get`/`set`, inline JSON Schema. |
+| `ArgsBargConsumerApp` | `examples/consumer-app/` | **Copy template:** all builtins, schemagen discovery, `outputSchema`, `from "argsbarg"`. |
+
+Examples ship in the npm package under `node_modules/argsbarg/examples/`. Agents should read **`config-app`** for concepts and **`consumer-app`** when scaffolding a full CLI.
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -228,6 +233,12 @@ nested.ts stat owner lookup -u alice ./README.md
 nested.ts read ./README.md
 
 bun ./examples/formats.ts run --tags demo,docs --on 2026-06-22
+
+CONFIG_APP_API_TOKEN=dev bun ./examples/config-app/main.ts show --json
+CONFIG_APP_API_TOKEN=dev bun ./examples/config-app/main.ts config get
+
+cd examples/consumer-app && bun install && bun run schemagen
+CONSUMER_APP_API_TOKEN=dev bun run start status --json
 ```
 
 
@@ -243,8 +254,9 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `CliSchemaValidationError` | Thrown when the static command tree violates schema rules. |
 | `CliContext` | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.readLeafInputs`, `ctx.invocation`, …). |
 | `CliLeafInputs` | Record type returned by `readLeafInputs()` — coerced option/positional values keyed by schema name. |
-| `cliRun(root, [argv])` | Validate, parse argv, dispatch, exit. |
-| `cliInvoke(root, argv)` | Parse and dispatch without exiting; returns captured stdout/stderr. |
+| `Cli` | Runtime: validate + freeze program, `run()`, `invoke()`, `serveMcp()`, `appConfig` getter, `exportCommandSchema()`, `exportAppConfigSchema()`. |
+| `CliInvokeResult`, `CliInvokeKind` | Result types from `cli.invoke()`. |
+| `CliAppConfig`, `CliAppConfigEntry` | App config block on the program root (`entries` metadata overlay + optional `jsonSchema`). |
 | `cliErrWithHelp(ctx, msg)` | Print error + scoped help on stderr, exit 1. |
 | `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` | Optional format parsers for use outside handlers. |
 
