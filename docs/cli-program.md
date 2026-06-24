@@ -431,7 +431,7 @@ await cli.run();
 
 See [config-schema.md](config-schema.md) for codegen, [install.md](install.md), and [mcp.md](mcp.md).
 
-**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` — prefer over `process.env` in handlers; env export remains for subprocess inheritance.
+**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read`, `path` — prefer over `process.env` in handlers; env export remains for subprocess inheritance. `path` is the resolved absolute config file path (`program.appConfig.path` when set, otherwise the OS default from `program.key`).
 
 ## Reserved names
 

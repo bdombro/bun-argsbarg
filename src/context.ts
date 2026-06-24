@@ -38,7 +38,7 @@ export class CliContext {
     opts: Record<string, string>,
     program: CliProgram,
     invocation: CliInvocation = "cli",
-    appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(),
+    appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(program),
   ) {
     this.appName = appName;
     this.commandPath = commandPath;

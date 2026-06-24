@@ -2,10 +2,14 @@
 
 export type ResolvedConfig = Record<string, unknown>;
 declare class EmptyAppConfigSnapshot {
+	private readonly program;
+	constructor(program: CliProgram);
 	get(_key: string): undefined;
 	require(key: string): never;
 	set(_key: string, _value: unknown): void;
 	read(): ResolvedConfig;
+	/** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
+	get path(): string;
 }
 declare class AppConfigSnapshot {
 	private readonly program;
@@ -16,6 +20,8 @@ declare class AppConfigSnapshot {
 	require(key: string): unknown;
 	set(key: string, value: unknown): void;
 	read(): ResolvedConfig;
+	/** Resolved absolute path to the app JSON config file (honors `program.appConfig.path` or OS default). */
+	get path(): string;
 	/** Replace snapshot after external bootstrap (internal). */
 	refresh(fileData: Record<string, unknown>, resolved: ResolvedConfig): void;
 	private assertEntryKey;

@@ -36,6 +36,7 @@ describe("config/context", () => {
 
       expect(ctx.get("note")).toBe("hello");
       expect(ctx.require("apiToken")).toBe("tok");
+      expect(ctx.path).toBe(path);
 
       ctx.set("note", "updated");
       expect(ctx.get("note")).toBe("updated");
@@ -57,5 +58,22 @@ describe("config/context", () => {
     const empty = createAppConfigSnapshot(program, {}, {});
     expect(empty.get("any")).toBeUndefined();
     expect(() => empty.set("any", "v")).toThrow(/program.appConfig is not set/);
+    expect(empty.path).toContain("x");
+    expect(empty.path.endsWith("/config") || empty.path.endsWith("\\config")).toBe(true);
+  });
+
+  test("AppConfigSnapshot path uses OS default when program.appConfig.path omitted", () => {
+    const program: CliProgram = {
+      key: "ctx-test",
+      version: "1.0.0",
+      description: "Context test.",
+      appConfig: {
+        entries: { note: { description: "Note." } },
+      },
+      handler: () => {},
+    };
+    const ctx = createAppConfigSnapshot(program, {}, {});
+    expect(ctx.path).toContain("ctx_test");
+    expect(ctx.path.endsWith("/config") || ctx.path.endsWith("\\config")).toBe(true);
   });
 });

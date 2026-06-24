@@ -3,12 +3,14 @@ Handler-facing resolved app config snapshot (ctx.appConfig).
 */
 
 import type { CliProgram } from "../types.ts";
-import { writeAppConfigFile } from "./file.ts";
+import { resolveAppConfigPath, writeAppConfigFile } from "./file.ts";
 import type { ResolvedConfig } from "./resolve.ts";
 import { exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
 /** Empty snapshot when program.appConfig is not set. */
 export class EmptyAppConfigSnapshot {
+  constructor(private readonly program: CliProgram) {}
+
   get(_key: string): undefined {
     return undefined;
   }
@@ -23,6 +25,11 @@ export class EmptyAppConfigSnapshot {
 
   read(): ResolvedConfig {
     return {};
+  }
+
+  /** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
+  get path(): string {
+    return resolveAppConfigPath(this.program);
   }
 }
 
@@ -70,6 +77,11 @@ export class AppConfigSnapshot {
     return { ...this.snapshot };
   }
 
+  /** Resolved absolute path to the app JSON config file (honors `program.appConfig.path` or OS default). */
+  get path(): string {
+    return resolveAppConfigPath(this.program);
+  }
+
   /** Replace snapshot after external bootstrap (internal). */
   refresh(fileData: Record<string, unknown>, resolved: ResolvedConfig): void {
     this.fileData = { ...fileData };
@@ -92,7 +104,7 @@ export function createAppConfigSnapshot(
   resolved: ResolvedConfig,
 ): AnyAppConfigSnapshot {
   if (!program.appConfig) {
-    return new EmptyAppConfigSnapshot();
+    return new EmptyAppConfigSnapshot(program);
   }
   return new AppConfigSnapshot(program, fileData, resolved);
 }
