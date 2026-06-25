@@ -45,6 +45,12 @@ const program = {
       },
     ],
   },
+  docs: {
+    enabled: true,
+    topics: {
+      readme: { text: "# MCP test readme\n" },
+    },
+  },
   commands: [
     {
       key: "echo-env",

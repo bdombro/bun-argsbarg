@@ -55,7 +55,7 @@ describe("claude plugin", () => {
     expect(paths.pluginZipPath).toBe(join(cwd, "dist", "claude-plugin", "myapp.zip"));
   });
 
-  test("packClaudePlugin writes zip with expected entries", () => {
+  test("packClaudePlugin writes zip with MCP pointer skill only", () => {
     const work = mkdtempSync(join(tmpdir(), "claude-plugin-test-"));
     try {
       const dist = join(work, "dist");
@@ -64,8 +64,14 @@ describe("claude plugin", () => {
       writeFileSync(binaryPath, "#!/bin/sh\n", { mode: 0o755 });
       const paths = defaultClaudePluginPaths(configFixture, work);
       packClaudePlugin(configFixture, { cwd: work, binaryPath });
-      const zipPath = paths.pluginZipPath;
-      expect(readFileSync(zipPath).length).toBeGreaterThan(0);
+      const zip = readFileSync(paths.pluginZipPath);
+      expect(zip.length).toBeGreaterThan(0);
+      const zipText = zip.toString("utf8");
+      expect(zipText).toContain("skills/myapp/SKILL.md");
+      expect(zipText).toContain("MCP toolset");
+      expect(zipText).toContain("Server id: `myapp`");
+      expect(zipText).not.toContain("skills/myapp/reference.md");
+      expect(zipText).not.toContain("Invoke via shell");
     } finally {
       rmSync(work, { recursive: true, force: true });
     }

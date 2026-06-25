@@ -3,6 +3,7 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for Cli.invoke.
 */
 
+import { docsMcpResources } from "../docs/mcp-resources.ts";
 import { cliResolveNotes } from "../help.ts";
 import { visibleOptions } from "../hidden.ts";
 import { collectOptionDefs } from "../parse.ts";
@@ -25,6 +26,8 @@ const DURATION_PATTERN = "^\\d+[hdms]?$";
 export function defaultMcpSchemaUri(mcpId: string): string {
   return `${mcpId}://schema`;
 }
+
+export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
 
 /** Sanitizes a command key segment for MCP tool names and server identity. */
 export function sanitizeToolSegment(key: string): string {
@@ -209,7 +212,7 @@ export function allMcpResources(root: CliProgram): McpResourceEntry[] {
     mimeType: r.mimeType ?? "text/plain",
     load: r.load,
   }));
-  return [builtIn, ...user];
+  return [builtIn, ...docsMcpResources(root), ...user];
 }
 
 /** Recursively collects MCP tool definitions from user leaf commands. */

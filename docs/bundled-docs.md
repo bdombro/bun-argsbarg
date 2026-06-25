@@ -104,6 +104,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 | `docs api` | Print command tree markdown to stdout |
 | `docs schema` | Print command tree JSON to stdout |
 | `docs` | Bundled markdown topics on stdout |
+| MCP docs topic resources | User `docs.topics` on the MCP wire (`<mcpId>://docs/<topic>`) when docs + MCP enabled |
 | `mcp` | Callable tools + schema resource |
 
 Do not declare a top-level command named **`docs`** when `docs.enabled` is `true` — it is reserved.

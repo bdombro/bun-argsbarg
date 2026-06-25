@@ -10,6 +10,8 @@ import {
 } from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
 import { CliOptionKind, type CliProgram } from "../types.ts";
+import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
+import { docsEnabled, docsUserTopicKeys } from "./resolve.ts";
 
 /** Extra host notes for generated `docs mcp` (manual fallbacks and ChatGPT Connectors). */
 function appendManualHostSetup(lines: string[], root: CliProgram, serverId: string): void {
@@ -210,10 +212,19 @@ export function generateMcpGuide(root: CliProgram): string {
     "| `tools/list` | Callable tools for exposed leaf commands |",
     "| `tools/call` | Runs handlers headlessly; JSON stdout becomes `structuredContent` when valid |",
     `| Schema resource | \`${schemaUri}\` — same JSON as \`${root.key} docs schema\` |`,
-    "",
-    "## Exposed tools",
-    "",
   );
+  if (docsEnabled(root)) {
+    const docs = root.docs;
+    if (docs) {
+      for (const key of docsUserTopicKeys(docs)) {
+        const uri = resolveDocsTopicResourceUri(root, key);
+        lines.push(
+          `| Docs topic \`${key}\` | \`${uri}\` — same markdown as \`${root.key} docs ${key}\` |`,
+        );
+      }
+    }
+  }
+  lines.push("", "## Exposed tools", "");
 
   if (tools.length === 0) {
     lines.push("(No MCP tools exposed.)", "");

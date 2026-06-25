@@ -480,7 +480,24 @@ test("MCP resources/list includes custom resource", async () => {
   const res = responses.get(10) as { result: { resources: { uri: string }[] } };
   const uris = res.result.resources.map((r) => r.uri);
   expect(uris).toContain("mcp_test://schema");
+  expect(uris).toContain("mcp_test://docs/readme");
   expect(uris).toContain("test://hello");
+});
+
+test("MCP resources/read returns docs topic resource body", async () => {
+  const responses = await mcpRequest(
+    [
+      {
+        jsonrpc: "2.0",
+        id: 13,
+        method: "resources/read",
+        params: { uri: "mcp_test://docs/readme" },
+      },
+    ],
+    { script: "examples/mcp-test.ts" },
+  );
+  const res = responses.get(13) as { result: { contents: { text: string }[] } };
+  expect(res.result.contents[0]?.text).toBe("# MCP test readme\n");
 });
 
 test("MCP resources/read returns custom resource body", async () => {

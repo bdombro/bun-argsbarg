@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-06-25
+
+### Added
+
+- **MCP docs topic resources** — when `docs.enabled` and `mcpServer.enabled`, each user `docs.topics` key is auto-exposed as `<mcpId>://docs/<topicKey>` (`text/markdown`, same body as `myapp docs <topic>`). Built-in `docs schema` / `api` / `skill` / `mcp` are not auto-exposed.
+
+### Changed
+
+- **Claude Code plugin skill** — `mcp bundle` plugin zip includes an MCP routing `SKILL.md` only (no shell catalog, no `reference.md`). `install --skill` unchanged.
+- **Validation** — `mcpServer.resources` URIs that collide with auto docs topic resources are rejected at schema validation time.
+
 ## [4.0.3] - 2026-06-24
 
 
@@ -458,7 +469,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v4.0.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v4.0.4...HEAD
+[4.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.4
 [4.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.3
 [4.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.2
 [4.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.1

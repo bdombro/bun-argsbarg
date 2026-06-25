@@ -4,7 +4,13 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { generateApiGuide } from "../docs/api-guide.ts";
-import { collectMcpTools, type McpToolDef, sanitizeToolSegment } from "../mcp/tools.ts";
+import {
+  collectMcpTools,
+  type McpToolDef,
+  mcpServerId,
+  resolveMcpSchemaUri,
+  sanitizeToolSegment,
+} from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
 import { CliOptionKind, type CliProgram } from "../types.ts";
 
@@ -16,10 +22,26 @@ export interface SkillBundle {
   referenceMd: string;
 }
 
+/** MCP routing skill for Claude Code plugin zips (SKILL.md only). */
+export interface PluginSkillBundle {
+  dirName: string;
+  skillMd: string;
+}
+
 /** Truncates text to maxLen with ellipsis. */
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return `${text.slice(0, maxLen - 1)}…`;
+}
+
+/** Builds MCP-oriented skill description for Claude plugin YAML frontmatter. */
+function pluginSkillDescription(root: CliProgram): string {
+  const tools = collectMcpTools(root);
+  const paths = tools.map((t) => (t.path.length > 0 ? t.path.join(" ") : root.key));
+  const sample = paths.slice(0, 5).join(", ");
+  const more = paths.length > 5 ? `, and ${paths.length - 5} more` : "";
+  const desc = `Use the ${root.key} MCP toolset (${sample}${more}). Use when the user mentions ${root.key}${paths.length > 0 ? `, ${paths.slice(0, 3).join(", ")}` : ""}, or related tasks.`;
+  return truncate(desc, 1024);
 }
 
 /** Builds third-person skill description for YAML frontmatter. */
@@ -157,6 +179,54 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
 /** Builds reference.md with the full `docs api` markdown guide. */
 function buildReferenceMd(root: CliProgram): string {
   return generateApiGuide(root);
+}
+
+/** Builds MCP routing SKILL.md for Claude Code plugin zips. */
+function buildPluginSkillMd(root: CliProgram, dirName: string): string {
+  const name = sanitizeToolSegment(root.key);
+  const description = pluginSkillDescription(root);
+  const serverId = mcpServerId(root);
+  const schemaUri = resolveMcpSchemaUri(root);
+
+  const lines: string[] = [
+    "---",
+    `name: ${name}`,
+    `description: ${description}`,
+    "---",
+    "",
+    `# ${root.key}`,
+    "",
+    root.description,
+    "",
+    "## Execution",
+    "",
+    "This plugin bundles an MCP server. Use MCP tools to fulfill requests.",
+    "",
+    `- Server id: \`${serverId}\` (configured in plugin \`.mcp.json\`)`,
+    "- Tool names and argument shapes come from MCP `tools/list`",
+    `- Full schema: \`${schemaUri}\` (same as \`${root.key} docs schema\`)`,
+    "",
+  ];
+
+  lines.push(...buildConfigurationSection(root));
+
+  lines.push(
+    "## Claude Code plugin",
+    "",
+    `Invoke with \`/${dirName}\` or let Claude auto-match from the description.`,
+    "",
+  );
+
+  return lines.join("\n");
+}
+
+/** Generates MCP routing SKILL.md for Claude Code plugin zips. */
+export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
+  const dirName = sanitizeToolSegment(root.key);
+  return {
+    dirName,
+    skillMd: buildPluginSkillMd(root, dirName),
+  };
 }
 
 /** Generates SKILL.md and reference.md for Cursor or Claude Code. */

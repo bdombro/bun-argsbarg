@@ -244,6 +244,20 @@ The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nest
 | MIME type | `application/json` |
 | Contents | `cliSchemaJson(root)` — handlers omitted, built-ins excluded |
 
+### Auto docs topic resources
+
+When both **`docs.enabled`** and **`mcpServer.enabled`** are true, each user key in **`docs.topics`** is also exposed as an MCP resource:
+
+| Property | Value |
+| --- | --- |
+| URI | `<sanitized root key>://docs/<topicKey>` (e.g. `myapp://docs/readme`) |
+| MIME type | `text/markdown` |
+| Contents | Same body as `myapp docs <topicKey>` |
+
+Built-in docs subcommands (`schema`, `api`, `skill`, `mcp`) are **not** auto-exposed — use the schema resource, `install --skill`, or CLI `docs` instead. `docs` subcommands remain hidden from MCP `tools/list`.
+
+Custom `mcpServer.resources` URIs must not collide with the schema URI or any auto docs topic URI (validated at program compile time).
+
 Add custom resources on the program root:
 
 ```typescript
@@ -261,7 +275,7 @@ mcpServer: {
 },
 ```
 
-URIs must be unique and must not equal `schemaResourceUri`. `load()` runs synchronously at `resources/read` time.
+URIs must be unique and must not equal `schemaResourceUri` or any auto docs topic URI (`<mcpId>://docs/<topicKey>`). `load()` runs synchronously at `resources/read` time.
 
 ## Invocation context
 
@@ -384,8 +398,9 @@ Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.
 .mcp.json
 bin/myapp
 skills/<dirName>/SKILL.md
-skills/<dirName>/reference.md
 ```
+
+The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the plugin’s MCP toolset (server id, `tools/list`, schema resource). It is not a shell CLI catalog and does not include `reference.md`. Use **`install --skill`** for a persisted shell-oriented skill bundle.
 
 Load locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
 

@@ -48,6 +48,8 @@ Skills describe **shell invocation only** — no MCP setup, `mcp.json`, or `tool
 
 `SKILL.md` is the routing index; `reference.md` matches `docs api`. Prefer `install --skill` over `docs skill` for agents. See [cli-program.md](cli-program.md).
 
+**Claude Code plugin** (`mcp bundle` → `dist/claude-plugin/<name>.zip`) ships a separate MCP pointer skill (`SKILL.md` only) that routes agents to the bundled MCP server. `install --skill` remains shell-only.
+
 See also:
 
 - [Bundled docs](bundled-docs.md) — `docs` config and compile-time imports

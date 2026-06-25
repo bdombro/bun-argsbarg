@@ -11,6 +11,7 @@
 | `outputSchema` | `src/commands/status/types.ts` (`StatusJsonOutput`) → `schemas/outputSchemas.ts` |
 | Schemagen | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts` |
 | Handler access | `ctx.appConfig` in `src/program.ts` |
+| MCP doc topics | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
 | Package import | `from "argsbarg"` (not relative to argsbarg `src/`) |
 
 ## Quick start (in this repo)

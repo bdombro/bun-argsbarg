@@ -17,11 +17,11 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import { buildPluginMcpEnvMapping, buildProgramUserConfig } from "../config/manifest.ts";
-import { generateSkillBundle } from "../skill/generate.ts";
-import { applySkillBundleHints } from "../skill/hint.ts";
+import { generatePluginSkillBundle } from "../skill/generate.ts";
+import { applyPluginSkillHint } from "../skill/hint.ts";
 import type { CliMcpBundleConfig, CliProgram } from "../types.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
-import { mcpServerId, sanitizeToolSegment } from "./tools.ts";
+import { mcpServerId } from "./tools.ts";
 import { zipStore } from "./zip.ts";
 
 const DIST_DIR = "dist";
@@ -116,13 +116,12 @@ function writePluginTree(
   binaryPath: string,
   binaryName: string,
 ): void {
-  const skillDirName = sanitizeToolSegment(program.key);
-  const bundle = generateSkillBundle(program, "claude");
-  const hinted = applySkillBundleHints(program, bundle.skillMd, bundle.referenceMd);
+  const bundle = generatePluginSkillBundle(program);
+  const skillMd = applyPluginSkillHint(program, bundle.skillMd);
 
   mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
   mkdirSync(join(pluginRoot, "bin"), { recursive: true });
-  mkdirSync(join(pluginRoot, "skills", skillDirName), { recursive: true });
+  mkdirSync(join(pluginRoot, "skills", bundle.dirName), { recursive: true });
 
   writeFileSync(
     join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -133,8 +132,7 @@ function writePluginTree(
     `${JSON.stringify(generatePluginMcpJson(program, binaryName), null, 2)}\n`,
   );
   cpSync(binaryPath, join(pluginRoot, "bin", binaryName), { mode: 0o755 });
-  writeFileSync(join(pluginRoot, "skills", skillDirName, "SKILL.md"), hinted.skillMd);
-  writeFileSync(join(pluginRoot, "skills", skillDirName, "reference.md"), hinted.referenceMd);
+  writeFileSync(join(pluginRoot, "skills", bundle.dirName, "SKILL.md"), skillMd);
 }
 
 /**

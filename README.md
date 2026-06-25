@@ -6,7 +6,7 @@
 [![npm version](https://img.shields.io/npm/v/argsbarg.svg)](https://www.npmjs.com/package/argsbarg)
 [![Bun](https://img.shields.io/badge/Bun-%23000000.svg?logo=bun&logoColor=white)](https://bun.sh)
 
-Build beautiful, well-behaved CLI apps with Bun — **no third-party runtime dependencies**. 
+Build beautiful, well-behaved CLI+MCP apps with Bun — **no third-party runtime dependencies**. 
 
 Why another CLI parser?
 

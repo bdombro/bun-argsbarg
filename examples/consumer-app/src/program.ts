@@ -8,6 +8,7 @@ import {
   CliOptionKind,
   type CliProgram,
 } from "argsbarg";
+import readmeText from "../README.md" with { type: "text" };
 import { APP_CONFIG_JSON_SCHEMA } from "../schemas/configSchemas.ts";
 import { STATUS_JSON_OUTPUT_SCHEMA } from "../schemas/outputSchemas.ts";
 import type { StatusJsonOutput } from "./commands/status/types.ts";
@@ -46,21 +47,12 @@ export const program = {
     enabled: true,
     topics: {
       readme: {
-        text: "# consumer-app\n\nKitchen-sink argsbarg reference. Copy this layout into a new CLI repo.\n",
+        text: readmeText,
       },
     },
   },
   mcpServer: {
     enabled: true,
-    resources: [
-      {
-        uri: "consumer-app://readme",
-        name: "readme",
-        description: "Bundled readme topic.",
-        mimeType: "text/plain",
-        load: () => "# consumer-app\n\nKitchen-sink reference.\n",
-      },
-    ],
   },
   install: {
     updateGetLatest: async () => ({

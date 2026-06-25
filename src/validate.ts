@@ -3,6 +3,7 @@ This module validates CLI schemas before execution.
 */
 
 import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
+import { reservedDocsTopicResourceUris } from "./docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
 import { validateFormatValue } from "./formats.ts";
 import { resolveMcpSchemaUri } from "./mcp/tools.ts";
@@ -209,11 +210,15 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
 
   if (isRoot && program.mcpServer?.enabled === true && program.mcpServer.resources) {
     const schemaUri = resolveMcpSchemaUri(program);
+    const reserved = new Set([schemaUri, ...reservedDocsTopicResourceUris(program)]);
     const uris = program.mcpServer.resources.map((r) => r.uri);
-    if (uris.includes(schemaUri)) {
-      throw new CliSchemaValidationError(
-        `mcpServer.resources URI '${schemaUri}' conflicts with the built-in schema resource`,
-      );
+    for (const uri of uris) {
+      if (reserved.has(uri)) {
+        const kind = uri === schemaUri ? "built-in schema resource" : "auto docs topic resource";
+        throw new CliSchemaValidationError(
+          `mcpServer.resources URI '${uri}' conflicts with ${kind}`,
+        );
+      }
     }
     if (new Set(uris).size !== uris.length) {
       throw new CliSchemaValidationError("mcpServer.resources URIs must be unique");

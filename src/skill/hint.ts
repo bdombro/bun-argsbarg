@@ -58,3 +58,8 @@ export function applySkillBundleHints(
     referenceMd: insertGeneratedHint(referenceMd, hint),
   };
 }
+
+/** Applies bundle hint to plugin SKILL.md (after frontmatter). */
+export function applyPluginSkillHint(program: CliProgram, skillMd: string): string {
+  return insertGeneratedHint(skillMd, skillBundleHint(program), { afterFrontmatter: true });
+}
