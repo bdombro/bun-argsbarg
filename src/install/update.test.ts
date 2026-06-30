@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
@@ -68,10 +76,13 @@ test("runInstallMutation honors --from for binary copy", async () => {
   writeFileSync(source, "#!/bin/sh\necho hi\n", "utf8");
   chmodSync(source, 0o755);
 
+  const bindir = join(home, ".local", "bin");
+  mkdirSync(bindir, { recursive: true });
+  writeFileSync(join(bindir, "testapp"), "old\n", "utf8");
+
   const { changed } = await runInstallMutation(root, {
     reinstall: "1",
     yes: "1",
-    quiet: "1",
     from: source,
   });
 
@@ -89,6 +100,10 @@ test("Cli.invoke install --update uses hook and reinstalls", async () => {
     path: source,
     version: "2.0.0",
   }));
+
+  const bindir = join(home, ".local", "bin");
+  mkdirSync(bindir, { recursive: true });
+  writeFileSync(join(bindir, "testapp"), "old\n", "utf8");
 
   const result = await new Cli(root).invoke(["install", "--update"]);
   expect(result.exitCode).toBe(0);

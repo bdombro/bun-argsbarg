@@ -385,7 +385,6 @@ const program = {
   version: "1.0.0",
   description: "…",
   appConfig: {
-    path: "~/.config/myapp/config", // optional override
     jsonSchema: APP_CONFIG_JSON_SCHEMA, // optional; omit for all-string mode
     entries: {
       apiToken: {
@@ -427,11 +426,12 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `config get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** `myapp install --configure` (not part of `--all`).
+- **Configure:** included in default `--all` via `install.targets.configure`; also **`myapp install --configure`** (wizard only).
+- **Agent integration:** `install.agentIntegration` (`mcp` | `skill` | `both`) sets default `--all` targets; see [install.md](install.md#examples).
 
-See [config-schema.md](config-schema.md) for codegen, [install.md](install.md), and [mcp.md](mcp.md).
+See [config-schema.md](config-schema.md) for codegen, [install.md](install.md) (`install.targets`), and [mcp.md](mcp.md).
 
-**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` in handlers; env export remains for subprocess inheritance. `path` is the resolved absolute config file path; `dir` is its parent directory (both honor `program.appConfig.path` when set, otherwise the OS default from `program.key`).
+**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` in handlers; env export remains for subprocess inheritance. `path` is the resolved absolute config file path (`~/.local/lib/<key>/config`); `dir` is its parent directory.
 
 ## Reserved names
 

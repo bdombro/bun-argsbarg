@@ -160,9 +160,21 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
   }
 }
 
-/** Runs `mcp bundle`: writes `.mcpb` and Claude Code plugin zip; prints both paths. */
+/** Runs `mcp bundle`: writes enabled dist artifacts; prints one path per line. */
 export function runMcpBundle(program: CliProgram): void {
-  const mcpbPath = packMcpBundle(program);
-  const pluginPath = packClaudePlugin(program);
-  process.stdout.write(`${mcpbPath}\n${pluginPath}\n`);
+  const mcp = program.mcpServer;
+  if (!mcp?.mcpd && !mcp?.claudePlugin) {
+    throw new Error(
+      "mcp bundle: enable mcpServer.mcpd and/or mcpServer.claudePlugin on the program root.",
+    );
+  }
+
+  const lines: string[] = [];
+  if (mcp.mcpd) {
+    lines.push(packMcpBundle(program));
+  }
+  if (mcp.claudePlugin) {
+    lines.push(packClaudePlugin(program));
+  }
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

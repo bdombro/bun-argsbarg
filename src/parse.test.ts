@@ -614,7 +614,7 @@ test("cliSchemaExport resolves program key in install notes", () => {
 
   const json = cliSchemaJson(root);
   expect(json).not.toContain("{argsbarg:program}");
-  expect(json).toContain("myapp install --all --yes");
+  expect(json).toContain("myapp install --yes");
 });
 
 test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
@@ -1122,6 +1122,17 @@ test("install config on non-root node is rejected", () => {
     ],
   } as unknown as CliProgram;
   expect(() => cliValidateProgram(root)).toThrow(/install is only supported on the program root/);
+});
+
+test("install.prefix is rejected", () => {
+  const root = {
+    key: "app",
+    version: "0.0.0",
+    description: "",
+    install: { prefix: "/opt/bin" },
+    handler: () => {},
+  } as unknown as CliProgram;
+  expect(() => cliValidateProgram(root)).toThrow(/install\.prefix removed/);
 });
 
 test("generateSkillBundle includes frontmatter and compact command index", () => {

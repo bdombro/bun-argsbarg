@@ -13,8 +13,10 @@ import {
 } from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
 import { CliOptionKind, type CliProgram } from "../types.ts";
+import type { SkillTarget } from "./naming.ts";
+import { skillDirNameForTarget, skillFrontmatterName } from "./naming.ts";
 
-export type SkillTarget = "cursor" | "claude";
+export type { SkillTarget } from "./naming.ts";
 
 export interface SkillBundle {
   dirName: string;
@@ -103,7 +105,7 @@ function buildConfigurationSection(root: CliProgram): string[] {
 
 /** Builds SKILL.md body for the given target. */
 function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): string {
-  const name = sanitizeToolSegment(root.key);
+  const name = skillFrontmatterName(root.key, target);
   const description = skillDescription(root);
   const tools = collectMcpTools(root);
 
@@ -161,7 +163,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
       "Do not install under `~/.cursor/skills-cursor/` (reserved for Cursor built-ins).",
       "",
     );
-  } else {
+  } else if (target === "claude") {
     lines.push(
       "## Claude Code",
       "",
@@ -171,6 +173,18 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
       `- Bundled files in this directory are available via \`\${CLAUDE_SKILL_DIR}\` when the skill runs.`,
       "",
     );
+  } else if (target === "codex") {
+    lines.push(
+      "## Codex",
+      "",
+      `- Global: \`~/.codex/skills/${dirName}/\``,
+      "- Enable skills in `~/.codex/config.toml` if required.",
+      "",
+    );
+  } else if (target === "opencode") {
+    lines.push("## OpenCode", "", `- Global: \`~/.config/opencode/skills/${dirName}/\``, "");
+  } else {
+    lines.push("## OpenClaw", "", `- Global: \`~/.openclaw/skills/${dirName}/\``, "");
   }
 
   return lines.join("\n");
@@ -231,7 +245,7 @@ export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
 
 /** Generates SKILL.md and reference.md for Cursor or Claude Code. */
 export function generateSkillBundle(root: CliProgram, target: SkillTarget): SkillBundle {
-  const dirName = sanitizeToolSegment(root.key);
+  const dirName = skillDirNameForTarget(root.key, target);
   return {
     dirName,
     skillMd: buildSkillMd(root, target, dirName),

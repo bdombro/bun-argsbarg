@@ -6,6 +6,7 @@ import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
 import { reservedDocsTopicResourceUris } from "./docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
 import { validateFormatValue } from "./formats.ts";
+import { AGENT_PAIRS } from "./install/target-registry.ts";
 import { resolveMcpSchemaUri } from "./mcp/tools.ts";
 import {
   type CliLeaf,
@@ -14,6 +15,8 @@ import {
   type CliProgram,
   CliSchemaValidationError,
   CliValueFormat,
+  type InstallAgentIntegration,
+  type InstallTargetSpec,
   isCliLeaf,
   isCliRouter,
 } from "./types.ts";
@@ -105,6 +108,69 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
   }
 }
 
+const PAIR_HOST_LABELS: Record<string, string> = {
+  cursorMcp: "cursor",
+  claudeCodeMcp: "claudeCode",
+  codexMcp: "codex",
+  opencodeMcp: "opencode",
+  openclawMcp: "openclaw",
+};
+
+function installTargetExplicitTruthy(spec: InstallTargetSpec | undefined): boolean {
+  if (spec === undefined || spec === false) return false;
+  if (spec === true) return true;
+  return spec.enabled !== false;
+}
+
+/** Validates `program.install` targets and agentIntegration. */
+function validateInstallConfig(program: CliProgram): void {
+  const install = program.install;
+  if (!install) return;
+
+  if ("prefix" in install) {
+    throw new CliSchemaValidationError(
+      "install.prefix removed; app installs to ~/.local/bin/<key>",
+    );
+  }
+
+  if (!install.targets) return;
+
+  const targets = install.targets;
+  if ("allSkills" in targets || "allMcps" in targets) {
+    throw new CliSchemaValidationError(
+      "install.targets.allSkills/allMcps removed; use agentIntegration and per-key targets",
+    );
+  }
+
+  const integration: InstallAgentIntegration =
+    install.agentIntegration ?? (program.mcpServer?.enabled === true ? "mcp" : "skill");
+
+  for (const [mcpKey, skillKey] of AGENT_PAIRS) {
+    const mcpSpec = targets[mcpKey];
+    const skillSpec = targets[skillKey];
+    const mcpOn = installTargetExplicitTruthy(mcpSpec);
+    const skillOn = installTargetExplicitTruthy(skillSpec);
+    const host = PAIR_HOST_LABELS[mcpKey] ?? mcpKey;
+
+    if (mcpOn && skillOn && integration !== "both") {
+      throw new CliSchemaValidationError(
+        `install.targets: ${host} has both MCP and skill configured; set agentIntegration: 'both' or disable one side`,
+      );
+    }
+
+    if (integration === "skill" && mcpOn) {
+      throw new CliSchemaValidationError(
+        `install.targets.${mcpKey} requires agentIntegration: 'both' when agentIntegration is 'skill'`,
+      );
+    }
+    if (integration === "mcp" && skillOn) {
+      throw new CliSchemaValidationError(
+        `install.targets.${skillKey} requires agentIntegration: 'both' when agentIntegration is 'mcp'`,
+      );
+    }
+  }
+}
+
 /** Validates a program schema. */
 export function cliValidateProgram(program: CliProgram): void {
   if (!program.version || program.version.trim().length === 0) {
@@ -140,6 +206,10 @@ export function cliValidateProgram(program: CliProgram): void {
     if (typeof program.install.updateGetLatest !== "function") {
       throw new CliSchemaValidationError("install.updateGetLatest must be a function");
     }
+  }
+
+  if (program.install !== undefined) {
+    validateInstallConfig(program);
   }
 
   const caps = resolveCapabilities(program);

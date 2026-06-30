@@ -22,10 +22,10 @@ export function rcMarkerEnd(appKey: string, tag: string): string {
 }
 
 /** Returns rc snippet block for PATH, or null if already present. */
-export function buildPathRcBlock(appKey: string, bindir: string): string {
+export function buildPathRcBlock(appKey: string, appDir: string): string {
   const start = rcMarkerStart(appKey, "path");
   const end = rcMarkerEnd(appKey, "path");
-  return [start, `export PATH="${bindir}:$PATH"`, end].join("\n");
+  return [start, `export PATH="${appDir}:$PATH"`, end].join("\n");
 }
 
 /** Returns rc snippet block for zsh fpath, or null if already present. */

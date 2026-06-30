@@ -5,7 +5,7 @@ Handler-facing resolved app config snapshot (ctx.appConfig).
 import type { CliProgram } from "../types.ts";
 import { resolveAppConfigDir, resolveAppConfigPath, writeAppConfigFile } from "./file.ts";
 import type { ResolvedConfig } from "./resolve.ts";
-import { exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
+import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
 /** Empty snapshot when program.appConfig is not set. */
 export class EmptyAppConfigSnapshot {
@@ -71,18 +71,19 @@ export class AppConfigSnapshot {
 
   set(key: string, value: unknown): void {
     this.assertEntryKey(key);
+    const hostEnv = captureMappedHostEnv(this.program);
     const next = { ...this.fileData, [key]: value };
     writeAppConfigFile(this.program, next);
     this.fileData = next;
-    this.snapshot = resolveAppConfig(this.program, next);
-    exportConfigToEnv(this.program, this.snapshot);
+    this.snapshot = resolveAppConfig(this.program, next, hostEnv);
+    exportConfigToEnv(this.program, this.snapshot, hostEnv);
   }
 
   read(): ResolvedConfig {
     return { ...this.snapshot };
   }
 
-  /** Resolved absolute path to the app JSON config file (honors `program.appConfig.path` or OS default). */
+  /** Resolved absolute path to the app JSON config file (`~/.local/lib/<key>/config.json`). */
   get path(): string {
     return resolveAppConfigPath(this.program);
   }

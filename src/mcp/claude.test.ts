@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CliProgram } from "../types.ts";
@@ -36,6 +37,7 @@ describe("claude plugin", () => {
   test("generatePluginManifest includes userConfig from program.appConfig", () => {
     const manifest = generatePluginManifest(configFixture, "myapp");
     expect(manifest.name).toBe("myapp");
+    expect(manifest.mcpServers).toBe(".mcp.json");
     const userConfig = manifest.userConfig as Record<string, Record<string, unknown>>;
     expect(userConfig.api_token?.description).toBe("Token from settings.");
     expect(userConfig.api_token?.sensitive).toBe(true);
@@ -72,6 +74,17 @@ describe("claude plugin", () => {
       expect(zipText).toContain("Server id: `myapp`");
       expect(zipText).not.toContain("skills/myapp/reference.md");
       expect(zipText).not.toContain("Invoke via shell");
+
+      writeFileSync(join(work, "out.zip"), zip);
+      const extract = join(work, "extract");
+      mkdirSync(extract, { recursive: true });
+      execSync("unzip -o -q ../out.zip", { cwd: extract });
+      const binMode = statSync(join(extract, "bin", "myapp")).mode & 0o777;
+      expect(binMode & 0o111).not.toBe(0);
+      const pluginJson = JSON.parse(
+        readFileSync(join(extract, ".claude-plugin", "plugin.json"), "utf8"),
+      ) as { mcpServers: string };
+      expect(pluginJson.mcpServers).toBe(".mcp.json");
     } finally {
       rmSync(work, { recursive: true, force: true });
     }

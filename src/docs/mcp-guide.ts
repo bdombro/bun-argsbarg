@@ -111,7 +111,7 @@ export function generateMcpGuide(root: CliProgram): string {
 
   if (caps.install) {
     lines.push(
-      `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`${root.key} install --bin --yes\` or \`install --all --yes\`). Host configs reference the binary by name.`,
+      `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`${root.key} install --app --yes\` or \`install --all --yes\`). Host configs reference the app by name.`,
       "",
     );
   } else {

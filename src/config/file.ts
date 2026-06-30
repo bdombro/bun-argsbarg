@@ -2,24 +2,20 @@
 JSON app config file path helpers and strict read/write.
 */
 
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sanitizeToolSegment } from "../mcp/tools.ts";
-import { appConfigHome, expandTilde } from "../paths/host.ts";
+import { appConfigLibHome, displayHomePath } from "../paths/host.ts";
 import type { CliProgram } from "../types.ts";
 import { effectiveJsonSchema } from "./schema.ts";
 import { validateConfigDocument } from "./validate.ts";
 
 export type AppConfigFileData = Record<string, unknown>;
 
-/** Resolved absolute path to the app JSON config file. */
+/** Resolved absolute path to the app JSON config file (`~/.local/lib/<key>/config.json`). */
 export function resolveAppConfigPath(program: CliProgram): string {
-  const custom = program.appConfig?.path;
-  if (custom) {
-    return expandTilde(custom);
-  }
   const dirName = sanitizeToolSegment(program.key);
-  return join(appConfigHome(), dirName, "config");
+  return join(appConfigLibHome(), dirName, "config.json");
 }
 
 /** Resolved absolute directory containing the app JSON config file. */
@@ -27,14 +23,9 @@ export function resolveAppConfigDir(program: CliProgram): string {
   return dirname(resolveAppConfigPath(program));
 }
 
-/** Human-readable config path for error messages (`~` when under home). */
+/** Human-readable config path for error messages (`~/…` when under home). */
 export function displayAppConfigPath(program: CliProgram): string {
-  const resolved = resolveAppConfigPath(program);
-  const home = process.env.HOME ?? "";
-  if (home.length > 0 && resolved.startsWith(home)) {
-    return `~${resolved.slice(home.length)}`;
-  }
-  return resolved;
+  return displayHomePath(resolveAppConfigPath(program));
 }
 
 function parseConfigJson(text: string, path: string): AppConfigFileData {
@@ -46,7 +37,7 @@ function parseConfigJson(text: string, path: string): AppConfigFileData {
     return parsed as AppConfigFileData;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid JSON in config file ${path}: ${msg}`);
+    throw new Error(`Invalid JSON in config file ${displayHomePath(path)}: ${msg}`);
   }
 }
 
@@ -60,7 +51,7 @@ export function readAppConfigFileRaw(path: string): AppConfigFileData {
     text = readFileSync(path, "utf8");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Could not read config file ${path}: ${msg}`);
+    throw new Error(`Could not read config file ${displayHomePath(path)}: ${msg}`);
   }
   return parseConfigJson(text, path);
 }
@@ -89,7 +80,7 @@ export function validateAppConfigData(
   const allowed = new Set(Object.keys(appConfig.entries));
   for (const key of Object.keys(data)) {
     if (!allowed.has(key)) {
-      const where = pathLabel ?? "config";
+      const where = pathLabel ? displayHomePath(pathLabel) : "config";
       throw new Error(`Unknown config key '${key}' in ${where}`);
     }
   }
@@ -99,7 +90,7 @@ export function validateAppConfigData(
   }
   const result = validateConfigDocument(data, jsonSchema);
   if (!result.valid) {
-    const where = pathLabel ?? "config";
+    const where = pathLabel ? displayHomePath(pathLabel) : "config";
     throw new Error(`Invalid config in ${where}: ${result.errors.join("; ")}`);
   }
 }
@@ -112,14 +103,31 @@ export function writeAppConfigFile(program: CliProgram, data: AppConfigFileData)
   writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
 }
 
-/** Removes the app config file when present. Returns true if removed. */
-export function uninstallAppConfig(program: CliProgram, dry: boolean): boolean {
+/** True when the app config file or config directory is present. */
+export function appConfigInstalled(program: CliProgram): boolean {
   const path = resolveAppConfigPath(program);
-  if (!existsSync(path)) {
-    return false;
+  if (existsSync(path)) return true;
+  return existsSync(resolveAppConfigDir(program));
+}
+
+/** Removes the app config file and config directory when present. */
+export function uninstallAppConfig(program: CliProgram, dry: boolean): string[] {
+  const path = resolveAppConfigPath(program);
+  const dir = resolveAppConfigDir(program);
+  const hasFile = existsSync(path);
+  const hasDir = existsSync(dir);
+
+  if (!hasFile && !hasDir) {
+    return [];
   }
+
+  const changed: string[] = [];
+  if (hasFile) changed.push(path);
+  if (hasDir) changed.push(`${dir}/`);
+
   if (!dry) {
-    unlinkSync(path);
+    if (hasFile) unlinkSync(path);
+    if (hasDir) rmSync(dir, { recursive: true, force: true });
   }
-  return true;
+  return changed;
 }

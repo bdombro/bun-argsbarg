@@ -5,19 +5,28 @@ import type { CliProgram } from "../types.ts";
 import { generateSkillBundle, type SkillTarget } from "./generate.ts";
 import { applySkillInstallHints } from "./hint.ts";
 
+export { skillDirNameForTarget, skillFrontmatterName, skillSlug } from "./naming.ts";
+
 export interface SkillInstallOpts {
   global?: boolean;
-  /** When true, remove an existing skill directory before writing. */
   rimraf?: boolean;
-  /** When true, skip writes but return paths that would change. */
   dry?: boolean;
 }
 
 function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean): string {
-  const base = global
-    ? join(userHome(), target === "cursor" ? ".cursor" : ".claude", "skills")
-    : join(process.cwd(), target === "cursor" ? ".cursor" : ".claude", "skills");
-  return join(base, dirName);
+  const home = userHome();
+  switch (target) {
+    case "cursor":
+      return join(global ? home : process.cwd(), ".cursor", "skills", dirName);
+    case "claude":
+      return join(global ? home : process.cwd(), ".claude", "skills", dirName);
+    case "codex":
+      return join(global ? home : process.cwd(), ".codex", "skills", dirName);
+    case "opencode":
+      return join(global ? home : process.cwd(), ".config", "opencode", "skills", dirName);
+    case "openclaw":
+      return join(global ? home : process.cwd(), ".openclaw", "skills", dirName);
+  }
 }
 
 /** Writes SKILL.md and reference.md; returns changed file paths. */
@@ -46,4 +55,22 @@ export function cliSkillInstall(
 
   changed.push(skillPath, refPath);
   return changed;
+}
+
+/** Maps install action kind to skill target. */
+export function skillTargetFromActionKind(kind: string): SkillTarget | undefined {
+  switch (kind) {
+    case "cursor-skill":
+      return "cursor";
+    case "claude-skill":
+      return "claude";
+    case "codex-skill":
+      return "codex";
+    case "opencode-skill":
+      return "opencode";
+    case "openclaw-skill":
+      return "openclaw";
+    default:
+      return undefined;
+  }
 }

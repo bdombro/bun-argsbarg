@@ -17,32 +17,32 @@ import {
   removeRcBlock,
 } from "./shell.ts";
 
-export interface BinaryInstallResult {
+export interface AppInstallResult {
   changedFiles: string[];
   patchedBashRc: boolean;
   patchedZshRc: boolean;
 }
 
-/** Copies a binary to the install path and patches rc files when shells are detected. */
-export function installBinary(
+/** Copies the app executable to the install path and patches rc files when shells are detected. */
+export function installApp(
   root: CliProgram,
   paths: InstallPaths,
   dry: boolean,
   sourcePath: string = process.execPath,
-): BinaryInstallResult {
+): AppInstallResult {
   const changed: string[] = [];
   const shells = detectShells();
   let patchedBashRc = false;
   let patchedZshRc = false;
 
   if (!dry) {
-    mkdirSync(paths.bindir, { recursive: true });
-    copyFileSync(sourcePath, paths.binaryPath);
+    mkdirSync(paths.appDir, { recursive: true });
+    copyFileSync(sourcePath, paths.appPath);
   }
-  changed.push(paths.binaryPath);
+  changed.push(paths.appPath);
 
   if (shells.bash && existsSync(dirname(paths.bashRc))) {
-    const block = buildPathRcBlock(root.key, paths.bindir);
+    const block = buildPathRcBlock(root.key, paths.appDir);
     let content = existsSync(paths.bashRc) ? readFileSync(paths.bashRc, "utf8") : "";
     if (!hasRcBlock(content, root.key, "path")) {
       if (!content.endsWith("\n") && content.length > 0) content += "\n";
@@ -69,12 +69,12 @@ export function installBinary(
   return { changedFiles: changed, patchedBashRc, patchedZshRc };
 }
 
-/** Removes binary and rc marker blocks. */
-export function uninstallBinary(root: CliProgram, paths: InstallPaths, dry: boolean): string[] {
+/** Removes the installed app and rc marker blocks. */
+export function uninstallApp(root: CliProgram, paths: InstallPaths, dry: boolean): string[] {
   const changed: string[] = [];
-  if (existsSync(paths.binaryPath)) {
-    if (!dry) unlinkSync(paths.binaryPath);
-    changed.push(paths.binaryPath);
+  if (existsSync(paths.appPath)) {
+    if (!dry) unlinkSync(paths.appPath);
+    changed.push(paths.appPath);
   }
 
   for (const [rcPath, tag] of [

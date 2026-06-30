@@ -20,6 +20,7 @@ import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "./config/con
 import { effectiveJsonSchema } from "./config/schema.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
+import { maybeBootstrapInstallArgv } from "./install/bootstrap.ts";
 import { bootstrapMcpEnv } from "./mcp/env.ts";
 import { mcpServeStdioLoop } from "./mcp/server.ts";
 import { ParseKind, type ParseResult, parse, postParseValidate } from "./parse.ts";
@@ -94,6 +95,7 @@ export class Cli {
   }
 
   async run(argv: string[] = process.argv.slice(2)): Promise<never> {
+    argv = maybeBootstrapInstallArgv(argv, this.program);
     assertBuiltinAllowed(argv, this.caps);
 
     const prep = this.prepareDispatch(argv);

@@ -43,6 +43,7 @@ export type {
   CliDocsTopic,
   CliHandler,
   CliInstallConfig,
+  CliInstallTargets,
   CliInvocation,
   CliMcpBundleConfig,
   CliMcpResource,
@@ -53,6 +54,9 @@ export type {
   CliProgram,
   CliUpdateArtifact,
   CliUpdateGetLatest,
+  InstallAgentIntegration,
+  InstallTargetSpec,
+  ResolvedInstallTarget,
 } from "./types.ts";
 export {
   CliFallbackMode,

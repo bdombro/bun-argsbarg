@@ -4,6 +4,8 @@ globs: **/*.ts
 ---
 
 - Changes must be summarized in CHANGELOG.md under the UNRELEASED section
+- JSDocs: must be very human readable
+- All files should start with a `/* {multi-line description} */` of why the file exists and what it does.
 - All imports must be ordered alphabetically by their source module path (the `from` clause).
 - Explicit exports using the `export { ... } from "..."` or `export type { ... } from "..."` syntax must be ordered alphabetically by their source module path and placed at the top of the file, immediately below the imports.
-- Types, Interfaces, Functions must have a docstring
+- Types, Interfaces, Functions, Objects, Object attrs must have a docstring

@@ -8,14 +8,17 @@ Install skills to the user environment:
 
 ```bash
 myapp install --skill --yes
-# or
-myapp install --all --yes
+# or bare install when agentIntegration defaults to skill:
+myapp install --yes
 ```
 
-Skills are written when the agent home exists:
+Skills are written when the agent home or CLI exists:
 
 - Cursor: `~/.cursor/skills/<dir>/` when `~/.cursor` exists
 - Claude Code: `~/.claude/skills/<dir>/` when `~/.claude` exists
+- Codex: `~/.codex/skills/<dir>/` when `codex` is on PATH
+- OpenCode: `~/.config/opencode/skills/<dir>/`
+- OpenClaw: `~/.openclaw/skills/<dir>/` when `openclaw` is on PATH
 
 The skill directory name defaults to the sanitized program `key` (e.g. `minimal.ts` → `minimal_ts`).
 
@@ -48,10 +51,10 @@ Skills describe **shell invocation only** — no MCP setup, `mcp.json`, or `tool
 
 `SKILL.md` is the routing index; `reference.md` matches `docs api`. Prefer `install --skill` over `docs skill` for agents. See [cli-program.md](cli-program.md).
 
-**Claude Code plugin** (`mcp bundle` → `dist/claude-plugin/<name>.zip`) ships a separate MCP pointer skill (`SKILL.md` only) that routes agents to the bundled MCP server. `install --skill` remains shell-only.
+**Claude Code plugin** (`mcpServer.claudePlugin: true` → `mcp bundle` writes `dist/claude-plugin/<name>.zip`) ships a separate MCP pointer skill (`SKILL.md` only) that routes agents to the bundled MCP server. This is a **dist artifact**, not installed via `install`. Use **`install --skill`** for persisted shell-oriented skills.
 
 See also:
 
 - [Bundled docs](bundled-docs.md) — `docs` config and compile-time imports
 - [MCP server](mcp.md) — `mcpServer` config and `mcp` protocol
-- [Install](install.md) — binary, completions, skills, and MCP config
+- [Install](install.md) — app, completions, skills, and MCP config

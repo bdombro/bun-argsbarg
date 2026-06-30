@@ -5,34 +5,18 @@ MCP test fixture for subprocess integration tests only.
 
 import { Cli, CliOptionKind, type CliProgram } from "../src/index.ts";
 
-const configPath = process.env.ARGS_TEST_CONFIG_FILE;
-
 const program = {
   key: "mcp-test",
   version: "0.0.0-test",
   description: "MCP integration test fixture.",
-  ...(configPath
-    ? {
-        appConfig: {
-          path: configPath,
-          entries: {
-            argsTestSecret: {
-              description: "Test secret for integration tests.",
-              env: "ARGS_TEST_SECRET",
-            },
-          },
-        },
-      }
-    : {
-        appConfig: {
-          entries: {
-            argsTestSecret: {
-              description: "Test secret for integration tests.",
-              env: "ARGS_TEST_SECRET",
-            },
-          },
-        },
-      }),
+  appConfig: {
+    entries: {
+      argsTestSecret: {
+        description: "Test secret for integration tests.",
+        env: "ARGS_TEST_SECRET",
+      },
+    },
+  },
   mcpServer: {
     enabled: true,
     resources: [

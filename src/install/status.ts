@@ -2,15 +2,15 @@ import { appConfigStatus } from "../config/bootstrap.ts";
 import type { CliProgram } from "../types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
-import type { InstallOpts } from "./plan.ts";
+import { resolveInstallTargetPreview } from "./target-scope.ts";
+import type { InstallOpts } from "./target-types.ts";
 
 export function installOut(msg: string, opts: InstallOpts): void {
-  if (opts.quiet || opts.json) return;
+  if (opts.json) return;
   process.stdout.write(`${msg}\n`);
 }
 
 export function installInfo(msg: string, opts: InstallOpts): void {
-  if (opts.quiet) return;
   if (opts.json && !opts.dry) return;
   const prefix = opts.dry ? "[dry run] " : "";
   process.stderr.write(`${prefix + msg}\n`);
@@ -20,15 +20,28 @@ export function installErr(msg: string): void {
   process.stderr.write(`${msg}\n`);
 }
 
+/** Interactive install/uninstall banner (stderr; leading blank line). */
+export function writeInteractiveInstallIntro(root: CliProgram): void {
+  process.stderr.write(`\n${root.key} Setup\n\n`);
+}
+
 /** Prints install status to stdout (human or JSON). */
 export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
-  const paths = resolveInstallPaths(root, opts);
-  const detected = detectInstalledArtifacts(paths);
-  const status = buildInstallStatus(paths, detected);
+  const paths = resolveInstallPaths(root);
+  const detected = detectInstalledArtifacts(paths, root);
+  const status = buildInstallStatus(paths, detected, root);
 
   if (opts.json) {
-    const json: Record<string, string> = {};
-    if (status.binary) json.binary = status.binary;
+    const preview = resolveInstallTargetPreview(root, paths);
+    const json: Record<string, unknown> = {
+      agentIntegration: preview.agentIntegration,
+      effective: {
+        all: preview.all,
+        mcp: preview.mcp,
+        skill: preview.skill,
+      },
+    };
+    if (status.app) json.app = status.app;
     if (status.bashCompletion) json.bashCompletion = status.bashCompletion;
     if (status.zshCompletion) json.zshCompletion = status.zshCompletion;
     if (status.fishCompletion) json.fishCompletion = status.fishCompletion;
@@ -46,7 +59,7 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
 
   installOut(`Installed artifacts for ${root.key}:`, opts);
   const lines: [string, string | undefined][] = [
-    ["binary", status.binary],
+    ["app", status.app],
     ["bash completion", status.bashCompletion],
     ["zsh completion", status.zshCompletion],
     ["fish completion", status.fishCompletion],

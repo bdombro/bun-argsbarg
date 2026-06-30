@@ -46,7 +46,6 @@ Discovery walks `src/**/types.ts` only.
 | Variable | Purpose |
 | --- | --- |
 | `CONSUMER_APP_API_TOKEN` | Overrides `apiToken` via `program.appConfig` env mapping |
-| `CONSUMER_APP_CONFIG_FILE` | Overrides config file path (`config.path`) |
 
 ## Maintainers (argsbarg repo)
 

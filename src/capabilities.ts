@@ -65,13 +65,13 @@ export type CapabilityFeature = "mcp" | "install" | "docs" | "config";
 export function capabilityDeniedMessage(feature: CapabilityFeature): string {
   switch (feature) {
     case "mcp":
-      return "MCP is not enabled. Set mcpServer: { enabled: true } on the program root.\n";
+      return "MCP is not available for this app.\n";
     case "install":
-      return "install is disabled. Remove install.enabled: false from the program root.\n";
+      return "Install is not available for this app.\n";
     case "docs":
-      return "docs is not enabled. Set docs: { enabled: true } on the program root.\n";
+      return "Documentation commands are not available for this app.\n";
     case "config":
-      return "config commands are disabled. Set program.appConfig or enable config.commands.\n";
+      return "Configuration commands are not available for this app.\n";
   }
 }
 

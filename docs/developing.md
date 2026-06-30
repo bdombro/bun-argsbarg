@@ -32,7 +32,7 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumer-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` from template (keeps app-specific suffix) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` from template (keeps app-specific suffix) |
 | `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **argsbarg Cursor rule**, `just build`, `just docgen`, `just install` (consumer app binary, completions, and **app** skill) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.

@@ -12,6 +12,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,7 +23,7 @@ import { applyPluginSkillHint } from "../skill/hint.ts";
 import type { CliMcpBundleConfig, CliProgram } from "../types.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
 import { mcpServerId } from "./tools.ts";
-import { zipStore } from "./zip.ts";
+import { type ZipFileEntry, zipStore } from "./zip.ts";
 
 const DIST_DIR = "dist";
 const CLAUDE_PLUGIN_DIR = "claude-plugin";
@@ -67,6 +68,7 @@ export function generatePluginManifest(
     version: program.version,
     description: program.description,
     author: defaultAuthor(bundle),
+    mcpServers: ".mcp.json",
   };
   const userConfig = buildProgramUserConfig(program);
   if (userConfig) {
@@ -93,8 +95,8 @@ export function generatePluginMcpJson(
   };
 }
 
-function collectZipEntries(rootDir: string, dir = rootDir): { name: string; data: Buffer }[] {
-  const entries: { name: string; data: Buffer }[] = [];
+function collectZipEntries(rootDir: string, dir = rootDir): ZipFileEntry[] {
+  const entries: ZipFileEntry[] = [];
   for (const ent of readdirSync(dir, { withFileTypes: true }) as Dirent[]) {
     const full = join(dir, ent.name);
     if (ent.isDirectory()) {
@@ -105,7 +107,12 @@ function collectZipEntries(rootDir: string, dir = rootDir): { name: string; data
       continue;
     }
     const rel = relative(rootDir, full).split("\\").join("/");
-    entries.push({ name: rel, data: readFileSync(full) });
+    const stMode = statSync(full).mode;
+    const entry: ZipFileEntry = { name: rel, data: readFileSync(full) };
+    if (stMode & 0o111) {
+      entry.unixMode = stMode;
+    }
+    entries.push(entry);
   }
   return entries;
 }

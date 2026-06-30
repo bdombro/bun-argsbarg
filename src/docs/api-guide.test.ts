@@ -71,7 +71,7 @@ test("generateApiGuide resolves program key in install notes", () => {
   };
   const md = generateApiGuide(fixture);
   expect(md).not.toContain("{argsbarg:program}");
-  expect(md).toContain("myapp install --all --yes");
+  expect(md).toContain("myapp install --yes");
   expect(md).not.toContain("Upgrade to latest release");
 });
 

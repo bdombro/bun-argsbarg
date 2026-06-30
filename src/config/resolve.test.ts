@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CliProgram } from "../types.ts";
-import { resolveAppConfig } from "./resolve.ts";
+import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
 const program: CliProgram = {
   key: "app",
@@ -84,5 +84,29 @@ describe("config/resolve", () => {
     };
     const resolved = resolveAppConfig(stringProgram, {});
     expect(resolved.greeting).toBe("world");
+  });
+
+  test("prefers captured host env over file when process.env was exported from file", () => {
+    const hostEnv = { API_TOKEN: "from-host" };
+    process.env.API_TOKEN = "from-file-export";
+    try {
+      const resolved = resolveAppConfig(program, { apiToken: "from-file" }, hostEnv);
+      expect(resolved.apiToken).toBe("from-host");
+    } finally {
+      delete process.env.API_TOKEN;
+    }
+  });
+
+  test("exportConfigToEnv does not overwrite host env", () => {
+    const prev = process.env.API_TOKEN;
+    process.env.API_TOKEN = "from-host";
+    const hostEnv = captureMappedHostEnv(program);
+    try {
+      exportConfigToEnv(program, { apiToken: "from-file" }, hostEnv);
+      expect(process.env.API_TOKEN).toBe("from-host");
+    } finally {
+      if (prev === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prev;
+    }
   });
 });

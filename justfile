@@ -35,14 +35,7 @@ consumers-sync:
     for app in {{consumer_apps}}; do
       dir="$(cd "$ss/$app" && pwd)"
       echo "==> $app ($dir)"
-      (cd "$dir" && bun -e "
-        const fs = require('node:fs');
-        const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-        pkg.dependencies.argsbarg = '^${latest}';
-        fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-      " && bun install \
-        && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" \
-        && just build && just docgen && just install)
+      (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
     done
 
 

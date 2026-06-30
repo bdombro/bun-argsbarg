@@ -133,6 +133,10 @@ export interface CliMcpBundleConfig {
 export interface CliMcpServerConfig {
   /** When `true`, enables the `mcp` built-in and MCP stdio server. */
   enabled: boolean;
+  /** When `true`, `mcp bundle` writes `dist/<key>.mcpb` for Claude Desktop. Default false. */
+  mcpd?: boolean;
+  /** When `true`, `mcp bundle` also writes `dist/claude-plugin/<name>.zip`. Default false. */
+  claudePlugin?: boolean;
   /** Resource URI for schema export (default: `<sanitized root key>://schema`). */
   schemaResourceUri?: string;
   /**
@@ -224,8 +228,6 @@ export interface CliAppConfigEntry {
  * App configuration block on the program root ({@link CliProgram.appConfig}).
  */
 export interface CliAppConfig {
-  /** Default: `~/.config/<sanitized-key>/config` (or `%APPDATA%/<key>/config` on Windows). */
-  path?: string;
   /** Built-in `config get` / `config set`. Default: enabled when `appConfig` is set. */
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
   /** Block JSON Schema (draft-07). When omitted, synthesize all-string schema from `entries`. */
@@ -237,13 +239,72 @@ export interface CliAppConfig {
 export interface CliInstallConfig {
   /** When `false`, hide/disable `install` (default: enabled). */
   enabled?: boolean;
-  /** Default bin directory (default: `~/.local/bin`). Overridden by `INSTALL_PREFIX` env and `--prefix`. */
-  prefix?: string;
+  /**
+   * Default agent integration for full install (`install --all`).
+   * - `'mcp'` when `mcpServer.enabled` (default): MCP targets in `--all`; paired skills excluded.
+   * - `'skill'` when MCP is off (default): skill targets in `--all`; paired MCP excluded.
+   * - `'both'`: install MCP and skill for the same host when both are available.
+   */
+  agentIntegration?: InstallAgentIntegration;
+  /** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
+  targets?: CliInstallTargets;
   /**
    * When set, enables `install --update` on the program root.
    * Should download or locate the latest release binary and return its path.
    */
   updateGetLatest?: CliUpdateGetLatest;
+}
+
+/** Agent integration mode for install — MCP vs shell skill per host. */
+export type InstallAgentIntegration = "mcp" | "skill" | "both";
+
+/** Boolean or structured gate for one install artifact. */
+export type InstallTargetSpec =
+  | boolean
+  | {
+      /** When false, artifact is never installed (even with scoped CLI flags). Default true. */
+      enabled?: boolean;
+      /** When true, included in bare `install` / `install --all`. Default varies by key. */
+      includedInAll?: boolean;
+    };
+
+export interface ResolvedInstallTarget {
+  enabled: boolean;
+  includedInAll: boolean;
+}
+
+/** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
+export interface CliInstallTargets {
+  /** Copy app to `~/.local/bin/<key>`. Default includedInAll true (opt-out). */
+  app?: InstallTargetSpec;
+  /** ChatGPT desktop MCP. Default false. */
+  chatgptMcp?: InstallTargetSpec;
+  /** Claude Code MCP (`~/.claude.json`). Default false. */
+  claudeCodeMcp?: InstallTargetSpec;
+  /** Claude Desktop MCP. Default false. */
+  claudeDesktopMcp?: InstallTargetSpec;
+  /** Claude Code skill. Default false. */
+  claudeSkill?: InstallTargetSpec;
+  /** Codex MCP (`codex mcp add`). Default false. */
+  codexMcp?: InstallTargetSpec;
+  /** Codex skill. Default false. */
+  codexSkill?: InstallTargetSpec;
+  /** Shell completions for detected shells. Default includedInAll true (opt-out). */
+  completions?: InstallTargetSpec;
+  /** App config: wizard on install, file removal on uninstall. Default includedInAll true. */
+  configure?: InstallTargetSpec;
+  /** Cursor MCP. Default false. */
+  cursorMcp?: InstallTargetSpec;
+  /** Cursor skill. Default false. */
+  cursorSkill?: InstallTargetSpec;
+  /** OpenClaw MCP. Default false. */
+  openclawMcp?: InstallTargetSpec;
+  /** OpenClaw skill. Default false. */
+  openclawSkill?: InstallTargetSpec;
+  /** OpenCode MCP. Default false. */
+  opencodeMcp?: InstallTargetSpec;
+  /** OpenCode skill. Default false. */
+  opencodeSkill?: InstallTargetSpec;
 }
 
 /**

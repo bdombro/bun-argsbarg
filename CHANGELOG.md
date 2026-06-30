@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Install bootstrap** — bare `myapp` (empty argv, TTY, binary not on PATH) rewrites to `myapp install`.
+- **Interactive install banner** — TTY install/uninstall prints `{app} Setup` before the numbered plan; config wizard uses `Configuration Setup`.
+- **Config file** — path is `~/.local/lib/<sanitized-key>/config.json`. Configure wizard writes accepted values (including Enter to copy from env) to the file.
+- **`install.targets`** — `InstallTargetSpec` per artifact; `install.agentIntegration` for MCP vs skill defaults.
+- **Agent install targets** — `codexSkill`, `opencodeSkill`, `openclawSkill`, `openclawMcp`.
+- **Install status JSON** — `install --status --json` includes `agentIntegration` and `effective` target preview.
+- **`mcpServer.mcpd`** — opt-in Claude Desktop `.mcpb` from `mcp bundle` (default off).
+- **`mcpServer.claudePlugin`** — opt-in Claude Code plugin zip from `mcp bundle` (default off).
+
+### Changed
+
+- **Sensitive config prompts** — `sensitive: true` entries disable terminal echo (raw-mode read with `*` feedback); Ctrl+C exits as usual.
+- **Breaking: `install --all`** — includes agent targets per `agentIntegration` (skills when MCP off, MCP when `mcpServer.enabled`); not both for the same host unless `both`.
+- **Scoped `--skill` / `--mcp`** — install only targets enabled by `agentIntegration` + `install.targets`, not every host in the category.
+- **Breaking: `--config` removed** — use **`--configure`** (install = wizard; uninstall = remove config directory).
+- **Breaking: `program.appConfig.path` removed** — config file is always `~/.local/lib/<sanitized-key>/config.json`.
+- **Breaking: `--quiet` removed** from `install`.
+- **Breaking: `--prefix` removed** — app always installs to `~/.local/bin/<key>`.
+- **Breaking: `install.prefix` and `INSTALL_PREFIX` removed** — custom install locations are not supported.
+- **Breaking: `--reinstall` / `--update`** — refresh detected artifacts in effective target scope (not bin-only).
+- **Breaking: `mcp bundle`** — writes artifacts only when `mcpServer.mcpd` and/or `mcpServer.claudePlugin` is true (both default off).
+- **Breaking: bare `install --uninstall`** — equivalent to `--uninstall --all` (removes all detected artifacts; ignores `install.targets`).
+- **Claude plugin zip** — `plugin.json` includes `"mcpServers": ".mcp.json"` so Claude Desktop/Code load the bundled MCP server; `bin/<key>` retains executable permissions in the zip.
+
 ## [4.0.4] - 2026-06-25
 
 ### Added

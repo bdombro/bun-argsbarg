@@ -20,8 +20,26 @@ function isPresent(value: unknown): boolean {
   return true;
 }
 
-function envOverrideValue(envName: string): string | undefined {
-  const val = process.env[envName];
+/** Snapshot mapped host env at bootstrap entry (before file exports mutate process.env). */
+export function captureMappedHostEnv(program: CliProgram): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  const entries = program.appConfig?.entries;
+  if (!entries) {
+    return out;
+  }
+  for (const entry of Object.values(entries)) {
+    if (entry.env) {
+      out[entry.env] = process.env[entry.env];
+    }
+  }
+  return out;
+}
+
+function envOverrideValue(
+  envName: string,
+  hostEnv?: Record<string, string | undefined>,
+): string | undefined {
+  const val = hostEnv && envName in hostEnv ? hostEnv[envName] : process.env[envName];
   if (val === undefined || val.length === 0) {
     return undefined;
   }
@@ -55,15 +73,19 @@ function coerceEnvValue(program: CliProgram, key: string, raw: string): unknown 
   return raw;
 }
 
-/** Resolve all schema keys from file data and process.env. */
-export function resolveAppConfig(program: CliProgram, fileData: AppConfigFileData): ResolvedConfig {
+/** Resolve all schema keys from file data and mapped host env (env wins over file). */
+export function resolveAppConfig(
+  program: CliProgram,
+  fileData: AppConfigFileData,
+  hostEnv?: Record<string, string | undefined>,
+): ResolvedConfig {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return {};
   }
   const out: ResolvedConfig = {};
   for (const [key, entry] of Object.entries(appConfig.entries)) {
-    const value = resolveConfigKey(program, key, entry, fileData);
+    const value = resolveConfigKey(program, key, entry, fileData, hostEnv);
     if (value !== undefined) {
       out[key] = value;
     }
@@ -76,9 +98,10 @@ function resolveConfigKey(
   key: string,
   entry: CliAppConfigEntry,
   fileData: AppConfigFileData,
+  hostEnv?: Record<string, string | undefined>,
 ): unknown {
   if (entry.env) {
-    const fromEnv = envOverrideValue(entry.env);
+    const fromEnv = envOverrideValue(entry.env, hostEnv);
     if (fromEnv !== undefined) {
       return coerceEnvValue(program, key, fromEnv);
     }
@@ -93,14 +116,26 @@ function resolveConfigKey(
   return undefined;
 }
 
-/** Write mapped config values to process.env for subprocess inheritance. */
-export function exportConfigToEnv(program: CliProgram, resolved: ResolvedConfig): void {
+/** Write mapped config values to process.env for subprocess inheritance (never overwrites host env). */
+export function exportConfigToEnv(
+  program: CliProgram,
+  resolved: ResolvedConfig,
+  hostEnv?: Record<string, string | undefined>,
+): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return;
   }
   for (const [key, entry] of Object.entries(appConfig.entries)) {
     if (!entry.env) {
+      continue;
+    }
+    const captured = hostEnv?.[entry.env];
+    if (captured !== undefined && captured.length > 0) {
+      continue;
+    }
+    const existing = process.env[entry.env];
+    if (existing !== undefined && existing.length > 0) {
       continue;
     }
     const value = resolved[key];

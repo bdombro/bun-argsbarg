@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { CliProgram } from "../types.ts";
 import { bootstrapAppConfig } from "./bootstrap.ts";
-import { readAppConfigFile, resolveAppConfigPath, writeAppConfigFile } from "./file.ts";
+import {
+  readAppConfigFile,
+  resolveAppConfigDir,
+  resolveAppConfigPath,
+  uninstallAppConfig,
+  writeAppConfigFile,
+} from "./file.ts";
 import { buildProgramUserConfig } from "./manifest.ts";
 import { formatMissingConfigMessage, missingRequiredConfig, resolveAppConfig } from "./resolve.ts";
 
@@ -13,7 +19,6 @@ const program: CliProgram = {
   version: "1.0.0",
   description: "Demo.",
   appConfig: {
-    path: "~/.config/myapp-test/config",
     entries: {
       apiToken: { description: "Token.", env: "API_TOKEN" },
       port: { description: "HTTP listen port (default 8080).", required: false },
@@ -21,6 +26,19 @@ const program: CliProgram = {
   },
   handler: () => {},
 };
+
+function withHome<T>(fn: (home: string) => T): T {
+  const home = mkdtempSync(join(tmpdir(), "cfg-test-"));
+  const prevHome = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    return fn(home);
+  } finally {
+    if (prevHome === undefined) delete process.env.HOME;
+    else process.env.HOME = prevHome;
+    rmSync(home, { recursive: true, force: true });
+  }
+}
 
 describe("config/file", () => {
   test("buildProgramUserConfig from program.appConfig env entries", () => {
@@ -33,31 +51,29 @@ describe("config/file", () => {
     expect(cfg?.port).toBeUndefined();
   });
 
+  test("resolveAppConfigPath uses config.json", () => {
+    withHome((home) => {
+      expect(resolveAppConfigPath(program)).toBe(
+        join(home, ".local", "lib", "myapp", "config.json"),
+      );
+    });
+  });
+
   test("resolveAppConfig prefers host env over file", () => {
-    const dir = mkdtempSync(join(tmpdir(), "cfg-test-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
-    const prevToken = process.env.API_TOKEN;
-    process.env.API_TOKEN = "from-host";
-    try {
-      const p: CliProgram = {
-        ...program,
-        appConfig: {
-          ...program.appConfig!,
-          path: join(dir, ".config", "myapp-test", "config"),
-        },
-      };
-      mkdirSync(join(dir, ".config", "myapp-test"), { recursive: true });
-      writeFileSync(resolveAppConfigPath(p), `${JSON.stringify({ apiToken: "from-file" })}\n`);
-      const resolved = resolveAppConfig(p, { apiToken: "from-file" });
-      expect(resolved.apiToken).toBe("from-host");
-    } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
-      if (prevToken === undefined) delete process.env.API_TOKEN;
-      else process.env.API_TOKEN = prevToken;
-      rmSync(dir, { recursive: true, force: true });
-    }
+    withHome((home) => {
+      const prevToken = process.env.API_TOKEN;
+      process.env.API_TOKEN = "from-host";
+      try {
+        const configPath = resolveAppConfigPath(program);
+        mkdirSync(dirname(configPath), { recursive: true });
+        writeFileSync(configPath, `${JSON.stringify({ apiToken: "from-file" })}\n`);
+        const resolved = resolveAppConfig(program, { apiToken: "from-file" });
+        expect(resolved.apiToken).toBe("from-host");
+      } finally {
+        if (prevToken === undefined) delete process.env.API_TOKEN;
+        else process.env.API_TOKEN = prevToken;
+      }
+    });
   });
 
   test("missingRequiredConfig and formatMissingConfigMessage", () => {
@@ -76,37 +92,31 @@ describe("config/file", () => {
   });
 
   test("rejects unknown keys on read", () => {
-    const dir = mkdtempSync(join(tmpdir(), "cfg-test-"));
-    try {
-      const p: CliProgram = {
-        ...program,
-        appConfig: {
-          ...program.appConfig!,
-          path: join(dir, "config"),
-        },
-      };
-      writeFileSync(join(dir, "config"), `${JSON.stringify({ extra: true })}\n`);
-      expect(() => readAppConfigFile(p)).toThrow(/Unknown config key/);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    withHome(() => {
+      const configPath = resolveAppConfigPath(program);
+      mkdirSync(dirname(configPath), { recursive: true });
+      writeFileSync(configPath, `${JSON.stringify({ extra: true })}\n`);
+      expect(() => readAppConfigFile(program)).toThrow(/Unknown config key/);
+    });
   });
 
   test("writeAppConfigFile round-trip", () => {
-    const dir = mkdtempSync(join(tmpdir(), "cfg-test-"));
-    try {
-      const p: CliProgram = {
-        ...program,
-        appConfig: {
-          ...program.appConfig!,
-          path: join(dir, "config"),
-        },
-      };
-      writeAppConfigFile(p, { apiToken: "saved" });
-      const { resolved } = bootstrapAppConfig(p, { validateFile: true });
+    withHome(() => {
+      writeAppConfigFile(program, { apiToken: "saved" });
+      const { resolved } = bootstrapAppConfig(program, { validateFile: true });
       expect(resolved.apiToken).toBe("saved");
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    });
+  });
+
+  test("uninstallAppConfig removes config directory recursively", () => {
+    withHome(() => {
+      writeAppConfigFile(program, { apiToken: "saved" });
+      const configPath = resolveAppConfigPath(program);
+      const configDir = resolveAppConfigDir(program);
+      writeFileSync(join(configDir, "extra.txt"), "leftover", "utf8");
+      expect(uninstallAppConfig(program, false)).toEqual([configPath, `${configDir}/`]);
+      expect(existsSync(configPath)).toBe(false);
+      expect(existsSync(configDir)).toBe(false);
+    });
   });
 });

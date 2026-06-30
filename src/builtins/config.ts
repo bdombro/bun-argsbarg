@@ -5,7 +5,7 @@ Built-in `config get` / `config set` commands.
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import { configEntrySensitive, defaultConfigEntryTitle } from "../config/entry.ts";
 import { writeAppConfigFile } from "../config/file.ts";
-import { exportConfigToEnv, resolveAppConfig } from "../config/resolve.ts";
+import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "../config/resolve.ts";
 import { configPropertySchema, effectiveJsonSchema } from "../config/schema.ts";
 import { parseConfigSetValue } from "../config/validate.ts";
 import type { CliLeaf, CliOption, CliProgram, CliRouter } from "../types.ts";
@@ -128,11 +128,12 @@ function configSetRun(program: CliProgram, key: string, rawValue: string, useJso
     process.exit(1);
   }
 
+  const hostEnv = captureMappedHostEnv(program);
   const { fileData } = bootstrapAppConfig(program, { validateFile: true });
   const next = { ...fileData, [key]: parsed };
   writeAppConfigFile(program, next);
-  const resolved = resolveAppConfig(program, next);
-  exportConfigToEnv(program, resolved);
+  const resolved = resolveAppConfig(program, next, hostEnv);
+  exportConfigToEnv(program, resolved, hostEnv);
 }
 
 function configGetLeaf(program: CliProgram): CliLeaf {

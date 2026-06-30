@@ -16,7 +16,7 @@ Why another CLI parser?
 
 *Shell completions* — `completion bash`, `completion zsh`, and `completion fish` built-ins generate installable scripts from your schema so users get tab completion for commands, flags, and positionals without extra tooling.
 
-*Optional MCP server* — set `mcpServer: { enabled: true }` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Compiled binaries can install binary, completions, skills, and MCP config with `myapp install` — see [docs/install.md](docs/install.md).
+*Optional MCP server* — set `mcpServer: { enabled: true }` on the program root to expose leaf commands as MCP tools and the full CLI tree as a schema resource (`myapp mcp` over stdio). See [docs/mcp.md](docs/mcp.md). Compiled apps can install the app, completions, skills, and MCP config with `myapp install` — see [docs/install.md](docs/install.md).
 
 *Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
@@ -100,7 +100,7 @@ Every app gets:
 - **`version`** — print `CliProgram.version` (`myapp version`).
 - **`mcp`** — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
 - **`docs`** — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
-- **`install`** — install the binary, completions, skills, and MCP config to the user environment (`myapp install --all --yes`). See [docs/install.md](docs/install.md).
+- **`install`** — install the app, completions, skills, and MCP config to the user environment (`myapp install --yes`). See [docs/install.md](docs/install.md).
 
 Do not declare a top-level command named **`completion`**, **`version`**, or **`install`** — they are reserved.
 When **`mcpServer.enabled`** is `true`, do not declare a top-level command named **`mcp`** — it is reserved for the MCP built-in.
@@ -118,10 +118,10 @@ See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom 
 argsbarg includes CLI features to manage installation of your compiled bun app. After `bun build --compile` (or when running via `bun`), ship your CLI and let users run:
 
 ```bash
-myapp install --all --yes
+myapp install --yes
 ```
 
-This copies the binary to `~/.local/bin`, installs shell completions (bash/zsh/fish when each shell is on PATH), writes Cursor/Claude skills when agent directories exist, and merges MCP server entries into Cursor and Claude config files.
+This copies the app to `~/.local/bin`, installs shell completions (bash/zsh/fish when each shell is on PATH), and runs the configure wizard when `program.appConfig` is set. Agent skills or MCP config are included in `--all` per `install.agentIntegration` (skills when MCP is off; MCP when `mcpServer.enabled`).
 
 See **[docs/install.md](docs/install.md)** for `--reinstall`, `install --update`, `--status`, `--uninstall`, and flags.
 
@@ -161,7 +161,7 @@ Add app-specific conventions in a second rule if needed. Copy the rule from the 
 
 ## How it works
 
-1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app/binary name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
+1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
 2. Call `await new Cli(program).run()` — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
 

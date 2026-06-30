@@ -6,12 +6,13 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
   const opts: CliOption[] = [
     {
       name: "all",
-      description: "Install binary, completions, skills, and MCP config (when enabled).",
+      description:
+        "Install the default set (app, shell completions, and configuration when supported).",
       kind: CliOptionKind.Presence,
     },
     {
-      name: "bin",
-      description: "Copy this binary to your install directory (default ~/.local/bin).",
+      name: "app",
+      description: "Copy this app to your install directory (default ~/.local/bin).",
       kind: CliOptionKind.Presence,
     },
     {
@@ -22,40 +23,68 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "skill",
-      description: "Install Cursor and Claude Code skills when ~/.cursor or ~/.claude exists.",
+      description:
+        "Install agent skills for Cursor, Claude, and other supported AI tools on this machine.",
       kind: CliOptionKind.Presence,
     },
-    {
-      name: "reinstall",
-      description: "Reinstall artifacts already on disk (always includes the binary).",
+  ];
+
+  if (resolveCapabilities(root).mcp) {
+    opts.push({
+      name: "mcp",
+      description:
+        "Add MCP server configuration for Cursor, Claude Code, and other supported agents.",
       kind: CliOptionKind.Presence,
-    },
-    {
-      name: "from",
-      description: "Binary to copy (default: running executable). Used with --reinstall.",
-      kind: CliOptionKind.String,
-    },
+    });
+  }
+
+  if (root.appConfig) {
+    opts.push({
+      name: "configure",
+      description:
+        "Run the configuration wizard (install), or remove the config file (--uninstall).",
+      kind: CliOptionKind.Presence,
+    });
+  }
+
+  opts.push(
     {
       name: "status",
       description: "Print what is currently installed (read-only).",
       kind: CliOptionKind.Presence,
     },
     {
+      name: "reinstall",
+      description: "Refresh everything already installed for this app.",
+      kind: CliOptionKind.Presence,
+    },
+  );
+
+  if (resolveCapabilities(root).update) {
+    opts.push({
+      name: "update",
+      description: "Download the latest release and refresh installed files.",
+      kind: CliOptionKind.Presence,
+    });
+  }
+
+  opts.push(
+    {
       name: "uninstall",
       description:
-        "Remove installed artifacts (use --all or scoped flags; skips targets not on disk).",
+        "Remove installed files (--all removes everything; use individual flags to remove one category).",
       kind: CliOptionKind.Presence,
     },
     {
-      name: "prefix",
-      description:
-        "Install directory for the binary (default ~/.local/bin; overrides INSTALL_PREFIX).",
+      name: "from",
+      description: "App executable to copy (default: running executable). Used with --reinstall.",
       kind: CliOptionKind.String,
     },
     {
       name: "yes",
       description: "Skip the confirmation prompt.",
       kind: CliOptionKind.Presence,
+      shortName: "y",
     },
     {
       name: "dry",
@@ -67,43 +96,7 @@ export function installBuiltinOptions(root: CliProgram): CliOption[] {
       description: "Print changed paths (install/update/uninstall) or status JSON on stdout.",
       kind: CliOptionKind.Presence,
     },
-    {
-      name: "quiet",
-      description:
-        "Suppress informational output (requires --yes, --json, --reinstall, or --update).",
-      kind: CliOptionKind.Presence,
-    },
-  ];
-
-  if (resolveCapabilities(root).mcp) {
-    opts.splice(4, 0, {
-      name: "mcp",
-      description: "Add or update MCP server entries in Cursor and Claude config files.",
-      kind: CliOptionKind.Presence,
-    });
-  }
-
-  if (resolveCapabilities(root).update) {
-    const statusIdx = opts.findIndex((o) => o.name === "status");
-    opts.splice(statusIdx, 0, {
-      name: "update",
-      description: "Download the latest release and reinstall installed artifacts.",
-      kind: CliOptionKind.Presence,
-    });
-  }
-
-  if (root.appConfig) {
-    opts.push({
-      name: "configure",
-      description: "Interactively write app config (~/.config/<key>/config).",
-      kind: CliOptionKind.Presence,
-    });
-    opts.push({
-      name: "config",
-      description: "Remove app config file (with --uninstall).",
-      kind: CliOptionKind.Presence,
-    });
-  }
+  );
 
   return opts;
 }
@@ -113,7 +106,7 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   const app = root.key;
   const notesLines = [
     "First-time setup:",
-    `  ${app} install --all --yes`,
+    `  ${app} install --yes`,
     "",
     "Refresh after upgrading:",
     `  ${app} install --reinstall`,
@@ -135,9 +128,9 @@ export function cliBuiltinInstallCommand(root: CliProgram): CliLeaf {
   return {
     key: "install",
     description:
-      "Install the binary, shell completions, agent skills, and MCP config to your user environment.",
-    notes: notesLines.join("\n"),
+      "Install this app, shell completions, agent skills, and MCP config on your machine.",
     options: installBuiltinOptions(root),
+    notes: notesLines.join("\n"),
     handler: () => {},
   };
 }

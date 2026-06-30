@@ -19,7 +19,7 @@ const hiddenFixture: CliProgram = {
   key: "myapp",
   version: "1.0.0",
   description: "Hidden demo.",
-  mcpServer: { enabled: true },
+  mcpServer: { enabled: true, mcpd: true, claudePlugin: true },
   commands: [
     {
       key: "public",
@@ -186,5 +186,45 @@ describe("mcp bundle", () => {
       process.stdout.write = orig;
       rmSync(work, { recursive: true, force: true });
     }
+  });
+
+  test("runMcpBundle with claudePlugin only prints plugin path", () => {
+    const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
+    const stdout: string[] = [];
+    const orig = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+      return true;
+    }) as typeof process.stdout.write;
+    const fixture: CliProgram = {
+      ...hiddenFixture,
+      mcpServer: { enabled: true, claudePlugin: true },
+    };
+    try {
+      const dist = join(work, "dist");
+      mkdirSync(dist, { recursive: true });
+      writeFileSync(join(dist, "myapp"), "#!/bin/sh\n", { mode: 0o755 });
+      const prevCwd = process.cwd();
+      process.chdir(work);
+      try {
+        runMcpBundle(fixture);
+      } finally {
+        process.chdir(prevCwd);
+      }
+      const lines = stdout.join("").trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toContain("claude-plugin");
+    } finally {
+      process.stdout.write = orig;
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  test("runMcpBundle errors when no bundle flags enabled", () => {
+    const fixture: CliProgram = {
+      ...hiddenFixture,
+      mcpServer: { enabled: true },
+    };
+    expect(() => runMcpBundle(fixture)).toThrow(/mcpd/);
   });
 });

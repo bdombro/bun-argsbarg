@@ -21,20 +21,20 @@ export function expandTilde(path: string): string {
   return path;
 }
 
+/** Display path using `~/` when under the user home directory. */
+export function displayHomePath(absolutePath: string, home = userHome()): string {
+  if (home.length > 0 && absolutePath.startsWith(home)) {
+    return `~${absolutePath.slice(home.length)}`;
+  }
+  return absolutePath;
+}
+
 /** XDG config base directory (`$XDG_CONFIG_HOME` or `~/.config`). */
 export function xdgConfigHome(home = userHome()): string {
   return process.env.XDG_CONFIG_HOME ?? join(home, ".config");
 }
 
-/** Windows `%APPDATA%` (or `~/AppData/Roaming`). */
-export function appDataHome(home = userHome()): string {
-  return process.env.APPDATA ?? join(home, "AppData", "Roaming");
-}
-
-/** OS-appropriate base directory for app config files. */
-export function appConfigHome(home = userHome()): string {
-  if (process.platform === "win32") {
-    return appDataHome(home);
-  }
-  return xdgConfigHome(home);
+/** App config library root (`~/.local/lib`). */
+export function appConfigLibHome(home = userHome()): string {
+  return join(home, ".local", "lib");
 }

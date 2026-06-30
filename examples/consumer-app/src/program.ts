@@ -13,8 +13,6 @@ import { APP_CONFIG_JSON_SCHEMA } from "../schemas/configSchemas.ts";
 import { STATUS_JSON_OUTPUT_SCHEMA } from "../schemas/outputSchemas.ts";
 import type { StatusJsonOutput } from "./commands/status/types.ts";
 
-const configPath = process.env.CONSUMER_APP_CONFIG_FILE;
-
 const configSchema = {
   apiToken: {
     description: "Create at https://example.com/settings/tokens",
@@ -39,7 +37,6 @@ export const program = {
   version: "1.0.0",
   description: "Argsbarg kitchen-sink reference — all builtins, schemagen, ctx.appConfig.",
   appConfig: {
-    ...(configPath ? { path: configPath } : {}),
     jsonSchema: APP_CONFIG_JSON_SCHEMA,
     entries: configSchema,
   } satisfies CliAppConfig,
@@ -53,8 +50,11 @@ export const program = {
   },
   mcpServer: {
     enabled: true,
+    mcpd: true,
+    claudePlugin: true,
   },
   install: {
+    // Defaults: app + completions + configure; agentIntegration picks skill vs MCP for --all.
     updateGetLatest: async () => ({
       path: process.execPath,
       version: "1.0.0",

@@ -322,7 +322,7 @@ At server start (`Cli.serveMcp()`), before the NDJSON loop:
 
 **App config (`program.appConfig`):**
 
-- Default path: `$XDG_CONFIG_HOME/<sanitized-key>/config` (Linux/macOS) or `%APPDATA%/<key>/config` (Windows). Override with `config.path`.
+- Default path: `~/.local/lib/<sanitized-key>/config`.
 - JSON shape: flat object keyed by schema names — `{ "apiToken": "…" }`. Unknown keys rejected on load.
 - Loaded at MCP startup; host `process.env` wins for mapped env vars already set.
 - Missing required config does **not** exit the MCP server — enforced at `tools/call` with a helpful error.
@@ -373,32 +373,44 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 
 ## MCP Bundle (`mcp bundle`)
 
-When `mcpServer.enabled` is true, **`mcp bundle`** writes two distribution artifacts:
+When `mcpServer.enabled` is true, **`mcp bundle`** writes dist artifacts you opt into on the program root:
 
 ```bash
 just build
 ./dist/myapp mcp bundle
-# → dist/myapp.mcpb
-# → dist/claude-plugin/myapp.zip
+# → dist/myapp.mcpb          (when mcpServer.mcpd: true)
+# → dist/claude-plugin/myapp.zip  (when mcpServer.claudePlugin: true)
 ```
 
-Expects the compiled binary at **`dist/<program.key>`**.
+Enable one or both flags:
+
+```typescript
+mcpServer: {
+  enabled: true,
+  mcpd: true,           // Claude Desktop `.mcpb`
+  claudePlugin: true,   // Claude Code plugin zip
+},
+```
+
+Expects the compiled binary at **`dist/<program.key>`**. Stdout prints one path per artifact produced.
 
 | Output | Purpose |
 | --- | --- |
-| **`dist/<key>.mcpb`** | Claude Desktop MCP Bundle (`.mcpb` zip) |
-| **`dist/claude-plugin/<name>.zip`** | Claude Code plugin zip (`<name>` is kebab-case from `program.key`) |
+| **`dist/<key>.mcpb`** | Claude Desktop MCP Bundle — when `mcpd: true` (default **false**) |
+| **`dist/claude-plugin/<name>.zip`** | Claude Code plugin zip — when `claudePlugin: true` (default **false**) |
 
 Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.appConfig` user config for env-mapped entries). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
 
 **Claude Code plugin zip layout** (paths at archive root):
 
 ```
-.claude-plugin/plugin.json
+.claude-plugin/plugin.json   # includes "mcpServers": ".mcp.json"
 .mcp.json
-bin/myapp
+bin/myapp                    # executable (0755 preserved in the zip)
 skills/<dirName>/SKILL.md
 ```
+
+`plugin.json` references `.mcp.json` so Claude Desktop and Claude Code load the bundled MCP server when the plugin is enabled. The plugin zip preserves the executable bit on `bin/<key>`.
 
 The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the plugin’s MCP toolset (server id, `tools/list`, schema resource). It is not a shell CLI catalog and does not include `reference.md`. Use **`install --skill`** for a persisted shell-oriented skill bundle.
 

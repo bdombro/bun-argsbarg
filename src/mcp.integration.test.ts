@@ -469,7 +469,7 @@ test("MCP ping returns empty result", async () => {
 test("minimal.ts mcp without opt-in fails", async () => {
   const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
   expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("MCP is not enabled");
+  expect(stderr.toString()).toContain("MCP is not available");
 });
 
 test("MCP resources/list includes custom resource", async () => {

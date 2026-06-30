@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { ParseKind, parse, postParseValidate } from "../parse.ts";
 import type { CliProgram } from "../types.ts";
 import { exportPresentationBuiltins } from "./export.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliPresentationRoot } from "./presentation.ts";
+import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
@@ -23,12 +24,27 @@ const fixture: CliProgram = {
 describe("builtins help copy", () => {
   test("install command includes description and option text", () => {
     const install = cliBuiltinInstallCommand(fixture);
-    expect(install.description).toContain("Install the binary");
+    expect(install.description).toContain("shell completions");
     expect(install.notes).toContain("install --all");
     const names = installBuiltinOptions(fixture).map((o) => o.name);
     expect(names).toContain("all");
     expect(names).toContain("mcp");
-    expect(names).toContain("prefix");
+    expect(names.indexOf("all")).toBeLessThan(names.indexOf("mcp"));
+    expect(names.indexOf("mcp")).toBeLessThan(names.indexOf("status"));
+    expect(names.indexOf("status")).toBeLessThan(names.indexOf("uninstall"));
+    expect(names.indexOf("uninstall")).toBeLessThan(names.indexOf("from"));
+    expect(names.indexOf("from")).toBeLessThan(names.indexOf("yes"));
+    const yesOpt = installBuiltinOptions(fixture).find((o) => o.name === "yes");
+    expect(yesOpt?.shortName).toBe("y");
+  });
+
+  test("install -y parses as --yes", () => {
+    const root = cliParseRoot(fixture);
+    const pr = postParseValidate(root, parse(root, ["install", "-y"]));
+    expect(pr.kind).toBe(ParseKind.Ok);
+    if (pr.kind === ParseKind.Ok) {
+      expect(pr.opts.yes).toBe("1");
+    }
   });
 
   test("install omits --mcp option when mcpServer unset", () => {
@@ -143,6 +159,6 @@ describe("schema export builtins", () => {
   test("exportPresentationBuiltins includes install options", () => {
     const builtins = exportPresentationBuiltins(fixture);
     const install = builtins.find((b) => b.key === "install");
-    expect(install?.options?.find((o) => o.name === "all")?.description).toContain("binary");
+    expect(install?.options?.find((o) => o.name === "all")?.description).toContain("app");
   });
 });

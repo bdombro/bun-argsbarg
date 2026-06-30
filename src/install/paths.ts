@@ -1,24 +1,30 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { mcpServerId, sanitizeToolSegment } from "../mcp/tools.ts";
-import { expandTilde, userHome, xdgConfigHome } from "../paths/host.ts";
+import { displayHomePath, userHome, xdgConfigHome } from "../paths/host.ts";
+import { skillDirNameForTarget } from "../skill/install.ts";
 import type { CliProgram } from "../types.ts";
+import { resolveOpenclawConfigPath } from "./mcp-openclaw.ts";
 import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
 export interface InstallPaths {
-  bindir: string;
-  binaryPath: string;
+  appDir: string;
+  appPath: string;
   bashCompletion: string;
   zshCompletion: string;
   fishCompletion: string;
   cursorSkillDir: string;
   claudeSkillDir: string;
+  codexSkillDir: string;
+  opencodeSkillDir: string;
+  openclawSkillDir: string;
   cursorMcpPath: string;
   claudeMcpPath: string;
   claudeDesktopMcpPath: string;
   opencodeMcpPath: string;
   chatGptMcpPath: string;
   codexConfigPath: string;
+  openclawConfigPath: string;
   bashRc: string;
   zshRc: string;
   mcpName: string;
@@ -27,12 +33,13 @@ export interface InstallPaths {
 
 export { userHome } from "../paths/host.ts";
 
-/** Resolves the binary install directory from CLI flag, env, or config. */
-export function resolveBindir(root: CliProgram, prefix?: string): string {
-  const raw = prefix ?? process.env.INSTALL_PREFIX ?? root.install?.prefix;
-  if (raw) {
-    return expandTilde(raw);
-  }
+/** Format an absolute path for user-facing install output. */
+export function displayInstallPath(path: string): string {
+  return displayHomePath(path);
+}
+
+/** App install directory (`~/.local/bin`). */
+export function resolveAppDir(): string {
   return join(userHome(), ".local", "bin");
 }
 
@@ -71,29 +78,36 @@ export function chatGptDesktopPresent(_home: string, configPath: string): boolea
 }
 
 /** Resolves all install artifact paths for a program root. */
-export function resolveInstallPaths(root: CliProgram, opts: { prefix?: string }): InstallPaths {
+export function resolveInstallPaths(root: CliProgram): InstallPaths {
   const home = userHome();
-  const bindir = resolveBindir(root, opts.prefix);
+  const appDir = resolveAppDir();
   const key = root.key;
   const skillDirName = sanitizeToolSegment(root.key);
+  const codexSlug = skillDirNameForTarget(root.key, "codex");
+  const opencodeSlug = skillDirNameForTarget(root.key, "opencode");
+  const openclawSlug = skillDirNameForTarget(root.key, "openclaw");
   const xdgConfig = xdgConfigHome(home);
   const claudeDesktopMcpPath = resolveClaudeDesktopMcpPath(home);
   const chatGptMcpPath = resolveChatGptMcpPath(home);
 
   return {
-    bindir,
-    binaryPath: join(bindir, key),
+    appDir,
+    appPath: join(appDir, key),
     bashCompletion: join(home, ".bash_completion.d", key),
     zshCompletion: join(home, ".zsh", "completions", `_${key}`),
     fishCompletion: join(xdgConfig, "fish", "completions", `${key}.fish`),
     cursorSkillDir: join(home, ".cursor", "skills", skillDirName),
     claudeSkillDir: join(home, ".claude", "skills", skillDirName),
+    codexSkillDir: join(home, ".codex", "skills", codexSlug),
+    opencodeSkillDir: join(home, ".config", "opencode", "skills", opencodeSlug),
+    openclawSkillDir: join(home, ".openclaw", "skills", openclawSlug),
     cursorMcpPath: join(home, ".cursor", "mcp.json"),
     claudeMcpPath: join(home, ".claude.json"),
     claudeDesktopMcpPath,
     opencodeMcpPath: resolveOpenCodeConfigPathForInstall(home),
     chatGptMcpPath,
     codexConfigPath: join(home, ".codex", "config.toml"),
+    openclawConfigPath: resolveOpenclawConfigPath(home),
     bashRc: join(home, ".bashrc"),
     zshRc: join(home, ".zshrc"),
     mcpName: mcpServerId(root),

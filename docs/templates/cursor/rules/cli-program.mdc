@@ -10,7 +10,7 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
 3. JSON stdout / `outputSchema` guide and codegen → `node_modules/argsbarg/docs/output-schema.md`.
 4. App config / `program.appConfig` guide and codegen → `node_modules/argsbarg/docs/config-schema.md`.
-5. `install`, completions, skills → `node_modules/argsbarg/docs/install.md`.
+5. `install`, `install.targets`, completions, skills → `node_modules/argsbarg/docs/install.md`.
 6. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
 7. **Examples** (shipped under `node_modules/argsbarg/examples/`):
    - Concepts / minimal config → `examples/config-app/`

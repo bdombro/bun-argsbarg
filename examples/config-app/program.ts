@@ -11,8 +11,6 @@ import {
 } from "../../src/index.ts";
 import { APP_CONFIG_JSON_SCHEMA } from "./schema.ts";
 
-const configPath = process.env.CONFIG_APP_CONFIG_FILE;
-
 const configSchema = {
   apiToken: {
     description: "Create at https://example.com/settings/tokens",
@@ -37,7 +35,6 @@ export const program = {
   version: pkg.version,
   description: "Demonstrates program.appConfig, ctx.appConfig, and built-in config get/set.",
   appConfig: {
-    ...(configPath ? { path: configPath } : {}),
     jsonSchema: APP_CONFIG_JSON_SCHEMA,
     entries: configSchema,
   } satisfies CliAppConfig,

@@ -63,7 +63,6 @@ export interface CliAppConfigEntry {
 }
 
 export interface CliAppConfig {
-  path?: string;        // default: ~/.config/<key>/config (OS rules)
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
   jsonSchema?: Record<string, unknown>;  // draft-07 block schema
   entries: Record<string, CliAppConfigEntry>;
@@ -78,7 +77,7 @@ export interface CliAppConfig {
 
 ## Config file shape
 
-Flat JSON at `config.path` (default OS path unchanged):
+Flat JSON at `~/.local/lib/<sanitized-key>/config`:
 
 ```json
 {
@@ -188,5 +187,3 @@ Object/array/`$ref` properties require `--json` on `config set`.
 cd examples/consumer-app && bun install && bun run schemagen
 CONSUMER_APP_API_TOKEN=dev bun run start config get apiToken --json
 ```
-
-Set `CONSUMER_APP_CONFIG_FILE` to override the config file path.

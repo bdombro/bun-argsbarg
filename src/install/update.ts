@@ -7,9 +7,7 @@ import { installErr } from "./status.ts";
 export async function cliUpdate(root: CliProgram): Promise<never> {
   const hook = root.install?.updateGetLatest;
   if (!hook) {
-    installErr(
-      "install --update is not configured. Set install.updateGetLatest on the program root.",
-    );
+    installErr("Remote updates are not supported by this app.");
     process.exit(1);
   }
 
@@ -23,7 +21,7 @@ export async function cliUpdate(root: CliProgram): Promise<never> {
   }
 
   if (!artifact.path || !existsSync(artifact.path)) {
-    installErr(`updateGetLatest returned missing binary: ${JSON.stringify(artifact.path)}`);
+    installErr("Update download did not return a valid app binary.");
     process.exit(1);
   }
 
@@ -38,7 +36,6 @@ export async function cliUpdate(root: CliProgram): Promise<never> {
     await runInstallMutation(root, {
       reinstall: "1",
       yes: "1",
-      quiet: "1",
       from: artifact.path,
     });
   } catch (err) {
