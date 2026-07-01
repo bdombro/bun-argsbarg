@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { resolveCapabilities } from "../capabilities.ts";
 import { appConfigInstalled } from "../config/file.ts";
 import type { CliInstallTargets, CliProgram } from "../types.ts";

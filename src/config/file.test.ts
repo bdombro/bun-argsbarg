@@ -60,7 +60,7 @@ describe("config/file", () => {
   });
 
   test("resolveAppConfig prefers host env over file", () => {
-    withHome((home) => {
+    withHome((_home) => {
       const prevToken = process.env.API_TOKEN;
       process.env.API_TOKEN = "from-host";
       try {

@@ -16,7 +16,13 @@ test("ctx.invocation is cli via Cli.run", async () => {
   const indexPath = join(import.meta.dir, "index.ts");
   const { stdout } = await $`bun -e ${`
 import { Cli, CliProgram } from ${JSON.stringify(indexPath)};
-const program = { key: "t", description: "d", version: "0.0.0", handler: (ctx) => console.log(ctx.invocation) };
+const program = {
+  key: "t",
+  description: "d",
+  version: "0.0.0",
+  install: { enabled: false },
+  handler: (ctx) => console.log(ctx.invocation),
+};
 await new Cli(program).run([]);
   `}`.quiet();
   expect(stdout.toString().trim()).toBe("cli");
