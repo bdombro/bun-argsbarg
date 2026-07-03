@@ -111,7 +111,7 @@ export function generateMcpGuide(root: CliProgram): string {
 
   if (caps.install) {
     lines.push(
-      `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`${root.key} install --app --yes\` or \`install --all --yes\`). Host configs reference the app by name.`,
+      `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`brew install ${root.key}\`). Host configs reference the app by name.`,
       "",
     );
   } else {
@@ -167,13 +167,12 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
   );
 
-  if (mcp.shellEnv) {
-    lines.push("## Environment", "");
-    lines.push(
-      "- **`shellEnv`** — captures login-shell environment at MCP startup (PATH, toolchain shims, exports).",
-    );
-    lines.push("");
-  }
+  lines.push(
+    "## Environment",
+    "",
+    "- **`shellEnv`** — on by default; captures login-shell environment at MCP startup (PATH, toolchain shims, exports). Opt out with `shellEnv: false`.",
+    "",
+  );
 
   if (root.appConfig?.entries && Object.keys(root.appConfig.entries).length > 0) {
     lines.push("## Configuration", "");

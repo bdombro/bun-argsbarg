@@ -495,7 +495,7 @@ test("leaf completion help prints correctly", async () => {
   const out = stdout.toString();
   expect(exitCode).toBe(0);
   expect(out).toContain("Show help for this command.");
-  expect(out).toContain("Manual install:");
+  expect(out).toContain("Homebrew");
   expect(stderr.toString()).toBe("");
 });
 
@@ -529,6 +529,7 @@ test("docs schema exports JSON for leaf roots", async () => {
     "completion",
     "version",
     "install",
+    "uninstall",
     "docs",
   ]);
 });
@@ -614,7 +615,7 @@ test("cliSchemaExport resolves program key in install notes", () => {
 
   const json = cliSchemaJson(root);
   expect(json).not.toContain("{argsbarg:program}");
-  expect(json).toContain("myapp install --yes");
+  expect(json).toContain("brew install");
 });
 
 test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {

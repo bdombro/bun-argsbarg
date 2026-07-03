@@ -42,9 +42,6 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
       },
     };
     if (status.app) json.app = status.app;
-    if (status.bashCompletion) json.bashCompletion = status.bashCompletion;
-    if (status.zshCompletion) json.zshCompletion = status.zshCompletion;
-    if (status.fishCompletion) json.fishCompletion = status.fishCompletion;
     if (status.cursorSkill) json.cursorSkill = status.cursorSkill;
     if (status.claudeSkill) json.claudeSkill = status.claudeSkill;
     if (status.cursorMcp) json.cursorMcp = status.cursorMcp;
@@ -60,9 +57,6 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
   installOut(`Installed artifacts for ${root.key}:`, opts);
   const lines: [string, string | undefined][] = [
     ["app", status.app],
-    ["bash completion", status.bashCompletion],
-    ["zsh completion", status.zshCompletion],
-    ["fish completion", status.fishCompletion],
     ["cursor skill", status.cursorSkill],
     ["claude skill", status.claudeSkill],
     ["cursor mcp", status.cursorMcp],

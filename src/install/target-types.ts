@@ -12,8 +12,6 @@ export type InstallPlanMode =
 
 export interface InstallScope {
   all?: boolean;
-  app?: boolean;
-  completions?: boolean;
   skill?: boolean;
   mcp?: boolean;
   configure?: boolean;
@@ -29,7 +27,6 @@ export type CliInstallArtifactKey =
   | "claudeSkill"
   | "codexMcp"
   | "codexSkill"
-  | "completions"
   | "configure"
   | "cursorMcp"
   | "cursorSkill"
@@ -40,7 +37,6 @@ export type CliInstallArtifactKey =
 
 export type InstallActionKind =
   | "app"
-  | "completions"
   | "cursor-skill"
   | "claude-skill"
   | "codex-skill"
@@ -73,9 +69,6 @@ export interface UninstallAction {
 
 export interface InstalledArtifacts {
   app: boolean;
-  bashCompletion: boolean;
-  zshCompletion: boolean;
-  fishCompletion: boolean;
   cursorSkill: boolean;
   claudeSkill: boolean;
   codexSkill: boolean;
@@ -88,15 +81,10 @@ export interface InstalledArtifacts {
   codexMcp: boolean;
   openclawMcp: boolean;
   chatGptMcp: boolean;
-  bashRcPath: boolean;
-  zshRcFpath: boolean;
 }
 
 export interface InstallStatus {
   app?: string;
-  bashCompletion?: string;
-  zshCompletion?: string;
-  fishCompletion?: string;
   cursorSkill?: string;
   claudeSkill?: string;
   codexSkill?: string;
@@ -117,13 +105,9 @@ export interface DetectedSnapshot extends InstalledArtifacts {
 
 export interface InstallOpts {
   all?: boolean;
-  app?: boolean;
-  completions?: boolean;
   skill?: boolean;
   mcp?: boolean;
   reinstall?: boolean;
-  update?: boolean;
-  from?: string;
   status?: boolean;
   uninstall?: boolean;
   configure?: boolean;

@@ -4,6 +4,7 @@ settings are present before the CLI or MCP server handles a request.
 */
 
 import { readSync } from "node:fs";
+import { readPromptLine as readStdinLine } from "../prompt.ts";
 import type { CliAppConfigEntry, CliProgram } from "../types.ts";
 import {
   configEntryRequired,
@@ -124,9 +125,7 @@ function readPromptLine(mask: boolean): string {
   if (mask) {
     return readSensitiveLine();
   }
-  const buf = Buffer.alloc(4096);
-  const n = readSync(0, buf, { length: 4096 });
-  return buf.toString("utf8", 0, n).replace(/\r?\n$/, "");
+  return readStdinLine();
 }
 
 /** Whether this setting already has a non-empty value in the user's shell environment. */
@@ -149,7 +148,7 @@ function promptConfigKey(
   configure: boolean,
   jsonSchemaRequired: Set<string> | undefined,
   hostEnv: Record<string, string | undefined>,
-): { value: unknown } {
+): { value: unknown; userTyped: boolean } {
   const baseTitle = entry.title ?? defaultConfigEntryTitle(key);
   const titleWithEnv = entry.env ? `${baseTitle} (${entry.env})` : baseTitle;
   const required = configEntryRequired(key, entry, jsonSchemaRequired);
@@ -169,12 +168,12 @@ function promptConfigKey(
   }
   const input = readPromptLine(sensitive);
   if (input.length === 0 && hasCurrent) {
-    return { value: current };
+    return { value: current, userTyped: false };
   }
   if (input.length > 0) {
-    return { value: input };
+    return { value: input, userTyped: true };
   }
-  return { value: undefined };
+  return { value: undefined, userTyped: false };
 }
 
 /** Options for the interactive `install --configure` wizard. */
@@ -218,7 +217,7 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
       writeConfigureSetupHeading();
       headingWritten = true;
     }
-    const { value } = promptConfigKey(key, entry, undefined, false, fromSchema, hostEnv);
+    const { value, userTyped } = promptConfigKey(key, entry, undefined, false, fromSchema, hostEnv);
     if (value !== undefined && String(value).length > 0) {
       updates[key] = value;
     }
@@ -261,8 +260,16 @@ export function runInstallConfigure(
   for (const [key, entry] of Object.entries(program.appConfig.entries)) {
     const before = next[key];
     const current = resolved[key];
-    const { value } = promptConfigKey(key, entry, current, true, fromSchema, hostEnv);
+    const { value, userTyped } = promptConfigKey(key, entry, current, true, fromSchema, hostEnv);
     if (value !== undefined && String(value).length > 0) {
+      const storedInFile =
+        key in existing &&
+        existing[key] !== undefined &&
+        existing[key] !== null &&
+        String(existing[key]).length > 0;
+      if (!userTyped && !storedInFile) {
+        continue;
+      }
       if (JSON.stringify(value) !== JSON.stringify(before)) {
         changed = true;
       }

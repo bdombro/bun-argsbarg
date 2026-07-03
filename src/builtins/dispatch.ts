@@ -1,7 +1,7 @@
 import { capabilityDeniedMessage, resolveCapabilities } from "../capabilities.ts";
 import { Cli } from "../cli.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import { cliInstall } from "../install/index.ts";
+import { cliInstall, cliUninstall } from "../install/index.ts";
 import { runMcpBundle } from "../mcp/bundle.ts";
 import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
@@ -15,6 +15,7 @@ import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
+import { cliBuiltinUninstallCommand } from "./uninstall.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
 export interface DispatchBuiltinOpts {
@@ -103,6 +104,18 @@ export async function dispatchBuiltin(
     }
     await cliInstall(program, pr.opts);
   }
+
+  if (pr.path[0] === "uninstall") {
+    if (!caps.install) {
+      process.stderr.write(capabilityDeniedMessage("install"));
+      process.exit(1);
+    }
+    if (pr.path.length !== 1) {
+      process.stderr.write(`Unknown subcommand: uninstall ${pr.path.slice(1).join(" ")}\n`);
+      process.exit(1);
+    }
+    await cliUninstall(program, pr.opts);
+  }
 }
 
 /** Built-in intercept roots for leaf programs. */
@@ -134,6 +147,17 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinInstallCommand(program)],
+      },
+      isLeafCompletionIntercept: false,
+    };
+  }
+
+  if (first === "uninstall" && caps.install) {
+    return {
+      parseRoot: {
+        key: program.key,
+        description: program.description,
+        commands: [cliBuiltinUninstallCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };

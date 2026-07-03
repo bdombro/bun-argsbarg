@@ -109,4 +109,171 @@ describe("config/resolve", () => {
       else process.env.API_TOKEN = prev;
     }
   });
+
+  test("resolve callback supplies value when env and file are absent", () => {
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: () => "from-resolve",
+          },
+        },
+      },
+    };
+    const prev = process.env.API_TOKEN;
+    delete process.env.API_TOKEN;
+    try {
+      const resolved = resolveAppConfig(resolveProgram, {});
+      expect(resolved.apiToken).toBe("from-resolve");
+    } finally {
+      if (prev !== undefined) process.env.API_TOKEN = prev;
+    }
+  });
+
+  test("env overrides resolve callback", () => {
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: () => "from-resolve",
+          },
+        },
+      },
+    };
+    const prev = process.env.API_TOKEN;
+    process.env.API_TOKEN = "from-env";
+    try {
+      const resolved = resolveAppConfig(resolveProgram, {});
+      expect(resolved.apiToken).toBe("from-env");
+    } finally {
+      if (prev === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prev;
+    }
+  });
+
+  test("file overrides resolve callback", () => {
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: () => "from-resolve",
+          },
+        },
+      },
+    };
+    const prev = process.env.API_TOKEN;
+    delete process.env.API_TOKEN;
+    try {
+      const resolved = resolveAppConfig(resolveProgram, { apiToken: "from-file" });
+      expect(resolved.apiToken).toBe("from-file");
+    } finally {
+      if (prev !== undefined) process.env.API_TOKEN = prev;
+    }
+  });
+
+  test("falls back to env when resolve returns undefined", () => {
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: () => undefined,
+          },
+        },
+      },
+    };
+    const hostEnv = { API_TOKEN: "from-env-fallback" };
+    const prev = process.env.API_TOKEN;
+    delete process.env.API_TOKEN;
+    try {
+      const resolved = resolveAppConfig(resolveProgram, {}, hostEnv);
+      expect(resolved.apiToken).toBe("from-env-fallback");
+    } finally {
+      if (prev !== undefined) process.env.API_TOKEN = prev;
+    }
+  });
+
+  test("resolve callback is skipped when env is set", () => {
+    let resolveCalled = false;
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: () => {
+              resolveCalled = true;
+              return "from-resolve";
+            },
+          },
+        },
+      },
+    };
+    const prev = process.env.API_TOKEN;
+    process.env.API_TOKEN = "from-env";
+    try {
+      const resolved = resolveAppConfig(resolveProgram, {});
+      expect(resolved.apiToken).toBe("from-env");
+      expect(resolveCalled).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prev;
+    }
+  });
+
+  test("async resolve is ignored with stderr warning", () => {
+    const resolveProgram: CliProgram = {
+      ...program,
+      appConfig: {
+        ...program.appConfig!,
+        entries: {
+          ...program.appConfig!.entries,
+          apiToken: {
+            description: "Token.",
+            env: "API_TOKEN",
+            resolve: async () => "from-async-resolve",
+          },
+        },
+      },
+    };
+    const prev = process.env.API_TOKEN;
+    delete process.env.API_TOKEN;
+    const prevStderr = process.stderr.write;
+    const stderrLines: string[] = [];
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderrLines.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      const resolved = resolveAppConfig(resolveProgram, {}, { API_TOKEN: undefined });
+      expect(resolved.apiToken).toBeUndefined();
+      expect(stderrLines.join("")).toContain("returned a Promise");
+    } finally {
+      process.stderr.write = prevStderr;
+      if (prev === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prev;
+    }
+  });
 });

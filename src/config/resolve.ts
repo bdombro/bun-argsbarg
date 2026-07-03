@@ -2,7 +2,7 @@
 Resolve program.appConfig values: defaults, file, env override, export to process.env.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../types.ts";
+import type { CliAppConfigEntry, CliAppConfigResolveContext, CliProgram } from "../types.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 import type { AppConfigFileData } from "./file.ts";
 import { displayAppConfigPath } from "./file.ts";
@@ -93,6 +93,38 @@ export function resolveAppConfig(
   return out;
 }
 
+function tryEnvOverride(
+  program: CliProgram,
+  key: string,
+  entry: CliAppConfigEntry,
+  hostEnv?: Record<string, string | undefined>,
+): unknown {
+  if (!entry.env) {
+    return undefined;
+  }
+  const fromEnv = envOverrideValue(entry.env, hostEnv);
+  if (fromEnv === undefined) {
+    return undefined;
+  }
+  return coerceEnvValue(program, key, fromEnv);
+}
+
+function buildResolveContext(
+  program: CliProgram,
+  key: string,
+  entry: CliAppConfigEntry,
+  fileData: AppConfigFileData,
+  hostEnv?: Record<string, string | undefined>,
+): CliAppConfigResolveContext {
+  return {
+    key,
+    entry,
+    program,
+    fileValue: fileData[key],
+    envValue: entry.env ? envOverrideValue(entry.env, hostEnv) : undefined,
+  };
+}
+
 function resolveConfigKey(
   program: CliProgram,
   key: string,
@@ -100,14 +132,26 @@ function resolveConfigKey(
   fileData: AppConfigFileData,
   hostEnv?: Record<string, string | undefined>,
 ): unknown {
-  if (entry.env) {
-    const fromEnv = envOverrideValue(entry.env, hostEnv);
-    if (fromEnv !== undefined) {
-      return coerceEnvValue(program, key, fromEnv);
-    }
+  const fromEnv = tryEnvOverride(program, key, entry, hostEnv);
+  if (fromEnv !== undefined) {
+    return fromEnv;
   }
   if (key in fileData && isPresent(fileData[key])) {
     return fileData[key];
+  }
+  if (entry.resolve) {
+    const fromResolve = entry.resolve(buildResolveContext(program, key, entry, fileData, hostEnv));
+    if (fromResolve != null && typeof (fromResolve as Promise<unknown>).then === "function") {
+      process.stderr.write(
+        `[argsbarg] config "${key}": resolve() returned a Promise; use a synchronous resolver (e.g. Bun.spawnSync with piped stdout).\n`,
+      );
+    } else if (isPresent(fromResolve)) {
+      return fromResolve;
+    }
+  }
+  const fromEnvFallback = tryEnvOverride(program, key, entry, hostEnv);
+  if (fromEnvFallback !== undefined) {
+    return fromEnvFallback;
   }
   const def = schemaDefaultForKey(program, key);
   if (def !== undefined) {

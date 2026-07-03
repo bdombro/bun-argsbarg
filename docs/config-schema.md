@@ -39,7 +39,7 @@ await cli.run();
 | Where argsbarg uses it | Purpose |
 | --- | --- |
 | Config file | Flat JSON keyed by schema names; strict load (unknown keys rejected) |
-| `install --configure` / `--status` | Interactive setup and status |
+| `install --configure` / `--status` | Interactive setup (configure is opt-in, not in `--all`) and status |
 | Built-in `config get` / `config set` | Read/write resolved values (opt-out via `commands: false`) |
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
 | `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` |
@@ -60,6 +60,7 @@ export interface CliAppConfigEntry {
   required?: boolean;   // default: true (can override jsonSchema required)
   sensitive?: boolean;  // default: name heuristic
   env?: string;         // env override + export to process.env after resolve
+  resolve?: CliAppConfigResolveFn;  // fallback after file; must be synchronous
 }
 
 export interface CliAppConfig {
@@ -92,12 +93,39 @@ No nested `env` bag. No extra keys — rejected on load.
 
 ## Resolution order (per schema key)
 
-| Key has `env`? | Resolved value |
-| --- | --- |
-| **Yes** | non-empty `process.env[env]` → else file[key] → else default |
-| **No** | file[key] → else default |
+| Step | Source | Notes |
+| --- | --- | --- |
+| 1 | **Env** (`entry.env`) | Non-empty host env wins over file and `resolve` |
+| 2 | **File** | `config.json` value for the key |
+| 3 | **`resolve()`** | Optional synchronous callback (e.g. `gh auth token`); return `undefined` to continue. Async/Promise return values are ignored. |
+| 4 | **Env** (`entry.env`) | Fallback when `resolve` returned `undefined` |
+| 5 | **Default** | `jsonSchema` / `entry.default` |
 
 Empty string in env or file counts as **missing** for required entries. After resolution, mapped values are exported to `process.env`.
+
+Example — GitHub token with `env: "GH_TOKEN"` and `resolve` calling `gh auth token`:
+
+```typescript
+githubToken: {
+  description: "GitHub API token.",
+  env: "GH_TOKEN",
+  sensitive: true,
+  resolve: () => {
+    try {
+      const r = Bun.spawnSync(["gh", "auth", "token"], { stdout: "pipe", stderr: "ignore" });
+      if (r.exitCode === 0) {
+        const token = new TextDecoder().decode(r.stdout).trim();
+        return token.length > 0 ? token : undefined;
+      }
+    } catch {
+      // `gh` not installed
+    }
+    return undefined;
+  },
+},
+```
+
+`install --configure` does not persist values supplied only by env or `resolve` when you press Enter to accept the current value.
 
 ## Hand-written vs generated
 
@@ -180,10 +208,9 @@ Object/array/`$ref` properties require `--json` on `config set`.
 
 | Example | Role |
 | --- | --- |
-| [`examples/config-app/`](../examples/config-app/) | **Learn** — hand-written schema, minimal setup |
-| [`examples/consumer-app/`](../examples/consumer-app/) | **Copy** — schemagen discovery, `APP_CONFIG_JSON_SCHEMA` bridge |
+| [`examples/full-example/`](../examples/full-example/) | **Copy template** — schemagen discovery, `APP_CONFIG_JSON_SCHEMA` bridge, `program.appConfig`, built-in `config get`/`set` |
 
 ```bash
-cd examples/consumer-app && bun install && bun run schemagen
-CONSUMER_APP_API_TOKEN=dev bun run start config get apiToken --json
+cd examples/full-example && just setup && just schemagen
+FULL_EXAMPLE_API_TOKEN=dev just run config get apiToken --json
 ```

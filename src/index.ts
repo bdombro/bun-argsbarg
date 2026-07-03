@@ -9,6 +9,7 @@ module layout.
 
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "./cli.ts";
 export { cliErrWithHelp } from "./cli-errors.ts";
+export { displayAppConfigPath, resolveAppConfigPath } from "./config/file.ts";
 export type { CliLeafInputs } from "./context.ts";
 export { CliContext } from "./context.ts";
 export {
@@ -26,19 +27,13 @@ export {
   shouldRunHeadlessWithYes,
   wantsExplicitJson,
 } from "./headless.ts";
-export type { GhReleaseUpdateConfig, GhVersionCheckConfig } from "./install/gh-release-update.ts";
-export {
-  createGhFetchLatest,
-  createGhVersionCheck,
-  ghReleaseUpdateGetLatest,
-  isAlreadyCurrent,
-  parseReleaseTag,
-} from "./install/gh-release-update.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
 export type {
   CliAppConfig,
   CliAppConfigEntry,
+  CliAppConfigResolveContext,
+  CliAppConfigResolveFn,
   CliDocsConfig,
   CliDocsTopic,
   CliHandler,
@@ -52,8 +47,6 @@ export type {
   CliOption,
   CliPositional,
   CliProgram,
-  CliUpdateArtifact,
-  CliUpdateGetLatest,
   InstallAgentIntegration,
   InstallTargetSpec,
   ResolvedInstallTarget,

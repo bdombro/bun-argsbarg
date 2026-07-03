@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs";
 import type { CliProgram } from "../../types.ts";
-import { installApp, uninstallApp } from "../app.ts";
+import { isExternallyManagedBinary } from "../binary-placement.ts";
 import { displayInstallPath, type InstallPaths } from "../paths.ts";
 import { InstallTarget } from "../target-base.ts";
 import type {
@@ -12,57 +11,49 @@ import type {
   UninstallAction,
 } from "../target-types.ts";
 
-/** Installs the compiled app to ~/.local/bin/<key>. */
+/** Reports app install location (Homebrew PATH or legacy ~/.local/bin). No self-install actions. */
 class AppInstallTarget extends InstallTarget {
   readonly key = "app" as const;
   readonly actionKind = "app" as const;
   readonly category = "core" as const;
 
+  defaultIncludedInAll(): boolean {
+    return false;
+  }
+
   isAvailable(_root: CliProgram, _paths: InstallPaths): boolean {
     return true;
   }
 
-  isDetected(paths: InstallPaths, _root: CliProgram): boolean {
-    return existsSync(paths.appPath);
+  isDetected(paths: InstallPaths, root: CliProgram): boolean {
+    return isExternallyManagedBinary(root.key) || false;
   }
 
-  applyDetected(paths: InstallPaths, root: CliProgram, out: InstalledArtifacts): void {
-    out.app = this.isDetected(paths, root);
+  applyDetected(_paths: InstallPaths, root: CliProgram, out: InstalledArtifacts): void {
+    out.app = isExternallyManagedBinary(root.key);
   }
 
   protected isDetectedFromSnapshot(detected: DetectedSnapshot): boolean {
     return detected.app;
   }
 
-  protected formatStatusLine(paths: InstallPaths, _root: CliProgram): string {
-    return displayInstallPath(paths.appPath);
+  protected formatStatusLine(_paths: InstallPaths, root: CliProgram): string {
+    if (isExternallyManagedBinary(root.key)) {
+      return "system (PATH)";
+    }
+    return "not installed (use Homebrew)";
   }
 
   protected assignStatusLine(status: InstallStatus, line: string): void {
     status.app = line;
   }
 
-  protected buildInstallActions(ctx: TargetPlanContext): InstallAction[] {
-    const sourcePath = ctx.opts.from ?? process.execPath;
-    return [
-      {
-        kind: this.actionKind,
-        summary: `app: ${displayInstallPath(ctx.paths.appPath)}`,
-        message: `Installing app to ${displayInstallPath(ctx.paths.appPath)}`,
-        run: () => installApp(ctx.root, ctx.paths, ctx.dry, sourcePath).changedFiles,
-      },
-    ];
+  protected buildInstallActions(_ctx: TargetPlanContext): InstallAction[] {
+    return [];
   }
 
-  protected buildUninstallActions(ctx: TargetPlanContext): UninstallAction[] {
-    return [
-      {
-        kind: this.actionKind,
-        summary: `app: ${displayInstallPath(ctx.paths.appPath)}`,
-        message: `Removing app ${displayInstallPath(ctx.paths.appPath)}`,
-        run: () => uninstallApp(ctx.root, ctx.paths, ctx.dry),
-      },
-    ];
+  protected buildUninstallActions(_ctx: TargetPlanContext): UninstallAction[] {
+    return [];
   }
 }
 

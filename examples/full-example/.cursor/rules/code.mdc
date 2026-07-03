@@ -1,0 +1,40 @@
+---
+description: TypeScript style, module boundaries, and CLI layout for full-example.
+globs: "src/**/*.ts, scripts/**/*.ts"
+alwaysApply: true
+---
+
+## JSDoc
+
+Add doc comments for exported surfaces that are not obvious from the name alone: JSON output schemas, public types, and non-trivial algorithms. Skip comments on short test callbacks and pure re-export files.
+
+## Names
+
+Use names that describe the domain role, not generic placeholders like `data` or `handler`, except in very small scopes.
+
+## Structure
+
+After imports, put **exported** symbols first (alphabetical within each kind), then **module-private** helpers at the bottom. Use `.ts` extension in relative imports (`from "./parse.ts"`).
+
+## Module boundaries
+
+| Path | Owns | Must not |
+| --- | --- | --- |
+| `src/index.ts` | Thin entry: `new Cli(program).run()` | Inline leaf handlers, business logic |
+| `src/program.ts` | `CliProgram` assembly: `docs`, `install`, `appConfig`, `commands: […]` | Inline leaf handlers, business logic |
+| `src/commands/<name>/` | One user-facing command: `command.ts`, optional `types.ts` | Shared helpers used by multiple commands (lift to `commands/` or `core/`) |
+| `src/types.ts` | App config types (`program.appConfig`) | Command handlers |
+| `schemas/` | Generated JSON Schema + bridge `.ts` files | Hand-edited generated JSON |
+| `scripts/` | Dev tooling (schemagen, formula helpers) | Production command paths |
+
+When adding commands: `src/commands/<name>/command.ts` + `types.ts` if needed; register in `program.ts` **alphabetically by command key**.
+
+**Argsbarg schema:** `.cursor/rules/cli-program.mdc`.
+
+## Execution
+
+- **Runtime:** Bun (`just test`, `just dev`).
+- **Tests:** colocate `*.test.ts` next to the module.
+- **Schemagen:** after changing `src/**/types.ts`, run `just schemagen` and commit `schemas/generated/` + bridge files.
+
+**full-example conventions:** replace with domain-specific layout notes (JSON-only vs Ink, shared flags, etc.).

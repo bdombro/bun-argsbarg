@@ -131,7 +131,7 @@ Set `mcpServer` on the **program root only** (the `CliProgram` passed to `new Cl
 | --- | --- | --- |
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
 | `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
-| `shellEnv` | off | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
+| `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
 | `resources` | `[]` | Custom `CliMcpResource` entries (additive; schema resource is always included) |
 
 MCP `serverInfo.name` and the default schema URI use the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `CliProgram.version` (also used by the `version` built-in).
@@ -141,7 +141,7 @@ Example with optional fields:
 ```typescript
 mcpServer: {
   enabled: true,
-  shellEnv: true,
+  shellEnv: false, // opt out of login-shell capture
 }
 ```
 
@@ -339,7 +339,6 @@ appConfig: {
 },
 mcpServer: {
   enabled: true,
-  shellEnv: true,
 },
 ```
 

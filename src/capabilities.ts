@@ -12,7 +12,6 @@ export interface CliCapabilities {
   mcp: boolean;
   install: boolean;
   docs: boolean;
-  update: boolean;
   configCommands: boolean;
 }
 
@@ -24,7 +23,6 @@ export function resolveCapabilities(program: CliProgram): CliCapabilities {
     mcp: program.mcpServer?.enabled === true,
     install,
     docs: program.docs?.enabled === true,
-    update: install && typeof program.install?.updateGetLatest === "function",
     configCommands: configCommandsEnabled(program),
   };
 }
@@ -33,7 +31,7 @@ export function resolveCapabilities(program: CliProgram): CliCapabilities {
 export function reservedCommandNames(caps: CliCapabilities): string[] {
   const names = ["completion", "version"];
   if (caps.install) {
-    names.push("install");
+    names.push("install", "uninstall");
   }
   if (caps.docs) {
     names.push("docs");

@@ -81,6 +81,11 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
       }
       envNames.add(entry.env);
     }
+    if (entry.resolve !== undefined && typeof entry.resolve !== "function") {
+      throw new CliSchemaValidationError(
+        `program.appConfig.entries['${key}'].resolve must be a function when set`,
+      );
+    }
   }
 
   const jsonSchema = appConfigBlock.jsonSchema;
@@ -195,17 +200,6 @@ export function cliValidateProgram(program: CliProgram): void {
 
   if (program.appConfig !== undefined) {
     validateConfigBlock(program.appConfig);
-  }
-
-  if (program.install?.updateGetLatest !== undefined) {
-    if (program.install.enabled === false) {
-      throw new CliSchemaValidationError(
-        "install.updateGetLatest requires install to be enabled (omit install.enabled: false)",
-      );
-    }
-    if (typeof program.install.updateGetLatest !== "function") {
-      throw new CliSchemaValidationError("install.updateGetLatest must be a function");
-    }
   }
 
   if (program.install !== undefined) {

@@ -4,6 +4,7 @@ import { displayAppConfigPath, runInstallConfigure } from "../config/bootstrap.t
 import { cliSkillInstall, skillTargetFromActionKind } from "../skill/install.ts";
 import type { CliProgram } from "../types.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
+import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { buildInstallPlan, buildUpdatePlan, type InstallAction, type InstallOpts } from "./plan.ts";
 import {
@@ -13,7 +14,6 @@ import {
   printInstallStatus,
   writeInteractiveInstallIntro,
 } from "./status.ts";
-import { resolveEffectiveInstallTargets } from "./target-effective.ts";
 import { runTargetPreflight } from "./target-plan-build.ts";
 import type { InstallActionKind } from "./target-types.ts";
 import {
@@ -22,19 +22,14 @@ import {
   type UninstallAction,
   uninstallSkillDir,
 } from "./uninstall.ts";
-import { cliUpdate } from "./update.ts";
 
 export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
   const flag = (name: string) => raw[name] === "1";
   return {
     all: flag("all"),
-    app: flag("app"),
-    completions: flag("completions"),
     skill: flag("skill"),
     mcp: flag("mcp"),
     reinstall: flag("reinstall"),
-    update: flag("update"),
-    from: raw.from,
     status: flag("status"),
     uninstall: flag("uninstall"),
     configure: flag("configure"),
@@ -46,19 +41,14 @@ export function parseInstallOpts(raw: Record<string, string>): InstallOpts {
 
 export function validateInstallOpts(opts: InstallOpts): string | null {
   const configureOnlyInstall =
-    opts.configure &&
-    !opts.uninstall &&
-    !opts.all &&
-    !opts.app &&
-    !opts.completions &&
-    !opts.skill &&
-    !opts.mcp &&
-    !opts.reinstall &&
-    !opts.update &&
-    !opts.status;
+    opts.configure && !opts.all && !opts.skill && !opts.mcp && !opts.reinstall && !opts.status;
 
   if (configureOnlyInstall) {
     return null;
+  }
+
+  if (opts.uninstall) {
+    return "Use `uninstall` instead of `install --uninstall`.";
   }
 
   if (opts.json) {
@@ -67,66 +57,35 @@ export function validateInstallOpts(opts: InstallOpts): string | null {
   if (opts.reinstall) {
     opts.yes = true;
   }
-  if (opts.update) {
+
+  const mutationFlags = opts.all || opts.skill || opts.mcp || opts.reinstall || opts.configure;
+  if (opts.status && mutationFlags) {
+    return "--status is mutually exclusive with install/reinstall targets.";
+  }
+  if (opts.reinstall && (opts.all || opts.skill || opts.mcp || opts.status || opts.configure)) {
+    return "--reinstall cannot be combined with other target flags.";
+  }
+  if (!opts.status && !opts.reinstall) {
+    const hasTarget = opts.all || opts.skill || opts.mcp || opts.configure;
+    if (!hasTarget) {
+      return "Specify at least one target: --all, --skill, --mcp, or --configure.";
+    }
+  }
+  return null;
+}
+
+export function validateUninstallOpts(opts: InstallOpts): string | null {
+  if (opts.json) {
     opts.yes = true;
   }
 
-  const mutationFlags =
-    opts.all ||
-    opts.app ||
-    opts.completions ||
-    opts.skill ||
-    opts.mcp ||
-    opts.reinstall ||
-    opts.update ||
-    opts.uninstall ||
-    opts.configure;
-  if (opts.status && mutationFlags) {
-    return "--status is mutually exclusive with install/reinstall/uninstall targets.";
+  if (opts.status || opts.reinstall) {
+    return "uninstall does not support --status or --reinstall.";
   }
-  if (
-    opts.reinstall &&
-    (opts.all ||
-      opts.completions ||
-      opts.skill ||
-      opts.mcp ||
-      opts.uninstall ||
-      opts.status ||
-      opts.update ||
-      opts.configure)
-  ) {
-    return "--reinstall cannot be combined with other target flags.";
-  }
-  if (
-    opts.update &&
-    (opts.all ||
-      opts.app ||
-      opts.completions ||
-      opts.skill ||
-      opts.mcp ||
-      opts.uninstall ||
-      opts.status ||
-      opts.reinstall ||
-      opts.configure)
-  ) {
-    return "--update cannot be combined with other target flags.";
-  }
-  if (opts.uninstall && (opts.reinstall || opts.update || opts.status)) {
-    return "--uninstall cannot be combined with --reinstall, --update, or --status.";
-  }
-  if (opts.uninstall) {
-    const hasUninstallTarget =
-      opts.all || opts.app || opts.completions || opts.skill || opts.mcp || opts.configure;
-    if (!hasUninstallTarget) {
-      return "Specify at least one target: --all, --app, --completions, --skill, --mcp, or --configure.";
-    }
-  }
-  if (!opts.status && !opts.reinstall && !opts.update && !opts.uninstall) {
-    const hasTarget =
-      opts.all || opts.app || opts.completions || opts.skill || opts.mcp || opts.configure;
-    if (!hasTarget) {
-      return "Specify at least one target: --all, --app, --completions, --skill, --mcp, or --configure.";
-    }
+
+  const hasTarget = opts.all || opts.skill || opts.mcp || opts.configure;
+  if (!hasTarget) {
+    return "Specify at least one target: --all, --skill, --mcp, or --configure.";
   }
   return null;
 }
@@ -148,14 +107,12 @@ function parseSelectionIndices(input: string, max: number): number[] | null {
   return indices.sort((a, b) => a - b);
 }
 
-/** Interactive install: item 1 is the app when the plan leads with `app`. */
+/** Interactive install: legacy helper (app no longer installed). */
 export function interactiveSelectionAssumesApp(
-  actions: Array<InstallAction | UninstallAction>,
-  uninstall: boolean,
+  _actions: Array<InstallAction | UninstallAction>,
+  _uninstall: boolean,
 ): boolean {
-  if (uninstall) return false;
-  const first = actions[0];
-  return first !== undefined && "kind" in first && first.kind === "app";
+  return false;
 }
 
 export function mergeInteractiveSelection(
@@ -229,18 +186,7 @@ function executePlan(
   return changed;
 }
 
-function shouldRunConfigureWizardAfterInstall(root: CliProgram, opts: InstallOpts): boolean {
-  if (opts.uninstall || opts.reinstall || opts.update || opts.status || !root.appConfig) {
-    return false;
-  }
-  if (!opts.all && !opts.app && !opts.completions && !opts.skill && !opts.mcp) {
-    return false;
-  }
-  const effective = resolveEffectiveInstallTargets(root.install, root);
-  return effective.configure.includedInAll && effective.configure.enabled;
-}
-
-/** Runs install/reinstall/uninstall mutations without exiting the process. */
+/** Runs install/reinstall mutations without exiting the process. */
 export async function runInstallMutation(
   root: CliProgram,
   rawOpts: Record<string, string>,
@@ -255,7 +201,35 @@ export async function runInstallMutation(
   if (err) {
     throw new Error(err);
   }
+  return runInstallMutationInternal(root, opts);
+}
 
+/** Runs uninstall mutations without exiting the process. */
+export async function runUninstallMutation(
+  root: CliProgram,
+  rawOpts: Record<string, string>,
+): Promise<{
+  changed: string[];
+  opts: InstallOpts;
+  paths: ReturnType<typeof resolveInstallPaths>;
+}> {
+  const normalized = normalizeUninstallRawOpts(rawOpts);
+  const opts = parseInstallOpts(normalized);
+  const err = validateUninstallOpts(opts);
+  if (err) {
+    throw new Error(err);
+  }
+  return runInstallMutationInternal(root, opts);
+}
+
+async function runInstallMutationInternal(
+  root: CliProgram,
+  opts: InstallOpts,
+): Promise<{
+  changed: string[];
+  opts: InstallOpts;
+  paths: ReturnType<typeof resolveInstallPaths>;
+}> {
   const paths = resolveInstallPaths(root);
 
   if (opts.status) {
@@ -280,13 +254,16 @@ export async function runInstallMutation(
   }
 
   let selectedActions = actions;
-  const autoYes = !!(opts.yes || opts.json || opts.reinstall || opts.update || opts.dry);
+  const autoYes = !!(opts.yes || opts.json || opts.reinstall || opts.dry);
 
   if (!autoYes && !opts.json && process.stdin.isTTY) {
     writeInteractiveInstallIntro(root);
   }
 
   if (actions.length === 0) {
+    if (!autoYes && !opts.json && process.stdin.isTTY && !opts.configure) {
+      installOut("Nothing to install for the selected targets.", opts);
+    }
     return { changed: [], opts, paths };
   }
 
@@ -322,17 +299,15 @@ export async function cliInstall(
   root: CliProgram,
   rawOpts: Record<string, string>,
 ): Promise<never> {
+  if (rawOpts.uninstall === "1") {
+    installErr(`Use \`${root.key} uninstall\` instead of \`${root.key} install --uninstall\`.`);
+    process.exit(1);
+  }
+
   const normalized = normalizeInstallRawOpts(rawOpts);
   const opts = parseInstallOpts(normalized);
 
-  const configureOnly =
-    opts.configure &&
-    !opts.uninstall &&
-    !opts.all &&
-    !opts.app &&
-    !opts.completions &&
-    !opts.skill &&
-    !opts.mcp;
+  const configureOnly = opts.configure && !opts.all && !opts.skill && !opts.mcp;
 
   if (configureOnly) {
     if (!root.appConfig) {
@@ -357,14 +332,6 @@ export async function cliInstall(
     process.exit(1);
   }
 
-  if (opts.update) {
-    if (!resolveCapabilities(root).update) {
-      installErr("Remote updates are not supported by this app.");
-      process.exit(1);
-    }
-    await cliUpdate(root);
-  }
-
   let result: Awaited<ReturnType<typeof runInstallMutation>>;
   try {
     result = await runInstallMutation(root, normalized);
@@ -373,21 +340,10 @@ export async function cliInstall(
     process.exit(1);
   }
 
-  const { changed, opts: mutationOpts, paths } = result;
+  const { changed, opts: mutationOpts } = result;
 
   if (mutationOpts.status) {
     process.exit(0);
-  }
-
-  if (
-    shouldRunConfigureWizardAfterInstall(root, mutationOpts) &&
-    !mutationOpts.uninstall &&
-    !mutationOpts.dry
-  ) {
-    const configResult = runInstallConfigure(root, { context: "after-install" });
-    if (configResult.changed) {
-      installOut(`Wrote config: ${displayAppConfigPath(root)}`, mutationOpts);
-    }
   }
 
   if (mutationOpts.json) {
@@ -402,13 +358,51 @@ export async function cliInstall(
         ? "Reinstalled"
         : "Installed";
     installOut(`${verb} ${changed.length} file(s).`, mutationOpts);
-    if (
-      !mutationOpts.uninstall &&
-      (mutationOpts.all || mutationOpts.app) &&
-      changed.some((p) => p === paths.bashRc || p === paths.zshRc || p === paths.appPath)
-    ) {
-      installOut("Open a new shell, or run: hash -r (bash) / rehash (zsh)", mutationOpts);
+  }
+
+  if (mutationOpts.configure && root.appConfig) {
+    const configResult = runInstallConfigure(root, {
+      context: changed.length > 0 ? "after-install" : "standalone",
+    });
+    if (configResult.changed) {
+      installOut(`Wrote config: ${displayAppConfigPath(root)}`, mutationOpts);
     }
+  }
+
+  process.exit(0);
+}
+
+/** Main uninstall command orchestrator. */
+export async function cliUninstall(
+  root: CliProgram,
+  rawOpts: Record<string, string>,
+): Promise<never> {
+  const normalized = normalizeUninstallRawOpts(rawOpts);
+  const opts = parseInstallOpts(normalized);
+
+  const err = validateUninstallOpts(opts);
+  if (err) {
+    installErr(err);
+    process.exit(1);
+  }
+
+  let result: Awaited<ReturnType<typeof runUninstallMutation>>;
+  try {
+    result = await runUninstallMutation(root, rawOpts);
+  } catch (mutationErr) {
+    installErr(mutationErr instanceof Error ? mutationErr.message : String(mutationErr));
+    process.exit(1);
+  }
+
+  const { changed, opts: mutationOpts } = result;
+
+  if (mutationOpts.json) {
+    process.stdout.write(`${JSON.stringify(changed, null, 2)}\n`);
+    process.exit(0);
+  }
+
+  if (changed.length > 0) {
+    installOut(`Removed ${changed.length} file(s).`, mutationOpts);
   }
 
   process.exit(0);

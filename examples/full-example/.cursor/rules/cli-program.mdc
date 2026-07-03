@@ -1,0 +1,30 @@
+---
+description: Argsbarg schema — read framework docs before editing CLI commands
+globs: "src/**/commands/**/*.{ts,tsx},src/index.{ts,tsx}"
+alwaysApply: false
+---
+
+When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
+
+1. **Read** `node_modules/argsbarg/docs/cli-program.md` (required — authoritative guide).
+2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
+3. JSON stdout / `outputSchema` guide and codegen → `node_modules/argsbarg/docs/output-schema.md`.
+4. App config / `program.appConfig` guide and codegen → `node_modules/argsbarg/docs/config-schema.md`.
+5. `install`, `install.targets`, Homebrew distribution → `node_modules/argsbarg/docs/install.md` and `distribution-homebrew.md`.
+6. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
+7. **Examples** (shipped under `node_modules/argsbarg/examples/`):
+   - **Copy template** (all builtins, schemagen, Homebrew justfile, `outputSchema`) → `examples/full-example/`
+
+**Hard rules** (details and examples are in the docs above — do not contradict them):
+
+- Reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `config`.
+- `satisfies CliProgram` / `CliLeaf`; action-oriented `description` on root, commands, options, and positionals.
+- Omit `mcpTool` unless genuinely CLI-only (`enabled: false`) or an irreducible wire limit — fix schema and headless handlers first.
+- Interactive leaves: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
+- String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
+- Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
+- Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
+- JSON stdout: `outputSchema` on the leaf from generated constants in `outputSchemas.ts` — see `output-schema.md`; mark roots with **`JSON payload`** JSDoc in `src/**/types.ts`; do not hand-edit `schemas/generated/` or `outputSchemas.ts`.
+- App config: `program.appConfig.jsonSchema` from generated `configSchemas.ts` — see `config-schema.md`; mark roots with **`Config schema`** JSDoc; prefer the layout in `node_modules/argsbarg/examples/full-example/` when adding new schema roots.
+
+**full-example conventions:** replace this line with app-specific bullets. Keep at the bottom of this file.

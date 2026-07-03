@@ -5,6 +5,7 @@ import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
 import { cliBuiltinInstallCommand } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
+import { cliBuiltinUninstallCommand } from "./uninstall.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
 type BuiltinFactory = (program: CliProgram) => CliNode | null;
@@ -30,6 +31,7 @@ export function resolveBuiltins(program: CliProgram, caps: CliCapabilities): Cli
   pushBuiltin(builtins, program, () => cliBuiltinVersionCommand());
   if (caps.install) {
     pushBuiltin(builtins, program, (p) => cliBuiltinInstallCommand(p));
+    pushBuiltin(builtins, program, (p) => cliBuiltinUninstallCommand(p));
   }
   pushBuiltin(builtins, program, (p) => cliBuiltinDocsGroupIfEnabled(p) ?? null);
   if (caps.mcp) {

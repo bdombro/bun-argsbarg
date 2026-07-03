@@ -21,20 +21,6 @@ export function rcMarkerEnd(appKey: string, tag: string): string {
   return `# end ${appKey}:${tag}`;
 }
 
-/** Returns rc snippet block for PATH, or null if already present. */
-export function buildPathRcBlock(appKey: string, appDir: string): string {
-  const start = rcMarkerStart(appKey, "path");
-  const end = rcMarkerEnd(appKey, "path");
-  return [start, `export PATH="${appDir}:$PATH"`, end].join("\n");
-}
-
-/** Returns rc snippet block for zsh fpath, or null if already present. */
-export function buildZshFpathRcBlock(appKey: string, completionsDir: string): string {
-  const start = rcMarkerStart(appKey, "fpath");
-  const end = rcMarkerEnd(appKey, "fpath");
-  return [start, `fpath=(${completionsDir} $fpath)`, end].join("\n");
-}
-
 /** Removes a marker-delimited block from rc file content. */
 export function removeRcBlock(content: string, appKey: string, tag: string): string {
   const start = rcMarkerStart(appKey, tag);

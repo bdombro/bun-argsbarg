@@ -34,9 +34,9 @@ describe("resolveInstallTargetPreview", () => {
     const paths = resolveInstallPaths(program);
     const preview = resolveInstallTargetPreview(program, paths);
     expect(preview.agentIntegration).toBe("mcp");
-    expect(preview.all).toContain("app");
-    expect(preview.all).toContain("completions");
-    expect(preview.skill).toEqual([]);
+    expect(preview.all).not.toContain("app");
+    expect(preview.all.length).toBeGreaterThan(0);
+    expect(preview.all.every((k) => k.endsWith("Mcp") || k === "configure")).toBe(true);
   });
 
   test("shell app previews skill keys", () => {
@@ -49,7 +49,8 @@ describe("resolveInstallTargetPreview", () => {
     const paths = resolveInstallPaths(program);
     const preview = resolveInstallTargetPreview(program, paths);
     expect(preview.agentIntegration).toBe("skill");
-    expect(preview.all).toContain("app");
+    expect(preview.all).not.toContain("app");
+    expect(preview.all.length).toBeGreaterThan(0);
     expect(preview.mcp).toEqual([]);
   });
 });
@@ -76,8 +77,7 @@ describe("printInstallStatus json", () => {
         effective: { all: string[]; mcp: string[]; skill: string[] };
       };
       expect(parsed.agentIntegration).toBe("mcp");
-      expect(parsed.effective.all).toContain("app");
-      expect(Array.isArray(parsed.effective.skill)).toBe(true);
+      expect(parsed.effective.all.length).toBeGreaterThan(0);
     } finally {
       process.stdout.write = orig;
     }

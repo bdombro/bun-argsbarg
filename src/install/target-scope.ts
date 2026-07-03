@@ -30,9 +30,6 @@ export { mcpCategoryEnabled } from "./target-effective.ts";
 function emptyInstalledArtifacts(): InstalledArtifacts {
   return {
     app: false,
-    bashCompletion: false,
-    zshCompletion: false,
-    fishCompletion: false,
     cursorSkill: false,
     claudeSkill: false,
     codexSkill: false,
@@ -45,8 +42,6 @@ function emptyInstalledArtifacts(): InstalledArtifacts {
     codexMcp: false,
     openclawMcp: false,
     chatGptMcp: false,
-    bashRcPath: false,
-    zshRcFpath: false,
   };
 }
 
@@ -62,18 +57,10 @@ export function detectInstalledArtifacts(
   return out;
 }
 
-function isNonInteractiveInstall(opts: InstallOpts): boolean {
-  return !!(opts.yes || opts.json || opts.reinstall || opts.update || opts.dry);
-}
-
-/** Scope flags; non-interactive `install --mcp` implicitly includes app. */
+/** Scope flags for install/uninstall. */
 export function resolveInstallScope(opts: InstallOpts): InstallScope {
-  const assumeApp =
-    !opts.uninstall && opts.mcp && !opts.all && !opts.app && isNonInteractiveInstall(opts);
   return {
     all: opts.all,
-    app: opts.app || assumeApp,
-    completions: opts.completions,
     skill: opts.skill,
     mcp: opts.mcp,
     configure: opts.configure,
@@ -133,22 +120,20 @@ export function isArtifactInScope(
     return t.enabled && t.includedInAll;
   }
 
-  const scoped =
-    scope.app || scope.completions || scope.skill || scope.mcp || scope.configure || false;
-
   if (mode === "uninstall-scoped" || mode === "install-scoped") {
     if (!effective[key].enabled) return false;
-    if (scope.configure) return key === "configure";
-    if (scope.app) return key === "app";
-    if (scope.completions) return key === "completions";
+
+    let inScope = false;
     if (scope.skill) {
-      return agentCategoryInScope(key, SKILL_KEYS, "skill", effective, targets, root);
+      inScope = inScope || agentCategoryInScope(key, SKILL_KEYS, "skill", effective, targets, root);
     }
     if (scope.mcp) {
-      return agentCategoryInScope(key, MCP_KEYS, "mcp", effective, targets, root);
+      inScope = inScope || agentCategoryInScope(key, MCP_KEYS, "mcp", effective, targets, root);
     }
-    if (!scoped && mode === "install-scoped") return false;
-    return false;
+    if (scope.configure && key === "configure") {
+      inScope = true;
+    }
+    return inScope;
   }
 
   return false;
@@ -174,7 +159,11 @@ export function shouldIncludeArtifact(
     return false;
   }
   if (mode === "refresh" && detected) {
-    if (!detected[key]) return false;
+    if (key === "app") {
+      // app is status-only; refresh skills/MCP only
+    } else if (!detected[key]) {
+      return false;
+    }
   }
   if ((mode === "uninstall-all" || mode === "uninstall-scoped") && detected) {
     const det = detected[key];
@@ -194,6 +183,7 @@ export function shouldIncludeArtifact(
     return isArtifactInScope(key, scope, effective, mode, root, targets);
   }
   if (mode === "refresh") {
+    if (key === "app") return false;
     return effective[key].enabled;
   }
   return isArtifactInScope(key, scope, effective, mode, root, targets);
@@ -235,9 +225,6 @@ export function detectedForArtifact(
   detected: DetectedSnapshot,
 ): boolean {
   const target = installTargetForKey(key);
-  if (key === "completions") {
-    return detected.bashCompletion || detected.zshCompletion || detected.fishCompletion;
-  }
   if (key === "configure") {
     return detected.appConfig ?? false;
   }

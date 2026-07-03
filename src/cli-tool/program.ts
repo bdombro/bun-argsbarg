@@ -1,0 +1,82 @@
+/*
+Argsbarg developer tools — bootstrap consumer CLIs via `create`.
+*/
+
+import pkg from "../../package.json" with { type: "json" };
+import { CliOptionKind, type CliProgram } from "../index.ts";
+import { runCreate } from "./run-create.ts";
+
+export const program = {
+  key: "argsbarg",
+  version: pkg.version,
+  description: "Argsbarg developer tools — bootstrap CLIs from the full-example template.",
+  commands: [
+    {
+      key: "create",
+      description: "Copy the full-example template into a directory with substitutions.",
+      options: [
+        { name: "key", description: "CLI binary name.", kind: CliOptionKind.String },
+        {
+          name: "class-name",
+          description: "Homebrew formula class name.",
+          kind: CliOptionKind.String,
+        },
+        { name: "tap", description: "Homebrew tap (org/repo).", kind: CliOptionKind.String },
+        { name: "homepage", description: "Formula homepage URL.", kind: CliOptionKind.String },
+        {
+          name: "release-repo",
+          description: "GitHub org/repo for release binary.",
+          kind: CliOptionKind.String,
+        },
+        { name: "desc", description: "Formula description.", kind: CliOptionKind.String },
+        { name: "force", description: "Overwrite existing files.", kind: CliOptionKind.Presence },
+        {
+          name: "dry-run",
+          description: "Print planned writes without changing disk.",
+          kind: CliOptionKind.Presence,
+        },
+        {
+          name: "check",
+          description: "Fail if directory drifts from template output.",
+          kind: CliOptionKind.Presence,
+        },
+        {
+          name: "diff",
+          description: "With --check, print a short diff for drifted files.",
+          kind: CliOptionKind.Presence,
+        },
+        {
+          name: "yes",
+          description: "Skip confirmation (required when stdin is not a TTY).",
+          kind: CliOptionKind.Presence,
+        },
+      ],
+      positionals: [
+        {
+          name: "dir",
+          description: "Target directory (default: current directory).",
+          kind: CliOptionKind.String,
+          argMin: 0,
+          argMax: 1,
+        },
+      ],
+      handler: async (ctx) => {
+        const code = await runCreate({
+          dir: ctx.args[0],
+          key: ctx.stringOpt("key"),
+          className: ctx.stringOpt("class-name"),
+          tap: ctx.stringOpt("tap"),
+          homepage: ctx.stringOpt("homepage"),
+          releaseRepo: ctx.stringOpt("release-repo"),
+          desc: ctx.stringOpt("desc"),
+          force: ctx.hasFlag("force"),
+          dryRun: ctx.hasFlag("dry-run"),
+          check: ctx.hasFlag("check"),
+          diff: ctx.hasFlag("diff"),
+          yes: ctx.hasFlag("yes"),
+        });
+        process.exit(code);
+      },
+    },
+  ],
+} satisfies CliProgram;

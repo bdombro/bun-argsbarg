@@ -6,12 +6,10 @@ alwaysApply: false
 
 When changing argsbarg **builtins**, **capabilities**, or **schemagen documentation**:
 
-1. Update **`examples/consumer-app/`** so it still enables every capability (`completion`, `version`, `install`, `docs`, `mcp`, `config`, `update`).
-2. Run **`just consumer-app-schemagen`** and commit any changed `schemas/generated/` and bridge files.
-3. Run **`bun test examples/consumer-app`** (or full `just test`) — `capabilities.test.ts` must pass.
-4. If discovery or naming conventions change, update **`scripts/schemagen/discover-schema-roots.ts`** and its test in the example (and mirror the change in consumer repos per docs).
+1. Update **`examples/full-example/`** so it still enables every capability (`completion`, `version`, `install`, `docs`, `mcp`, `config`).
+2. Run **`just check-full-example`** from the argsbarg repo root (schemagen + schema git diff + `create --check`).
+3. Run **`just test`** — includes `src/cli-tool/full-example-capabilities.test.ts`.
 
-**Learn** config basics: `examples/config-app/` (hand-written schema, zero setup).  
-**Copy** production layout: `examples/consumer-app/` (this sink).
+**Copy template:** `examples/full-example/` — all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`.
 
 Do not duplicate framework docs here — see `docs/cli-program.md` and shipped `cli-program.mdc`.

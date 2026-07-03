@@ -202,6 +202,26 @@ export interface CliUpdateArtifact {
 /** Fetches the latest release binary for `install --update`. */
 export type CliUpdateGetLatest = (ctx: { version: string }) => Promise<CliUpdateArtifact>;
 
+/** Context passed to {@link CliAppConfigEntry.resolve} for one config key. */
+export interface CliAppConfigResolveContext {
+  /** Schema key being resolved. */
+  key: string;
+  /** Entry metadata for this key. */
+  entry: CliAppConfigEntry;
+  /** Program root (read-only). */
+  program: CliProgram;
+  /** Raw value from the config file, if any. */
+  fileValue: unknown;
+  /** Non-empty host env string when `entry.env` is set; otherwise `undefined`. */
+  envValue: string | undefined;
+}
+
+/**
+ * Optional fallback resolver for one config key (e.g. `gh auth token` when `GH_TOKEN` is unset).
+ * Return `undefined` to continue resolution (env, then default).
+ */
+export type CliAppConfigResolveFn = (ctx: CliAppConfigResolveContext) => unknown;
+
 /**
  * Metadata overlay for one key in {@link CliAppConfig.entries}.
  * Types and validation come from {@link CliAppConfig.jsonSchema} when set; otherwise all values are strings.
@@ -222,6 +242,11 @@ export interface CliAppConfigEntry {
   sensitive?: boolean;
   /** When set: non-empty `process.env[env]` overrides file; value exported after resolve. */
   env?: string;
+  /**
+   * Optional fallback after file when env is empty.
+   * Return `undefined` to fall back to `env` (if set) and schema defaults.
+   */
+  resolve?: CliAppConfigResolveFn;
 }
 
 /**
@@ -248,11 +273,6 @@ export interface CliInstallConfig {
   agentIntegration?: InstallAgentIntegration;
   /** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
   targets?: CliInstallTargets;
-  /**
-   * When set, enables `install --update` on the program root.
-   * Should download or locate the latest release binary and return its path.
-   */
-  updateGetLatest?: CliUpdateGetLatest;
 }
 
 /** Agent integration mode for install — MCP vs shell skill per host. */
@@ -275,7 +295,7 @@ export interface ResolvedInstallTarget {
 
 /** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
 export interface CliInstallTargets {
-  /** Copy app to `~/.local/bin/<key>`. Default includedInAll true (opt-out). */
+  /** App binary status only (Homebrew PATH); no self-install. */
   app?: InstallTargetSpec;
   /** ChatGPT desktop MCP. Default false. */
   chatgptMcp?: InstallTargetSpec;
@@ -289,9 +309,7 @@ export interface CliInstallTargets {
   codexMcp?: InstallTargetSpec;
   /** Codex skill. Default false. */
   codexSkill?: InstallTargetSpec;
-  /** Shell completions for detected shells. Default includedInAll true (opt-out). */
-  completions?: InstallTargetSpec;
-  /** App config: wizard on install, file removal on uninstall. Default includedInAll true. */
+  /** App config: wizard via install --configure only. Default not in --all. */
   configure?: InstallTargetSpec;
   /** Cursor MCP. Default false. */
   cursorMcp?: InstallTargetSpec;

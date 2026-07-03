@@ -186,7 +186,7 @@ Per repo:
 
 Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md` and your `src/schemas/` layout.
 
-**Reference implementation:** [`examples/consumer-app/`](../examples/consumer-app/) in this repo (shipped in npm as `node_modules/argsbarg/examples/consumer-app/`) — discovery script, bridges, and `status` leaf with `outputSchema`.
+**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo (shipped in npm as `node_modules/argsbarg/examples/full-example/`) — discovery script, bridges, and `status` leaf with `outputSchema`.
 
 ## Out of scope
 

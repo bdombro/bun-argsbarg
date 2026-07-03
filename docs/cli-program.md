@@ -417,7 +417,8 @@ await cli.run();
 | `default` | — | Used when `jsonSchema` omitted (all-string mode) |
 | `required` | `true` | When `false`, optional unless required by `jsonSchema` |
 | `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `config get`, and status |
-| `env` | — | When set: non-empty host env overrides file; exported to `process.env` after resolve |
+| `env` | — | When set: non-empty host env overrides file; consulted again after `resolve` when `resolve` returns `undefined`; exported to `process.env` after resolve |
+| `resolve` | — | Optional fallback after file; return `undefined` to fall back to `env` (if set) and defaults |
 
 **Config file** (created on demand):
 
@@ -447,10 +448,11 @@ Agents do **not** discover package docs automatically. Wire them in after `bun a
 
 ```bash
 mkdir -p .cursor/rules
-cp node_modules/argsbarg/docs/templates/cursor/rules/cli-program.mdc .cursor/rules/cli-program.mdc
+bun scripts/merge-cli-program-rule.ts . \
+  node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc
 ```
 
-The template is ~25 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide.
+The template is ~30 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide. `bunx argsbarg create` copies this file into new projects automatically.
 
 2. **Add an app-specific block at the bottom** (recommended). Replace the template placeholder with a heading like `**myapp conventions:**` and short bullets — shared flag modules, `read*Flags` / `resolve*` paths, Ink vs JSON-only, etc. Example:
 

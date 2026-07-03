@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { CliProgram } from "../types.ts";
-import { maybeBootstrapInstallArgv } from "./bootstrap.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
-import { resolveInstallPaths } from "./paths.ts";
+import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
 import { resolveAgentIntegration, resolveEffectiveInstallTargets } from "./target-effective.ts";
 import { isArtifactInScope } from "./target-scope.ts";
 
@@ -15,7 +11,7 @@ describe("normalizeInstallRawOpts", () => {
   });
 
   test("bare uninstall sets all", () => {
-    expect(normalizeInstallRawOpts({ uninstall: "1" })).toEqual({
+    expect(normalizeUninstallRawOpts({})).toEqual({
       uninstall: "1",
       all: "1",
     });
@@ -37,11 +33,10 @@ describe("resolveAgentIntegration", () => {
 });
 
 describe("resolveEffectiveInstallTargets", () => {
-  test("defaults app completions configure includedInAll", () => {
+  test("defaults app and configure not in --all", () => {
     const t = resolveEffectiveInstallTargets(undefined);
-    expect(t.app.includedInAll).toBe(true);
-    expect(t.completions.includedInAll).toBe(true);
-    expect(t.configure.includedInAll).toBe(true);
+    expect(t.app.includedInAll).toBe(false);
+    expect(t.configure.includedInAll).toBe(false);
   });
 
   test("skill mode includes skills in --all not MCP pairs", () => {
@@ -99,38 +94,25 @@ describe("resolveEffectiveInstallTargets", () => {
       ),
     ).toBe(true);
   });
-});
 
-describe("maybeBootstrapInstallArgv", () => {
-  const program: CliProgram = {
-    key: "bootapp",
-    version: "1.0.0",
-    description: "Boot",
-    handler: () => {},
-  };
-
-  test("rewrites empty argv when app missing and TTY", () => {
-    const prev = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
-    try {
-      expect(maybeBootstrapInstallArgv([], program)).toEqual(["install"]);
-    } finally {
-      Object.defineProperty(process.stdin, "isTTY", { value: prev, configurable: true });
-    }
-  });
-
-  test("does not rewrite when app exists", () => {
-    const home = mkdtempSync(join(tmpdir(), "boot-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = home;
-    const paths = resolveInstallPaths(program);
-    try {
-      mkdirSync(paths.appDir, { recursive: true });
-      writeFileSync(paths.appPath, "x", "utf8");
-      expect(maybeBootstrapInstallArgv([], program)).toEqual([]);
-    } finally {
-      process.env.HOME = prevHome;
-      rmSync(home, { recursive: true, force: true });
-    }
+  test("scoped --mcp --skill --configure includes skill and mcp not only configure", () => {
+    const program: CliProgram = {
+      key: "app",
+      version: "1",
+      description: "x",
+      mcpServer: { enabled: true },
+      install: { agentIntegration: "both" },
+      handler: () => {},
+    };
+    const effective = resolveEffectiveInstallTargets(program.install, program);
+    const scope = { mcp: true, skill: true, configure: true };
+    expect(isArtifactInScope("cursorSkill", scope, effective, "install-scoped", program)).toBe(
+      true,
+    );
+    expect(isArtifactInScope("cursorMcp", scope, effective, "install-scoped", program)).toBe(true);
+    expect(isArtifactInScope("configure", scope, effective, "install-scoped", program)).toBe(true);
+    expect(isArtifactInScope("claudeSkill", scope, effective, "install-scoped", program)).toBe(
+      true,
+    );
   });
 });

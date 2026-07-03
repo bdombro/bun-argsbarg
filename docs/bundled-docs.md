@@ -8,7 +8,7 @@ Two documentation layers often coexist in a consumer repo:
 
 | Layer | Contents | How agents/humans get it |
 | --- | --- | --- |
-| **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wire via [Cursor rule](templates/cursor/rules/cli-program.mdc) or `AGENTS.md` |
+| **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wire via [full-example Cursor rule](../examples/full-example/.cursor/rules/cli-program.mdc) or `AGENTS.md` |
 | **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs api`, `docs schema`, `docs mcp` — save with `--save` to `./docs/` |
 
 `docs api` and `docs schema` embed each leaf’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.

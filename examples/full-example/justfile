@@ -1,0 +1,134 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+HOMEBREW_NO_AUTO_UPDATE := "1"
+HOMEBREW_NO_INSTALL_CLEANUP := "1"
+HOMEBREW_NO_ENV_HINTS := "1"
+
+cli_key := `bun scripts/print-identity.ts key`
+tap_org := `bun scripts/print-identity.ts tapOrg`
+tap_repo := `bun scripts/print-identity.ts tapRepo`
+tap := `bun scripts/print-identity.ts tap`
+brew_prefix := `brew --prefix`
+tap_parent := brew_prefix + "/Library/Taps/" + tap_org
+tap_path := tap_parent + "/homebrew-" + tap_repo
+
+# List available recipes (default)
+_:
+    @just --list
+
+# Compile the CLI binary to dist/full-example
+build:
+    bun build ./src/index.ts --compile --outfile=dist/{{cli_key}}
+    @rm -f .*.bun-build
+
+# Run schemagen, git diff check, typecheck, and format
+check: schemagen
+    git diff --exit-code schemas/
+    just typecheck
+    just format
+
+# Run the CLI from source with optional args; restarts on file changes
+dev *ARGS:
+    bun --watch ./src/index.ts {{ARGS}}
+
+# Regenerate docs/schema.json and docs/skill.md
+docgen: schemagen
+    @just run docs schema --save
+    @just run docs skill --save
+
+alias fmt := format
+
+# Format and lint sources (auto-fix)
+format:
+    bun run biome check ./src ./scripts --write
+
+# Alias for backward compatibility
+install: install-local
+
+# Refresh skills and MCP without reinstalling the formula
+install-artifacts:
+    {{cli_key}} install --reinstall --yes
+
+# Dev install: build, write dev formula, symlink tap, brew install
+install-local: build
+    @bun scripts/gen-dev-formula.ts
+    @brew untap {{tap}} 2>/dev/null || true
+    mkdir -p {{tap_parent}}
+    ln -sfn '{{justfile_directory()}}' {{tap_path}}
+    brew install --formula {{tap}}/{{cli_key}}
+    @echo ""
+    @echo "Next: {{cli_key}} install --configure"
+
+# Remove local dev install, then install from GitHub tap
+install-production: uninstall
+    brew tap {{tap}}
+    brew install --formula {{tap}}/{{cli_key}}
+    @echo ""
+    @echo "Next: {{cli_key}} install --configure"
+
+# Alias for backward compatibility
+reinstall: reinstall-local
+
+# Rebuild binary and swap into Cellar (run install-local first)
+reinstall-local: build
+    install -m 755 dist/{{cli_key}} "$(brew --prefix {{cli_key}})/bin/{{cli_key}}"
+
+# Lint sources without writing
+lint:
+    bun run biome check ./src ./scripts
+
+# Run the CLI from source once
+run *ARGS:
+    bun ./src/index.ts {{ARGS}}
+
+# Generate JSON Schema artifacts from TypeScript types
+schemagen:
+    bun run schemagen
+    just format
+
+# Install bun/npm dependencies
+setup:
+    bun install
+
+# Run unit tests (after check)
+test: check
+    bun test .
+
+# Install release formula from tap and run formula test
+test-release:
+    @brew untap {{tap}} 2>/dev/null || true
+    mkdir -p {{tap_parent}}
+    ln -sfn '{{justfile_directory()}}' {{tap_path}}
+    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    brew install --formula {{tap}}/{{cli_key}}
+    brew test {{cli_key}}
+
+# Typecheck without emitting build artifacts
+typecheck:
+    bun run tsc --noEmit
+
+# Undo just install-local: agent artifacts first, then formula
+uninstall: uninstall-artifacts uninstall-formula
+
+# Remove agent artifacts only (skills, MCP)
+uninstall-artifacts:
+    {{cli_key}} uninstall --yes
+
+# Remove app config file only
+uninstall-config:
+    {{cli_key}} uninstall --configure --yes
+
+# Remove formula and untap
+uninstall-formula:
+    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    @brew uninstall --formula {{tap}}/{{cli_key}}-local 2>/dev/null || true
+    @brew untap {{tap}} 2>/dev/null || true
+
+# Remove release formula (does not untap)
+uninstall-release:
+    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+
+# Remove release formula and untap
+uninstall-release-tap:
+    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    @brew untap {{tap}} 2>/dev/null || true

@@ -6,7 +6,6 @@ import { claudeDesktopMcpTarget } from "./claude-desktop-mcp.ts";
 import { claudeSkillTarget } from "./claude-skill.ts";
 import { codexMcpTarget } from "./codex-mcp.ts";
 import { codexSkillTarget } from "./codex-skill.ts";
-import { completionsTarget } from "./completions.ts";
 import { configureTarget } from "./configure.ts";
 import { cursorMcpTarget } from "./cursor-mcp.ts";
 import { cursorSkillTarget } from "./cursor-skill.ts";
@@ -18,7 +17,6 @@ import { opencodeSkillTarget } from "./opencode-skill.ts";
 /** Ordered install targets (plan iteration order). */
 export const INSTALL_TARGETS: InstallTarget[] = [
   appTarget,
-  completionsTarget,
   cursorSkillTarget,
   claudeSkillTarget,
   codexSkillTarget,
@@ -42,7 +40,6 @@ export {
   claudeSkillTarget,
   codexMcpTarget,
   codexSkillTarget,
-  completionsTarget,
   configureTarget,
   cursorMcpTarget,
   cursorSkillTarget,

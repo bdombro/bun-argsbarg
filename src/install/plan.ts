@@ -15,26 +15,34 @@ export function buildInstallPlan(
   return buildInstallPlanFromTargets(root, paths, opts);
 }
 
-/** Builds update/reinstall actions for detected artifacts within effective targets. */
+/** Builds update/reinstall actions; greenfield fallback when nothing detected. */
 export function buildUpdatePlan(
   root: CliProgram,
   paths: InstallPaths,
   opts: InstallOpts,
 ): InstallAction[] {
-  return buildInstallPlan(root, paths, { ...opts, reinstall: true, all: true });
+  const refresh = buildInstallPlanFromTargets(root, paths, {
+    ...opts,
+    reinstall: true,
+    all: true,
+  });
+  if (refresh.length > 0) {
+    return refresh;
+  }
+  return buildInstallPlanFromTargets(root, paths, { ...opts, reinstall: false, all: true });
 }
 
 /** @deprecated Use resolveInstallPlanMode + shouldIncludeArtifact. */
-export function wantsInstallApp(opts: InstallOpts): boolean {
-  return !!(opts.all || opts.app || opts.reinstall);
+export function wantsInstallApp(_opts: InstallOpts): boolean {
+  return false;
 }
 
 /** @deprecated Use {@link wantsInstallApp}. */
 export const wantsInstallBin = wantsInstallApp;
 
 /** @deprecated Use resolveInstallPlanMode + shouldIncludeArtifact. */
-export function wantsInstallCompletions(opts: InstallOpts): boolean {
-  return !!(opts.all || opts.completions);
+export function wantsInstallCompletions(_opts: InstallOpts): boolean {
+  return false;
 }
 
 /** @deprecated Use resolveInstallPlanMode + shouldIncludeArtifact. */

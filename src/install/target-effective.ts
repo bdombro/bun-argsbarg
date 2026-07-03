@@ -107,8 +107,6 @@ export interface InstallTargetPreview {
 /** Derives plan mode from install CLI flags. */
 export function resolveInstallPlanMode(opts: {
   all?: boolean;
-  app?: boolean;
-  completions?: boolean;
   skill?: boolean;
   mcp?: boolean;
   configure?: boolean;

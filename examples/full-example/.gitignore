@@ -1,0 +1,4 @@
+node_modules/
+dist/
+Formula/.staging/
+.DS_Store

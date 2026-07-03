@@ -21,9 +21,7 @@ const program = {
       readme: { text: "# nested.ts\n\nNested groups demo.\n" },
     },
   },
-  install: {
-    updateGetLatest: async () => ({ path: process.execPath, version: pkg.version }),
-  },
+  install: {},
   commands: [
     {
       key: "stat",

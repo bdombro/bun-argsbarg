@@ -1,13 +1,12 @@
 import { resolveCapabilities } from "../capabilities.ts";
-import type { CliProgram, CliRouter } from "../types.ts";
+import type { CliProgram } from "../types.ts";
 
 /**
  * Builds the static `completion` / `bash` / `zsh` / `fish` command subtree (merged into the program root at runtime).
  */
-export function cliBuiltinCompletionGroup(program: CliProgram): CliRouter {
+export function cliBuiltinCompletionGroup(program: CliProgram): import("../types.ts").CliRouter {
   const appName = program.key;
-  const caps = resolveCapabilities(program);
-  const router: CliRouter = {
+  const router: import("../types.ts").CliRouter = {
     key: "completion",
     description: "Generate the autocompletion script for shells.",
     commands: [
@@ -15,9 +14,9 @@ export function cliBuiltinCompletionGroup(program: CliProgram): CliRouter {
         key: "bash",
         description: "Print a bash tab-completion script.",
         notes:
-          "Manual install:\n\n" +
-          `  ${appName} completion bash > ~/.bash_completion.d/${appName}\n` +
-          `  echo 'source ~/.bash_completion.d/${appName}' >> ~/.bashrc\n\n` +
+          "Homebrew installs completions during `brew install` via generate_completions_from_executable.\n\n" +
+          "Ensure your shell loads Homebrew completions:\n" +
+          "  https://docs.brew.sh/Shell-Completion\n\n" +
           "Try this session only:\n\n" +
           `  source <(${appName} completion bash)`,
         handler: () => {},
@@ -26,9 +25,9 @@ export function cliBuiltinCompletionGroup(program: CliProgram): CliRouter {
         key: "zsh",
         description: "Print a zsh tab-completion script.",
         notes:
-          "Manual install:\n\n" +
-          `  ${appName} completion zsh > ~/.zsh/completions/_${appName}\n\n` +
-          "Ensure ~/.zsh/completions is on your fpath, then restart zsh.\n\n" +
+          "Homebrew installs completions to $(brew --prefix)/share/zsh/site-functions.\n\n" +
+          "Ensure brew shellenv + compinit are configured:\n" +
+          "  https://docs.brew.sh/Shell-Completion\n\n" +
           "Try this session only:\n\n" +
           `  eval "$(${appName} completion zsh)"`,
         handler: () => {},
@@ -37,15 +36,18 @@ export function cliBuiltinCompletionGroup(program: CliProgram): CliRouter {
         key: "fish",
         description: "Print a fish tab-completion script.",
         notes:
-          "Manual install:\n\n" +
-          `  ${appName} completion fish > ~/.config/fish/completions/${appName}.fish\n\n` +
-          "Fish loads completions from that directory automatically.",
+          "Homebrew installs completions to $(brew --prefix)/share/fish/vendor_completions.d.\n\n" +
+          "See: https://docs.brew.sh/Shell-Completion\n\n" +
+          "Try this session only:\n\n" +
+          `  ${appName} completion fish | source`,
         handler: () => {},
       },
     ],
   };
-  if (caps.install) {
-    router.notes = `Install for all shells:\n\n  ${appName} install --completions --yes`;
+  if (resolveCapabilities(program).install) {
+    router.notes =
+      "Completions are installed by Homebrew during formula install.\n\n" +
+      "See: https://docs.brew.sh/Shell-Completion";
   }
   return router;
 }

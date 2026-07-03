@@ -6,6 +6,7 @@ import { completionBashScript, completionFishScript, completionZshScript } from 
 import { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
+import { cliBuiltinUninstallCommand, uninstallBuiltinOptions } from "./uninstall.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
@@ -22,20 +23,30 @@ const fixture: CliProgram = {
 };
 
 describe("builtins help copy", () => {
-  test("install command includes description and option text", () => {
+  test("install command includes Homebrew-oriented description", () => {
     const install = cliBuiltinInstallCommand(fixture);
-    expect(install.description).toContain("shell completions");
-    expect(install.notes).toContain("install --all");
+    expect(install.description).toContain("agent skills");
+    expect(install.notes).toContain("brew install");
     const names = installBuiltinOptions(fixture).map((o) => o.name);
     expect(names).toContain("all");
     expect(names).toContain("mcp");
+    expect(names).not.toContain("app");
+    expect(names).not.toContain("completions");
+    expect(names).not.toContain("update");
     expect(names.indexOf("all")).toBeLessThan(names.indexOf("mcp"));
     expect(names.indexOf("mcp")).toBeLessThan(names.indexOf("status"));
-    expect(names.indexOf("status")).toBeLessThan(names.indexOf("uninstall"));
-    expect(names.indexOf("uninstall")).toBeLessThan(names.indexOf("from"));
-    expect(names.indexOf("from")).toBeLessThan(names.indexOf("yes"));
+    expect(names).not.toContain("uninstall");
     const yesOpt = installBuiltinOptions(fixture).find((o) => o.name === "yes");
     expect(yesOpt?.shortName).toBe("y");
+  });
+
+  test("uninstall command includes removal guidance", () => {
+    const uninstall = cliBuiltinUninstallCommand(fixture);
+    expect(uninstall.notes).toContain("brew uninstall");
+    const names = uninstallBuiltinOptions(fixture).map((o) => o.name);
+    expect(names).toContain("all");
+    expect(names).not.toContain("status");
+    expect(names).not.toContain("reinstall");
   });
 
   test("install -y parses as --yes", () => {
@@ -53,23 +64,10 @@ describe("builtins help copy", () => {
     expect(names).not.toContain("mcp");
   });
 
-  test("install omits --update when updateGetLatest unset", () => {
+  test("install notes mention brew upgrade", () => {
     const install = cliBuiltinInstallCommand(fixture);
-    expect(installBuiltinOptions(fixture).map((o) => o.name)).not.toContain("update");
-    expect(install.notes).not.toContain("Upgrade to latest release");
-    expect(install.notes).toContain("Refresh after upgrading");
-  });
-
-  test("install notes include upgrade section when updateGetLatest is set", () => {
-    const withUpdate: CliProgram = {
-      ...fixture,
-      install: { updateGetLatest: async () => ({ path: process.execPath }) },
-    };
-    const install = cliBuiltinInstallCommand(withUpdate);
-    const notes = install.notes ?? "";
-    expect(installBuiltinOptions(withUpdate).map((o) => o.name)).toContain("update");
-    expect(notes).toContain("Upgrade to latest release");
-    expect(notes.indexOf("install --reinstall")).toBeLessThan(notes.indexOf("install --update"));
+    expect(install.notes).toContain("brew upgrade");
+    expect(install.notes).toContain("install --configure");
   });
 
   test("mcp builtin description is user-facing", () => {
@@ -90,6 +88,7 @@ describe("presentation root", () => {
     const keys = root.commands?.map((c) => c.key) ?? [];
     expect(keys).toContain("mcp");
     expect(keys).toContain("install");
+    expect(keys).toContain("uninstall");
   });
 
   test("omits install when install.enabled is false", () => {
@@ -159,6 +158,6 @@ describe("schema export builtins", () => {
   test("exportPresentationBuiltins includes install options", () => {
     const builtins = exportPresentationBuiltins(fixture);
     const install = builtins.find((b) => b.key === "install");
-    expect(install?.options?.find((o) => o.name === "all")?.description).toContain("app");
+    expect(install?.options?.find((o) => o.name === "all")?.description).toContain("agent");
   });
 });

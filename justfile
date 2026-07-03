@@ -2,21 +2,53 @@
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+# List available recipes (default)
 _:
     @just --list
 
-# check the codebase
+# Typecheck and format the codebase
 check: typecheck format
 
-
 consumer_apps := "idp-trees sqsp-qa-tools sqsp-i18n-tools"
+
+# Verify committed schemas match schemagen output and template drift in examples/full-example
+check-full-example: full-example-schemagen
+    #!/usr/bin/env bash
+    cd examples/full-example
+    git diff --exit-code schemas/ || {
+      echo "examples/full-example/schemas/ is out of date — run: just full-example-schemagen"
+      exit 1
+    }
+    cd "{{justfile_directory()}}"
+    bun ./src/cli-tool/main.ts create --check examples/full-example
+
+# Smoke-test argsbarg create into a temp directory
+create-smoke:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
+    root="{{justfile_directory()}}"
+    bun "$root/src/cli-tool/main.ts" create "$tmpdir/smoke-cli" \
+      --key smoke-cli --class-name SmokeCli --tap local/smoke-cli \
+      --homepage https://example.com --release-repo example/smoke-cli --yes
+    test -d "$tmpdir/smoke-cli/.git"
+    git -C "$tmpdir/smoke-cli" log -1 --oneline | grep -q Initial
+
+# Install deps for examples/full-example
+full-example-install:
+    cd examples/full-example && just setup
+
+# Regenerate JSON Schema artifacts in examples/full-example
+full-example-schemagen:
+    cd examples/full-example && just schemagen
 
 # Point local consumer apps at this repo (file: dep) for pre-publish development
 consumers-dev:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
     ss="$root/../../ss"
-    template="${root}/docs/templates/cursor/rules/cli-program.mdc"
+    template="${root}/examples/full-example/.cursor/rules/cli-program.mdc"
     echo "argsbarg@file:<relative-to-consumer> → ${root}"
     for app in {{consumer_apps}}; do
       dir="$(cd "$ss/$app" && pwd)"
@@ -25,7 +57,7 @@ consumers-dev:
       (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" "$template")
     done
 
-# Update local consumer apps: pin argsbarg to ^<this repo version> in package.json, install, build, docgen
+# Pin consumers to ^<this repo version>, install, merge Cursor rule, build, docgen
 consumers-sync:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
@@ -38,55 +70,36 @@ consumers-sync:
       (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
     done
 
-
-
-# run the minimal example
+# Run the minimal example once
 example *ARGS:
     bun ./examples/minimal.ts {{ARGS}}
 
-# run the minimal example and watch for changes
+# Run the minimal example and watch for changes
 example-watch *ARGS:
     bun --watch ./examples/minimal.ts {{ARGS}}
 
-alias fmt := format
-# format the codebase
+# Format and lint the codebase (auto-fix)
 format:
     bun run biome check ./src ./scripts --write
 
-# lint the codebase
+# Lint the codebase without writing
 lint:
     bun run biome check ./src ./scripts
 
-# Typecheck, lint, then run the test suite.
-test: check
-    bun test
-
-# Install deps for examples/consumer-app (kitchen-sink)
-consumer-app-install:
-    cd examples/consumer-app && bun install
-
-# Regenerate JSON Schema artifacts in examples/consumer-app
-consumer-app-schemagen:
-    cd examples/consumer-app && bun run schemagen
-
-# Verify committed schemas match schemagen output
-check-sink: consumer-app-schemagen
-    #!/usr/bin/env bash
-    cd examples/consumer-app
-    git diff --exit-code schemas/ || {
-      echo "examples/consumer-app/schemas/ is out of date — run: just consumer-app-schemagen"
-      exit 1
-    }
-
-# typecheck the codebase
-typecheck:
-    bun run tsc --noEmit
-
-# generate type declarations for the package
-typegen:
-    bunx dts-bundle-generator --out-file index.d.ts src/index.ts
-
-# publish to github and npm
+# Bump version, test, typegen, tag, and publish to GitHub + npm
 release bump: test typegen
     bun scripts/release.ts {{bump}}
 
+# Typecheck, lint, then run the test suite
+test: check
+    bun test
+
+# Generate package type declarations (index.d.ts)
+typegen:
+    bunx dts-bundle-generator --out-file index.d.ts src/index.ts
+
+# Typecheck without emitting build artifacts
+typecheck:
+    bun run tsc --noEmit
+
+alias fmt := format

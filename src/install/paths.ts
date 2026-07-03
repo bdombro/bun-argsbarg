@@ -8,11 +8,6 @@ import { resolveOpenclawConfigPath } from "./mcp-openclaw.ts";
 import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
 export interface InstallPaths {
-  appDir: string;
-  appPath: string;
-  bashCompletion: string;
-  zshCompletion: string;
-  fishCompletion: string;
   cursorSkillDir: string;
   claudeSkillDir: string;
   codexSkillDir: string;
@@ -25,8 +20,6 @@ export interface InstallPaths {
   chatGptMcpPath: string;
   codexConfigPath: string;
   openclawConfigPath: string;
-  bashRc: string;
-  zshRc: string;
   mcpName: string;
   skillDirName: string;
 }
@@ -36,11 +29,6 @@ export { userHome } from "../paths/host.ts";
 /** Format an absolute path for user-facing install output. */
 export function displayInstallPath(path: string): string {
   return displayHomePath(path);
-}
-
-/** App install directory (`~/.local/bin`). */
-export function resolveAppDir(): string {
-  return join(userHome(), ".local", "bin");
 }
 
 /** Resolves Claude Desktop `claude_desktop_config.json` for the current OS. */
@@ -80,22 +68,14 @@ export function chatGptDesktopPresent(_home: string, configPath: string): boolea
 /** Resolves all install artifact paths for a program root. */
 export function resolveInstallPaths(root: CliProgram): InstallPaths {
   const home = userHome();
-  const appDir = resolveAppDir();
-  const key = root.key;
   const skillDirName = sanitizeToolSegment(root.key);
   const codexSlug = skillDirNameForTarget(root.key, "codex");
   const opencodeSlug = skillDirNameForTarget(root.key, "opencode");
   const openclawSlug = skillDirNameForTarget(root.key, "openclaw");
-  const xdgConfig = xdgConfigHome(home);
   const claudeDesktopMcpPath = resolveClaudeDesktopMcpPath(home);
   const chatGptMcpPath = resolveChatGptMcpPath(home);
 
   return {
-    appDir,
-    appPath: join(appDir, key),
-    bashCompletion: join(home, ".bash_completion.d", key),
-    zshCompletion: join(home, ".zsh", "completions", `_${key}`),
-    fishCompletion: join(xdgConfig, "fish", "completions", `${key}.fish`),
     cursorSkillDir: join(home, ".cursor", "skills", skillDirName),
     claudeSkillDir: join(home, ".claude", "skills", skillDirName),
     codexSkillDir: join(home, ".codex", "skills", codexSlug),
@@ -108,8 +88,6 @@ export function resolveInstallPaths(root: CliProgram): InstallPaths {
     chatGptMcpPath,
     codexConfigPath: join(home, ".codex", "config.toml"),
     openclawConfigPath: resolveOpenclawConfigPath(home),
-    bashRc: join(home, ".bashrc"),
-    zshRc: join(home, ".zshrc"),
     mcpName: mcpServerId(root),
     skillDirName,
   };

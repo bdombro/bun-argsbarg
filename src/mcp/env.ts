@@ -39,21 +39,22 @@ export function applyShellEnv(env: Record<string, string>): void {
   }
 }
 
-/** Applies mcpServer shellEnv bootstrap. */
+/** Applies mcpServer shellEnv bootstrap (default on; opt out with `shellEnv: false`). */
 export function bootstrapMcpEnv(config: { shellEnv?: boolean | string }): void {
+  if (config.shellEnv === false) {
+    return;
+  }
   const shellEnvCfg = config.shellEnv;
-  if (shellEnvCfg) {
-    const shell =
-      typeof shellEnvCfg === "string"
-        ? shellEnvCfg
-        : (process.env.SHELL ?? (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash"));
-    const captured = captureShellEnv(shell);
-    if (Object.keys(captured).length === 0) {
-      process.stderr.write(
-        `[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`,
-      );
-    } else {
-      applyShellEnv(captured);
-    }
+  const shell =
+    typeof shellEnvCfg === "string"
+      ? shellEnvCfg
+      : (process.env.SHELL ?? (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash"));
+  const captured = captureShellEnv(shell);
+  if (Object.keys(captured).length === 0) {
+    process.stderr.write(
+      `[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`,
+    );
+  } else {
+    applyShellEnv(captured);
   }
 }

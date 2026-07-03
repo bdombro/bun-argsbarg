@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "exclude": ["examples/consumer-app"]
+  "exclude": ["examples/full-example"]
 }

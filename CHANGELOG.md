@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-07-03
+
+### Added
+
+- **`argsbarg create`** — interactive bootstrap from `examples/full-example`; copies template with substitutions; post-create runs `bun install`, schemagen, Cursor rule merge, `bun test`, and git init when appropriate.
+
+### Changed
+
+- **Breaking: `bunx argsbarg scaffold homebrew` → `bunx argsbarg create`** — single template in `examples/full-example/`; removed `docs/templates/homebrew/`.
+- **`examples/full-example/`** — `src/index.ts`, per-command modules, Biome, `.cursor/rules/` (`cli-program.mdc`, `code.mdc`).
+
+### Removed
+
+- **`argsbarg scaffold`** subcommands and **`docs/templates/homebrew/`**.
+
+### Added
+
+- **`CliAppConfigEntry.resolve`** — optional per-key fallback resolver after file (e.g. `gh auth token`); return `undefined` to fall back to `entry.env` and defaults. Resolution order: env → file → `resolve` → env → default.
+- **Install `--mcp` / `--skill` / `--configure` combined** — scoped flags compose (configure no longer blocks skill/MCP plan); configure wizard runs after install when combined.
+- **Top-level `uninstall` command** — sibling of `install` for removing agent artifacts; bare `uninstall` defaults to `--all`.
+- **Homebrew-first distribution** — tap-from-repo formula pattern; [docs/distribution-homebrew.md](docs/distribution-homebrew.md).
+- **Homebrew dev just recipes** — `install-local`, `reinstall-local`, `install-production` (+ `install` / `reinstall` aliases); `uninstall`, `uninstall-config`, `uninstall-release`, `uninstall-release-tap`, `test-release` in full-example template.
+- **CLI bin split** — `argsbarg` package bin points to `src/cli-tool/main.ts`; library API remains `import from "argsbarg"`.
+- **Config path exports** — `resolveAppConfigPath`, `displayAppConfigPath` exported from `argsbarg`.
+- **`--reinstall` greenfield fallback** — when no artifacts detected, `--reinstall` runs full `--all` plan (fresh `brew install` post_install).
+
+### Changed
+
+- **`mcpServer.shellEnv` default on** — login-shell env is captured at MCP startup unless `shellEnv: false`. PATH is merged; other vars fill gaps in host env.
+- **`CliAppConfigEntry.resolve` must be synchronous** — returning a Promise is ignored with a stderr warning; use `Bun.spawnSync` with piped stdout for subprocess resolvers (e.g. `gh auth token`).
+
+- **Breaking: `examples/consumer-app/` → `examples/full-example/`** — expanded justfile (dev/build/test/schemagen + Homebrew); CLI key `full-example`; removed redundant `examples/config-app/`.
+
+- **Breaking: `install --uninstall` removed** — use `<key> uninstall` instead (`install --uninstall` exits with a redirect message).
+- **Breaking: Homebrew-only install model** — drop self-install to `~/.local/bin`, `install --app`, `install --update` / `updateGetLatest`, home-dir completion installer (`install --completions`), bare-argv install bootstrap.
+- **Breaking: configure opt-in** — `configure` target excluded from `--all`; no post-install wizard; run `install --configure` explicitly.
+- **Install `--all` / `--reinstall`** — skills and MCP only (binary + completions via Homebrew formula).
+- **Completion built-in notes** — Homebrew installs completions; link to Shell-Completion docs.
+
+### Removed
+
+- **`examples/config-app/`** — superseded by `full-example` (`program.appConfig`, schemagen, and `config get`/`set` covered there).
+- **`install --update`**, **`updateGetLatest`**, **`ghReleaseUpdateGetLatest`** usage in install flow.
+- **Completion installer** — `install/targets/completions.ts`, home-dir completion paths.
+- **Install bootstrap** — bare argv no longer rewrites to `install`.
+
 ## [4.1.0] - 2026-07-01
 
 ### Added
@@ -497,7 +543,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v4.1.1...HEAD
+[4.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.1.1
 [4.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.1.0
 [4.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.4
 [4.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.0.3

@@ -33,15 +33,15 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 | Recipe | When | Effect |
 | --- | --- | --- |
 | `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` from template (keeps app-specific suffix) |
-| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **argsbarg Cursor rule**, `just build`, `just docgen`, `just install` (consumer app binary, completions, and **app** skill) |
+| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **argsbarg Cursor rule**, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rule** — `scripts/merge-cli-program-rule.ts` copies `docs/templates/cursor/rules/cli-program.mdc` into each consumer’s `.cursor/rules/cli-program.mdc`, preserving any existing `**… conventions:**` footer block.
+**Argsbarg authoring rule** — `scripts/merge-cli-program-rule.ts` copies `examples/full-example/.cursor/rules/cli-program.mdc` into each consumer’s `.cursor/rules/cli-program.mdc`, preserving any existing `**… conventions:**` footer block.
 
 **Recommended in each consumer:** replace the template placeholder with `**<app> conventions:**` bullets (paths to `read*Flags`, shared flags, Ink vs JSON-only). Commit that file; merges refresh the shared top, not your footer.
 
-**Consumer app skill** — `just install` in each consumer (part of `consumers-sync`) runs `myapp install --skill`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
+**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp install --reinstall --yes`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
 
 ## npm package contents
 
@@ -49,14 +49,14 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 
 When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`docs/`, `examples/`, `src/`, etc.).
 
-Exclude `examples/consumer-app/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
+Exclude `examples/full-example/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
 
-## Kitchen-sink example
+## Full example
 
-[`examples/consumer-app/`](../examples/consumer-app/) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
+[`examples/full-example/`](../examples/full-example/) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
 
 ```bash
-just consumer-app-schemagen
+just full-example-schemagen
 just test
 ```
 

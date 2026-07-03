@@ -9,7 +9,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const PLACEHOLDER = "**App-specific conventions:** add below or in a separate";
+const PLACEHOLDER =
+  /\*\*\{key\} conventions:\*\*|\*\*[^*\n]+ conventions:\*\* add below or in a separate/;
 
 function parentDir(absolute: string): string {
   const s = absolute.replace(/[/\\]+$/, "");
@@ -25,13 +26,13 @@ if (!consumerDir) {
 }
 
 const templatePath =
-  process.argv[3] ?? join(repoRoot, "docs/templates/cursor/rules/cli-program.mdc");
+  process.argv[3] ?? join(repoRoot, "examples/full-example/.cursor/rules/cli-program.mdc");
 const rulePath = join(consumerDir, ".cursor/rules/cli-program.mdc");
 
 const template = readFileSync(templatePath, "utf8").trimEnd();
 const templateBody = template
   .split("\n")
-  .filter((line) => !line.includes(PLACEHOLDER))
+  .filter((line) => !PLACEHOLDER.test(line))
   .join("\n")
   .replace(/\n+$/, "");
 
