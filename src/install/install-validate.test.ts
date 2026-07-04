@@ -1,3 +1,7 @@
+/*
+Tests for install/install-validate module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import type { CliProgram } from "../types.ts";
 import { CliSchemaValidationError } from "../types.ts";
@@ -10,11 +14,14 @@ const base: CliProgram = {
   handler: () => {},
 };
 
+/** Tests for validateConfigureConfig. */
 describe("validateConfigureConfig", () => {
+  /** Tests that accepts empty install config. */
   test("accepts empty install config", () => {
     expect(() => cliValidateProgram(base)).not.toThrow();
   });
 
+  /** Rejects removed allSkills shorthand. */
   test("rejects removed allSkills shorthand", () => {
     const program = {
       ...base,
@@ -24,6 +31,7 @@ describe("validateConfigureConfig", () => {
     expect(() => cliValidateProgram(program)).toThrow(/allSkills/);
   });
 
+  /** Rejects both sides of pair without both integration. */
   test("rejects both sides of pair without both integration", () => {
     const program: CliProgram = {
       ...base,
@@ -36,6 +44,7 @@ describe("validateConfigureConfig", () => {
     expect(() => cliValidateProgram(program)).toThrow(/both/);
   });
 
+  /** Rejects explicit MCP target in skill integration mode. */
   test("rejects explicit MCP target in skill integration mode", () => {
     const program: CliProgram = {
       ...base,
@@ -47,6 +56,7 @@ describe("validateConfigureConfig", () => {
     expect(() => cliValidateProgram(program)).toThrow(/cursorMcp/);
   });
 
+  /** Allows explicit pair targets with both integration. */
   test("allows explicit pair targets with both integration", () => {
     const program: CliProgram = {
       ...base,

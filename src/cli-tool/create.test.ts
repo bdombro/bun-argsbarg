@@ -1,3 +1,7 @@
+/*
+Tests for cli-tool/create module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,7 +16,9 @@ import {
   substituteTemplateContent,
 } from "./create.ts";
 
+/** Tests for argsbarg create. */
 describe("argsbarg create", () => {
+  /** Tests that substitutes {key} tokens. */
   test("substitutes {key} tokens", () => {
     const out = substituteTemplateContent(
       "key={key} class={className} env={envPrefix}_API_TOKEN tap={tap} org={tapOrg}",
@@ -38,12 +44,14 @@ describe("argsbarg create", () => {
     expect(out).not.toContain("{key}");
   });
 
+  /** Tests that classNameFromKey. */
   test("classNameFromKey", () => {
     expect(classNameFromKey("sqsp-i18n")).toBe("SqspI18n");
     expect(classNameFromKey("at1")).toBe("At1");
     expect(classNameFromKey("1password")).toBe("App1password");
   });
 
+  /** ResolveCreateOptions derives identity defaults from key. */
   test("resolveCreateOptions derives identity defaults from key", () => {
     expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe(
       "App1password",
@@ -59,10 +67,12 @@ describe("argsbarg create", () => {
     expect(opts.desc).toBe("At1 CLI");
   });
 
+  /** ResolveCreateOptions requires release repo. */
   test("resolveCreateOptions requires release repo", () => {
     expect(() => resolveCreateOptions({ key: "at1" })).toThrow(/release repo/i);
   });
 
+  /** Tests that renderCreateTree includes justfile and create-identity. */
   test("renderCreateTree includes justfile and create-identity", () => {
     const tree = renderCreateTree({
       key: "testapp",
@@ -88,6 +98,7 @@ describe("argsbarg create", () => {
     expect(formula).toContain("create-identity.ts");
   });
 
+  /** Tests that --check detects drift. */
   test("--check detects drift", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
@@ -111,6 +122,7 @@ describe("argsbarg create", () => {
     }
   });
 
+  /** Tests that --check infers options from create-identity.ts. */
   test("--check infers options from create-identity.ts", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
@@ -134,6 +146,7 @@ describe("argsbarg create", () => {
     }
   });
 
+  /** Tests that --diff captures drift details. */
   test("--diff captures drift details", () => {
     const drifts = diffCreateDetails("/nonexistent", { key: "x", releaseRepo: "org/x" });
     expect(drifts.length).toBeGreaterThan(0);

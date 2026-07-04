@@ -1,3 +1,7 @@
+/*
+Tests for install/binary-placement module behavior.
+*/
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,12 +34,15 @@ afterEach(() => {
   rmSync(tmp, { recursive: true, force: true });
 });
 
+/** Tests for isExternallyManagedBinary. */
 describe("isExternallyManagedBinary", () => {
+  /** Tests that false when command is not on PATH. */
   test("false when command is not on PATH", () => {
     process.env.PATH = tmp;
     expect(isExternallyManagedBinary("placementapp-not-on-path")).toBe(false);
   });
 
+  /** Tests that true when PATH resolves to execPath. */
   test("true when PATH resolves to execPath", () => {
     const bin = join(tmp, "placementapp");
     writeFileSync(bin, "#!/bin/sh\n", "utf8");
@@ -44,6 +51,7 @@ describe("isExternallyManagedBinary", () => {
     expect(isExternallyManagedBinary("placementapp", bin)).toBe(true);
   });
 
+  /** Tests that true when PATH entry is a symlink to execPath. */
   test("true when PATH entry is a symlink to execPath", () => {
     const bin = join(tmp, "placementapp");
     const target = join(tmp, "real-binary");
@@ -53,6 +61,7 @@ describe("isExternallyManagedBinary", () => {
     expect(isExternallyManagedBinary("placementapp", target)).toBe(true);
   });
 
+  /** Tests that false when PATH points at a different binary. */
   test("false when PATH points at a different binary", () => {
     const bin = join(tmp, "placementapp");
     const other = join(tmp, "other");
@@ -63,7 +72,9 @@ describe("isExternallyManagedBinary", () => {
   });
 });
 
+/** Tests for isAppInstalled. */
 describe("isAppInstalled", () => {
+  /** Tests that true when externally managed. */
   test("true when externally managed", () => {
     const bin = join(tmp, program.key);
     const prevExec = process.execPath;
@@ -78,6 +89,7 @@ describe("isAppInstalled", () => {
     }
   });
 
+  /** Tests that false when not on PATH and no local copy. */
   test("false when not on PATH and no local copy", () => {
     const home = mkdtempSync(join(tmpdir(), "argsbarg-placement-home-"));
     const prevHome = process.env.HOME;
@@ -93,7 +105,9 @@ describe("isAppInstalled", () => {
   });
 });
 
+/** Tests for resolvePathCommand. */
 describe("resolvePathCommand", () => {
+  /** Tests that returns undefined when missing. */
   test("returns undefined when missing", () => {
     process.env.PATH = tmp;
     expect(resolvePathCommand("missing-cmd")).toBeUndefined();

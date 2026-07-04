@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.2] - 2026-07-04
+
+### Changed
+
+- **JSDoc style** — every `describe` and `test` block in `src/**/*.test.ts` now has a human-readable JSDoc; `configure` modules brought in line with file headers and symbol docs.
+
 ## [5.0.1] - 2026-07-04
 
 
@@ -567,7 +573,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.0.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.0.2...HEAD
+[5.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.0.2
 [5.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.0.1
 [5.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.0.0
 [4.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v4.1.1

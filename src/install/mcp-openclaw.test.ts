@@ -1,3 +1,7 @@
+/*
+Tests for install/mcp-openclaw module behavior.
+*/
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +23,9 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
+/** Tests for openclaw mcp config. */
 describe("openclaw mcp config", () => {
+  /** OpenclawMcpHasServer detects configured server. */
   test("openclawMcpHasServer detects configured server", () => {
     const path = resolveOpenclawConfigPath(home);
     mkdirSync(join(home, ".openclaw"), { recursive: true });

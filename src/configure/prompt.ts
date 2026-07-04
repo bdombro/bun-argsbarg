@@ -1,6 +1,11 @@
+/*
+TTY prompts for per-target install, skip, or uninstall during interactive `configure`.
+*/
+
 import { readSync } from "node:fs";
 import type { CliInstallArtifactKey } from "../install/target-types.ts";
 
+/** Human-readable labels for each install artifact key in interactive prompts. */
 const LABELS: Record<CliInstallArtifactKey, string> = {
   app: "App binary",
   cursorSkill: "Cursor skill",
@@ -18,10 +23,12 @@ const LABELS: Record<CliInstallArtifactKey, string> = {
   configure: "App config",
 };
 
+/** Returns the prompt label for an install artifact key. */
 export function artifactPromptLabel(key: CliInstallArtifactKey): string {
   return LABELS[key];
 }
 
+/** User choice from a per-target Y/n or y/N prompt. */
 export type TargetPromptAction = "install" | "skip" | "uninstall";
 
 /** Prompt per target: Y/n when not installed, y/N when installed. */

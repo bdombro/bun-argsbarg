@@ -12,6 +12,7 @@ import type { CliLeaf } from "./types.ts";
 import { isCliRouter } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";
 
+/** Tests that ctx.invocation is cli via Cli.run. */
 test("ctx.invocation is cli via Cli.run", async () => {
   const indexPath = join(import.meta.dir, "index.ts");
   const { stdout } = await $`bun -e ${`
@@ -28,6 +29,7 @@ await new Cli(program).run([]);
   expect(stdout.toString().trim()).toBe("cli");
 });
 
+/** Tests that ctx.invocation is mcp via Cli.invoke. */
 test("ctx.invocation is mcp via Cli.invoke", async () => {
   let seen = "";
   const root = testProgram({
@@ -43,6 +45,7 @@ test("ctx.invocation is mcp via Cli.invoke", async () => {
   expect(seen).toBe("mcp");
 });
 
+/** Cli.invoke rejects invalid Enum value. */
 test("Cli.invoke rejects invalid Enum value", async () => {
   const root = testProgram({
     key: "app",
@@ -64,6 +67,7 @@ test("Cli.invoke rejects invalid Enum value", async () => {
   expect(result.errorMsg).toContain("not one of");
 });
 
+/** Cli.invoke accepts valid Enum value. */
 test("Cli.invoke accepts valid Enum value", async () => {
   const root = testProgram({
     key: "app",
@@ -87,6 +91,7 @@ test("Cli.invoke accepts valid Enum value", async () => {
   expect(result.stdout.trim()).toBe("dev");
 });
 
+/** Varargs trailing option after positionals via Cli.invoke. */
 test("varargs trailing option after positionals via Cli.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -96,6 +101,7 @@ test("varargs trailing option after positionals via Cli.invoke", async () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs option before positionals. */
 test("varargs option before positionals", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -105,6 +111,7 @@ test("varargs option before positionals", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs multiple files then trailing option. */
 test("varargs multiple files then trailing option", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -114,6 +121,7 @@ test("varargs multiple files then trailing option", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs double dash forces positional. */
 test("varargs double dash forces positional", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -123,6 +131,7 @@ test("varargs double dash forces positional", () => {
   expect(pr.opts.json).toBeUndefined();
 });
 
+/** Varargs unknown flag errors. */
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -131,6 +140,7 @@ test("varargs unknown flag errors", async () => {
   expect(result.stderr).toContain("--unknown");
 });
 
+/** Varargs scoped help in tail. */
 test("varargs scoped help in tail", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -140,6 +150,7 @@ test("varargs scoped help in tail", () => {
   expect(pr.helpExplicit).toBe(true);
 });
 
+/** Tests that ctx.positional returns single slot value. */
 test("ctx.positional returns single slot value", async () => {
   const root = testProgram({
     key: "app",
@@ -161,6 +172,7 @@ test("ctx.positional returns single slot value", async () => {
   expect(captured).toBe("./file");
 });
 
+/** Tests that ctx.positional returns varargs array. */
 test("ctx.positional returns varargs array", async () => {
   const root = varargsReadFixture();
   let captured: string | string[] | undefined;
@@ -174,6 +186,7 @@ test("ctx.positional returns varargs array", async () => {
   expect(captured).toEqual(["a.txt", "b.txt"]);
 });
 
+/** Tests that ctx.positional returns undefined for absent optional slot. */
 test("ctx.positional returns undefined for absent optional slot", async () => {
   const root = testProgram({
     key: "app",
@@ -197,6 +210,7 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
   expect(captured).toBeUndefined();
 });
 
+/** Tests that ctx.positional varargs matches ctx.args. */
 test("ctx.positional varargs matches ctx.args", async () => {
   const root = varargsReadFixture();
   let positional: string | string[] | undefined;

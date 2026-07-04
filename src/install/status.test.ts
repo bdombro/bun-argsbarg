@@ -1,3 +1,7 @@
+/*
+Tests for install/status module behavior.
+*/
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,7 +26,9 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
+/** Tests for resolveInstallTargetPreview. */
 describe("resolveInstallTargetPreview", () => {
+  /** Mcp app previews MCP keys for all and mcp scopes. */
   test("mcp app previews MCP keys for all and mcp scopes", () => {
     const program: CliProgram = {
       key: "mcpapp",
@@ -39,6 +45,7 @@ describe("resolveInstallTargetPreview", () => {
     expect(preview.all.every((k) => k.endsWith("Mcp") || k === "configure")).toBe(true);
   });
 
+  /** Tests that shell app previews skill keys. */
   test("shell app previews skill keys", () => {
     const program: CliProgram = {
       key: "cliapp",
@@ -55,7 +62,9 @@ describe("resolveInstallTargetPreview", () => {
   });
 });
 
+/** Tests for printInstallStatus json. */
 describe("printInstallStatus json", () => {
+  /** Includes agentIntegration and effective scopes. */
   test("includes agentIntegration and effective scopes", () => {
     const program: CliProgram = {
       key: "app",

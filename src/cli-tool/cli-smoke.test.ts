@@ -1,16 +1,23 @@
+/*
+Tests for cli-tool/cli-smoke module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 const main = join(import.meta.dir, "main.ts");
 
+/** Tests for argsbarg cli-tool. */
 describe("argsbarg cli-tool", () => {
+  /** Tests that version subcommand prints version. */
   test("version subcommand prints version", () => {
     const proc = spawnSync("bun", [main, "version"], { encoding: "utf8" });
     expect(proc.status).toBe(0);
     expect(proc.stdout.trim().length).toBeGreaterThan(0);
   });
 
+  /** Tests that help lists create and version only (no install, completion, mcp). */
   test("help lists create and version only (no install, completion, mcp)", () => {
     const proc = spawnSync("bun", [main, "--help"], { encoding: "utf8" });
     expect(proc.status).toBe(0);
@@ -21,6 +28,7 @@ describe("argsbarg cli-tool", () => {
     expect(proc.stdout).not.toContain("mcp");
   });
 
+  /** Completion subcommand is disabled. */
   test("completion subcommand is disabled", () => {
     const proc = spawnSync("bun", [main, "completion", "bash"], { encoding: "utf8" });
     expect(proc.status).toBe(1);

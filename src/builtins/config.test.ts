@@ -1,3 +1,7 @@
+/*
+Tests for builtins/config module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,7 +24,9 @@ function configFixture(): CliProgram {
   };
 }
 
+/** Tests for builtins/config. */
 describe("builtins/config", () => {
+  /** Tests that config get redacts sensitive values. */
   test("config get redacts sensitive values", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
     const prevHome = process.env.HOME;
@@ -43,6 +49,7 @@ describe("builtins/config", () => {
     }
   });
 
+  /** Tests that config get --json redacts sensitive as { set: true }. */
   test("config get --json redacts sensitive as { set: true }", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
     const prevHome = process.env.HOME;
@@ -65,6 +72,7 @@ describe("builtins/config", () => {
     }
   });
 
+  /** Tests that config set writes and resolves without required exit. */
   test("config set writes and resolves without required exit", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
     const prevHome = process.env.HOME;

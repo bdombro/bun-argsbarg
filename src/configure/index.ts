@@ -1,3 +1,7 @@
+/*
+Interactive and automated `configure` command orchestration (agent artifacts and app config).
+*/
+
 import { resolveCapabilities } from "../capabilities.ts";
 import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
 import { resolveInstallPaths } from "../install/paths.ts";
@@ -36,6 +40,7 @@ export function appConfigHasEntries(program: CliProgram): boolean {
   return !!entries && Object.keys(entries).length > 0;
 }
 
+/** Parsed flags for the top-level `configure` built-in. */
 export interface ConfigureOpts {
   sync?: boolean;
   removeAll?: boolean;
@@ -46,6 +51,7 @@ export interface ConfigureOpts {
   json?: boolean;
 }
 
+/** Maps raw argv flags into {@link ConfigureOpts}. */
 export function parseConfigureOpts(raw: Record<string, string>): ConfigureOpts {
   const flag = (name: string) => raw[name] === "1";
   return {
@@ -59,6 +65,7 @@ export function parseConfigureOpts(raw: Record<string, string>): ConfigureOpts {
   };
 }
 
+/** Returns an error message when configure flags are inconsistent; otherwise null. */
 export function validateConfigureOpts(opts: ConfigureOpts): string | null {
   const flags = [opts.sync, opts.removeAll, opts.removeConfig, opts.status].filter(Boolean);
   if (flags.length > 1) {
@@ -73,6 +80,7 @@ export function validateConfigureOpts(opts: ConfigureOpts): string | null {
   return null;
 }
 
+/** Adapts configure flags to internal install-plan option shape. */
 function configureToInstallOpts(opts: ConfigureOpts): InstallOpts {
   if (opts.status) {
     return { status: true, yes: opts.yes, dry: opts.dry, json: opts.json };
@@ -89,6 +97,7 @@ function configureToInstallOpts(opts: ConfigureOpts): InstallOpts {
   return { dry: opts.dry, json: opts.json };
 }
 
+/** Installs a skill target and returns changed paths. */
 function runSkillAction(root: CliProgram, kind: InstallActionKind, opts: InstallOpts): string[] {
   const target = skillTargetFromActionKind(kind);
   if (!target) return [];
@@ -99,6 +108,7 @@ function runSkillAction(root: CliProgram, kind: InstallActionKind, opts: Install
   });
 }
 
+/** Runs install or uninstall actions and collects changed paths. */
 function executePlan(
   root: CliProgram,
   actions: Array<InstallAction | UninstallAction>,
@@ -130,6 +140,7 @@ function executePlan(
   return changed;
 }
 
+/** Builds plan context limited to a single artifact key. */
 function buildSingleTargetContext(
   root: CliProgram,
   paths: ReturnType<typeof resolveInstallPaths>,
@@ -147,6 +158,7 @@ function buildSingleTargetContext(
   };
 }
 
+/** Resolves install or uninstall actions for one artifact target. */
 function actionsForTarget(
   root: CliProgram,
   paths: ReturnType<typeof resolveInstallPaths>,
@@ -164,6 +176,7 @@ function actionsForTarget(
   return target.planUninstall(ctx);
 }
 
+/** Walks enabled targets with per-target prompts (TTY required). */
 async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): Promise<string[]> {
   if (!process.stdin.isTTY) {
     throw new Error("Interactive configure requires a TTY. Use flags such as --sync --yes.");
@@ -218,6 +231,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
   return changed;
 }
 
+/** Runs sync, remove, or status modes without per-target prompts. */
 async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Promise<string[]> {
   const installOpts = configureToInstallOpts(opts);
   const paths = resolveInstallPaths(root);

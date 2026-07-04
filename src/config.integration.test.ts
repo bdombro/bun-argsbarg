@@ -10,6 +10,7 @@ import { bootstrapAppConfig } from "./config/bootstrap.ts";
 import { resolveAppConfigPath } from "./config/file.ts";
 import { mcpRequest, testProgram } from "./test-fixtures.ts";
 
+/** Tests that bootstrapAppConfig prefers host env over config file. */
 test("bootstrapAppConfig prefers host env over config file", () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-env-"));
   const prevHome = process.env.HOME;
@@ -43,6 +44,7 @@ test("bootstrapAppConfig prefers host env over config file", () => {
   }
 });
 
+/** MCP program.appConfig fails when required config missing. */
 test("MCP program.appConfig fails when required config missing", async () => {
   const responses = await mcpRequest(
     [
@@ -60,6 +62,7 @@ test("MCP program.appConfig fails when required config missing", async () => {
   expect(res.result.content[0]?.text).toContain("argsTestSecret");
 });
 
+/** MCP program.appConfig succeeds when env present. */
 test("MCP program.appConfig succeeds when env present", async () => {
   const responses = await mcpRequest(
     [
@@ -77,6 +80,7 @@ test("MCP program.appConfig succeeds when env present", async () => {
   expect(res.result.content[0]?.text.trim()).toBe("sekrit");
 });
 
+/** MCP config file loads and exports vars for tool handlers. */
 test("MCP config file loads and exports vars for tool handlers", async () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-mcp-"));
   const configFile = join(dir, ".local", "lib", "mcp_test", "config");
@@ -106,6 +110,7 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+/** Cli.run docs api skips required appConfig exit. */
 test("Cli.run docs api skips required appConfig exit", async () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-docs-skip-"));
   const configFile = join(dir, ".local", "lib", "docs_skip_test", "config");

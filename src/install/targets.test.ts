@@ -1,3 +1,7 @@
+/*
+Tests for install/targets module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import type { CliProgram } from "../types.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
@@ -5,11 +9,14 @@ import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
 import { resolveAgentIntegration, resolveEffectiveInstallTargets } from "./target-effective.ts";
 import { isArtifactInScope } from "./target-scope.ts";
 
+/** Tests for normalizeInstallRawOpts. */
 describe("normalizeInstallRawOpts", () => {
+  /** Bare install sets all. */
   test("bare install sets all", () => {
     expect(normalizeInstallRawOpts({})).toEqual({ all: "1" });
   });
 
+  /** Bare uninstall sets all. */
   test("bare uninstall sets all", () => {
     expect(normalizeUninstallRawOpts({})).toEqual({
       uninstall: "1",
@@ -17,28 +24,35 @@ describe("normalizeInstallRawOpts", () => {
     });
   });
 
+  /** Configure-only install unchanged. */
   test("configure-only install unchanged", () => {
     expect(normalizeInstallRawOpts({ configure: "1" })).toEqual({ configure: "1" });
   });
 });
 
+/** Tests for resolveAgentIntegration. */
 describe("resolveAgentIntegration", () => {
+  /** Defaults to skill without MCP. */
   test("defaults to skill without MCP", () => {
     expect(resolveAgentIntegration(undefined, false)).toBe("skill");
   });
 
+  /** Defaults to mcp when MCP enabled. */
   test("defaults to mcp when MCP enabled", () => {
     expect(resolveAgentIntegration(undefined, true)).toBe("mcp");
   });
 });
 
+/** Tests for resolveEffectiveInstallTargets. */
 describe("resolveEffectiveInstallTargets", () => {
+  /** Defaults app and configure not in --all. */
   test("defaults app and configure not in --all", () => {
     const t = resolveEffectiveInstallTargets(undefined);
     expect(t.app.includedInAll).toBe(false);
     expect(t.configure.includedInAll).toBe(false);
   });
 
+  /** Skill mode includes skills in --all not MCP pairs. */
   test("skill mode includes skills in --all not MCP pairs", () => {
     const program: Pick<CliProgram, "mcpServer"> = {};
     const t = resolveEffectiveInstallTargets(undefined, program);
@@ -46,6 +60,7 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.cursorMcp.includedInAll).toBe(false);
   });
 
+  /** Mcp mode includes MCP in --all not paired skills. */
   test("mcp mode includes MCP in --all not paired skills", () => {
     const program: Pick<CliProgram, "mcpServer"> = { mcpServer: { enabled: true } };
     const t = resolveEffectiveInstallTargets(undefined, program);
@@ -54,6 +69,7 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.claudeDesktopMcp.includedInAll).toBe(true);
   });
 
+  /** Tests that both mode includes MCP and skills. */
   test("both mode includes MCP and skills", () => {
     const program: Pick<CliProgram, "mcpServer"> = { mcpServer: { enabled: true } };
     const t = resolveEffectiveInstallTargets({ agentIntegration: "both" }, program);
@@ -61,6 +77,7 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.cursorSkill.includedInAll).toBe(true);
   });
 
+  /** Tests that per-key override disables one skill. */
   test("per-key override disables one skill", () => {
     const t = resolveEffectiveInstallTargets({
       targets: { cursorSkill: false },
@@ -69,6 +86,7 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.cursorSkill.enabled).toBe(false);
   });
 
+  /** Scoped --mcp uses effective targets not all MCP hosts. */
   test("scoped --mcp uses effective targets not all MCP hosts", () => {
     const program: CliProgram = {
       key: "app",
@@ -95,6 +113,7 @@ describe("resolveEffectiveInstallTargets", () => {
     ).toBe(true);
   });
 
+  /** Scoped --mcp --skill --configure includes skill and mcp not only configure. */
   test("scoped --mcp --skill --configure includes skill and mcp not only configure", () => {
     const program: CliProgram = {
       key: "app",

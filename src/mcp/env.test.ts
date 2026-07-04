@@ -1,3 +1,7 @@
+/*
+Tests for mcp/env module behavior.
+*/
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -6,7 +10,9 @@ import { applyShellEnv, bootstrapMcpEnv } from "./env.ts";
 
 const TEST_VAR = "ARGS_BARG_SHELL_ENV_TEST";
 
+/** Tests for mcp/env. */
 describe("mcp/env", () => {
+  /** ApplyShellEnv merges PATH and fills missing vars. */
   test("applyShellEnv merges PATH and fills missing vars", () => {
     const prevPath = process.env.PATH;
     const prevTest = process.env[TEST_VAR];
@@ -27,6 +33,7 @@ describe("mcp/env", () => {
     }
   });
 
+  /** ApplyShellEnv does not overwrite host vars except PATH merge. */
   test("applyShellEnv does not overwrite host vars except PATH merge", () => {
     const prev = process.env.HOME;
     process.env.HOME = "/host/home";
@@ -40,6 +47,7 @@ describe("mcp/env", () => {
   });
 });
 
+/** Tests for bootstrapMcpEnv. */
 describe("bootstrapMcpEnv", () => {
   let fakeShell: string;
   let prevShell: string | undefined;
@@ -70,21 +78,25 @@ fi
     else process.env[TEST_VAR] = prevTest;
   });
 
+  /** Defaults on when shellEnv is undefined. */
   test("defaults on when shellEnv is undefined", () => {
     bootstrapMcpEnv({});
     expect(process.env[TEST_VAR]).toBe("from_fake_shell");
   });
 
+  /** Runs when shellEnv is true. */
   test("runs when shellEnv is true", () => {
     bootstrapMcpEnv({ shellEnv: true });
     expect(process.env[TEST_VAR]).toBe("from_fake_shell");
   });
 
+  /** Tests that uses explicit shell path when shellEnv is a string. */
   test("uses explicit shell path when shellEnv is a string", () => {
     bootstrapMcpEnv({ shellEnv: fakeShell });
     expect(process.env[TEST_VAR]).toBe("from_fake_shell");
   });
 
+  /** Tests that skips capture when shellEnv is false. */
   test("skips capture when shellEnv is false", () => {
     bootstrapMcpEnv({ shellEnv: false });
     expect(process.env[TEST_VAR]).toBeUndefined();

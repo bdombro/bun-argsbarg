@@ -1,3 +1,7 @@
+/*
+Tests for docs/docs module behavior.
+*/
+
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -49,6 +53,7 @@ function docsFixture(mcp = true): CliProgram {
   };
 }
 
+/** Docs reserved when enabled. */
 test("docs reserved when enabled", () => {
   const root: CliProgram = {
     ...docsFixture(),
@@ -63,6 +68,7 @@ test("docs reserved when enabled", () => {
   expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: docs/);
 });
 
+/** Docs rejects reserved topic keys. */
 test("docs rejects reserved topic keys", () => {
   const root = docsFixture();
   const docs = root.docs;
@@ -77,22 +83,26 @@ test("docs rejects reserved topic keys", () => {
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
 });
 
+/** DocsEffectiveDefaultTopic uses first topic key. */
 test("docsEffectiveDefaultTopic uses first topic key", () => {
   expect(docsEffectiveDefaultTopic(docsFixture().docs!)).toBe("readme");
 });
 
+/** Bare docs prints first topic via Cli.invoke. */
 test("bare docs prints first topic via Cli.invoke", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Hello README");
 });
 
+/** Docs readme prints bundled text. */
 test("docs readme prints bundled text", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "readme"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Hello README");
 });
 
+/** Docs defaultTopic override. */
 test("docs defaultTopic override", async () => {
   const root = docsFixture();
   root.docs!.defaultTopic = "arch";
@@ -100,6 +110,7 @@ test("docs defaultTopic override", async () => {
   expect(result.stdout).toContain("Architecture");
 });
 
+/** Docs mcp when MCP enabled. */
 test("docs mcp when MCP enabled", async () => {
   const result = await new Cli(docsFixture(true)).invoke(["docs", "mcp"]);
   expect(result.exitCode).toBe(0);
@@ -109,11 +120,13 @@ test("docs mcp when MCP enabled", async () => {
   expect(result.stdout).toContain("configure --sync --yes");
 });
 
+/** Docs rejects unknown subcommand. */
 test("docs rejects unknown subcommand", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "all"]);
   expect(result.exitCode).not.toBe(0);
 });
 
+/** Docs mcp absent from router when MCP disabled. */
 test("docs mcp absent from router when MCP disabled", async () => {
   const root = docsFixture(false);
   const presentation = cliPresentationRoot(root);
@@ -126,6 +139,7 @@ test("docs mcp absent from router when MCP disabled", async () => {
   expect(result.exitCode).not.toBe(0);
 });
 
+/** Presentation includes docs subtree. */
 test("presentation includes docs subtree", () => {
   const presentation = cliPresentationRoot(docsFixture());
   const docsNode = presentation.commands.find((c) => c.key === "docs");
@@ -135,6 +149,7 @@ test("presentation includes docs subtree", () => {
   ).toBe(true);
 });
 
+/** Docs schema prints JSON. */
 test("docs schema prints JSON", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "schema"]);
   expect(result.exitCode).toBe(0);
@@ -143,6 +158,7 @@ test("docs schema prints JSON", async () => {
   expect(schema.commands.some((c: { key: string }) => c.key === "run")).toBe(true);
 });
 
+/** Docs api prints markdown reference. */
 test("docs api prints markdown reference", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "api"]);
   expect(result.exitCode).toBe(0);
@@ -152,6 +168,7 @@ test("docs api prints markdown reference", async () => {
   expect(result.stdout).toContain("myapp docs schema");
 });
 
+/** Tests that skipsRequiredAppConfigExit includes docs and config builtins. */
 test("skipsRequiredAppConfigExit includes docs and config builtins", () => {
   const program = {
     ...docsFixture(),
@@ -165,6 +182,7 @@ test("skipsRequiredAppConfigExit includes docs and config builtins", () => {
   expect(skipsRequiredAppConfigExit(["run"], caps)).toBe(false);
 });
 
+/** Docs skill prints Cursor SKILL.md. */
 test("docs skill prints Cursor SKILL.md", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "skill"]);
   expect(result.exitCode).toBe(0);
@@ -176,6 +194,7 @@ test("docs skill prints Cursor SKILL.md", async () => {
   expect(result.stdout).not.toContain("mcp.json");
 });
 
+/** Docs skill help recommends configure. */
 test("docs skill help recommends configure", async () => {
   const presentation = cliPresentationRoot(docsFixture());
   const docsNode = presentation.commands.find((c) => c.key === "docs");
@@ -190,6 +209,7 @@ test("docs skill help recommends configure", async () => {
   }
 });
 
+/** Presentation includes docs schema and skill. */
 test("presentation includes docs schema and skill", () => {
   const presentation = cliPresentationRoot(docsFixture());
   const docsNode = presentation.commands.find((c) => c.key === "docs");
@@ -201,6 +221,7 @@ test("presentation includes docs schema and skill", () => {
   }
 });
 
+/** Completions offer docs subcommands. */
 test("completions offer docs subcommands", () => {
   const bash = completionBashScript(cliPresentationRoot(docsFixture()));
   expect(bash).toContain("docs) echo");
@@ -210,6 +231,7 @@ test("completions offer docs subcommands", () => {
   expect(bash).toContain("skill) echo");
 });
 
+/** Tests that generateMcpGuide includes schema URI and configure sync. */
 test("generateMcpGuide includes schema URI and configure sync", () => {
   const guide = generateMcpGuide(docsFixture(true));
   expect(guide).toContain("myapp://schema");
@@ -223,6 +245,7 @@ test("generateMcpGuide includes schema URI and configure sync", () => {
   expect(guide).toContain("ChatGPT");
 });
 
+/** Docs --save writes topic file. */
 test("docs --save writes topic file", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "readme", "--save"]);
   expect(result.exitCode).toBe(0);
@@ -232,6 +255,7 @@ test("docs --save writes topic file", async () => {
   expect(text).not.toContain("Generated by");
 });
 
+/** Docs api --save prepends generated hint. */
 test("docs api --save prepends generated hint", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "api", "--save"]);
   expect(result.exitCode).toBe(0);
@@ -242,6 +266,7 @@ test("docs api --save prepends generated hint", async () => {
   expect(text).toContain("CLI API reference");
 });
 
+/** Docs skill --save keeps frontmatter first. */
 test("docs skill --save keeps frontmatter first", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "skill", "--save"]);
   expect(result.exitCode).toBe(0);
@@ -252,6 +277,7 @@ test("docs skill --save keeps frontmatter first", async () => {
   expect(text.indexOf(hint)).toBeGreaterThan(text.indexOf("---\n", 4));
 });
 
+/** Docs schema --save writes JSON file. */
 test("docs schema --save writes JSON file", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "schema", "--save"]);
   expect(result.exitCode).toBe(0);
@@ -262,6 +288,7 @@ test("docs schema --save writes JSON file", async () => {
   expect(schema.key).toBe("myapp");
 });
 
+/** Tests that saveDocsTopic returns relative path. */
 test("saveDocsTopic returns relative path", () => {
   const path = saveDocsTopic(docsFixture(), "api");
   expect(path).toBe("docs/api.md");

@@ -1,3 +1,7 @@
+/*
+Tests for config/resolve module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import type { CliProgram } from "../types.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
@@ -25,7 +29,9 @@ const program: CliProgram = {
   handler: () => {},
 };
 
+/** Tests for config/resolve. */
 describe("config/resolve", () => {
+  /** Tests that prefers env over file for mapped keys. */
   test("prefers env over file for mapped keys", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "from-env";
@@ -38,6 +44,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Tests that uses file when env empty. */
   test("uses file when env empty", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
@@ -49,6 +56,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Tests that empty string in env or file counts as missing. */
   test("empty string in env or file counts as missing", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "";
@@ -61,6 +69,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Applies jsonSchema default when file and env absent. */
   test("applies jsonSchema default when file and env absent", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
@@ -73,6 +82,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** All-string mode uses entry.default. */
   test("all-string mode uses entry.default", () => {
     const stringProgram: CliProgram = {
       ...program,
@@ -86,6 +96,7 @@ describe("config/resolve", () => {
     expect(resolved.greeting).toBe("world");
   });
 
+  /** Tests that prefers captured host env over file when process.env was exported from file. */
   test("prefers captured host env over file when process.env was exported from file", () => {
     const hostEnv = { API_TOKEN: "from-host" };
     process.env.API_TOKEN = "from-file-export";
@@ -97,6 +108,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** ExportConfigToEnv does not overwrite host env. */
   test("exportConfigToEnv does not overwrite host env", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "from-host";
@@ -110,6 +122,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Resolve callback supplies value when env and file are absent. */
   test("resolve callback supplies value when env and file are absent", () => {
     const resolveProgram: CliProgram = {
       ...program,
@@ -135,6 +148,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Env overrides resolve callback. */
   test("env overrides resolve callback", () => {
     const resolveProgram: CliProgram = {
       ...program,
@@ -161,6 +175,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** File overrides resolve callback. */
   test("file overrides resolve callback", () => {
     const resolveProgram: CliProgram = {
       ...program,
@@ -186,6 +201,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Tests that falls back to env when resolve returns undefined. */
   test("falls back to env when resolve returns undefined", () => {
     const resolveProgram: CliProgram = {
       ...program,
@@ -212,6 +228,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Resolve callback is skipped when env is set. */
   test("resolve callback is skipped when env is set", () => {
     let resolveCalled = false;
     const resolveProgram: CliProgram = {
@@ -243,6 +260,7 @@ describe("config/resolve", () => {
     }
   });
 
+  /** Tests that async resolve is ignored with stderr warning. */
   test("async resolve is ignored with stderr warning", () => {
     const resolveProgram: CliProgram = {
       ...program,

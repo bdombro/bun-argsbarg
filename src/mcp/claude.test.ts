@@ -1,3 +1,7 @@
+/*
+Tests for mcp/claude module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -29,11 +33,14 @@ const configFixture: CliProgram = {
   commands: [{ key: "run", description: "Run.", handler: () => {} }],
 };
 
+/** Tests for claude plugin. */
 describe("claude plugin", () => {
+  /** PluginName is kebab-case. */
   test("pluginName is kebab-case", () => {
     expect(pluginName({ ...configFixture, key: "MyApp" })).toBe("my-app");
   });
 
+  /** Tests that generatePluginManifest includes userConfig from program.appConfig. */
   test("generatePluginManifest includes userConfig from program.appConfig", () => {
     const manifest = generatePluginManifest(configFixture, "myapp");
     expect(manifest.name).toBe("myapp");
@@ -43,6 +50,7 @@ describe("claude plugin", () => {
     expect(userConfig.api_token?.sensitive).toBe(true);
   });
 
+  /** Tests that generatePluginMcpJson uses CLAUDE_PLUGIN_ROOT and env mapping. */
   test("generatePluginMcpJson uses CLAUDE_PLUGIN_ROOT and env mapping", () => {
     const json = generatePluginMcpJson(configFixture, "myapp");
     const entry = json.myapp as { command: string; args: string[]; env: Record<string, string> };
@@ -51,12 +59,14 @@ describe("claude plugin", () => {
     expect(entry.env.API_TOKEN).toBe("${user_config.api_token}");
   });
 
+  /** DefaultClaudePluginPaths. */
   test("defaultClaudePluginPaths", () => {
     const cwd = "/tmp/work";
     const paths = defaultClaudePluginPaths(configFixture, cwd);
     expect(paths.pluginZipPath).toBe(join(cwd, "dist", "claude-plugin", "myapp.zip"));
   });
 
+  /** Tests that packClaudePlugin writes zip with MCP pointer skill only. */
   test("packClaudePlugin writes zip with MCP pointer skill only", () => {
     const work = mkdtempSync(join(tmpdir(), "claude-plugin-test-"));
     try {

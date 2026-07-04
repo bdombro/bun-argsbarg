@@ -1,3 +1,7 @@
+/*
+Tests for cli-tool/full-example-capabilities module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -45,7 +49,9 @@ const sinkProgram = {
   ],
 } satisfies CliProgram;
 
+/** Tests for full-example template. */
 describe("full-example template", () => {
+  /** Tests that program source enables every builtin flag. */
   test("program source enables every builtin flag", () => {
     expect(programSource).toContain("mcpServer: {");
     expect(programSource).toContain("enabled: true");
@@ -53,11 +59,13 @@ describe("full-example template", () => {
     expect(programSource).toContain("appConfig:");
   });
 
+  /** Status command defines outputSchema. */
   test("status command defines outputSchema", () => {
     const statusSource = readFileSync(join(exampleRoot, "src/commands/status/command.ts"), "utf8");
     expect(statusSource).toContain("outputSchema:");
   });
 
+  /** ResolveCapabilities matches full sink shape. */
   test("resolveCapabilities matches full sink shape", () => {
     expect(resolveCapabilities(sinkProgram)).toEqual({
       completion: true,

@@ -1,3 +1,7 @@
+/*
+Tests for config/file module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -40,7 +44,9 @@ function withHome<T>(fn: (home: string) => T): T {
   }
 }
 
+/** Tests for config/file. */
 describe("config/file", () => {
+  /** BuildProgramUserConfig from program.appConfig env entries. */
   test("buildProgramUserConfig from program.appConfig env entries", () => {
     const cfg = buildProgramUserConfig(program);
     expect(cfg?.api_token).toMatchObject({
@@ -51,6 +57,7 @@ describe("config/file", () => {
     expect(cfg?.port).toBeUndefined();
   });
 
+  /** ResolveAppConfigPath uses config.json. */
   test("resolveAppConfigPath uses config.json", () => {
     withHome((home) => {
       expect(resolveAppConfigPath(program)).toBe(
@@ -59,6 +66,7 @@ describe("config/file", () => {
     });
   });
 
+  /** ResolveAppConfig prefers host env over file. */
   test("resolveAppConfig prefers host env over file", () => {
     withHome((_home) => {
       const prevToken = process.env.API_TOKEN;
@@ -76,6 +84,7 @@ describe("config/file", () => {
     });
   });
 
+  /** MissingRequiredConfig and formatMissingConfigMessage. */
   test("missingRequiredConfig and formatMissingConfigMessage", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
@@ -91,6 +100,7 @@ describe("config/file", () => {
     }
   });
 
+  /** Rejects unknown keys on read. */
   test("rejects unknown keys on read", () => {
     withHome(() => {
       const configPath = resolveAppConfigPath(program);
@@ -100,6 +110,7 @@ describe("config/file", () => {
     });
   });
 
+  /** WriteAppConfigFile round-trip. */
   test("writeAppConfigFile round-trip", () => {
     withHome(() => {
       writeAppConfigFile(program, { apiToken: "saved" });
@@ -108,6 +119,7 @@ describe("config/file", () => {
     });
   });
 
+  /** Tests that uninstallAppConfig removes config directory recursively. */
   test("uninstallAppConfig removes config directory recursively", () => {
     withHome(() => {
       writeAppConfigFile(program, { apiToken: "saved" });

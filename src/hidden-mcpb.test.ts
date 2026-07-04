@@ -1,3 +1,7 @@
+/*
+Tests for hidden-mcpb module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -53,12 +57,15 @@ const hiddenFixture: CliProgram = {
   ],
 };
 
+/** Tests for hidden commands and options. */
 describe("hidden commands and options", () => {
+  /** Parse root includes hidden commands. */
   test("parse root includes hidden commands", () => {
     const parse = cliParseRoot(hiddenFixture);
     expect(parse.commands?.map((c) => c.key)).toContain("secret");
   });
 
+  /** Presentation root omits hidden commands. */
   test("presentation root omits hidden commands", () => {
     const presentation = cliPresentationRoot(hiddenFixture);
     const keys = presentation.commands?.map((c) => c.key) ?? [];
@@ -66,23 +73,27 @@ describe("hidden commands and options", () => {
     expect(keys).not.toContain("secret");
   });
 
+  /** Root help omits hidden commands. */
   test("root help omits hidden commands", () => {
     const help = cliHelpRender(cliParseRoot(hiddenFixture), [], false);
     expect(help).toContain("public");
     expect(help).not.toContain("secret");
   });
 
+  /** Hidden command -h still works. */
   test("hidden command -h still works", () => {
     const help = cliHelpRender(cliParseRoot(hiddenFixture), ["secret"], false);
     expect(help).toContain("Hidden command.");
   });
 
+  /** Tests that help omits hidden options. */
   test("help omits hidden options", () => {
     const help = cliHelpRender(cliParseRoot(hiddenFixture), ["flags"], false);
     expect(help).toContain("--visible");
     expect(help).not.toContain("secret-flag");
   });
 
+  /** Tests that schema export omits hidden nodes and options. */
   test("schema export omits hidden nodes and options", () => {
     const schema = cliSchemaExport(hiddenFixture);
     const keys = schema.commands?.map((c) => c.key) ?? [];
@@ -92,13 +103,16 @@ describe("hidden commands and options", () => {
     expect(flags?.options?.map((o) => o.name)).toEqual(["visible"]);
   });
 
+  /** MCP tools omit hidden commands. */
   test("MCP tools omit hidden commands", () => {
     const tools = collectMcpTools(hiddenFixture);
     expect(tools.map((t) => t.name)).toEqual(["public", "flags"]);
   });
 });
 
+/** Tests for mcp router. */
 describe("mcp router", () => {
+  /** Presentation exposes mcp bundle but not hidden serve. */
   test("presentation exposes mcp bundle but not hidden serve", () => {
     const builtins = exportPresentationBuiltins(hiddenFixture);
     const mcp = builtins.find((b) => b.key === "mcp");
@@ -107,6 +121,7 @@ describe("mcp router", () => {
     expect(mcp?.fallbackCommand).toBe("serve");
   });
 
+  /** Mcp help lists bundle. */
   test("mcp help lists bundle", () => {
     const help = cliHelpRender(cliParseRoot(hiddenFixture), ["mcp"], false);
     expect(help).toContain("bundle");
@@ -114,7 +129,9 @@ describe("mcp router", () => {
   });
 });
 
+/** Tests for mcp bundle. */
 describe("mcp bundle", () => {
+  /** Tests that generateMcpManifest uses mcpServerId and binary entry. */
   test("generateMcpManifest uses mcpServerId and binary entry", () => {
     const manifest = generateMcpManifest(hiddenFixture, "myapp");
     expect(manifest.name).toBe("myapp");
@@ -128,6 +145,7 @@ describe("mcp bundle", () => {
     expect((manifest.compatibility as { platforms: string[] }).platforms).toEqual(["darwin"]);
   });
 
+  /** DefaultMcpBundlePaths. */
   test("defaultMcpBundlePaths", () => {
     const cwd = "/tmp/work";
     const paths = defaultMcpBundlePaths(hiddenFixture, cwd);
@@ -135,6 +153,7 @@ describe("mcp bundle", () => {
     expect(paths.outPath).toBe(join(cwd, "dist", "myapp.mcpb"));
   });
 
+  /** Tests that packMcpBundle writes zip with manifest and binary. */
   test("packMcpBundle writes zip with manifest and binary", () => {
     const work = mkdtempSync(join(tmpdir(), "mcpb-test-"));
     try {
@@ -155,6 +174,7 @@ describe("mcp bundle", () => {
     }
   });
 
+  /** RunMcpBundle prints mcpb and plugin paths. */
   test("runMcpBundle prints mcpb and plugin paths", () => {
     const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
     const stdout: string[] = [];
@@ -188,6 +208,7 @@ describe("mcp bundle", () => {
     }
   });
 
+  /** RunMcpBundle with claudePlugin only prints plugin path. */
   test("runMcpBundle with claudePlugin only prints plugin path", () => {
     const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
     const stdout: string[] = [];
@@ -220,6 +241,7 @@ describe("mcp bundle", () => {
     }
   });
 
+  /** RunMcpBundle errors when no bundle flags enabled. */
   test("runMcpBundle errors when no bundle flags enabled", () => {
     const fixture: CliProgram = {
       ...hiddenFixture,

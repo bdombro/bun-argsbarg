@@ -1,3 +1,7 @@
+/*
+Tests for config/context module behavior.
+*/
+
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,7 +24,9 @@ const program: CliProgram = {
   handler: () => {},
 };
 
+/** Tests for config/context. */
 describe("config/context", () => {
+  /** Tests that AppConfigSnapshot get, require, read, set. */
   test("AppConfigSnapshot get, require, read, set", () => {
     const dir = mkdtempSync(join(tmpdir(), "ctx-test-"));
     const prevHome = process.env.HOME;
@@ -50,6 +56,7 @@ describe("config/context", () => {
     }
   });
 
+  /** Tests that EmptyAppConfigSnapshot when program.appConfig unset. */
   test("EmptyAppConfigSnapshot when program.appConfig unset", () => {
     const programWithoutConfig: CliProgram = {
       key: "x",
@@ -65,6 +72,7 @@ describe("config/context", () => {
     expect(empty.dir).toBe(dirname(empty.path));
   });
 
+  /** Tests that AppConfigSnapshot path uses OS default from program key. */
   test("AppConfigSnapshot path uses OS default from program key", () => {
     const ctx = createAppConfigSnapshot(program, {}, {});
     expect(ctx.path).toContain("ctx_test");

@@ -1,3 +1,7 @@
+/*
+Tests for install/mcp-codex module behavior.
+*/
+
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +23,9 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
+/** Tests for codex mcp config. */
 describe("codex mcp config", () => {
+  /** ReadCodexMcpEntry parses simple command/args. */
   test("readCodexMcpEntry parses simple command/args", () => {
     const path = resolveCodexConfigPath(home);
     mkdirSync(join(home, ".codex"), { recursive: true });
@@ -38,6 +44,7 @@ args = ["mcp"]
     expect(codexMcpHasServer(home, "testapp")).toBe(true);
   });
 
+  /** ReadCodexMcpEntry parses transport stdio block. */
   test("readCodexMcpEntry parses transport stdio block", () => {
     const path = resolveCodexConfigPath(home);
     mkdirSync(join(home, ".codex"), { recursive: true });

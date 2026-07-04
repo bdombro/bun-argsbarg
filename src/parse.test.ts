@@ -31,6 +31,7 @@ import {
 } from "./test-fixtures.ts";
 import { cliValidateProgram } from "./validate.ts";
 
+/** Tests that bundled short presence flags. */
 test("bundled short presence flags", () => {
   const root = testProgram({
     key: "app",
@@ -64,6 +65,7 @@ test("bundled short presence flags", () => {
   expect(pr.opts.b).toBe("1");
 });
 
+/** Tests that long option equals. */
 test("long option equals", () => {
   const root = testProgram({
     key: "app",
@@ -89,6 +91,7 @@ test("long option equals", () => {
   expect(pr.opts.name).toBe("pat");
 });
 
+/** Tests that fallback missing or unknown root flags. */
 test("fallback missing or unknown root flags", () => {
   const root = testProgram({
     key: "app",
@@ -117,6 +120,7 @@ test("fallback missing or unknown root flags", () => {
   expect(pr.opts.name).toBe("bob");
 });
 
+/** Tests that unknown command. */
 test("unknown command", () => {
   const root = testProgram({
     key: "app",
@@ -129,6 +133,7 @@ test("unknown command", () => {
   expect(pr.errorMsg).toContain("Unknown command");
 });
 
+/** Tests that implicit help empty. */
 test("implicit help empty", () => {
   const root = testProgram({
     key: "app",
@@ -141,6 +146,7 @@ test("implicit help empty", () => {
   expect(pr.helpExplicit).toBe(false);
 });
 
+/** Invalid number post validate. */
 test("invalid number post validate", () => {
   const root = testProgram({
     key: "app",
@@ -167,6 +173,7 @@ test("invalid number post validate", () => {
   expect(pr.errorMsg).toContain("Invalid number");
 });
 
+/** Supports scientific notation in numbers. */
 test("supports scientific notation in numbers", () => {
   const root = testProgram({
     key: "app",
@@ -193,6 +200,7 @@ test("supports scientific notation in numbers", () => {
   expect(Number(pr.opts.n)).toBe(12300);
 });
 
+/** Completion scripts contain app name. */
 test("completion scripts contain app name", () => {
   const root = testProgram({
     key: "myapp",
@@ -210,6 +218,7 @@ test("completion scripts contain app name", () => {
   expect(zsh).toContain("hello:Say hello.");
 });
 
+/** Completion scripts do not emit invalid bash substitutions. */
 test("completion scripts do not emit invalid bash substitutions", () => {
   const root = testProgram({
     key: "app",
@@ -221,6 +230,7 @@ test("completion scripts do not emit invalid bash substitutions", () => {
   expect(bash).not.toContain("${${");
 });
 
+/** Completion scripts escape shell-sensitive command text in zsh. */
 test("completion scripts escape shell-sensitive command text in zsh", () => {
   const root = testProgram({
     key: "app",
@@ -238,6 +248,7 @@ test("completion scripts escape shell-sensitive command text in zsh", () => {
   expect(zsh).toContain("quote'\\''cmd:Say '\\''hello'\\'' and keep going.");
 });
 
+/** Completion scripts keep dotted app names in registration names. */
 test("completion scripts keep dotted app names in registration names", () => {
   const root = testProgram({
     key: "minimal.ts",
@@ -253,6 +264,7 @@ test("completion scripts keep dotted app names in registration names", () => {
   expect(zsh).toContain("compdef _minimal_ts minimal.ts");
 });
 
+/** Tests that trailing options after bounded positionals. */
 test("trailing options after bounded positionals", () => {
   const root = testProgram({
     key: "app",
@@ -286,6 +298,7 @@ test("trailing options after bounded positionals", () => {
   expect(pr.opts.verbose).toBe("1");
 });
 
+/** Tests that trailing options include parent-scoped flags. */
 test("trailing options include parent-scoped flags", () => {
   const root = testProgram({
     key: "app",
@@ -338,6 +351,7 @@ test("trailing options include parent-scoped flags", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs tail parses trailing options. */
 test("varargs tail parses trailing options", () => {
   const root = testProgram({
     key: "app",
@@ -373,6 +387,7 @@ test("varargs tail parses trailing options", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Stops parsing options at --. */
 test("stops parsing options at --", () => {
   const root = testProgram({
     key: "app",
@@ -411,6 +426,7 @@ test("stops parsing options at --", () => {
   expect(pr.args).toEqual(["--name", "bob", "-x"]);
 });
 
+/** Missing required option returns error. */
 test("missing required option returns error", () => {
   const root = testProgram({
     key: "app",
@@ -437,6 +453,7 @@ test("missing required option returns error", () => {
   expect(pr.errorMsg).toContain("Missing required option: --req");
 });
 
+/** Provided required option parses ok. */
 test("provided required option parses ok", () => {
   const root = testProgram({
     key: "app",
@@ -463,6 +480,7 @@ test("provided required option parses ok", () => {
   expect(pr.opts.req).toBe("val");
 });
 
+/** Tests that presence option cannot be required. */
 test("presence option cannot be required", () => {
   const root = testProgram({
     key: "app",
@@ -486,6 +504,7 @@ test("presence option cannot be required", () => {
   expect(() => cliValidateProgram(root)).toThrow(/Presence option cannot be required/);
 });
 
+/** Leaf completion help prints correctly. */
 test("leaf completion help prints correctly", async () => {
   // Test the fix where `completion zsh -h` on a leaf root was incorrectly ignored.
   // We run this as a subprocess so we don't accidentally exit the test runner.
@@ -499,6 +518,7 @@ test("leaf completion help prints correctly", async () => {
   expect(stderr.toString()).toBe("");
 });
 
+/** Docs schema exports JSON for nested CLIs. */
 test("docs schema exports JSON for nested CLIs", async () => {
   const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`
     .nothrow()
@@ -517,6 +537,7 @@ test("docs schema exports JSON for nested CLIs", async () => {
   expect(lookup.positionals[0].name).toBe("path");
 });
 
+/** Docs schema exports JSON for leaf roots. */
 test("docs schema exports JSON for leaf roots", async () => {
   const { stdout, exitCode } = await $`bun run examples/minimal.ts docs schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
@@ -532,12 +553,14 @@ test("docs schema exports JSON for leaf roots", async () => {
   ]);
 });
 
+/** Tests that version builtin prints program version. */
 test("version builtin prints program version", async () => {
   const { stdout, exitCode } = await $`bun run examples/nested.ts version`.nothrow().quiet();
   expect(exitCode).toBe(0);
   expect(stdout.toString().trim()).toMatch(/^\d+\.\d+\.\d+/);
 });
 
+/** Leaf root help omits hidden completion built-in. */
 test("leaf root help omits hidden completion built-in", async () => {
   const { stdout, exitCode } = await $`bun run examples/minimal.ts -h`.nothrow().quiet();
   expect(exitCode).toBe(0);
@@ -545,6 +568,7 @@ test("leaf root help omits hidden completion built-in", async () => {
   expect(stdout.toString()).toContain("configure");
 });
 
+/** Root --schema is no longer a flag. */
 test("root --schema is no longer a flag", () => {
   const root = testProgram({
     key: "app",
@@ -567,6 +591,7 @@ test("root --schema is no longer a flag", () => {
   expect(pr.kind).not.toBe(ParseKind.Ok);
 });
 
+/** CliSchemaJson omits handlers and completion built-ins. */
 test("cliSchemaJson omits handlers and completion built-ins", () => {
   const root = testProgram({
     key: "app",
@@ -597,6 +622,7 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
   expect(schema).not.toHaveProperty("handler");
 });
 
+/** CliSchemaExport resolves program key in install notes. */
 test("cliSchemaExport resolves program key in install notes", () => {
   const root = testProgram({
     key: "myapp",
@@ -616,6 +642,7 @@ test("cliSchemaExport resolves program key in install notes", () => {
   expect(json).toContain("brew install");
 });
 
+/** CliSchemaExport resolves {argsbarg:program} in consumer notes. */
 test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
   const root = testProgram({
     key: "myapp",
@@ -635,6 +662,7 @@ test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
   expect(schema.commands[0].notes).toBe("Run `myapp run` to start.");
 });
 
+/** Docs help lists schema, api, and skill subcommands. */
 test("docs help lists schema, api, and skill subcommands", () => {
   const root = testProgram({
     key: "app",
@@ -661,6 +689,7 @@ test("docs help lists schema, api, and skill subcommands", () => {
   expect(help).toContain("reference agent SKILL");
 });
 
+/** Root help omits legacy --schema flag. */
 test("root help omits legacy --schema flag", () => {
   const root = testProgram({
     key: "app",
@@ -678,6 +707,7 @@ test("root help omits legacy --schema flag", () => {
   expect(help).not.toContain("--schema");
 });
 
+/** Root help shows agent docs hint when docs enabled. */
 test("root help shows agent docs hint when docs enabled", () => {
   const root = testProgram({
     key: "myapp",
@@ -694,6 +724,7 @@ test("root help shows agent docs hint when docs enabled", () => {
   expect(help).not.toContain("install --skill");
 });
 
+/** Root help omits agent hint when docs disabled. */
 test("root help omits agent hint when docs disabled", () => {
   const root = testProgram({
     key: "myapp",
@@ -706,6 +737,7 @@ test("root help omits agent hint when docs disabled", () => {
   expect(help).not.toContain("docs skill");
 });
 
+/** Root help includes program notes and agent hint. */
 test("root help includes program notes and agent hint", () => {
   const root = testProgram({
     key: "myapp",
@@ -723,6 +755,7 @@ test("root help includes program notes and agent hint", () => {
   expect(help).toContain("myapp docs skill");
 });
 
+/** Enum option inputSchema includes enum array. */
 test("Enum option inputSchema includes enum array", () => {
   const tools = collectMcpTools(enumMcpFixture);
   const run = tools.find((t) => t.name === "run")!;
@@ -730,6 +763,7 @@ test("Enum option inputSchema includes enum array", () => {
   expect(schema.properties.mode.enum).toEqual(["dev", "prod"]);
 });
 
+/** CliValidateProgram rejects Enum with no choices. */
 test("cliValidateProgram rejects Enum with no choices", () => {
   const root = testProgram({
     key: "app",
@@ -740,6 +774,7 @@ test("cliValidateProgram rejects Enum with no choices", () => {
   expect(() => cliValidateProgram(root)).toThrow(/requires non-empty choices/);
 });
 
+/** CliValidateProgram rejects Enum with duplicate choices. */
 test("cliValidateProgram rejects Enum with duplicate choices", () => {
   const root = testProgram({
     key: "app",
@@ -750,6 +785,7 @@ test("cliValidateProgram rejects Enum with duplicate choices", () => {
   expect(() => cliValidateProgram(root)).toThrow(/choices must be distinct/);
 });
 
+/** McpTool.description override wins without env suffix. */
 test("mcpTool.description override wins without env suffix", () => {
   const root = testProgram({
     key: "app",
@@ -768,6 +804,7 @@ test("mcpTool.description override wins without env suffix", () => {
   expect(tools[0]?.description).toBe("custom");
 });
 
+/** CliValidateProgram requires program.appConfig description. */
 test("cliValidateProgram requires program.appConfig description", () => {
   const root = testProgram({
     key: "app",
@@ -778,6 +815,7 @@ test("cliValidateProgram requires program.appConfig description", () => {
   expect(() => cliValidateProgram(root)).toThrow(/description must be a non-empty string/);
 });
 
+/** CliValidateProgram rejects duplicate mcpResources URIs. */
 test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
   const root = testProgram({
     key: "app",
@@ -794,6 +832,7 @@ test("cliValidateProgram rejects duplicate mcpResources URIs", () => {
   expect(() => cliValidateProgram(root)).toThrow(/URIs must be unique/);
 });
 
+/** CliValidateProgram rejects empty mcpServer. */
 test("cliValidateProgram rejects empty mcpServer", () => {
   const root = testProgram({
     key: "app",
@@ -804,6 +843,7 @@ test("cliValidateProgram rejects empty mcpServer", () => {
   expect(() => cliValidateProgram(root)).toThrow(/mcpServer requires enabled: true/);
 });
 
+/** ResolveMcpSchemaUri uses sanitized root key. */
 test("resolveMcpSchemaUri uses sanitized root key", () => {
   const root = testProgram({
     key: "nested.ts",
@@ -814,6 +854,7 @@ test("resolveMcpSchemaUri uses sanitized root key", () => {
   expect(resolveMcpSchemaUri(root)).toBe("nested_ts://schema");
 });
 
+/** ResolveMcpSchemaUri uses plain key when alphanumeric. */
 test("resolveMcpSchemaUri uses plain key when alphanumeric", () => {
   const root = testProgram({
     key: "qa",
@@ -824,6 +865,7 @@ test("resolveMcpSchemaUri uses plain key when alphanumeric", () => {
   expect(resolveMcpSchemaUri(root)).toBe("qa://schema");
 });
 
+/** CliValidateProgram rejects resource URI matching default schema URI. */
 test("cliValidateProgram rejects resource URI matching default schema URI", () => {
   const root = testProgram({
     key: "app",
@@ -837,6 +879,7 @@ test("cliValidateProgram rejects resource URI matching default schema URI", () =
   expect(() => cliValidateProgram(root)).toThrow(/conflicts with built-in schema resource/);
 });
 
+/** CliValidateProgram rejects resource URI matching schemaResourceUri. */
 test("cliValidateProgram rejects resource URI matching schemaResourceUri", () => {
   const root = testProgram({
     key: "app",
@@ -851,6 +894,7 @@ test("cliValidateProgram rejects resource URI matching schemaResourceUri", () =>
   expect(() => cliValidateProgram(root)).toThrow(/conflicts with built-in schema resource/);
 });
 
+/** CliValidateProgram rejects resource URI matching auto docs topic. */
 test("cliValidateProgram rejects resource URI matching auto docs topic", () => {
   const root = testProgram({
     key: "app",
@@ -865,6 +909,7 @@ test("cliValidateProgram rejects resource URI matching auto docs topic", () => {
   expect(() => cliValidateProgram(root)).toThrow(/conflicts with auto docs topic resource/);
 });
 
+/** AllMcpResources includes custom resources. */
 test("allMcpResources includes custom resources", () => {
   const root = testProgram({
     key: "app",
@@ -880,6 +925,7 @@ test("allMcpResources includes custom resources", () => {
   expect(resources.map((r) => r.uri)).toContain("test://x");
 });
 
+/** AllMcpResources includes docs topic resources. */
 test("allMcpResources includes docs topic resources", () => {
   const root = testProgram({
     key: "app",
@@ -894,6 +940,7 @@ test("allMcpResources includes docs topic resources", () => {
   expect(readme?.load()).toBe("# hi\n");
 });
 
+/** ApplyShellEnv merges PATH and preserves host vars. */
 test("applyShellEnv merges PATH and preserves host vars", () => {
   const origPath = process.env.PATH ?? "";
   const origHome = process.env.HOME;
@@ -913,6 +960,7 @@ test("applyShellEnv merges PATH and preserves host vars", () => {
   delete process.env.NEWVAR;
 });
 
+/** Enum completions list choices in bash script. */
 test("Enum completions list choices in bash script", () => {
   const root = testProgram({
     key: "app",
@@ -934,6 +982,7 @@ test("Enum completions list choices in bash script", () => {
   expect(bash).toContain("prod");
 });
 
+/** Nested fallback routes to default when argv exhausted at router. */
 test("nested fallback routes to default when argv exhausted at router", () => {
   const root = nestedDocsFallbackFixture();
   cliValidateProgram(root);
@@ -942,6 +991,7 @@ test("nested fallback routes to default when argv exhausted at router", () => {
   expect(pr.path).toEqual(["docs", "guide"]);
 });
 
+/** Nested fallback MissingOrUnknown routes unknown token to default. */
 test("nested fallback MissingOrUnknown routes unknown token to default", () => {
   const root = testProgram({
     key: "app",
@@ -983,6 +1033,7 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
   expect(pr.args).toEqual(["extra-topic"]);
 });
 
+/** Nested fallback MissingOnly errors on unknown subcommand. */
 test("nested fallback MissingOnly errors on unknown subcommand", () => {
   const root = nestedDocsFallbackFixture();
   cliValidateProgram(root);
@@ -991,6 +1042,7 @@ test("nested fallback MissingOnly errors on unknown subcommand", () => {
   expect(pr.errorMsg).toContain("Unknown subcommand");
 });
 
+/** CliValidateProgram rejects invalid nested fallbackCommand. */
 test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
   const root = testProgram({
     key: "app",
@@ -1015,11 +1067,13 @@ test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
   );
 });
 
+/** CliValidateProgram accepts nested fallbackCommand when child exists. */
 test("cliValidateProgram accepts nested fallbackCommand when child exists", () => {
   const root = nestedDocsFallbackFixture();
   expect(() => cliValidateProgram(root)).not.toThrow();
 });
 
+/** Nested router scoped help does not route to fallback. */
 test("nested router scoped help does not route to fallback", () => {
   const root = nestedDocsFallbackFixture();
   cliValidateProgram(root);
@@ -1032,6 +1086,7 @@ test("nested router scoped help does not route to fallback", () => {
   expect(help).toContain("guide");
 });
 
+/** Varargs trailing option after positionals via Cli.invoke. */
 test("varargs trailing option after positionals via Cli.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -1041,6 +1096,7 @@ test("varargs trailing option after positionals via Cli.invoke", async () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs option before positionals. */
 test("varargs option before positionals", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -1050,6 +1106,7 @@ test("varargs option before positionals", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs multiple files then trailing option. */
 test("varargs multiple files then trailing option", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -1059,6 +1116,7 @@ test("varargs multiple files then trailing option", () => {
   expect(pr.opts.json).toBe("1");
 });
 
+/** Varargs double dash forces positional. */
 test("varargs double dash forces positional", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -1068,6 +1126,7 @@ test("varargs double dash forces positional", () => {
   expect(pr.opts.json).toBeUndefined();
 });
 
+/** Varargs unknown flag errors. */
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -1076,6 +1135,7 @@ test("varargs unknown flag errors", async () => {
   expect(result.stderr).toContain("--unknown");
 });
 
+/** McpToolCallToArgv rejects comma-separated string for varargs. */
 test("mcpToolCallToArgv rejects comma-separated string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
@@ -1083,6 +1143,7 @@ test("mcpToolCallToArgv rejects comma-separated string for varargs", () => {
   expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
+/** McpToolCallToArgv rejects bare string for varargs. */
 test("mcpToolCallToArgv rejects bare string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
@@ -1090,6 +1151,7 @@ test("mcpToolCallToArgv rejects bare string for varargs", () => {
   expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
+/** McpToolCallToArgv array varargs unchanged. */
 test("mcpToolCallToArgv array varargs unchanged", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
@@ -1097,6 +1159,7 @@ test("mcpToolCallToArgv array varargs unchanged", () => {
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
+/** McpToolCallToArgv empty array varargs errors when required. */
 test("mcpToolCallToArgv empty array varargs errors when required", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
@@ -1106,6 +1169,7 @@ test("mcpToolCallToArgv empty array varargs errors when required", () => {
 
 // ── Skills ────────────────────────────────────────────────────────────────────
 
+/** Configure config on non-root node is rejected. */
 test("configure config on non-root node is rejected", () => {
   const root = {
     key: "app",
@@ -1123,6 +1187,7 @@ test("configure config on non-root node is rejected", () => {
   expect(() => cliValidateProgram(root)).toThrow(/configure is only supported on the program root/);
 });
 
+/** Configure.prefix is rejected. */
 test("configure.prefix is rejected", () => {
   const root = {
     key: "app",
@@ -1134,6 +1199,7 @@ test("configure.prefix is rejected", () => {
   expect(() => cliValidateProgram(root)).toThrow(/configure\.prefix removed/);
 });
 
+/** Tests that generateSkillBundle includes frontmatter and compact command index. */
 test("generateSkillBundle includes frontmatter and compact command index", () => {
   const bundle = generateSkillBundle(nestedMcpFixture, "cursor");
   expect(bundle.dirName).toBe("nested_ts");
@@ -1154,6 +1220,7 @@ test("generateSkillBundle includes frontmatter and compact command index", () =>
   expect(bundle.referenceMd).not.toContain("```json");
 });
 
+/** Tests that generatePluginSkillBundle is MCP routing stub without shell catalog. */
 test("generatePluginSkillBundle is MCP routing stub without shell catalog", () => {
   const bundle = generatePluginSkillBundle(nestedMcpFixture);
   expect(bundle.dirName).toBe("nested_ts");
@@ -1168,6 +1235,7 @@ test("generatePluginSkillBundle is MCP routing stub without shell catalog", () =
   expect(bundle.skillMd).not.toContain("## Commands");
 });
 
+/** CliSkillInstall writes project Cursor skill files. */
 test("cliSkillInstall writes project Cursor skill files", () => {
   const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-"));
   const prev = process.cwd();
@@ -1192,6 +1260,7 @@ test("cliSkillInstall writes project Cursor skill files", () => {
   }
 });
 
+/** CliSkillInstall global uses HOME skills directory. */
 test("cliSkillInstall global uses HOME skills directory", () => {
   const home = mkdtempSync(join(tmpdir(), "argsbarg-home-"));
   const prevHome = process.env.HOME;
@@ -1210,6 +1279,7 @@ test("cliSkillInstall global uses HOME skills directory", () => {
   }
 });
 
+/** CliSkillInstall rimraf overwrites existing directory. */
 test("cliSkillInstall rimraf overwrites existing directory", () => {
   const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-dup-"));
   const prev = process.cwd();
@@ -1228,6 +1298,7 @@ test("cliSkillInstall rimraf overwrites existing directory", () => {
   }
 });
 
+/** CliSkillInstall claude target uses .claude/skills. */
 test("cliSkillInstall claude target uses .claude/skills", () => {
   const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-claude-"));
   const prev = process.cwd();

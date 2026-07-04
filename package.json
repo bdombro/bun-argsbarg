@@ -1,6 +1,6 @@
 {
   "name": "argsbarg",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "engines": {
     "bun": ">=1.3"
