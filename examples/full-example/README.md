@@ -59,8 +59,8 @@ Requires [Homebrew](https://brew.sh) and a compiled binary at `dist/full-example
 just build
 just install-local              # first-time dev formula (`just install` is an alias)
 just reinstall-local            # fast binary swap during development
-just install-production         # uninstall local dev, install from GitHub tap
-just test-release
+just install-production         # uninstall local dev, install from GitHub tap (needs HOMEBREW_GITHUB_API_TOKEN for private repos)
+just test-release               # same token requirement when formula uses a GitHub release URL
 ```
 
 Undo a local dev install:

@@ -5,7 +5,7 @@ import { createIdentity } from "./create-identity.ts";
 
 const field = process.argv[2];
 if (!field) {
-  console.error("Usage: bun scripts/print-identity.ts <key|className|tap|tapOrg|tapRepo|envPrefix>");
+  console.error("Usage: bun scripts/print-identity.ts <key|className|tap|tapOrg|tapRepo|releaseRepo|envPrefix>");
   process.exit(1);
 }
 
@@ -17,6 +17,7 @@ const values: Record<string, string> = {
   tapOrg: tapOrg ?? "",
   tapRepo: tapRepo ?? "",
   envPrefix: createIdentity.envPrefix,
+  releaseRepo: createIdentity.releaseRepo,
 };
 
 const value = values[field];

@@ -30,8 +30,51 @@ export const formulaTestRuby = `test do
 
 export interface FormulaCoords {
   url: string;
+  urlStanza: string;
   version: string;
   sha256: string;
+  /** When true, embed {@link githubPrivateReleaseDownloadStrategyRuby} in the formula class. */
+  privateRelease?: boolean;
+}
+
+/** Resolves private GitHub release assets via the API at download time. */
+export const githubPrivateReleaseDownloadStrategyRuby = `  class GitHubPrivateReleaseDownloadStrategy < CurlDownloadStrategy
+    def initialize(url, name, version, **meta)
+      super
+      pattern = %r{https://github\\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/(\\S+)}
+      match = url.match(pattern)
+      raise CurlDownloadStrategyError, "Invalid GitHub release URL: #{url}" unless match
+      @owner, @repo, @tag, @filename = match.captures
+    end
+
+    private
+
+    def _fetch(url:, resolved_url: resolved_download_url, timeout:)
+      curl_download resolved_download_url,
+                    "--header", "Accept: application/octet-stream",
+                    "--header", "Authorization: Bearer #{GitHub::API.credentials}",
+                    to: temporary_path
+    end
+
+    def resolved_download_url
+      @resolved_download_url ||= begin
+        asset = GitHub.get_release(@owner, @repo, @tag).fetch("assets")
+          .find { |a| a["name"] == @filename }
+        raise CurlDownloadStrategyError, "Release asset not found: #{@filename}" unless asset
+        asset.fetch("url")
+      end
+    end
+  end`;
+
+/** Homebrew `url` for local dev staging paths. */
+export function devUrlStanza(url: string): string {
+  return `url "${url}"`;
+}
+
+/** Homebrew `url` for GitHub release assets (uses {@link githubPrivateReleaseDownloadStrategyRuby}). */
+export function releaseUrlStanza(url: string): string {
+  return `url "${url}",
+      using: GitHubPrivateReleaseDownloadStrategy`;
 }
 
 export function releaseFormulaUrl(version: string): string {
@@ -39,10 +82,11 @@ export function releaseFormulaUrl(version: string): string {
 }
 
 export function renderFormula(coords: FormulaCoords): string {
+  const strategy = coords.privateRelease ? `${githubPrivateReleaseDownloadStrategyRuby}\n\n  ` : "";
   return `class ${className} < Formula
-  desc "${desc}"
+  ${strategy}desc "${desc}"
   homepage "${homepage}"
-  url "${coords.url}"
+  ${coords.urlStanza}
   version "${coords.version}"
   sha256 "${coords.sha256}"
 {dependsOnBlock}
@@ -58,16 +102,21 @@ end
 }
 
 export function renderReleaseFormula(version: string, sha256: string): string {
+  const url = releaseFormulaUrl(version);
   return renderFormula({
-    url: releaseFormulaUrl(version),
+    url,
+    urlStanza: releaseUrlStanza(url),
     version,
     sha256,
+    privateRelease: true,
   });
 }
 
 export function renderDevFormula(stagingPath: string, version: string, sha256: string): string {
+  const url = `file://${stagingPath}`;
   return renderFormula({
-    url: `file://${stagingPath}`,
+    url,
+    urlStanza: devUrlStanza(url),
     version,
     sha256,
   });
