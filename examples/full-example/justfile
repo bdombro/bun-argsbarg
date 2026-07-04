@@ -1,8 +1,6 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-HOMEBREW_NO_AUTO_UPDATE := "1"
-HOMEBREW_NO_INSTALL_CLEANUP := "1"
-HOMEBREW_NO_ENV_HINTS := "1"
+export HOMEBREW_GITHUB_API_TOKEN := `gh auth token`
 
 cli_key := `bun scripts/print-identity.ts key`
 tap_org := `bun scripts/print-identity.ts tapOrg`
@@ -61,15 +59,12 @@ install-local: build
     @echo ""
     @echo "Next: {{cli_key}} configure"
 
-# Remove local dev install, then install from GitHub tap (private release assets need HOMEBREW_GITHUB_API_TOKEN)
+# Remove local dev install, then install from GitHub tap (private release assets need gh auth token)
 install-production: uninstall
-    #!/usr/bin/env bash
-    set -eu -o pipefail
-    source scripts/ensure-brew-github-token.sh
     brew tap {{release_repo}} {{tap_git_url}}
     brew install --formula {{release_repo}}/{{cli_key}}
-    echo ""
-    echo "Next: {{cli_key}} configure"
+    @echo ""
+    @echo "Next: {{cli_key}} configure"
 
 # Alias for backward compatibility
 reinstall: reinstall-local
@@ -101,9 +96,6 @@ test: check
 
 # Install release formula from tap and run formula test
 test-release:
-    #!/usr/bin/env bash
-    set -eu -o pipefail
-    source scripts/ensure-brew-github-token.sh
     brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}

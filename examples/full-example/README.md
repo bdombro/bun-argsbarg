@@ -59,7 +59,7 @@ brew install just bun
 just setup
 just install              # build + local dev formula
 just reinstall-local      # fast binary swap during development
-just install-production   # remote tap install (needs HOMEBREW_GITHUB_API_TOKEN)
+just install-production   # remote tap install (uses gh auth token)
 just test-release
 ```
 
