@@ -29,7 +29,7 @@ export function configEntryRequired(
   return true;
 }
 
-/** Whether prompts and `config get` should redact this entry. */
+/** Whether prompts and `configure get` should redact this entry. */
 export function configEntrySensitive(key: string, entry: CliAppConfigEntry): boolean {
   return entry.sensitive ?? defaultConfigEntrySensitive(key);
 }
@@ -56,7 +56,7 @@ export function jsonSchemaRequiredKeys(
   return new Set(required.filter((k): k is string => typeof k === "string"));
 }
 
-/** Whether built-in config get/set commands are enabled. */
+/** Whether built-in `configure get` / `configure set` subcommands are enabled. */
 export function configCommandsEnabled(program: CliProgram): boolean {
   if (!program.appConfig) {
     return false;

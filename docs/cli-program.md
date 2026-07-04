@@ -412,11 +412,11 @@ await cli.run();
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `description` | *(required)* | Shown in prompts, `config get`, and bundle manifests |
+| `description` | *(required)* | Shown in prompts, `configure get`, and bundle manifests |
 | `title` | config key | Short label in interactive `configure` |
 | `default` | — | Used when `jsonSchema` omitted (all-string mode) |
 | `required` | `true` | When `false`, optional unless required by `jsonSchema` |
-| `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `config get`, and status |
+| `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `configure get`, and status |
 | `env` | — | When set: non-empty host env overrides file; consulted again after `resolve` when `resolve` returns `undefined`; exported to `process.env` after resolve |
 | `resolve` | — | Optional fallback after file; return `undefined` to fall back to `env` (if set) and defaults |
 
@@ -425,7 +425,7 @@ await cli.run();
 - Default: `$XDG_CONFIG_HOME/<sanitized-key>/config` or `%APPDATA%/<key>/config`.
 - JSON: flat object keyed by schema names — `{ "apiToken": "…", "maxRetries": 5 }`.
 - **Strict:** unknown keys rejected on load.
-- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `config get`/`set` skip this exit.
+- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
 - **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts.
 - **Agent integration:** `configure.agentIntegration` (`mcp` | `skill` | `both`) sets default sync targets; see [configure.md](configure.md#configuretargets).
@@ -436,7 +436,7 @@ See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.m
 
 ## Reserved names
 
-Do not declare user commands named `completion`, `configure`, `mcp`, `version`, `docs`, or `config` at the root — ArgsBarg injects these when configured.
+Do not declare user commands named `completion`, `configure`, `mcp`, `version`, or `docs` at the root — ArgsBarg injects these when configured. App config uses `configure get` / `configure set` subcommands (not a top-level `config` command).
 
 ## Cursor rule for consumer repos
 

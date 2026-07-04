@@ -6,7 +6,7 @@
 
 | Area | Files / wiring |
 | --- | --- |
-| All builtins | `completion`, `version`, `install`, `docs`, `mcp`, `config get`/`set` |
+| All builtins | `completion`, `version`, `configure`, `docs`, `mcp`, `configure get`/`set` |
 | `program.appConfig` | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts` |
 | `outputSchema` | `src/commands/status/types.ts` (`StatusJsonOutput`) → `schemas/outputSchemas.ts` |
 | Schemagen | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts` |
@@ -47,7 +47,7 @@ cd examples/full-example
 just setup
 just schemagen   # after changing src/**/types.ts
 FULL_EXAMPLE_API_TOKEN=dev just run status --json
-FULL_EXAMPLE_API_TOKEN=dev just run config get apiToken --json
+FULL_EXAMPLE_API_TOKEN=dev just run configure get apiToken --json
 FULL_EXAMPLE_API_TOKEN=dev just run docs readme
 ```
 

@@ -154,8 +154,8 @@ describe("completion emitters", () => {
 
 /** Tests for schema export builtins. */
 describe("schema export builtins", () => {
-  /** ExportPresentationBuiltins includes config when appConfig set. */
-  test("exportPresentationBuiltins includes config when appConfig set", () => {
+  /** ExportPresentationBuiltins nests configure get/set when appConfig set. */
+  test("exportPresentationBuiltins nests configure get/set when appConfig set", () => {
     const withConfig: CliProgram = {
       ...fixture,
       appConfig: {
@@ -165,8 +165,14 @@ describe("schema export builtins", () => {
       },
     };
     const builtins = exportPresentationBuiltins(withConfig);
-    expect(builtins.map((b) => b.key)).toContain("config");
     expect(builtins.map((b) => b.key)).toContain("configure");
+    expect(builtins.map((b) => b.key)).not.toContain("config");
+    const configureNode = builtins.find((b) => b.key === "configure");
+    expect(configureNode && "commands" in configureNode).toBe(true);
+    if (configureNode && "commands" in configureNode) {
+      const keys = configureNode.commands?.map((c) => c.key) ?? [];
+      expect(keys).toEqual(expect.arrayContaining(["get", "set"]));
+    }
   });
 
   test("exportPresentationBuiltins omits hidden completion", () => {

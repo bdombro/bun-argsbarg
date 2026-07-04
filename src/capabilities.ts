@@ -42,17 +42,17 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   if (caps.mcp) {
     names.push("mcp");
   }
-  if (caps.configCommands) {
-    names.push("config");
-  }
   return names;
 }
 
 /** Commands that may run without required appConfig values (read-only / config introspection). */
 export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities): boolean {
   const root = path[0];
-  if (root === "config" && caps.configCommands) {
-    return true;
+  if (root === "configure" && caps.configCommands) {
+    const sub = path[1];
+    if (sub === "get" || sub === "set") {
+      return true;
+    }
   }
   if (root === "docs" && caps.docs) {
     return true;
@@ -60,7 +60,7 @@ export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities
   return false;
 }
 
-export type CapabilityFeature = "mcp" | "configure" | "docs" | "config" | "completion";
+export type CapabilityFeature = "mcp" | "configure" | "docs" | "completion";
 
 /** Stderr message when a disabled built-in is invoked from the CLI. */
 export function capabilityDeniedMessage(feature: CapabilityFeature): string {
@@ -73,8 +73,6 @@ export function capabilityDeniedMessage(feature: CapabilityFeature): string {
       return "Configure is not available for this app.\n";
     case "docs":
       return "Documentation commands are not available for this app.\n";
-    case "config":
-      return "Configuration commands are not available for this app.\n";
   }
 }
 
@@ -98,10 +96,6 @@ export function assertBuiltinAllowed(argv: string[], caps: CliCapabilities): voi
   }
   if (first === "docs" && !caps.docs) {
     process.stderr.write(capabilityDeniedMessage("docs"));
-    process.exit(1);
-  }
-  if (first === "config" && !caps.configCommands) {
-    process.stderr.write(capabilityDeniedMessage("config"));
     process.exit(1);
   }
 }

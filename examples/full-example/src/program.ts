@@ -50,8 +50,5 @@ export const program = {
     mcpd: true,
     claudePlugin: true,
   },
-  configure: {
-    // Defaults: agentIntegration picks skill vs MCP for sync; app config is opt-in in interactive configure.
-  },
   commands: [echoCommand, statusCommand],
 } satisfies CliProgram;

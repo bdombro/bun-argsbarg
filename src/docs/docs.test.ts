@@ -167,7 +167,7 @@ test("skipsRequiredAppConfigExit includes docs and config builtins", () => {
   };
   const caps = resolveCapabilities(program);
   expect(skipsRequiredAppConfigExit(["docs", "api"], caps)).toBe(true);
-  expect(skipsRequiredAppConfigExit(["config", "get"], caps)).toBe(true);
+  expect(skipsRequiredAppConfigExit(["configure", "get"], caps)).toBe(true);
   expect(skipsRequiredAppConfigExit(["run"], caps)).toBe(false);
 });
 

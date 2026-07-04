@@ -227,7 +227,7 @@ export function formatMissingConfigMessage(program: CliProgram, keys: string[]):
   return [
     `Missing required configuration: ${list}`,
     `Configure interactively:  ${program.key} configure`,
-    `Or set via:               ${program.key} config set <key> <value>`,
+    `Or set via:               ${program.key} configure set <key> <value>`,
     `Config file:              ${path}`,
     `See:                      ${program.key} docs mcp`,
   ].join("\n");
@@ -240,7 +240,7 @@ export function formatMcpMissingConfigMessage(program: CliProgram, keys: string[
   return [
     `Missing required configuration: ${list}`,
     `Configure: ${program.key} configure`,
-    `Or set via: ${program.key} config set`,
+    `Or set via: ${program.key} configure set`,
     `Config file: ${path}`,
   ].join("\n");
 }

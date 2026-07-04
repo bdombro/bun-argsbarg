@@ -327,7 +327,7 @@ At server start (`Cli.serveMcp()`), before the NDJSON loop:
 - Loaded at MCP startup; host `process.env` wins for mapped env vars already set.
 - Missing required config does **not** exit the MCP server — enforced at `tools/call` with a helpful error.
 - Configure interactively: `myapp configure` (see [configure.md](configure.md)).
-- Built-in `config get` / `config set` when `program.appConfig.commands` is enabled (default). Hosts inject `user_config` → env at spawn; they never write the argsbarg config file.
+- Built-in `configure get` / `configure set` when `program.appConfig.commands` is enabled (default). Hosts inject `user_config` → env at spawn; they never write the argsbarg config file.
 
 Example:
 

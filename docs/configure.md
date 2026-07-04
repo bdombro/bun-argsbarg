@@ -47,6 +47,10 @@ Dev flow matches release: formula `install` copies the binary and generates comp
 
 # Remove app config only (not skills/MCP)
 <key> configure --remove-config --yes
+
+# Read or write app config (non-interactive; when program.appConfig is set)
+<key> configure get [key] [--json] [--pretty]
+<key> configure set <key> <value> [--json]
 ```
 
 Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remove-all`**, **`--remove-config`**) — see [Confirmation](#confirmation).

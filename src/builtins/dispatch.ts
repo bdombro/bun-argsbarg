@@ -11,8 +11,11 @@ import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
-import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
-import { cliBuiltinConfigureCommand } from "./configure.ts";
+import {
+  CONFIGURE_RUN_KEY,
+  cliBuiltinConfigureCommand,
+  isConfigureConfigPath,
+} from "./configure.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
@@ -101,7 +104,11 @@ export async function dispatchBuiltin(
       process.stderr.write(capabilityDeniedMessage("configure"));
       process.exit(1);
     }
-    if (pr.path.length !== 1) {
+    if (isConfigureConfigPath(pr.path)) {
+      return;
+    }
+    const runSeg = pr.path[1];
+    if (pr.path.length > 2 || (pr.path.length === 2 && runSeg !== CONFIGURE_RUN_KEY)) {
       process.stderr.write(`Unknown subcommand: configure ${pr.path.slice(1).join(" ")}\n`);
       process.exit(1);
     }
@@ -172,18 +179,6 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [docsGroup],
-      },
-      isLeafCompletionIntercept: false,
-    };
-  }
-
-  const configGroup = cliBuiltinConfigGroupIfEnabled(program);
-  if (first === "config" && configGroup) {
-    return {
-      parseRoot: {
-        key: program.key,
-        description: program.description,
-        commands: [configGroup],
       },
       isLeafCompletionIntercept: false,
     };

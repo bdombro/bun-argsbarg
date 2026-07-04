@@ -1,14 +1,19 @@
 /*
-Built-in `config get` / `config set` commands.
+Built-in `configure get` / `configure set` subcommands.
 */
 
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
-import { configEntrySensitive, defaultConfigEntryTitle } from "../config/entry.ts";
+import {
+  configCommandsEnabled,
+  configEntrySensitive,
+  configMcpSetEnabled,
+  defaultConfigEntryTitle,
+} from "../config/entry.ts";
 import { writeAppConfigFile } from "../config/file.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "../config/resolve.ts";
 import { configPropertySchema, effectiveJsonSchema } from "../config/schema.ts";
 import { parseConfigSetValue } from "../config/validate.ts";
-import type { CliLeaf, CliOption, CliProgram, CliRouter } from "../types.ts";
+import type { CliLeaf, CliOption, CliProgram } from "../types.ts";
 import { CliOptionKind } from "../types.ts";
 
 const JSON_OPTION: CliOption = {
@@ -182,16 +187,16 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
     handler: (ctx) => {
       const key = ctx.args[0];
       if (!key) {
-        process.stderr.write("config set requires a key.\n");
+        process.stderr.write("configure set requires a key.\n");
         process.exit(1);
       }
       const raw = ctx.args[1];
       if (raw === undefined || raw.length === 0) {
         if (!ctx.hasFlag("json")) {
-          process.stderr.write("config set requires a value (or --json).\n");
+          process.stderr.write("configure set requires a value (or --json).\n");
           process.exit(1);
         }
-        process.stderr.write("config set requires a value.\n");
+        process.stderr.write("configure set requires a value.\n");
         process.exit(1);
       }
       configSetRun(program, key, raw, ctx.hasFlag("json"));
@@ -199,23 +204,15 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
   };
 }
 
-import { configCommandsEnabled, configMcpSetEnabled } from "../config/entry.ts";
-
-/** Built-in `config` router when program.appConfig is set. */
-export function cliBuiltinConfigGroup(program: CliProgram): CliRouter {
+/** `configure get` / `configure set` leaves when app config commands are enabled. */
+export function configureConfigSubcommands(
+  program: CliProgram,
+  mcpSetEnabled = configMcpSetEnabled(program),
+): CliLeaf[] {
   if (!program.appConfig) {
-    throw new Error("config not enabled");
+    throw new Error("configure config subcommands require program.appConfig");
   }
-  return {
-    key: "config",
-    description: "Read or write app configuration.",
-    commands: [configGetLeaf(program), configSetLeaf(program, configMcpSetEnabled(program))],
-  };
+  return [configGetLeaf(program), configSetLeaf(program, mcpSetEnabled)];
 }
 
-export function cliBuiltinConfigGroupIfEnabled(program: CliProgram): CliRouter | undefined {
-  if (!configCommandsEnabled(program)) {
-    return undefined;
-  }
-  return cliBuiltinConfigGroup(program);
-}
+export { configCommandsEnabled };

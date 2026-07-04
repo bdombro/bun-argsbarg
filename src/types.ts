@@ -236,7 +236,7 @@ export interface CliAppConfigEntry {
   /** When `false`, optional for bootstrap and MCP enforcement. Default: `true`. */
   required?: boolean;
   /**
-   * Mask stdin during prompts and redact on `config get`.
+   * Mask stdin during prompts and redact on `configure get`.
    * Default: `/key|token|secret|password/i.test(name)`.
    */
   sensitive?: boolean;
@@ -253,7 +253,7 @@ export interface CliAppConfigEntry {
  * App configuration block on the program root ({@link CliProgram.appConfig}).
  */
 export interface CliAppConfig {
-  /** Built-in `config get` / `config set`. Default: enabled when `appConfig` is set. */
+  /** Built-in `configure get` / `configure set`. Default: enabled when `appConfig` is set. */
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
   /** Block JSON Schema (draft-07). When omitted, synthesize all-string schema from `entries`. */
   jsonSchema?: Record<string, unknown>;

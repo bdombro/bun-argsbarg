@@ -38,7 +38,7 @@ describe("builtins/config", () => {
       const configPath = resolveAppConfigPath(program);
       mkdirSync(dirname(configPath), { recursive: true });
       writeFileSync(configPath, `${JSON.stringify({ apiToken: "secret" })}\n`);
-      const result = await new Cli(program).invoke(["config", "get", "apiToken"]);
+      const result = await new Cli(program).invoke(["configure", "get", "apiToken"]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("REDACTED");
     } finally {
@@ -61,7 +61,7 @@ describe("builtins/config", () => {
       const configPath = resolveAppConfigPath(program);
       mkdirSync(dirname(configPath), { recursive: true });
       writeFileSync(configPath, `${JSON.stringify({ apiToken: "secret" })}\n`);
-      const result = await new Cli(program).invoke(["config", "get", "apiToken", "--json"]);
+      const result = await new Cli(program).invoke(["configure", "get", "apiToken", "--json"]);
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual({ set: true });
     } finally {
@@ -82,9 +82,9 @@ describe("builtins/config", () => {
     try {
       const program = configFixture();
       writeAppConfigFile(program, { apiToken: "seed" });
-      const result = await new Cli(program).invoke(["config", "set", "port", "9090"]);
+      const result = await new Cli(program).invoke(["configure", "set", "port", "9090"]);
       expect(result.exitCode).toBe(0);
-      const get = await new Cli(program).invoke(["config", "get", "port"]);
+      const get = await new Cli(program).invoke(["configure", "get", "port"]);
       expect(get.stdout.trim()).toBe("9090");
     } finally {
       if (prevHome === undefined) delete process.env.HOME;

@@ -40,7 +40,7 @@ await cli.run();
 | --- | --- |
 | Config file | Flat JSON keyed by schema names; strict load (unknown keys rejected) |
 | Interactive `configure` / `--status` | Auto-runs config wizard when `entries` is non-empty; `--status` for read-only inventory |
-| Built-in `config get` / `config set` | Read/write resolved values (opt-out via `commands: false`) |
+| Built-in `configure get` / `configure set` | Read/write resolved values (opt-out via `commands: false`) |
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
 | `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` |
 
@@ -48,7 +48,7 @@ await cli.run();
 
 **No public config I/O exports** — consumers use `program.appConfig` for authoring and `ctx.appConfig` in handlers.
 
-See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and reserved `config` command.
+See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and `configure get`/`set`.
 
 ## `CliAppConfig` and `CliAppConfigEntry`
 
@@ -191,26 +191,26 @@ appConfig: {
 
 All file values are strings. Defaults come from `entry.default`.
 
-## Built-in `config` command
+## Built-in `configure get` / `configure set`
 
 When `program.appConfig` is set and `commands !== false`:
 
 | Subcommand | Purpose |
 | --- | --- |
-| `config get [key]` | Resolved value(s); `--json`; `--json --pretty` |
-| `config set <key> <value>` | One key; full document re-validated after merge |
+| `configure get [key]` | Resolved value(s); `--json`; `--json --pretty` |
+| `configure set <key> <value>` | One key; full document re-validated after merge |
 
-`config get`/`set` skip required-config exit and TTY prompts. Sensitive values redact on `get` (`REDACTED` / `{ "set": true }` with `--json`).
+`configure get`/`set` skip required-config exit and TTY prompts. Sensitive values redact on `get` (`REDACTED` / `{ "set": true }` with `--json`).
 
-Object/array/`$ref` properties require `--json` on `config set`.
+Object/array/`$ref` properties require `--json` on `configure set`.
 
 ## Example in this repo
 
 | Example | Role |
 | --- | --- |
-| [`examples/full-example/`](../examples/full-example/) | **Copy template** — schemagen discovery, `APP_CONFIG_JSON_SCHEMA` bridge, `program.appConfig`, built-in `config get`/`set` |
+| [`examples/full-example/`](../examples/full-example/) | **Copy template** — schemagen discovery, `APP_CONFIG_JSON_SCHEMA` bridge, `program.appConfig`, built-in `configure get`/`set` |
 
 ```bash
 cd examples/full-example && just setup && just schemagen
-FULL_EXAMPLE_API_TOKEN=dev just run config get apiToken --json
+FULL_EXAMPLE_API_TOKEN=dev just run configure get apiToken --json
 ```

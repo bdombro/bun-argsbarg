@@ -17,7 +17,7 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 
 **Hard rules** (details and examples are in the docs above — do not contradict them):
 
-- Reserved root commands: `completion`, `install`, `mcp`, `version`, `docs`, `config`.
+- Reserved root commands: `completion`, `configure`, `mcp`, `version`, `docs`.
 - `satisfies CliProgram` / `CliLeaf`; action-oriented `description` on root, commands, options, and positionals.
 - Omit `mcpTool` unless genuinely CLI-only (`enabled: false`) or an irreducible wire limit — fix schema and headless handlers first.
 - Interactive leaves: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
