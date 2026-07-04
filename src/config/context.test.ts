@@ -72,7 +72,6 @@ describe("config/context", () => {
     expect(empty.dir).toBe(dirname(empty.path));
   });
 
-  /** Tests that AppConfigSnapshot path uses OS default from program key. */
   test("AppConfigSnapshot path uses OS default from program key", () => {
     const ctx = createAppConfigSnapshot(program, {}, {});
     expect(ctx.path).toContain("ctx_test");

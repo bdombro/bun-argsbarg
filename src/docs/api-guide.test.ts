@@ -49,7 +49,6 @@ const nestedFixture: CliProgram = {
   ],
 };
 
-/** Tests that generateApiGuideBody matches command section of full API guide. */
 test("generateApiGuideBody matches command section of full API guide", () => {
   const body = generateApiGuideBody(nestedFixture);
   const full = generateApiGuide(nestedFixture);
@@ -58,7 +57,6 @@ test("generateApiGuideBody matches command section of full API guide", () => {
   expect(body).not.toContain("CLI API reference");
 });
 
-/** Tests that generateApiGuide covers the same command keys as cliSchemaExport. */
 test("generateApiGuide covers the same command keys as cliSchemaExport", () => {
   const md = generateApiGuide(nestedFixture);
   const schema = cliSchemaExport(nestedFixture);
@@ -68,7 +66,6 @@ test("generateApiGuide covers the same command keys as cliSchemaExport", () => {
   expect(schema.commands?.map((c) => c.key)).toEqual(["stat"]);
 });
 
-/** Tests that generateApiGuide resolves program key in install notes. */
 test("generateApiGuide resolves program key in install notes", () => {
   const fixture: CliProgram = {
     key: "myapp",
@@ -82,7 +79,6 @@ test("generateApiGuide resolves program key in install notes", () => {
   expect(md).not.toContain("Upgrade to latest release");
 });
 
-/** Tests that generateApiGuide mentions Homebrew upgrade. */
 test("generateApiGuide mentions Homebrew upgrade", () => {
   const fixture: CliProgram = {
     key: "myapp",

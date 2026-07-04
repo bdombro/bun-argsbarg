@@ -23,7 +23,6 @@ const rootSchema = {
 
 /** Tests for config/validate. */
 describe("config/validate", () => {
-  /** Tests that accepts valid document. */
   test("accepts valid document", () => {
     const result = validateConfigDocument(
       { apiToken: "x", maxRetries: 3, prefs: { ttl: 3600 } },
@@ -33,14 +32,12 @@ describe("config/validate", () => {
     expect(result.errors).toEqual([]);
   });
 
-  /** Rejects missing required property. */
   test("rejects missing required property", () => {
     const result = validateConfigDocument({ apiToken: "x" }, rootSchema);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("maxRetries"))).toBe(true);
   });
 
-  /** Rejects unknown property when additionalProperties is false. */
   test("rejects unknown property when additionalProperties is false", () => {
     const result = validateConfigDocument(
       { apiToken: "x", maxRetries: 1, extra: true },
@@ -50,19 +47,16 @@ describe("config/validate", () => {
     expect(result.errors.some((e) => e.includes("extra"))).toBe(true);
   });
 
-  /** Rejects type mismatch. */
   test("rejects type mismatch", () => {
     const result = validateConfigDocument({ apiToken: "x", maxRetries: "nope" }, rootSchema);
     expect(result.valid).toBe(false);
   });
 
-  /** ParseConfigSetValue coerces number and boolean. */
   test("parseConfigSetValue coerces number and boolean", () => {
     expect(parseConfigSetValue("5", { type: "integer" }, rootSchema, false)).toBe(5);
     expect(parseConfigSetValue("true", { type: "boolean" }, rootSchema, false)).toBe(true);
   });
 
-  /** ParseConfigSetValue requires --json for objects. */
   test("parseConfigSetValue requires --json for objects", () => {
     expect(() => parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, false)).toThrow(
       /--json/,

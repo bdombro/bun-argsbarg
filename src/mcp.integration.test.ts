@@ -17,12 +17,10 @@ import { cliSchemaExport } from "./schema.ts";
 import { mcpRequest, nestedMcpFixture, testProgram } from "./test-fixtures.ts";
 import { cliValidateProgram } from "./validate.ts";
 
-/** Tests that sanitizeToolSegment normalizes dotted app keys. */
 test("sanitizeToolSegment normalizes dotted app keys", () => {
   expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");
 });
 
-/** McpToolDescription formats CLI path and root-leaf prefix. */
 test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
   expect(mcpToolDescription(["stat", "owner", "lookup"], "nested.ts", "Resolve owner info.")).toBe(
     "stat owner lookup — Resolve owner info.",
@@ -31,7 +29,6 @@ test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
   expect(mcpToolDescription([], "helloapp", "Tiny demo.")).toBe("helloapp — Tiny demo.");
 });
 
-/** Tests that collectMcpTools lists user leaf commands only. */
 test("collectMcpTools lists user leaf commands only", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const names = tools.map((t) => t.name);
@@ -192,7 +189,6 @@ test("outputSchema cannot be set on both leaf and mcpTool", () => {
   expect(() => cliValidateProgram(root)).toThrow(/Set outputSchema on the leaf only/);
 });
 
-/** Tests that collectMcpTools merges parent options into inputSchema. */
 test("collectMcpTools merges parent options into inputSchema", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
@@ -230,14 +226,12 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
   });
 });
 
-/** Tests that collectMcpTools omits outputSchema when leaf has none. */
 test("collectMcpTools omits outputSchema when leaf has none", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
   expect(lookup.outputSchema).toBeUndefined();
 });
 
-/** McpToolCallToArgv builds nested lookup argv. */
 test("mcpToolCallToArgv builds nested lookup argv", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
@@ -249,7 +243,6 @@ test("mcpToolCallToArgv builds nested lookup argv", () => {
   expect(argv).toEqual(["stat", "owner", "lookup", "--json", "--user-name", "alice", "./x"]);
 });
 
-/** McpToolCallToArgv expands varargs positionals. */
 test("mcpToolCallToArgv expands varargs positionals", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = tools.find((t) => t.name === "read")!;
@@ -324,7 +317,6 @@ test("mcpServer on non-root node is rejected", () => {
   expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the program root/);
 });
 
-/** McpTool on root is rejected. */
 test("mcpTool on root is rejected", () => {
   const root = testProgram({
     key: "app",
@@ -358,7 +350,6 @@ test("mcpTool on routing node is rejected", () => {
   expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
-/** BuildToolCallSuccess returns stdout only. */
 test("buildToolCallSuccess returns stdout only", () => {
   const result = buildToolCallSuccess("hello\n", "");
   expect(result.isError).toBe(false);
@@ -366,7 +357,6 @@ test("buildToolCallSuccess returns stdout only", () => {
   expect(result.structuredContent).toBeUndefined();
 });
 
-/** BuildToolCallSuccess adds stderr as second content block. */
 test("buildToolCallSuccess adds stderr as second content block", () => {
   const result = buildToolCallSuccess("out\n", "warn\n");
   expect(result.content).toEqual([
@@ -376,7 +366,6 @@ test("buildToolCallSuccess adds stderr as second content block", () => {
   expect(result.structuredContent).toBeUndefined();
 });
 
-/** BuildToolCallSuccess stderr-only still includes stdout slot. */
 test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
   const result = buildToolCallSuccess("", "warn\n");
   expect(result.content).toEqual([
@@ -385,26 +374,22 @@ test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
   ]);
 });
 
-/** BuildToolCallSuccess parses JSON structuredContent. */
 test("buildToolCallSuccess parses JSON structuredContent", () => {
   const result = buildToolCallSuccess('{"a":1}\n', "");
   expect(result.structuredContent).toEqual({ a: 1 });
   expect(result.content[0]?.text).toBe('{"a":1}\n');
 });
 
-/** BuildToolCallSuccess skips structuredContent for plain text. */
 test("buildToolCallSuccess skips structuredContent for plain text", () => {
   const result = buildToolCallSuccess("lookup user=x\n", "");
   expect(result.structuredContent).toBeUndefined();
 });
 
-/** BuildToolCallSuccess parses JSON primitives. */
 test("buildToolCallSuccess parses JSON primitives", () => {
   const result = buildToolCallSuccess("true\n", "");
   expect(result.structuredContent).toBe(true);
 });
 
-/** MCP initialize returns tools and resources capabilities. */
 test("MCP initialize returns tools and resources capabilities", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }]);
   const res = responses.get(1) as { result: { capabilities: Record<string, unknown> } };
@@ -412,7 +397,6 @@ test("MCP initialize returns tools and resources capabilities", async () => {
   expect(res.result.capabilities.resources).toBeDefined();
 });
 
-/** MCP tools/list includes stat_owner_lookup. */
 test("MCP tools/list includes stat_owner_lookup", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }]);
   const res = responses.get(2) as {
@@ -423,7 +407,6 @@ test("MCP tools/list includes stat_owner_lookup", async () => {
   expect(lookup?.inputSchema.required).toContain("path");
 });
 
-/** MCP resources/read returns schema JSON. */
 test("MCP resources/read returns schema JSON", async () => {
   const responses = await mcpRequest([
     { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "nested_ts://schema" } },
@@ -493,21 +476,18 @@ test("MCP tools/call errors on missing required positional", async () => {
   expect(res.result.content[0]?.text).toContain("Missing argument: path");
 });
 
-/** MCP ping returns empty result. */
 test("MCP ping returns empty result", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 99, method: "ping", params: {} }]);
   const res = responses.get(99) as { result: Record<string, never> };
   expect(res.result).toEqual({});
 });
 
-/** Tests that minimal.ts mcp without opt-in fails. */
 test("minimal.ts mcp without opt-in fails", async () => {
   const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
   expect(exitCode).toBe(1);
   expect(stderr.toString()).toContain("MCP is not available");
 });
 
-/** MCP resources/list includes custom resource. */
 test("MCP resources/list includes custom resource", async () => {
   const responses = await mcpRequest(
     [{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }],
@@ -537,7 +517,6 @@ test("MCP resources/read returns docs topic resource body", async () => {
   expect(res.result.contents[0]?.text).toBe("# MCP test readme\n");
 });
 
-/** MCP resources/read returns custom resource body. */
 test("MCP resources/read returns custom resource body", async () => {
   const responses = await mcpRequest(
     [{ jsonrpc: "2.0", id: 11, method: "resources/read", params: { uri: "test://hello" } }],
@@ -547,7 +526,6 @@ test("MCP resources/read returns custom resource body", async () => {
   expect(res.result.contents[0]?.text).toBe("hello resource");
 });
 
-/** MCP resources/read unknown URI returns error. */
 test("MCP resources/read unknown URI returns error", async () => {
   const responses = await mcpRequest(
     [{ jsonrpc: "2.0", id: 12, method: "resources/read", params: { uri: "missing://nope" } }],

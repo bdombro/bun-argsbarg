@@ -47,7 +47,6 @@ afterEach(() => {
 
 /** Tests for opencode mcp config. */
 describe("opencode mcp config", () => {
-  /** ResolveOpenCodeConfigPathForInstall prefers existing file. */
   test("resolveOpenCodeConfigPathForInstall prefers existing file", () => {
     const dir = opencodeConfigDir(home);
     mkdirSync(dir, { recursive: true });
@@ -56,7 +55,6 @@ describe("opencode mcp config", () => {
     expect(resolveOpenCodeConfigPathForInstall(home)).toBe(existing);
   });
 
-  /** ResolveOpenCodeConfigPathForInstall defaults to config.json. */
   test("resolveOpenCodeConfigPathForInstall defaults to config.json", () => {
     mkdirSync(opencodeConfigDir(home), { recursive: true });
     expect(resolveOpenCodeConfigPathForInstall(home)).toBe(
@@ -64,7 +62,6 @@ describe("opencode mcp config", () => {
     );
   });
 
-  /** MergeOpenCodeMcpConfig writes mcp block. */
   test("mergeOpenCodeMcpConfig writes mcp block", () => {
     const path = resolveOpenCodeConfigPathForInstall(home);
     mkdirSync(opencodeConfigDir(home), { recursive: true });
@@ -95,7 +92,6 @@ describe("opencode mcp config", () => {
     expect(detectOpenCodeMcpConfigPath(home, "testapp")).toBe(path);
   });
 
-  /** RemoveOpenCodeMcpConfig deletes server entry. */
   test("removeOpenCodeMcpConfig deletes server entry", () => {
     const path = resolveOpenCodeConfigPathForInstall(home);
     mkdirSync(opencodeConfigDir(home), { recursive: true });

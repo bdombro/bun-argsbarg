@@ -34,17 +34,14 @@ function fixture(opts?: { docs?: boolean; mcp?: boolean }): CliProgram {
   };
 }
 
-/** DefaultDocsTopicResourceUri. */
 test("defaultDocsTopicResourceUri", () => {
   expect(defaultDocsTopicResourceUri("my_app", "readme")).toBe("my_app://docs/readme");
 });
 
-/** ResolveDocsTopicResourceUri sanitizes program key. */
 test("resolveDocsTopicResourceUri sanitizes program key", () => {
   expect(resolveDocsTopicResourceUri(fixture(), "readme")).toBe("my_app://docs/readme");
 });
 
-/** DocsMcpResources when docs and MCP enabled. */
 test("docsMcpResources when docs and MCP enabled", () => {
   const resources = docsMcpResources(fixture());
   expect(resources.map((r) => r.uri)).toEqual(["my_app://docs/readme", "my_app://docs/arch"]);
@@ -54,17 +51,14 @@ test("docsMcpResources when docs and MCP enabled", () => {
   expect(resources[0]?.load()).toBe("# Readme\n");
 });
 
-/** DocsMcpResources empty when docs disabled. */
 test("docsMcpResources empty when docs disabled", () => {
   expect(docsMcpResources(fixture({ docs: false }))).toEqual([]);
 });
 
-/** DocsMcpResources empty when MCP disabled. */
 test("docsMcpResources empty when MCP disabled", () => {
   expect(docsMcpResources(fixture({ mcp: false }))).toEqual([]);
 });
 
-/** Tests that reservedDocsTopicResourceUris matches docsMcpResources URIs. */
 test("reservedDocsTopicResourceUris matches docsMcpResources URIs", () => {
   const program = fixture();
   expect(reservedDocsTopicResourceUris(program)).toEqual(

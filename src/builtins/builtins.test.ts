@@ -37,7 +37,6 @@ const noMcp: CliProgram = {
 
 /** Tests for builtins help copy. */
 describe("builtins help copy", () => {
-  /** Configure command includes Homebrew-oriented description. */
   test("configure command includes Homebrew-oriented description", () => {
     const configure = cliBuiltinConfigureCommand(fixture);
     expect(configure.description).toContain("agent skills");
@@ -51,7 +50,6 @@ describe("builtins help copy", () => {
     expect(yesOpt?.shortName).toBe("y");
   });
 
-  /** Configure copy omits MCP when mcpServer unset. */
   test("configure copy omits MCP when mcpServer unset", () => {
     const caps = resolveCapabilities(noMcp);
     expect(configureCommandDescription(noMcp, caps)).toBe(
@@ -79,7 +77,6 @@ describe("builtins help copy", () => {
     expect(configureBuiltinOptions(withConfig).map((o) => o.name)).toContain("remove-config");
   });
 
-  /** Configure -y parses as --yes. */
   test("configure -y parses as --yes", () => {
     const root = cliParseRoot(fixture);
     const pr = postParseValidate(root, parse(root, ["configure", "-y", "--sync"]));
@@ -90,7 +87,6 @@ describe("builtins help copy", () => {
     }
   });
 
-  /** Mcp builtin description is user-facing. */
   test("mcp builtin description is user-facing", () => {
     const withDocs: CliProgram = {
       ...fixture,
@@ -105,7 +101,6 @@ describe("builtins help copy", () => {
 
 /** Tests for presentation root. */
 describe("presentation root", () => {
-  /** Includes mcp and configure when enabled. */
   test("includes mcp and configure when enabled", () => {
     const root = cliPresentationRoot(fixture);
     const keys = root.commands?.map((c) => c.key) ?? [];
@@ -115,14 +110,12 @@ describe("presentation root", () => {
     expect(keys).not.toContain("install");
   });
 
-  /** Omits configure when configure.enabled is false. */
   test("omits configure when configure.enabled is false", () => {
     const disabled: CliProgram = { ...fixture, configure: { enabled: false } };
     const root = cliPresentationRoot(disabled);
     expect(root.commands?.map((c) => c.key)).not.toContain("configure");
   });
 
-  /** Includes version builtin. */
   test("includes version builtin", () => {
     const root = cliPresentationRoot(fixture);
     expect(root.commands?.map((c) => c.key)).toContain("version");
@@ -131,7 +124,6 @@ describe("presentation root", () => {
 
 /** Tests for completion emitters. */
 describe("completion emitters", () => {
-  /** Tests that fish script references app key and subcommands. */
   test("fish script references app key and subcommands", () => {
     const schema = cliPresentationRoot(fixture);
     const fish = completionFishScript(schema);
@@ -140,7 +132,6 @@ describe("completion emitters", () => {
     expect(fish).toContain("configure");
   });
 
-  /** Tests that bash script includes configure flags. */
   test("bash script includes configure flags", () => {
     const schema = cliPresentationRoot(fixture);
     const bash = completionBashScript(schema);
@@ -148,7 +139,6 @@ describe("completion emitters", () => {
     expect(bash).toContain("--sync");
   });
 
-  /** Tests that zsh script registers compdef. */
   test("zsh script registers compdef", () => {
     const schema = cliPresentationRoot({
       key: "zapp",
@@ -179,7 +169,6 @@ describe("schema export builtins", () => {
     expect(builtins.map((b) => b.key)).toContain("configure");
   });
 
-  /** ExportPresentationBuiltins omits hidden completion. */
   test("exportPresentationBuiltins omits hidden completion", () => {
     const builtins = exportPresentationBuiltins(fixture);
     expect(builtins.map((b) => b.key)).not.toContain("completion");

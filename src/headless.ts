@@ -57,14 +57,15 @@ export function shouldRunHeadlessWithYes(
   return opts.yes && opts.hasRequiredArgs;
 }
 
-/**
- * Exits when non-interactive mode is used without `--yes`.
- * @param hint - Command-specific guidance appended to the error
- */
+/** Exits when non-interactive mode is used without `--yes`. */
 export function requireYesInNonTty(
+  /** True when `--yes` was passed on the command line. */
   yes: boolean,
+  /** Command-specific guidance appended to the error message. */
   hint: string,
+  /** When true, skip the check (dry-run preview). */
   dryRun = false,
+  /** Injectable TTY probe for tests. */
   interactive: boolean = isInteractiveTty,
 ): void {
   if (dryRun) return;

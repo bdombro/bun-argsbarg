@@ -91,7 +91,6 @@ test("Cli.invoke accepts valid Enum value", async () => {
   expect(result.stdout.trim()).toBe("dev");
 });
 
-/** Varargs trailing option after positionals via Cli.invoke. */
 test("varargs trailing option after positionals via Cli.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -101,7 +100,6 @@ test("varargs trailing option after positionals via Cli.invoke", async () => {
   expect(pr.opts.json).toBe("1");
 });
 
-/** Varargs option before positionals. */
 test("varargs option before positionals", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -111,7 +109,6 @@ test("varargs option before positionals", () => {
   expect(pr.opts.json).toBe("1");
 });
 
-/** Varargs multiple files then trailing option. */
 test("varargs multiple files then trailing option", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -121,7 +118,6 @@ test("varargs multiple files then trailing option", () => {
   expect(pr.opts.json).toBe("1");
 });
 
-/** Varargs double dash forces positional. */
 test("varargs double dash forces positional", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -131,7 +127,6 @@ test("varargs double dash forces positional", () => {
   expect(pr.opts.json).toBeUndefined();
 });
 
-/** Varargs unknown flag errors. */
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -140,7 +135,6 @@ test("varargs unknown flag errors", async () => {
   expect(result.stderr).toContain("--unknown");
 });
 
-/** Varargs scoped help in tail. */
 test("varargs scoped help in tail", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
@@ -172,7 +166,6 @@ test("ctx.positional returns single slot value", async () => {
   expect(captured).toBe("./file");
 });
 
-/** Tests that ctx.positional returns varargs array. */
 test("ctx.positional returns varargs array", async () => {
   const root = varargsReadFixture();
   let captured: string | string[] | undefined;

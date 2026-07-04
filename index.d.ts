@@ -551,11 +551,16 @@ export declare function shouldRunHeadlessWithYes(ctx: HeadlessContext, opts: {
 	hasRequiredArgs: boolean;
 	dryRun?: boolean;
 }, interactive?: boolean): boolean;
-/**
- * Exits when non-interactive mode is used without `--yes`.
- * @param hint - Command-specific guidance appended to the error
- */
-export declare function requireYesInNonTty(yes: boolean, hint: string, dryRun?: boolean, interactive?: boolean): void;
+/** Exits when non-interactive mode is used without `--yes`. */
+export declare function requireYesInNonTty(
+/** True when `--yes` was passed on the command line. */
+yes: boolean, 
+/** Command-specific guidance appended to the error message. */
+hint: string, 
+/** When true, skip the check (dry-run preview). */
+dryRun?: boolean, 
+/** Injectable TTY probe for tests. */
+interactive?: boolean): void;
 /** Prefixes a success message when running in dry-run mode. */
 export declare function formatDryRunMessage(message: string, dryRun: boolean): string;
 /** Resolved paths for `mcp bundle`. */

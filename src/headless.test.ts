@@ -12,14 +12,12 @@ import {
   wantsExplicitJson,
 } from "./headless.ts";
 
-/** WantsExplicitJson includes MCP invocation. */
 test("wantsExplicitJson includes MCP invocation", () => {
   expect(wantsExplicitJson({ invocation: "cli" }, false)).toBe(false);
   expect(wantsExplicitJson({ invocation: "mcp" }, false)).toBe(true);
   expect(wantsExplicitJson({ invocation: "cli" }, true)).toBe(true);
 });
 
-/** Tests that shouldRunHeadless is true for MCP and json. */
 test("shouldRunHeadless is true for MCP and json", () => {
   expect(shouldRunHeadless({ invocation: "mcp" }, false)).toBe(true);
   expect(shouldRunHeadless({ invocation: "cli" }, true)).toBe(true);
@@ -27,7 +25,6 @@ test("shouldRunHeadless is true for MCP and json", () => {
   expect(shouldRunHeadless({ invocation: "cli" }, false, false, false)).toBe(true);
 });
 
-/** Tests that shouldRunHeadlessWithPositionals requires positionals in non-tty. */
 test("shouldRunHeadlessWithPositionals requires positionals in non-tty", () => {
   expect(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, [], false, false)).toBe(
     false,
@@ -54,7 +51,6 @@ test("shouldRunHeadlessWithYes requires yes in non-tty", () => {
   ).toBe(true);
 });
 
-/** Tests that formatDryRunMessage prefixes dry-run output. */
 test("formatDryRunMessage prefixes dry-run output", () => {
   expect(formatDryRunMessage("hello", false)).toBe("hello");
   expect(formatDryRunMessage("hello", true)).toBe("[DRY RUN] hello");

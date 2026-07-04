@@ -48,19 +48,16 @@ afterEach(() => {
 
 /** Tests for configure opts. */
 describe("configure opts", () => {
-  /** Validate rejects multiple modes. */
   test("validate rejects multiple modes", () => {
     const opts = parseConfigureOpts({ sync: "1", status: "1" });
     expect(validateConfigureOpts(opts)).toContain("only one");
   });
 
-  /** Sync requires --yes. */
   test("sync requires --yes", () => {
     const opts = parseConfigureOpts({ sync: "1" });
     expect(validateConfigureOpts(opts)).toContain("--yes");
   });
 
-  /** Remove-all requires --yes. */
   test("remove-all requires --yes", () => {
     const opts = parseConfigureOpts({ "remove-all": "1" });
     expect(validateConfigureOpts(opts)).toContain("--yes");
@@ -69,14 +66,12 @@ describe("configure opts", () => {
 
 /** Tests for install paths. */
 describe("install paths", () => {
-  /** ResolveInstallPaths includes skill and mcp paths. */
   test("resolveInstallPaths includes skill and mcp paths", () => {
     const paths = resolveInstallPaths(fixture);
     expect(paths.cursorSkillDir).toContain(".cursor/skills");
     expect(paths.cursorMcpPath).toContain("mcp.json");
   });
 
-  /** Claude desktop mcp path on darwin. */
   test("claude desktop mcp path on darwin", () => {
     const prev = process.platform;
     Object.defineProperty(process, "platform", { value: "darwin" });
@@ -110,7 +105,6 @@ describe("detect installed", () => {
 
 /** Tests for sync plan. */
 describe("sync plan", () => {
-  /** BuildUpdatePlan greenfield includes agent targets. */
   test("buildUpdatePlan greenfield includes agent targets", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUpdatePlan(fixture, paths, parseInstallOpts({ reinstall: "1", yes: "1" }));
@@ -118,7 +112,6 @@ describe("sync plan", () => {
     expect(plan.some((a) => a.kind === "app")).toBe(false);
   });
 
-  /** BuildInstallPlan --all omits app self-install. */
   test("buildInstallPlan --all omits app self-install", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ all: "1" }));
@@ -126,7 +119,6 @@ describe("sync plan", () => {
     expect(plan.some((a) => a.kind.endsWith("-mcp"))).toBe(true);
   });
 
-  /** BuildInstallPlan respects configure.agentIntegration skill. */
   test("buildInstallPlan respects configure.agentIntegration skill", () => {
     const skillApp: CliProgram = {
       ...fixture,
@@ -142,7 +134,6 @@ describe("sync plan", () => {
 
 /** Tests for remove plan. */
 describe("remove plan", () => {
-  /** BuildUninstallPlan --all with nothing installed is empty. */
   test("buildUninstallPlan --all with nothing installed is empty", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUninstallPlan(fixture, paths, parseInstallOpts({ uninstall: "1", all: "1" }));
@@ -152,7 +143,6 @@ describe("remove plan", () => {
 
 /** Tests for app config wizard. */
 describe("app config wizard", () => {
-  /** Tests that appConfigHasEntries when entries exist. */
   test("appConfigHasEntries when entries exist", () => {
     expect(
       appConfigHasEntries({
@@ -162,7 +152,6 @@ describe("app config wizard", () => {
     ).toBe(true);
   });
 
-  /** Tests that appConfigHasEntries false for empty entries or missing appConfig. */
   test("appConfigHasEntries false for empty entries or missing appConfig", () => {
     expect(appConfigHasEntries({ ...fixture, appConfig: { entries: {} } })).toBe(false);
     expect(appConfigHasEntries(fixture)).toBe(false);

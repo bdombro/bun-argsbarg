@@ -44,7 +44,6 @@ describe("argsbarg create", () => {
     expect(out).not.toContain("{key}");
   });
 
-  /** Tests that classNameFromKey. */
   test("classNameFromKey", () => {
     expect(classNameFromKey("sqsp-i18n")).toBe("SqspI18n");
     expect(classNameFromKey("at1")).toBe("At1");
@@ -67,7 +66,6 @@ describe("argsbarg create", () => {
     expect(opts.desc).toBe("At1 CLI");
   });
 
-  /** ResolveCreateOptions requires release repo. */
   test("resolveCreateOptions requires release repo", () => {
     expect(() => resolveCreateOptions({ key: "at1" })).toThrow(/release repo/i);
   });
@@ -146,7 +144,6 @@ describe("argsbarg create", () => {
     }
   });
 
-  /** Tests that --diff captures drift details. */
   test("--diff captures drift details", () => {
     const drifts = diffCreateDetails("/nonexistent", { key: "x", releaseRepo: "org/x" });
     expect(drifts.length).toBeGreaterThan(0);

@@ -4,7 +4,7 @@ globs: **/*.ts
 ---
 
 - Changes must be summarized in CHANGELOG.md under the UNRELEASED section
-- JSDocs: Types, interfaces, functions (exported **and** module-private), objects, object properties, classes, class properties, module-level constants, and test `describe`/`test` blocks must have a very human-readable JSDoc directly above the symbol. No exceptions in `src/**` or `scripts/**`.
+- JSDocs: Types, interfaces, functions (exported **and** module-private), objects, object properties, classes, class properties, module-level constants, and test `describe`/`test` blocks must have a very human-readable JSDoc directly above the symbol. No exceptions in `src/**` or `scripts/**`. When adding JSDoc to functions, favor putting a JSDoc on each arg instead of using `@param`. Skip comments on short test callbacks and pure re-export files.
 - All files should start with a `/* {multi-line description} */` of why the file exists and what it does.
 - All imports must be ordered alphabetically by their source module path (the `from` clause).
 - Explicit exports using the `export { ... } from "..."` or `export type { ... } from "..."` syntax must be ordered alphabetically by their source module path and placed at the top of the file, immediately below the imports.

@@ -31,7 +31,6 @@ const program: CliProgram = {
 
 /** Tests for config/resolve. */
 describe("config/resolve", () => {
-  /** Tests that prefers env over file for mapped keys. */
   test("prefers env over file for mapped keys", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "from-env";
@@ -44,7 +43,6 @@ describe("config/resolve", () => {
     }
   });
 
-  /** Tests that uses file when env empty. */
   test("uses file when env empty", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
@@ -56,7 +54,6 @@ describe("config/resolve", () => {
     }
   });
 
-  /** Tests that empty string in env or file counts as missing. */
   test("empty string in env or file counts as missing", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "";
@@ -69,7 +66,6 @@ describe("config/resolve", () => {
     }
   });
 
-  /** Applies jsonSchema default when file and env absent. */
   test("applies jsonSchema default when file and env absent", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
@@ -82,7 +78,6 @@ describe("config/resolve", () => {
     }
   });
 
-  /** All-string mode uses entry.default. */
   test("all-string mode uses entry.default", () => {
     const stringProgram: CliProgram = {
       ...program,
@@ -96,7 +91,6 @@ describe("config/resolve", () => {
     expect(resolved.greeting).toBe("world");
   });
 
-  /** Tests that prefers captured host env over file when process.env was exported from file. */
   test("prefers captured host env over file when process.env was exported from file", () => {
     const hostEnv = { API_TOKEN: "from-host" };
     process.env.API_TOKEN = "from-file-export";
@@ -108,7 +102,6 @@ describe("config/resolve", () => {
     }
   });
 
-  /** ExportConfigToEnv does not overwrite host env. */
   test("exportConfigToEnv does not overwrite host env", () => {
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "from-host";

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * One-shot helper: add file headers and JSDoc above describe and test blocks
- * in src test files when missing. Run after updating the JSDoc style rule.
+ * One-shot helper: add file headers and JSDoc above describe blocks in src test
+ * files when missing. Skips `test` callbacks (short ones stay uncommented).
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -9,22 +9,12 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("../src", import.meta.url).pathname;
 
-/** Turn a describe/test title into a short human-readable JSDoc sentence. */
-function jsdocForBlock(kind: "describe" | "test", title: string): string {
+/** Turn a describe title into a short human-readable JSDoc sentence. */
+function jsdocForDescribe(title: string): string {
   const t = title.trim();
   const cap = t.charAt(0).toUpperCase() + t.slice(1);
-  if (kind === "describe") {
-    if (/tests?$/i.test(t)) return `/** ${cap}. */`;
-    return `/** Tests for ${t}. */`;
-  }
-  if (
-    /^(ensure|verifies|verify|rejects|reject|parses|parse|builds|build|detects|detect|includes|include|omits|omit|defaults|default|exports|export|lists|list|prints|print|writes|write|reads|read|applies|apply|merges|merge|runs|run|supports|support|keeps|keep|escapes|escape|stops|stop|missing|provided|invalid|valid|all|bare|scoped|interactive|leaf|root|nested|varargs|enum|mcp|cli|docs|completion|configure|sync|remove|status|greenfield|symmetric|normalizes|normalize|resolves|resolve|wants|formula|plugin|skill|global|rimraf|claude|cursor|codex|openclaw|opencode|chatgpt|presentation|builtin|capabilities|headless|hidden|zip|env|integration|create|smoke|placement|gh-release|file|context|validate|formats|invoke|api-guide|mcp-resources)/i.test(
-      t,
-    )
-  ) {
-    return `/** ${cap}. */`;
-  }
-  return `/** Tests that ${t}. */`;
+  if (/tests?$/i.test(t)) return `/** ${cap}. */`;
+  return `/** Tests for ${t}. */`;
 }
 
 function fileHeader(relPath: string): string {
@@ -68,9 +58,9 @@ function transform(content: string, relPath: string): string {
 
   for (; i < lines.length; i++) {
     const line = lines[i];
-    const m = line.match(/^(\s*)(describe|test)\(\s*["'`]([^"'`]+)["'`]/);
+    const m = line.match(/^(\s*)describe\(\s*["'`]([^"'`]+)["'`]/);
     if (m && !hasJsdocAbove(out, out.length)) {
-      out.push(`${m[1]}${jsdocForBlock(m[2] as "describe" | "test", m[3])}`);
+      out.push(`${m[1]}${jsdocForDescribe(m[2])}`);
     }
     out.push(line);
   }

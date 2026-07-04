@@ -35,12 +35,10 @@ const configFixture: CliProgram = {
 
 /** Tests for claude plugin. */
 describe("claude plugin", () => {
-  /** PluginName is kebab-case. */
   test("pluginName is kebab-case", () => {
     expect(pluginName({ ...configFixture, key: "MyApp" })).toBe("my-app");
   });
 
-  /** Tests that generatePluginManifest includes userConfig from program.appConfig. */
   test("generatePluginManifest includes userConfig from program.appConfig", () => {
     const manifest = generatePluginManifest(configFixture, "myapp");
     expect(manifest.name).toBe("myapp");
@@ -50,7 +48,6 @@ describe("claude plugin", () => {
     expect(userConfig.api_token?.sensitive).toBe(true);
   });
 
-  /** Tests that generatePluginMcpJson uses CLAUDE_PLUGIN_ROOT and env mapping. */
   test("generatePluginMcpJson uses CLAUDE_PLUGIN_ROOT and env mapping", () => {
     const json = generatePluginMcpJson(configFixture, "myapp");
     const entry = json.myapp as { command: string; args: string[]; env: Record<string, string> };
@@ -59,7 +56,6 @@ describe("claude plugin", () => {
     expect(entry.env.API_TOKEN).toBe("${user_config.api_token}");
   });
 
-  /** DefaultClaudePluginPaths. */
   test("defaultClaudePluginPaths", () => {
     const cwd = "/tmp/work";
     const paths = defaultClaudePluginPaths(configFixture, cwd);

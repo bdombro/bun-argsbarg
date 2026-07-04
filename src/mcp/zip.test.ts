@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { zipStore } from "./zip.ts";
 
-/** ZipStore preserves unix executable mode on extract. */
 test("zipStore preserves unix executable mode on extract", () => {
   const work = mkdtempSync(join(tmpdir(), "zip-exec-"));
   const data = Buffer.from("#!/bin/sh\necho hi\n");
