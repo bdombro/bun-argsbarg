@@ -17,6 +17,7 @@ export const formulaPostInstallRuby = `def post_install
 export const formulaCaveatsRuby = `def caveats
     <<~EOS
       Run \`${key} configure\` to set up agent artifacts and app config (interactive).
+      Restart MCP chat apps (Cursor, Claude Desktop, etc.) after install or upgrade so they load the updated server.
     EOS
   end`;
 

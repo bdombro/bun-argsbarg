@@ -60,6 +60,8 @@ Completions require users to configure their shell per [Homebrew Shell Completio
 
 **Why configure is separate from `post_install`:** the wizard is interactive (TTY + prompts for secrets). Formula `post_install` runs non-interactively during `brew install` and in CI (`brew test`). Apps with `appConfig` print a one-line configure hint in formula `caveats` instead.
 
+**MCP hosts:** when `mcpServer.enabled` is true, add a caveats line that chat apps (Cursor, Claude Desktop, etc.) must be **restarted** after `brew install` / `brew upgrade` — `post_install` updates MCP config on disk, but hosts typically load it only at startup.
+
 ## Bootstrap CLI (`argsbarg create`)
 
 Copy the shipped `examples/full-example` template into a new directory with identity substitutions, then run install, schemagen, tests, and git init (when appropriate):
