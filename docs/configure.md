@@ -64,7 +64,7 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | Cursor skill | Y/n prompt | `~/.cursor/skills/<dir>/` when `~/.cursor` exists |
 | Claude skill | Y/n prompt | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | Codex / OpenCode / OpenClaw skills | Y/n prompt | Agent-specific dirs when available |
-| MCP config | Y/n prompt | Cursor, Claude Code/Desktop, OpenCode, Codex, OpenClaw, ChatGPT desktop |
+| MCP config | Y/n prompt when `mcpServer.enabled` | Cursor, Claude Code/Desktop, OpenCode, Codex, OpenClaw, ChatGPT desktop |
 | App config | auto-runs wizard | Interactive wizard writes `~/.local/lib/<key>/config.json` |
 
 ### Externally managed binary (Homebrew)

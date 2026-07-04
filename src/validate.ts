@@ -6,7 +6,7 @@ import { reservedCommandNames, resolveCapabilities } from "./capabilities.ts";
 import { reservedDocsTopicResourceUris } from "./docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS } from "./docs/resolve.ts";
 import { validateFormatValue } from "./formats.ts";
-import { AGENT_PAIRS } from "./install/target-registry.ts";
+import { AGENT_PAIRS, MCP_KEYS, mcpServerRequiredForArtifact } from "./install/target-registry.ts";
 import { resolveMcpSchemaUri } from "./mcp/tools.ts";
 import {
   type CliLeaf,
@@ -150,6 +150,8 @@ function validateConfigureConfig(program: CliProgram): void {
   const integration: InstallAgentIntegration =
     configure.agentIntegration ?? (program.mcpServer?.enabled === true ? "mcp" : "skill");
 
+  const mcpEnabled = program.mcpServer?.enabled === true;
+
   for (const [mcpKey, skillKey] of AGENT_PAIRS) {
     const mcpSpec = targets[mcpKey];
     const skillSpec = targets[skillKey];
@@ -172,6 +174,15 @@ function validateConfigureConfig(program: CliProgram): void {
       throw new CliSchemaValidationError(
         `configure.targets.${skillKey} requires agentIntegration: 'both' when agentIntegration is 'mcp'`,
       );
+    }
+  }
+
+  for (const mcpKey of MCP_KEYS) {
+    if (
+      !mcpServerRequiredForArtifact(mcpKey, mcpEnabled) &&
+      installTargetExplicitTruthy(targets[mcpKey])
+    ) {
+      throw new CliSchemaValidationError(`configure.targets.${mcpKey} requires mcpServer.enabled`);
     }
   }
 }

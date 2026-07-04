@@ -37,6 +37,23 @@ export function installTargetForKey(key: CliInstallArtifactKey): InstallTarget |
   return targetByKey.get(key);
 }
 
+/** True when the artifact key is an MCP install target (requires mcpServer.enabled). */
+export function isMcpArtifactKey(key: CliInstallArtifactKey): boolean {
+  return installTargetForKey(key)?.category === "mcp";
+}
+
+/**
+ * MCP install targets are inactive without mcpServer.enabled.
+ * Defaults: artifactDefaults in target-effective.ts.
+ * Explicit spec rejection: validateConfigureConfig in validate.ts.
+ */
+export function mcpServerRequiredForArtifact(
+  key: CliInstallArtifactKey,
+  mcpServerEnabled: boolean,
+): boolean {
+  return !isMcpArtifactKey(key) || mcpServerEnabled;
+}
+
 /** Lookup by plan action kind. */
 export function installTargetForActionKind(kind: InstallActionKind): InstallTarget | undefined {
   return INSTALL_TARGETS.find((t) => t.actionKind === kind);

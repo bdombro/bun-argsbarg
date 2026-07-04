@@ -63,4 +63,15 @@ describe("validateConfigureConfig", () => {
     };
     expect(() => cliValidateProgram(program)).not.toThrow();
   });
+
+  test("rejects explicit MCP target without mcpServer", () => {
+    const program: CliProgram = {
+      ...base,
+      configure: {
+        agentIntegration: "both",
+        targets: { cursorMcp: true },
+      },
+    };
+    expect(() => cliValidateProgram(program)).toThrow(/mcpServer\.enabled/);
+  });
 });

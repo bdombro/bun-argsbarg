@@ -7,7 +7,12 @@ import type {
   InstallTargetSpec,
 } from "../types.ts";
 import type { InstallPaths } from "./paths.ts";
-import { AGENT_PAIRS, INSTALL_ARTIFACT_KEYS, installTargetForKey } from "./target-registry.ts";
+import {
+  AGENT_PAIRS,
+  INSTALL_ARTIFACT_KEYS,
+  installTargetForKey,
+  mcpServerRequiredForArtifact,
+} from "./target-registry.ts";
 import type { CliInstallArtifactKey, InstallPlanMode } from "./target-types.ts";
 
 export type { InstallTargetSpec, ResolvedInstallTarget } from "../types.ts";
@@ -44,9 +49,13 @@ export function resolveInstallTargetSpec(
 function artifactDefaults(
   key: CliInstallArtifactKey,
   integration: InstallAgentIntegration,
+  mcpServerEnabled: boolean,
 ): { enabled: boolean; includedInAll: boolean } {
   const target = installTargetForKey(key);
   const includedInAll = target?.defaultIncludedInAll(integration) ?? false;
+  if (!mcpServerRequiredForArtifact(key, mcpServerEnabled)) {
+    return { enabled: false, includedInAll: false };
+  }
   return { enabled: true, includedInAll };
 }
 
@@ -86,7 +95,10 @@ export function resolveEffectiveInstallTargets(
   const user = configure?.targets;
   const out = {} as Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   for (const key of INSTALL_ARTIFACT_KEYS) {
-    out[key] = resolveInstallTargetSpec(user?.[key], artifactDefaults(key, integration));
+    out[key] = resolveInstallTargetSpec(
+      user?.[key],
+      artifactDefaults(key, integration, mcpEnabled),
+    );
   }
   applyAgentPairDedupe(out, user, integration);
   return out;

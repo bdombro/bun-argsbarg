@@ -2,8 +2,8 @@
 TTY prompts for per-target install, skip, or uninstall during interactive `configure`.
 */
 
-import { readSync } from "node:fs";
 import type { CliInstallArtifactKey } from "../install/target-types.ts";
+import { readPromptLine } from "../prompt.ts";
 
 /** Human-readable labels for each install artifact key in interactive prompts. */
 const LABELS: Record<CliInstallArtifactKey, string> = {
@@ -35,9 +35,7 @@ export type TargetPromptAction = "install" | "skip" | "uninstall";
 export function promptTargetAction(label: string, installed: boolean): TargetPromptAction | null {
   const hint = installed ? `${label} [y/N]: ` : `${label} [Y/n]: `;
   process.stderr.write(hint);
-  const buf = Buffer.alloc(256);
-  const n = readSync(0, buf, { length: 256 });
-  const ans = buf.toString("utf8", 0, n).trim().toLowerCase();
+  const ans = readPromptLine().trim().toLowerCase();
   if (installed) {
     if (ans === "n") return "uninstall";
     return "skip";

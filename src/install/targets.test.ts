@@ -50,7 +50,9 @@ describe("resolveEffectiveInstallTargets", () => {
     const program: Pick<CliProgram, "mcpServer"> = {};
     const t = resolveEffectiveInstallTargets(undefined, program);
     expect(t.cursorSkill.includedInAll).toBe(true);
+    expect(t.cursorSkill.enabled).toBe(true);
     expect(t.cursorMcp.includedInAll).toBe(false);
+    expect(t.cursorMcp.enabled).toBe(false);
   });
 
   test("mcp mode includes MCP in --all not paired skills", () => {

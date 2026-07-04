@@ -249,21 +249,6 @@ function finishLeaf(
   optionDefs: CliOption[],
   forcePositionalsIn: boolean,
 ): ParseResult {
-  /** Builds a parse error for positional consumption failures. */
-  function errorResult(msg: string): ParseResult {
-    const pr: ParseResult = {
-      kind: ParseKind.Error,
-      path: [],
-      opts: {},
-      args: [],
-      helpExplicit: false,
-      helpPath: [],
-      errorMsg: msg,
-      errorHelpPath: path,
-    };
-    return pr;
-  }
-
   let idx = startIdx;
   const args: string[] = [];
   let forcePositionals = forcePositionalsIn;
@@ -273,7 +258,7 @@ function finishLeaf(
     if (argMax === 1) {
       if (argMin >= 1) {
         if (idx >= argv.length) {
-          return errorResult(`Missing positional argument: ${p.name}`);
+          return errorResult(`Missing positional argument: ${p.name}`, path, []);
         }
         args.push(argv[idx]);
         idx += 1;
@@ -308,7 +293,7 @@ function finishLeaf(
           // MUST be false — lenient mode swallows unknown flags as positionals silently
           const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
           if (tailRep.report.err) {
-            return errorResult(tailRep.report.err);
+            return errorResult(tailRep.report.err, path, []);
           }
           if (tailRep.report.sawDoubleDash) {
             forcePositionals = true;
@@ -317,7 +302,7 @@ function finishLeaf(
             idx = tailRep.nextIndex;
             continue;
           }
-          return errorResult(`Unexpected option token: ${tok}`);
+          return errorResult(`Unexpected option token: ${tok}`, path, []);
         }
 
         args.push(tok);
@@ -332,13 +317,17 @@ function finishLeaf(
       }
     }
     if (count < argMin) {
-      return errorResult(`Expected at least ${argMin} argument(s) for ${p.name}, got ${count}`);
+      return errorResult(
+        `Expected at least ${argMin} argument(s) for ${p.name}, got ${count}`,
+        path,
+        [],
+      );
     }
   }
 
   if (idx < argv.length) {
     if (forcePositionals) {
-      return errorResult("Unexpected extra arguments");
+      return errorResult("Unexpected extra arguments", path, []);
     }
 
     if (isHelpTok(argv[idx])) {
@@ -347,12 +336,12 @@ function finishLeaf(
 
     const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
     if (tailRep.report.err) {
-      return errorResult(tailRep.report.err);
+      return errorResult(tailRep.report.err, path, []);
     }
     idx = tailRep.nextIndex;
 
     if (idx < argv.length) {
-      return errorResult("Unexpected extra arguments");
+      return errorResult("Unexpected extra arguments", path, []);
     }
   }
 
@@ -369,6 +358,24 @@ function finishLeaf(
 }
 
 // ── Main Parser ───────────────────────────────────────────────────────────────
+
+/** Builds a user-error parse result; `path` defaults to `errorHelpPath`. */
+function errorResult(
+  errorMsg: string,
+  errorHelpPath: string[] = [],
+  path: string[] = errorHelpPath,
+): ParseResult {
+  return {
+    kind: ParseKind.Error,
+    path,
+    opts: {},
+    args: [],
+    helpExplicit: false,
+    helpPath: [],
+    errorMsg,
+    errorHelpPath,
+  };
+}
 
 /** Builds a help-request result for the current routing path. */
 function helpResult(p: string[], explicit: boolean): ParseResult {
@@ -401,16 +408,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   // Consume root-level options first
   const rootRep = consumeOptions(root.options ?? [], rootLenient, argv, i, opts);
   if (rootRep.report.err) {
-    return {
-      kind: ParseKind.Error,
-      path: [],
-      opts: {},
-      args: [],
-      helpExplicit: false,
-      helpPath: [],
-      errorMsg: rootRep.report.err,
-      errorHelpPath: [],
-    };
+    return errorResult(rootRep.report.err);
   }
   i = rootRep.nextIndex;
   let forcePositionals = rootRep.report.sawDoubleDash;
@@ -436,16 +434,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       cmdName = root.fallbackCommand;
       node = findChild(root.commands, cmdName);
       if (!node) {
-        return {
-          kind: ParseKind.Error,
-          path: [],
-          opts: {},
-          args: [],
-          helpExplicit: false,
-          helpPath: [],
-          errorMsg: `Unknown command: ${cmdName}`,
-          errorHelpPath: path,
-        };
+        return errorResult(`Unknown command: ${cmdName}`, path, []);
       }
     } else {
       return helpResult([], false);
@@ -469,34 +458,20 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         cmdName = fallbackCommand;
         node = findChild(root.commands, cmdName);
         if (!node) {
-          return {
-            kind: ParseKind.Error,
-            path: [],
-            opts: {},
-            args: [],
-            helpExplicit: false,
-            helpPath: [],
-            errorMsg: `Unknown command: ${cmdName}`,
-            errorHelpPath: path,
-          };
+          return errorResult(`Unknown command: ${cmdName}`, path, []);
         }
       } else {
         cmdName = peek;
         if (!forcePositionals) i += 1;
         node = findChild(root.commands, cmdName);
         if (!node) {
-          return {
-            kind: ParseKind.Error,
-            path: [],
-            opts: {},
-            args: [],
-            helpExplicit: false,
-            helpPath: [],
-            errorMsg: forcePositionals
+          return errorResult(
+            forcePositionals
               ? `Expected subcommand but got positional: ${cmdName}`
               : `Unknown command: ${cmdName}`,
-            errorHelpPath: path,
-          };
+            path,
+            [],
+          );
         }
       }
     }
@@ -504,16 +479,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   path.push(cmdName);
   if (!node) {
-    return {
-      kind: ParseKind.Error,
-      path,
-      opts: {},
-      args: [],
-      helpExplicit: false,
-      helpPath: [],
-      errorMsg: `Unknown command: ${cmdName}`,
-      errorHelpPath: path,
-    };
+    return errorResult(`Unknown command: ${cmdName}`, path);
   }
   let current = node;
 
@@ -522,16 +488,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     if (!forcePositionals) {
       const orep = consumeOptions(collectOptionDefs(root, path), false, argv, i, opts);
       if (orep.report.err) {
-        return {
-          kind: ParseKind.Error,
-          path,
-          opts: {},
-          args: [],
-          helpExplicit: false,
-          helpPath: [],
-          errorMsg: orep.report.err,
-          errorHelpPath: path,
-        };
+        return errorResult(orep.report.err, path);
       }
       i = orep.nextIndex;
       if (orep.report.sawDoubleDash) {
@@ -576,16 +533,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
     const tok = argv[i];
     if (!forcePositionals && tok.startsWith("-")) {
-      return {
-        kind: ParseKind.Error,
-        path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: `Unexpected option token: ${tok}`,
-        errorHelpPath: path,
-      };
+      return errorResult(`Unexpected option token: ${tok}`, path);
     }
 
     if (!forcePositionals && isCliRouter(current)) {
@@ -614,18 +562,12 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         }
       }
 
-      return {
-        kind: ParseKind.Error,
-        path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: forcePositionals
+      return errorResult(
+        forcePositionals
           ? `Expected subcommand but got positional: ${tok}`
           : `Unknown subcommand: ${tok}`,
-        errorHelpPath: path,
-      };
+        path,
+      );
     }
 
     if (!isCliLeaf(current)) {
@@ -656,29 +598,11 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
 
   for (const seg of pr.path) {
     if (!isCliRouter(node)) {
-      return {
-        kind: ParseKind.Error,
-        path: pr.path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: "Internal path error",
-        errorHelpPath: pr.path,
-      };
+      return errorResult("Internal path error", pr.path);
     }
     const ch = findChild(node.commands, seg);
     if (!ch) {
-      return {
-        kind: ParseKind.Error,
-        path: pr.path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: "Internal path error",
-        errorHelpPath: pr.path,
-      };
+      return errorResult("Internal path error", pr.path);
     }
     defs.push(...(ch.options ?? []));
     node = ch;
@@ -693,60 +617,24 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
 
   for (const d of defs) {
     if (d.required && !(d.name in opts)) {
-      return {
-        kind: ParseKind.Error,
-        path: pr.path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: `Missing required option: --${d.name}`,
-        errorHelpPath: pr.path,
-      };
+      return errorResult(`Missing required option: --${d.name}`, pr.path);
     }
   }
 
   for (const [k, v] of Object.entries(opts)) {
     const d = findOptionByName(defs, k);
     if (!d) {
-      return {
-        kind: ParseKind.Error,
-        path: pr.path,
-        opts: {},
-        args: [],
-        helpExplicit: false,
-        helpPath: [],
-        errorMsg: `Unknown option key: ${k}`,
-        errorHelpPath: pr.path,
-      };
+      return errorResult(`Unknown option key: ${k}`, pr.path);
     }
     if (d.kind === CliOptionKind.Number) {
       if (!fullStringIsDouble(v)) {
-        return {
-          kind: ParseKind.Error,
-          path: pr.path,
-          opts: {},
-          args: [],
-          helpExplicit: false,
-          helpPath: [],
-          errorMsg: `Invalid number for option --${k}: ${v}`,
-          errorHelpPath: pr.path,
-        };
+        return errorResult(`Invalid number for option --${k}: ${v}`, pr.path);
       }
     }
     if (d.kind === CliOptionKind.Enum) {
       const choices = d.choices ?? [];
       if (!choices.includes(v)) {
-        return {
-          kind: ParseKind.Error,
-          path: pr.path,
-          opts: {},
-          args: [],
-          helpExplicit: false,
-          helpPath: [],
-          errorMsg: `Option --${k}: '${v}' is not one of: ${choices.join(", ")}`,
-          errorHelpPath: pr.path,
-        };
+        return errorResult(`Option --${k}: '${v}' is not one of: ${choices.join(", ")}`, pr.path);
       }
     }
     if (d.kind === CliOptionKind.String && (d.format !== undefined || d.pattern !== undefined)) {
@@ -759,16 +647,7 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
             : err instanceof Error
               ? err.message
               : String(err);
-        return {
-          kind: ParseKind.Error,
-          path: pr.path,
-          opts: {},
-          args: [],
-          helpExplicit: false,
-          helpPath: [],
-          errorMsg: `Invalid value for option --${k}: ${msg}`,
-          errorHelpPath: pr.path,
-        };
+        return errorResult(`Invalid value for option --${k}: ${msg}`, pr.path);
       }
     }
   }

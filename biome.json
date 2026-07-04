@@ -19,7 +19,11 @@
       "linter": { "enabled": false }
     },
     {
-      "includes": ["**/completion-bash.ts", "**/completion-zsh.ts"],
+      "includes": [
+        "**/completion-bash.ts",
+        "**/completion-simulate-shared.ts",
+        "**/completion-zsh.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
