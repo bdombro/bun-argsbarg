@@ -41,7 +41,8 @@ describe("builtins help copy", () => {
     const configure = cliBuiltinConfigureCommand(fixture);
     expect(configure.description).toContain("agent skills");
     expect(configure.description).toContain("MCP config");
-    expect(configure.notes).toContain("brew install");
+    expect(configure.notes).toContain("brew upgrade");
+    expect(configure.notes).not.toContain("HOMEBREW_GITHUB_API_TOKEN");
     const names = configureBuiltinOptions(fixture).map((o) => o.name);
     expect(names).toContain("sync");
     expect(names).toContain("remove-all");

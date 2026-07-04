@@ -1,77 +1,69 @@
 # full-example
 
-**Full argsbarg reference app** — bootstrap new production CLIs with `bunx argsbarg create`.
+Argsbarg full example reference app
 
-## What this demonstrates
+## Quick start
 
-| Area | Files / wiring |
-| --- | --- |
-| All builtins | `completion`, `version`, `configure`, `docs`, `mcp`, `configure get`/`set` |
-| `program.appConfig` | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts` |
-| `outputSchema` | `src/commands/status/types.ts` (`StatusJsonOutput`) → `schemas/outputSchemas.ts` |
-| Schemagen | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts` |
-| Command layout | `src/commands/<name>/command.ts`; registration in `src/program.ts` |
-| MCP doc topics | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
-| Package import | `from "argsbarg"` (not relative to argsbarg `src/`) |
-| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/gen-dev-formula.ts`, `Formula/`, `justfile` |
-| Dev tooling | Biome (`just format` / `just lint`), TypeScript, colocated tests |
-| Cursor rules | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc` |
-
-## Bootstrap a new CLI
-
-Interactive (TTY):
+From a git checkout at this directory (requires [Homebrew](https://brew.sh), [just](https://just.systems), and [Bun](https://bun.sh)):
 
 ```bash
-bunx argsbarg create my-cli
-```
-
-Non-interactive:
-
-```bash
-bunx argsbarg create my-cli \
-  --key my-cli --release-repo org/my-cli --yes
-```
-
-Edit `scripts/create-identity.ts` to set `desc` (used by `program.description` and the Homebrew formula).
-
-`create` copies this template (including `.cursor/rules/cli-program.mdc`), substitutes identity placeholders, runs `bun install`, schemagen, `bun test`, and `git init` + Initial commit when appropriate.
-
-**Git bootstrap:** skipped when `{target}/.git` already exists, or when the target is inside an existing git work tree (monorepo subfolder). Standalone new directories get `Initial commit`.
-
-To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
-
-## Quick start (in this repo)
-
-```bash
-cd examples/full-example
+brew install just bun
 just setup
 just schemagen   # after changing src/**/types.ts
-FULL_EXAMPLE_API_TOKEN=dev just run status --json
-FULL_EXAMPLE_API_TOKEN=dev just run configure get apiToken --json
-FULL_EXAMPLE_API_TOKEN=dev just run docs readme
+just run status --json
+just run docs readme
 ```
 
-## Homebrew dev install
+Run `full-example configure` when the app needs secrets or other app config (interactive wizard).
 
-Requires [Homebrew](https://brew.sh) and a compiled binary at `dist/full-example`:
+## Install
+
+Requires [Homebrew](https://brew.sh).
+
+### End users
+
+Private GitHub release downloads require `HOMEBREW_GITHUB_API_TOKEN` on `brew install` and `brew upgrade`.
+
+If [GitHub CLI](https://cli.github.com/) is installed:
 
 ```bash
-just build
-just install-local              # first-time dev formula (`just install` is an alias)
-just reinstall-local            # fast binary swap during development
-just install-production         # uninstall local dev, install from GitHub tap (needs HOMEBREW_GITHUB_API_TOKEN for private repos)
-just test-release               # same token requirement when formula uses a GitHub release URL
+brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install bdombro/bun-argsbarg/full-example
+full-example configure
 ```
 
-Undo a local dev install:
+Without `gh`, create a personal access token at [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new):
+
+- Resource owner — your org
+- Repository access — this repo (or all repositories)
+- Permissions — **Contents** (read-only)
 
 ```bash
-just uninstall          # dev formula + agent artifacts
-just uninstall-config   # app config only
-just uninstall-release  # release formula (keeps tap)
+HOMEBREW_GITHUB_API_TOKEN=YOUR_TOKEN brew install bdombro/bun-argsbarg/full-example
 ```
 
-See [docs/distribution-homebrew.md](../../docs/distribution-homebrew.md).
+Upgrade:
+
+```bash
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade full-example
+```
+
+Shell completions install during `brew install`. See [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
+
+### Developers
+
+Requires [Homebrew](https://brew.sh), [just](https://just.systems), and [Bun](https://bun.sh). From the repository root (this directory — the folder with `justfile` and `Formula/`):
+
+```bash
+brew install just bun
+just setup
+just install              # build + local dev formula
+just reinstall-local      # fast binary swap during development
+just install-production   # remote tap install (needs HOMEBREW_GITHUB_API_TOKEN)
+just test-release
+```
+
+Undo a local dev install: `just uninstall` (formula + agent artifacts), `just uninstall-config` (app config only).
 
 ## Schemagen markers
 
@@ -84,15 +76,8 @@ Discovery walks `src/**/types.ts` only.
 
 ## Environment
 
+Optional overrides for `program.appConfig` (the configure wizard is the usual path):
+
 | Variable | Purpose |
 | --- | --- |
-| `FULL_EXAMPLE_API_TOKEN` | Overrides `apiToken` via `program.appConfig` env mapping |
-
-## Maintainers (argsbarg repo)
-
-When adding or changing builtins, update this example and run:
-
-```bash
-just check-full-example   # from argsbarg repo root
-just test                 # from examples/full-example
-```
+| `FULL_EXAMPLE_API_TOKEN` | Overrides `apiToken` when set in the shell |

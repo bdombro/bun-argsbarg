@@ -48,12 +48,10 @@ export function docsSkillTopicDescription(program: CliProgram, caps: CliCapabili
   return "Print a reference agent SKILL for AI agents.";
 }
 
-export function configureCommandNotes(program: CliProgram, caps: CliCapabilities): string {
+export function configureCommandNotes(program: CliProgram, _caps: CliCapabilities): string {
   const app = program.key;
   const lines = [
-    "Install the binary via Homebrew (tap-from-repo), then set up agent artifacts:",
-    `  brew tap <org>/<repo>`,
-    `  brew install <tap>/${app}`,
+    "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).",
     "",
     "Homebrew post_install runs:",
     `  ${app} configure --sync --yes`,

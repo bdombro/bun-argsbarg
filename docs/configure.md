@@ -6,15 +6,15 @@ Opt out with `configure: { enabled: false }` on the program root.
 
 ## End-user install (Homebrew)
 
+Private GitHub release downloads require `HOMEBREW_GITHUB_API_TOKEN` on `brew install` and `brew upgrade`. See [distribution-homebrew.md](distribution-homebrew.md#end-user-install) for token setup (`gh auth token` or a personal access token with **Contents** read).
+
 ```bash
-brew tap <org>/<repo>
-brew install <tap>/<key>
+brew tap <org>/<repo> git@github.com:<org>/<repo>.git
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install <tap>/<key>
 <key> configure    # interactive: per-target prompts; run when app config is required
 ```
 
-Upgrade with `brew upgrade <key>`. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
-
-Private GitHub release assets require `HOMEBREW_GITHUB_API_TOKEN` at install time — see [distribution-homebrew.md](distribution-homebrew.md#end-user-install).
+Upgrade with `HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade <key>`. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
 
 **Uninstall the binary:** remove agent artifacts first (while the CLI is still on PATH), then `brew uninstall`:
 

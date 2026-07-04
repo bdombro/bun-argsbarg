@@ -14,18 +14,30 @@ Argsbarg apps distribute the **binary and shell completions** through Homebrew, 
 
 ### End-user install
 
+For **private or internal GitHub taps**, prepend `HOMEBREW_GITHUB_API_TOKEN` on `brew install` and `brew upgrade` (release formulae download via the GitHub API).
+
+If [GitHub CLI](https://cli.github.com/) is installed:
+
 ```bash
-brew tap <org>/<repo>
-brew install <tap>/{key}
+brew tap <org>/<repo> git@github.com:<org>/<repo>.git
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install <tap>/{key}
 {key} configure   # when app config is required
 ```
 
-For **private or internal GitHub repos**, release formulae attach `HOMEBREW_GITHUB_API_TOKEN` when downloading the binary. Export a PAT with `repo` scope (or rely on `gh auth login` — `just install-production` and `just test-release` fall back to `gh auth token`):
+Without `gh`, create a personal access token at [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new):
+
+- Resource owner — your org (e.g. sqsp)
+- Repository access — the tap repo or all repositories
+- Permissions — **Contents** (read-only)
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
-brew tap <org>/<repo> git@github.com:<org>/<repo>.git
-brew install <tap>/{key}
+HOMEBREW_GITHUB_API_TOKEN=YOUR_TOKEN brew install <tap>/{key}
+```
+
+Upgrade:
+
+```bash
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade {key}
 ```
 
 Local dev installs (`just install-local`) use a `file://` staging URL and do not need the token.

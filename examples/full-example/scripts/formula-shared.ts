@@ -47,14 +47,14 @@ export const githubPrivateReleaseDownloadStrategyRuby = `  class GitHubPrivateRe
       @owner, @repo, @tag, @filename = match.captures
     end
 
-    private
-
     def _fetch(url:, resolved_url: resolved_download_url, timeout:)
       curl_download resolved_download_url,
                     "--header", "Accept: application/octet-stream",
                     "--header", "Authorization: Bearer #{GitHub::API.credentials}",
                     to: temporary_path
     end
+
+    private
 
     def resolved_download_url
       @resolved_download_url ||= begin
@@ -82,14 +82,13 @@ export function releaseFormulaUrl(version: string): string {
 }
 
 export function renderFormula(coords: FormulaCoords): string {
-  const strategy = coords.privateRelease ? `${githubPrivateReleaseDownloadStrategyRuby}\n\n  ` : "";
+  const strategyBlock = coords.privateRelease ? `\n${githubPrivateReleaseDownloadStrategyRuby}\n\n  ` : "";
   return `class ${className} < Formula
-  ${strategy}desc "${desc}"
+  desc "${desc}"
   homepage "${homepage}"
-  ${coords.urlStanza}
   version "${coords.version}"
   sha256 "${coords.sha256}"
-{dependsOnBlock}
+
   ${formulaInstallRuby}
 
   ${formulaPostInstallRuby}
@@ -97,6 +96,7 @@ export function renderFormula(coords: FormulaCoords): string {
   ${formulaCaveatsRuby}
 
   ${formulaTestRuby}
+${strategyBlock}${coords.urlStanza}
 end
 `;
 }

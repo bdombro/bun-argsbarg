@@ -617,8 +617,8 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
   expect(schema).not.toHaveProperty("handler");
 });
 
-/** CliSchemaExport resolves program key in install notes. */
-test("cliSchemaExport resolves program key in install notes", () => {
+/** CliSchemaExport configure notes reference README for install. */
+test("cliSchemaExport configure notes reference README for install", () => {
   const root = testProgram({
     key: "myapp",
     version: "1.0.0",
@@ -634,7 +634,8 @@ test("cliSchemaExport resolves program key in install notes", () => {
 
   const json = cliSchemaJson(root);
   expect(json).not.toContain("{argsbarg:program}");
-  expect(json).toContain("brew install");
+  expect(json).toContain("README");
+  expect(json).not.toContain("brew install <tap>");
 });
 
 /** CliSchemaExport resolves {argsbarg:program} in consumer notes. */

@@ -112,11 +112,11 @@ See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom 
 
 ### Configure CLI
 
-Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh:
+Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh. Private taps need `HOMEBREW_GITHUB_API_TOKEN` on install — see [docs/distribution-homebrew.md](docs/distribution-homebrew.md#end-user-install).
 
 ```bash
-brew tap <org>/<repo>
-brew install <tap>/myapp
+brew tap <org>/<repo> git@github.com:<org>/<repo>.git
+HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install <tap>/myapp
 myapp configure    # interactive per-target setup; opt-in app config wizard
 ```
 
@@ -224,7 +224,51 @@ Check the `examples/` directory for full working scripts:
 | `ArgsBargFullExample` | `examples/full-example/` | **Copy template:** all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`. |
 
 
-Examples ship in the npm package under `node_modules/argsbarg/examples/`. Bootstrap a production CLI with `bunx argsbarg create my-cli`.
+Examples ship in the npm package under `node_modules/argsbarg/examples/`.
+
+## Bootstrap a new CLI
+
+Copy the shipped `examples/full-example` template into a new directory:
+
+Interactive (TTY):
+
+```bash
+bunx argsbarg create my-cli
+```
+
+Non-interactive:
+
+```bash
+bunx argsbarg create my-cli \
+  --key my-cli --release-repo org/my-cli --yes
+```
+
+Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `program.description` and the Homebrew formula).
+
+`create` copies the template (including `.cursor/rules/cli-program.mdc`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders in `README.md` and other files, runs `bun install`, schemagen, `bun test`, and `git init` + Initial commit when appropriate.
+
+**Git bootstrap:** skipped when the target already has a `.git` directory, or when the target sits inside an existing git work tree (monorepo subfolder). Standalone new directories get an `Initial commit`.
+
+Verify an existing tree: `bunx argsbarg create --check .`
+
+To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
+
+### What the full-example template includes
+
+| Area | Files / wiring |
+| --- | --- |
+| All builtins | `completion`, `version`, `configure`, `docs`, `mcp`, `configure get`/`set` |
+| `program.appConfig` | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts` |
+| `outputSchema` | `src/commands/status/types.ts` → `schemas/outputSchemas.ts` |
+| Schemagen | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts` |
+| Command layout | `src/commands/<name>/command.ts`; registration in `src/program.ts` |
+| MCP doc topics | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
+| Package import | `from "argsbarg"` (not relative to argsbarg `src/`) |
+| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/gen-dev-formula.ts`, `Formula/`, `justfile` |
+| Dev tooling | Biome (`just format` / `just lint`), TypeScript, colocated tests |
+| Cursor rules | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc` |
+
+When changing builtins or the template, run `just check-full-example` from the argsbarg repo root.
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -240,7 +284,7 @@ nested.ts read ./README.md
 bun ./examples/formats.ts run --tags demo,docs --on 2026-06-22
 
 cd examples/full-example && just setup && just schemagen
-FULL_EXAMPLE_API_TOKEN=dev just run status --json
+just run status --json
 ```
 
 

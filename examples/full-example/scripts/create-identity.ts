@@ -3,7 +3,7 @@
 export const createIdentity = {
   key: "full-example",
   className: "FullExample",
-  tap: "local/full-example",
+  tap: "bdombro/bun-argsbarg",
   homepage: "https://github.com/bdombro/bun-argsbarg",
   releaseRepo: "bdombro/bun-argsbarg",
   desc: "Argsbarg full example reference app",

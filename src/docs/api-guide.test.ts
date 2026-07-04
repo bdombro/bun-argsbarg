@@ -66,7 +66,7 @@ test("generateApiGuide covers the same command keys as cliSchemaExport", () => {
   expect(schema.commands?.map((c) => c.key)).toEqual(["stat"]);
 });
 
-test("generateApiGuide resolves program key in install notes", () => {
+test("generateApiGuide configure notes point to README not brew install", () => {
   const fixture: CliProgram = {
     key: "myapp",
     version: "1.0.0",
@@ -75,7 +75,8 @@ test("generateApiGuide resolves program key in install notes", () => {
   };
   const md = generateApiGuide(fixture);
   expect(md).not.toContain("{argsbarg:program}");
-  expect(md).toContain("brew install");
+  expect(md).toContain("README");
+  expect(md).not.toContain("brew install <tap>");
   expect(md).not.toContain("Upgrade to latest release");
 });
 

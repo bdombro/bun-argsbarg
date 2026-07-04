@@ -9,7 +9,7 @@ _:
 # Typecheck and format the codebase
 check: typecheck format
 
-consumer_apps := "idp-trees sqsp-qa-manager poc-sqsp-i18n-tools"
+consumer_apps := "idp-trees sqsp-qa-manager-poc sqsp-i18n-tools-poc"
 
 # Verify committed schemas match schemagen output and template drift in examples/full-example
 check-full-example: full-example-schemagen
