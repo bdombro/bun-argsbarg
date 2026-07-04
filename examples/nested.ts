@@ -21,7 +21,7 @@ const program = {
       readme: { text: "# nested.ts\n\nNested groups demo.\n" },
     },
   },
-  install: {},
+  configure: {},
   commands: [
     {
       key: "stat",

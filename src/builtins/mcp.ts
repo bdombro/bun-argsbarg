@@ -12,8 +12,8 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
     "  args: mcp",
     "",
   ];
-  if (caps.install) {
-    lines.push("Or:", "", "  {argsbarg:program} install --mcp --yes", "");
+  if (caps.configure) {
+    lines.push("Or:", "", "  {argsbarg:program} configure", "");
   }
   if (docsEnabled(program)) {
     lines.push("Full setup guide: {argsbarg:program} docs mcp");

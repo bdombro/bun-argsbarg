@@ -1,7 +1,7 @@
 import { resolveCapabilities } from "../capabilities.ts";
 import type {
-  CliInstallConfig,
-  CliInstallTargets,
+  CliConfigureConfig,
+  CliConfigureTargets,
   CliProgram,
   InstallAgentIntegration,
   InstallTargetSpec,
@@ -15,10 +15,10 @@ export type { InstallTargetSpec, ResolvedInstallTarget } from "../types.ts";
 export type { InstallPlanMode, InstallScope } from "./target-types.ts";
 
 export function resolveAgentIntegration(
-  install?: CliInstallConfig,
+  configure?: CliConfigureConfig,
   mcpEnabled = false,
 ): InstallAgentIntegration {
-  return install?.agentIntegration ?? (mcpEnabled ? "mcp" : "skill");
+  return configure?.agentIntegration ?? (mcpEnabled ? "mcp" : "skill");
 }
 
 /** Resolves a boolean or object target spec against category defaults. */
@@ -52,7 +52,7 @@ function artifactDefaults(
 
 function applyAgentPairDedupe(
   out: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
-  user: CliInstallTargets | undefined,
+  user: CliConfigureTargets | undefined,
   integration: InstallAgentIntegration,
 ): void {
   if (integration === "both") return;
@@ -78,12 +78,12 @@ function applyAgentPairDedupe(
 
 /** Effective per-artifact gates for install.targets. */
 export function resolveEffectiveInstallTargets(
-  install?: CliInstallConfig,
+  configure?: CliConfigureConfig,
   program?: Pick<CliProgram, "mcpServer">,
 ): Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }> {
   const mcpEnabled = program?.mcpServer?.enabled === true;
-  const integration = resolveAgentIntegration(install, mcpEnabled);
-  const user = install?.targets;
+  const integration = resolveAgentIntegration(configure, mcpEnabled);
+  const user = configure?.targets;
   const out = {} as Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   for (const key of INSTALL_ARTIFACT_KEYS) {
     out[key] = resolveInstallTargetSpec(user?.[key], artifactDefaults(key, integration));

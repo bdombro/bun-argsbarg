@@ -11,7 +11,7 @@ import type {
   UninstallAction,
 } from "../target-types.ts";
 
-/** App config file (install --configure / wizard). */
+/** App config file (interactive configure / wizard). */
 class ConfigureInstallTarget extends InstallTarget {
   readonly key = "configure" as const;
   readonly actionKind = "configure" as const;

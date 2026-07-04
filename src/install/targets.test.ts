@@ -75,10 +75,10 @@ describe("resolveEffectiveInstallTargets", () => {
       version: "1",
       description: "x",
       mcpServer: { enabled: true },
-      install: { agentIntegration: "skill" },
+      configure: { agentIntegration: "skill" },
       handler: () => {},
     };
-    const effective = resolveEffectiveInstallTargets(program.install, program);
+    const effective = resolveEffectiveInstallTargets(program.configure, program);
     const scope = { mcp: true };
     expect(isArtifactInScope("cursorMcp", scope, effective, "install-scoped", program)).toBe(false);
     expect(
@@ -101,10 +101,10 @@ describe("resolveEffectiveInstallTargets", () => {
       version: "1",
       description: "x",
       mcpServer: { enabled: true },
-      install: { agentIntegration: "both" },
+      configure: { agentIntegration: "both" },
       handler: () => {},
     };
-    const effective = resolveEffectiveInstallTargets(program.install, program);
+    const effective = resolveEffectiveInstallTargets(program.configure, program);
     const scope = { mcp: true, skill: true, configure: true };
     expect(isArtifactInScope("cursorSkill", scope, effective, "install-scoped", program)).toBe(
       true,

@@ -8,11 +8,11 @@ Start here to pick the right guide.
 | **Authoring a `CliProgram`** (humans or agents) | [cli-program.md](cli-program.md) — schema, formats, headless, `read*Flags` |
 | **JSON stdout / `outputSchema`** | [output-schema.md](output-schema.md) — codegen pipeline, JSDoc, narrowing |
 | **App config / `program.appConfig`** | [config-schema.md](config-schema.md) — flat JSON file, `ctx.appConfig`, codegen |
-| **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `install --mcp` |
-| **Shipping install / agent artifacts** | [install.md](install.md) — Homebrew + `myapp install --reinstall` |
+| **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `configure --sync` |
+| **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure --sync` |
 | **Homebrew tap-from-repo distribution** | [distribution-homebrew.md](distribution-homebrew.md) — formula pattern, `argsbarg create` |
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |
-| **Agent skills** | [ai-skills.md](ai-skills.md) — `install --skill`, `docs skill` |
+| **Agent skills** | [ai-skills.md](ai-skills.md) — `configure`, `docs skill` |
 | **Maintaining the argsbarg repo** | [developing.md](developing.md) — release, consumers, npm `files` |
 | **Cursor / IDE agents in a consumer app** | `bunx argsbarg create` (includes rule) or `bun scripts/merge-cli-program-rule.ts .` from argsbarg checkout |
 | **Runnable examples** (shipped in npm) | [examples/](examples/) — see table below |

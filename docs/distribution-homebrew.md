@@ -1,14 +1,14 @@
 # Shipping via Homebrew (tap-from-repo)
 
-Argsbarg apps distribute the **binary and shell completions** through Homebrew, and **agent artifacts** (skills, MCP config) through `install --reinstall`.
+Argsbarg apps distribute the **binary and shell completions** through Homebrew, and **agent artifacts** (skills, MCP config) through `configure --sync`.
 
 ## Distribution model
 
 | Layer | Mechanism |
 | --- | --- |
 | Binary + completions | Formula `install` block |
-| Skills + MCP | Formula `post_install` → `{key} install --reinstall --yes` |
-| App config | User opt-in: `{key} install --configure` (interactive; not run from formula `post_install`) |
+| Skills + MCP | Formula `post_install` → `{key} configure --sync --yes` |
+| App config | User opt-in: `{key} configure` (interactive; not run from formula `post_install`) |
 
 **Only tap-from-repo** — in-repo `Formula/` or GitHub tap. Not Homebrew core.
 
@@ -17,7 +17,7 @@ Argsbarg apps distribute the **binary and shell completions** through Homebrew, 
 ```bash
 brew tap <org>/<repo>
 brew install <tap>/{key}
-{key} install --configure   # when app config is required
+{key} configure   # when app config is required
 ```
 
 ### Developer install
@@ -36,12 +36,12 @@ Dev and release use the **same formula** (`Formula/{key}.rb`, class name, instal
 | Recipe | Removes |
 | --- | --- |
 | `just uninstall` | Formula `{key}` + tap symlink + skills/MCP |
-| `just uninstall-config` | App config file only (`uninstall --configure`) |
+| `just uninstall-config` | App config file only (`configure --remove-config --yes`) |
 | `just uninstall-release` | Release formula from `{tap}` (keeps tap) |
 | `just uninstall-release-tap` | Release formula + `brew untap {tap}` |
 | `just test-release` | Install release formula and run formula test |
 
-End users: `<key> uninstall --yes` then `brew uninstall <tap>/<key>`.
+End users: `<key> configure --remove-all --yes` then `brew uninstall <tap>/<key>`.
 
 ## Formula pattern
 
@@ -52,7 +52,7 @@ def install
 end
 
 def post_install
-  system bin/"{key}", "install", "--reinstall", "--yes"
+  system bin/"{key}", "configure", "--sync", "--yes"
 end
 ```
 
@@ -90,10 +90,11 @@ Template source: [`examples/full-example/`](../examples/full-example/) in the ar
 ## Removed (breaking)
 
 - Self-install to `~/.local/bin`
+- Top-level `install` and `uninstall` commands (use `configure`)
 - `install --update` / `updateGetLatest`
-- `install --completions` (Homebrew owns completions)
+- Homebrew completion installer via CLI (Homebrew owns completions)
 - Bare-argv install bootstrap
-- Auto configure wizard after `install --all`
+- Auto configure wizard after sync
 - Separate `{key}-local` formula and `{key}/dev` tap
 
 ## Config path

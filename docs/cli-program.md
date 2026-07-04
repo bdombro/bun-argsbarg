@@ -2,7 +2,7 @@
 
 ArgsBarg turns your schema into help, shell completions, MCP tools, and agent skills. **The same `description` fields you write for humans are the agent contract** for basic apps.
 
-**Documentation map:** [docs/README.md](README.md) — which guide to read for MCP, install, consumer docgen, and Cursor setup.
+**Documentation map:** [docs/README.md](README.md) — which guide to read for MCP, configure, consumer docgen, and Cursor setup.
 
 ## Minimal app (MCP is free)
 
@@ -413,7 +413,7 @@ await cli.run();
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `description` | *(required)* | Shown in prompts, `config get`, and bundle manifests |
-| `title` | config key | Short label in `install --configure` |
+| `title` | config key | Short label in interactive `configure` |
 | `default` | — | Used when `jsonSchema` omitted (all-string mode) |
 | `required` | `true` | When `false`, optional unless required by `jsonSchema` |
 | `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `config get`, and status |
@@ -427,16 +427,16 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `config get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** included in default `--all` via `install.targets.configure`; also **`myapp install --configure`** (wizard only).
-- **Agent integration:** `install.agentIntegration` (`mcp` | `skill` | `both`) sets default `--all` targets; see [install.md](install.md#examples).
+- **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts.
+- **Agent integration:** `configure.agentIntegration` (`mcp` | `skill` | `both`) sets default sync targets; see [configure.md](configure.md#configuretargets).
 
-See [config-schema.md](config-schema.md) for codegen, [install.md](install.md) (`install.targets`), and [mcp.md](mcp.md).
+See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
 
 **Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` in handlers; env export remains for subprocess inheritance. `path` is the resolved absolute config file path (`~/.local/lib/<key>/config`); `dir` is its parent directory.
 
 ## Reserved names
 
-Do not declare user commands named `completion`, `install`, `mcp`, `version`, `docs`, or `config` at the root — ArgsBarg injects these when configured.
+Do not declare user commands named `completion`, `configure`, `mcp`, `version`, `docs`, or `config` at the root — ArgsBarg injects these when configured.
 
 ## Cursor rule for consumer repos
 
@@ -467,7 +467,7 @@ If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just co
 
 3. **Optional:** a separate rule (e.g. `.cursor/argsbarg.mdc` or `AGENTS.md`) for broader package API notes.
 
-**Not this file:** `myapp install --skill` writes the **app** skill (`SKILL.md` under `~/.cursor/skills/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
+**Not this file:** `myapp configure` writes the **app** skill (`SKILL.md` under `~/.cursor/skills/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
 
 ## See also
 
@@ -475,5 +475,5 @@ If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just co
 - [Output schemas](output-schema.md) — codegen pipeline for leaf `outputSchema`
 - [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
 - [MCP server](mcp.md) — tools, schema resource, env bootstrapping
-- [Agent skills](ai-skills.md) — `install --skill`
+- [Agent skills](ai-skills.md) — `configure`
 - [Bundled docs](bundled-docs.md) — `docs` topics, consumer docgen vs framework docs

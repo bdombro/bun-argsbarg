@@ -226,7 +226,7 @@ export function formatMissingConfigMessage(program: CliProgram, keys: string[]):
   const path = displayAppConfigPath(program);
   return [
     `Missing required configuration: ${list}`,
-    `Configure interactively:  ${program.key} install --configure`,
+    `Configure interactively:  ${program.key} configure`,
     `Or set via:               ${program.key} config set <key> <value>`,
     `Config file:              ${path}`,
     `See:                      ${program.key} docs mcp`,
@@ -239,7 +239,7 @@ export function formatMcpMissingConfigMessage(program: CliProgram, keys: string[
   const path = displayAppConfigPath(program);
   return [
     `Missing required configuration: ${list}`,
-    `Configure: ${program.key} install --configure`,
+    `Configure: ${program.key} configure`,
     `Or set via: ${program.key} config set`,
     `Config file: ${path}`,
   ].join("\n");

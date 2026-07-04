@@ -39,7 +39,7 @@ await cli.run();
 | Where argsbarg uses it | Purpose |
 | --- | --- |
 | Config file | Flat JSON keyed by schema names; strict load (unknown keys rejected) |
-| `install --configure` / `--status` | Interactive setup (configure is opt-in, not in `--all`) and status |
+| Interactive `configure` / `--status` | Auto-runs config wizard when `entries` is non-empty; `--status` for read-only inventory |
 | Built-in `config get` / `config set` | Read/write resolved values (opt-out via `commands: false`) |
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
 | `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` |
@@ -125,7 +125,7 @@ githubToken: {
 },
 ```
 
-`install --configure` does not persist values supplied only by env or `resolve` when you press Enter to accept the current value.
+Interactive `configure` does not persist values supplied only by env or `resolve` when you press Enter to accept the current value.
 
 ## Hand-written vs generated
 

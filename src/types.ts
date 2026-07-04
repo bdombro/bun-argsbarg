@@ -261,18 +261,24 @@ export interface CliAppConfig {
   entries: Record<string, CliAppConfigEntry>;
 }
 
-export interface CliInstallConfig {
-  /** When `false`, hide/disable `install` (default: enabled). */
+/** Opt-out for the `completion` built-in (default: enabled). */
+export interface CliCompletionConfig {
+  /** When `false`, hide/disable `completion` (default: enabled). */
+  enabled?: boolean;
+}
+
+export interface CliConfigureConfig {
+  /** When `false`, hide/disable `configure` (default: enabled). */
   enabled?: boolean;
   /**
-   * Default agent integration for full install (`install --all`).
-   * - `'mcp'` when `mcpServer.enabled` (default): MCP targets in `--all`; paired skills excluded.
-   * - `'skill'` when MCP is off (default): skill targets in `--all`; paired MCP excluded.
-   * - `'both'`: install MCP and skill for the same host when both are available.
+   * Default agent integration for sync (`configure --sync`).
+   * - `'mcp'` when `mcpServer.enabled` (default): MCP targets in sync; paired skills excluded.
+   * - `'skill'` when MCP is off (default): skill targets in sync; paired MCP excluded.
+   * - `'both'`: sync MCP and skill for the same host when both are available.
    */
   agentIntegration?: InstallAgentIntegration;
-  /** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
-  targets?: CliInstallTargets;
+  /** Per-artifact gates for configure sync and interactive wizard. See {@link resolveEffectiveInstallTargets}. */
+  targets?: CliConfigureTargets;
 }
 
 /** Agent integration mode for install — MCP vs shell skill per host. */
@@ -284,7 +290,7 @@ export type InstallTargetSpec =
   | {
       /** When false, artifact is never installed (even with scoped CLI flags). Default true. */
       enabled?: boolean;
-      /** When true, included in bare `install` / `install --all`. Default varies by key. */
+      /** When true, included in `configure --sync`. Default varies by key. */
       includedInAll?: boolean;
     };
 
@@ -293,8 +299,8 @@ export interface ResolvedInstallTarget {
   includedInAll: boolean;
 }
 
-/** Per-artifact gates for full install/uninstall. See {@link resolveEffectiveInstallTargets}. */
-export interface CliInstallTargets {
+/** Per-artifact gates for configure. See {@link resolveEffectiveInstallTargets}. */
+export interface CliConfigureTargets {
   /** App binary status only (Homebrew PATH); no self-install. */
   app?: InstallTargetSpec;
   /** ChatGPT desktop MCP. Default false. */
@@ -309,7 +315,7 @@ export interface CliInstallTargets {
   codexMcp?: InstallTargetSpec;
   /** Codex skill. Default false. */
   codexSkill?: InstallTargetSpec;
-  /** App config: wizard via install --configure only. Default not in --all. */
+  /** App config: interactive wizard step in `configure`. Default not in sync. */
   configure?: InstallTargetSpec;
   /** Cursor MCP. Default false. */
   cursorMcp?: InstallTargetSpec;
@@ -414,8 +420,10 @@ export type CliProgram = CliNode & {
   appConfig?: CliAppConfig;
   /** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
   mcpServer?: CliMcpServerConfig;
-  /** Opt-out and defaults for `install`. */
-  install?: CliInstallConfig;
+  /** Opt-out and defaults for `configure`. */
+  configure?: CliConfigureConfig;
+  /** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
+  completion?: CliCompletionConfig;
   /** When set with `enabled: true`, enables the `docs` built-in command group. */
   docs?: CliDocsConfig;
 };

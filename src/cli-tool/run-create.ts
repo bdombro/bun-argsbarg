@@ -5,7 +5,6 @@ import { relative, resolve } from "node:path";
 import {
   applyCreate,
   type CreateOptions,
-  classNameFromKey,
   diffCreateDetails,
   parseCreateArgv,
   printCreateDiffs,
@@ -27,36 +26,23 @@ function collectInteractiveOptions(
   const targetDir = promptOptional("Target directory", dir) ?? dir;
   const baseDir = resolve(process.cwd(), targetDir);
   const key = promptRequired("CLI key (binary name)", partial.key);
-  const className =
-    promptOptional("Formula class name", partial.className ?? classNameFromKey(key)) ??
-    classNameFromKey(key);
-  const releaseRepo =
-    promptOptional("GitHub release repo (org/repo)", partial.releaseRepo ?? `example/${key}`) ??
-    `example/${key}`;
-  const homepage =
-    promptOptional("Homepage URL", partial.homepage ?? `https://github.com/${releaseRepo}`) ??
-    `https://github.com/${releaseRepo}`;
-  const tap =
-    promptOptional("Homebrew tap (org/repo)", partial.tap ?? `local/${key}`) ?? `local/${key}`;
-  const desc =
-    promptOptional("Formula description", partial.desc ?? `${className} CLI`) ?? `${className} CLI`;
+  const releaseRepo = promptRequired("GitHub release repo (org/repo)", partial.releaseRepo);
 
   const opts = resolveCreateOptions(
     {
       ...partial,
       key,
-      className,
-      tap,
-      homepage,
       releaseRepo,
-      desc,
       force: partial.force ?? false,
     },
     baseDir,
   );
 
   process.stderr.write(`\nTarget: ${baseDir}\n`);
-  process.stderr.write(`Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}\n\n`);
+  process.stderr.write(
+    `Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}  Release: ${opts.releaseRepo}\n`,
+  );
+  process.stderr.write(`Homepage: ${opts.homepage}\n\n`);
   const tree = renderCreateTree(opts);
   process.stderr.write(`Files (${tree.size}):\n`);
   for (const rel of [...tree.keys()].sort()) {
@@ -103,6 +89,9 @@ export async function runCreate(input: Partial<CreateOptions> & { dir?: string }
     }
     if (!partial.key) {
       throw new Error("--key is required in non-interactive mode.");
+    }
+    if (!partial.releaseRepo) {
+      throw new Error("--release-repo is required in non-interactive mode.");
     }
     opts = resolveCreateOptions(partial, baseDir);
     return runCreateApply(baseDir, opts, partial.dryRun ?? false);

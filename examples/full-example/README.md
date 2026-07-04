@@ -29,10 +29,10 @@ Non-interactive:
 
 ```bash
 bunx argsbarg create my-cli \
-  --key my-cli --class-name MyCli --tap org/my-cli \
-  --homepage https://github.com/org/my-cli --release-repo org/my-cli \
-  --yes
+  --key my-cli --release-repo org/my-cli --yes
 ```
+
+Edit `scripts/create-identity.ts` to set `desc` (used by `program.description` and the Homebrew formula).
 
 `create` copies this template (including `.cursor/rules/cli-program.mdc`), substitutes identity placeholders, runs `bun install`, schemagen, `bun test`, and `git init` + Initial commit when appropriate.
 

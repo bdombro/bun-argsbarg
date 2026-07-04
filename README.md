@@ -98,9 +98,9 @@ Every app gets:
 - `version` — print `CliProgram.version` (`myapp version`).
 - `mcp` — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
 - `docs` — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
-- `install` — refresh agent skills and MCP config (`myapp install --reinstall --yes` after Homebrew install). See [docs/install.md](docs/install.md).
+- `configure` — manage agent skills, MCP config, and app config (`myapp configure --sync --yes` after Homebrew install). See [docs/configure.md](docs/configure.md).
 
-Do not declare a top-level command named `completion`, `version`, or `install` — they are reserved.
+Do not declare a top-level command named `completion`, `version`, or `configure` — they are reserved.
 When `mcpServer.enabled` is `true`, do not declare a top-level command named `mcp` — it is reserved for the MCP built-in.
 When `docs.enabled` is `true`, do not declare a top-level command named `docs` — it is reserved for the docs built-in.
 
@@ -110,17 +110,17 @@ Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp 
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: run `bunx argsbarg create` or refresh with `bun scripts/merge-cli-program-rule.ts .` from the argsbarg package).
 
-### Install CLI
+### Configure CLI
 
 Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh:
 
 ```bash
 brew tap <org>/<repo>
 brew install <tap>/myapp
-myapp install --configure    # opt-in app config wizard
+myapp configure    # interactive per-target setup; opt-in app config wizard
 ```
 
-See **[docs/distribution-homebrew.md](docs/distribution-homebrew.md)** for formula patterns and `bunx argsbarg create`. See **[docs/install.md](docs/install.md)** for `install`, `uninstall`, `--reinstall`, and `--status`.
+See **[docs/distribution-homebrew.md](docs/distribution-homebrew.md)** for formula patterns and `bunx argsbarg create`. See **[docs/configure.md](docs/configure.md)** for `configure`, `--sync`, `--remove-all`, and `--status`.
 
 ### Shell completions
 

@@ -224,7 +224,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
     if (isCliLeaf(cmd)) {
       if (
         cmd.key === "completion" ||
-        cmd.key === "install" ||
+        cmd.key === "configure" ||
         cmd.key === "mcp" ||
         cmd.key === "version"
       ) {

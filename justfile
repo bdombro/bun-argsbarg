@@ -30,8 +30,7 @@ create-smoke:
     trap 'rm -rf "$tmpdir"' EXIT
     root="{{justfile_directory()}}"
     bun "$root/src/cli-tool/main.ts" create "$tmpdir/smoke-cli" \
-      --key smoke-cli --class-name SmokeCli --tap local/smoke-cli \
-      --homepage https://example.com --release-repo example/smoke-cli --yes
+      --key smoke-cli --release-repo example/smoke-cli --yes
     test -d "$tmpdir/smoke-cli/.git"
     git -C "$tmpdir/smoke-cli" log -1 --oneline | grep -q Initial
 

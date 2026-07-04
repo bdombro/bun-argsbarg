@@ -176,10 +176,12 @@ function promptConfigKey(
   return { value: undefined, userTyped: false };
 }
 
-/** Options for the interactive `install --configure` wizard. */
+/** Options for the interactive configure wizard (app config target). */
 export interface RunInstallConfigureOpts {
   /** Where the wizard was started from (standalone command vs right after install). */
   context?: "standalone" | "after-install";
+  /** When false, omit the "Configuration Setup" banner (e.g. inside interactive `configure`). */
+  showHeading?: boolean;
 }
 
 /** Print the "Configuration Setup" heading before the configure prompts. */
@@ -225,13 +227,13 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
   return updates;
 }
 
-/** Run the full interactive configure wizard (`install --configure`). */
-export function runInstallConfigure(
+/** Run the full interactive app config wizard (`configure`). */
+export function runConfigure(
   program: CliProgram,
-  _opts: RunInstallConfigureOpts = {},
+  opts: RunInstallConfigureOpts = {},
 ): { path: string; changed: boolean } {
   if (!program.appConfig) {
-    throw new Error("install --configure requires program.appConfig on the program root.");
+    throw new Error("configure requires program.appConfig on the program root.");
   }
   if (!process.stdin.isTTY) {
     const { resolved } = bootstrapAppConfig(program, { validateFile: false });
@@ -239,7 +241,7 @@ export function runInstallConfigure(
     if (missing.length > 0) {
       process.stderr.write(`${formatMissingConfigMessage(program, missing)}\n`);
     } else {
-      process.stderr.write("install --configure requires an interactive terminal.\n");
+      process.stderr.write("configure requires an interactive terminal.\n");
     }
     process.exit(1);
   }
@@ -253,7 +255,7 @@ export function runInstallConfigure(
   const next: Record<string, unknown> = { ...existing };
   let changed = false;
 
-  if (shouldShowConfigureSetupHeading(program)) {
+  if (opts.showHeading !== false && shouldShowConfigureSetupHeading(program)) {
     writeConfigureSetupHeading();
   }
 
@@ -286,7 +288,7 @@ export function runInstallConfigure(
   return { path, changed: false };
 }
 
-/** Summary for `install --status`: config path, whether the file exists, and which required settings are set (never their values). */
+/** Summary for `configure --status`: config path, whether the file exists, and which required settings are set (never their values). */
 export function appConfigStatus(program: CliProgram):
   | {
       path: string;
@@ -343,7 +345,7 @@ export function ensureAppConfig(
 
   if (opts.interactive && process.stdin.isTTY) {
     if (opts.configure) {
-      runInstallConfigure(program, { context: "standalone" });
+      runConfigure(program, { context: "standalone" });
       fileData = readAppConfigFileRaw(resolveAppConfigPath(program));
       resolved = resolveAppConfig(program, fileData, hostEnv);
       exportConfigToEnv(program, resolved, hostEnv);

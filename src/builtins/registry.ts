@@ -3,9 +3,8 @@ import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import type { CliNode, CliProgram } from "../types.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
-import { cliBuiltinInstallCommand } from "./install.ts";
+import { cliBuiltinConfigureCommand } from "./configure.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinUninstallCommand } from "./uninstall.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
 type BuiltinFactory = (program: CliProgram) => CliNode | null;
@@ -27,11 +26,12 @@ function pushBuiltin(
 /** Capability-gated built-in command nodes in stable order (parse, help, export). */
 export function resolveBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
   const builtins: CliNode[] = [];
-  pushBuiltin(builtins, program, (p) => cliBuiltinCompletionGroup(p));
+  if (caps.completion) {
+    pushBuiltin(builtins, program, (p) => cliBuiltinCompletionGroup(p));
+  }
   pushBuiltin(builtins, program, () => cliBuiltinVersionCommand());
-  if (caps.install) {
-    pushBuiltin(builtins, program, (p) => cliBuiltinInstallCommand(p));
-    pushBuiltin(builtins, program, (p) => cliBuiltinUninstallCommand(p));
+  if (caps.configure) {
+    pushBuiltin(builtins, program, (p) => cliBuiltinConfigureCommand(p));
   }
   pushBuiltin(builtins, program, (p) => cliBuiltinDocsGroupIfEnabled(p) ?? null);
   if (caps.mcp) {

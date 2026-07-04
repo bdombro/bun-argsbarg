@@ -41,7 +41,7 @@ Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile
 
 **Recommended in each consumer:** replace the template placeholder with `**<app> conventions:**` bullets (paths to `read*Flags`, shared flags, Ink vs JSON-only). Commit that file; merges refresh the shared top, not your footer.
 
-**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp install --reinstall --yes`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
+**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
 
 ## npm package contents
 

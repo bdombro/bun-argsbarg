@@ -10,6 +10,8 @@ export const program = {
   key: "argsbarg",
   version: pkg.version,
   description: "Argsbarg developer tools — bootstrap CLIs from the full-example template.",
+  completion: { enabled: false },
+  configure: { enabled: false },
   commands: [
     {
       key: "create",
@@ -18,17 +20,30 @@ export const program = {
         { name: "key", description: "CLI binary name.", kind: CliOptionKind.String },
         {
           name: "class-name",
-          description: "Homebrew formula class name.",
+          description: "Homebrew formula Ruby class (default: derived from --key).",
           kind: CliOptionKind.String,
         },
-        { name: "tap", description: "Homebrew tap (org/repo).", kind: CliOptionKind.String },
-        { name: "homepage", description: "Formula homepage URL.", kind: CliOptionKind.String },
+        {
+          name: "tap",
+          description: "Homebrew tap (default: same as --release-repo).",
+          kind: CliOptionKind.String,
+        },
+        {
+          name: "homepage",
+          description: "Formula homepage (default: https://github.com/<release-repo>).",
+          kind: CliOptionKind.String,
+        },
         {
           name: "release-repo",
-          description: "GitHub org/repo for release binary.",
+          description: "GitHub org/repo for releases (required in non-interactive mode).",
           kind: CliOptionKind.String,
         },
-        { name: "desc", description: "Formula description.", kind: CliOptionKind.String },
+        {
+          name: "desc",
+          description:
+            "App + formula description (default: <ClassName> CLI; stored in create-identity.ts).",
+          kind: CliOptionKind.String,
+        },
         { name: "force", description: "Overwrite existing files.", kind: CliOptionKind.Presence },
         {
           name: "dry-run",

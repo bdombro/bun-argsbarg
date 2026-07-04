@@ -1,6 +1,6 @@
 import { resolveCapabilities } from "../capabilities.ts";
 import { appConfigInstalled } from "../config/file.ts";
-import type { CliInstallTargets, CliProgram } from "../types.ts";
+import type { CliConfigureTargets, CliProgram } from "../types.ts";
 import type { InstallPaths } from "./paths.ts";
 import {
   type InstallPlanMode,
@@ -78,7 +78,7 @@ export function buildDetectedSnapshot(root: CliProgram, paths: InstallPaths): De
 }
 
 function targetExplicitlyConfigured(
-  user: CliInstallTargets | undefined,
+  user: CliConfigureTargets | undefined,
   key: CliInstallArtifactKey,
 ): boolean {
   return user?.[key] !== undefined;
@@ -89,7 +89,7 @@ function agentCategoryInScope(
   categoryKeys: readonly CliInstallArtifactKey[],
   category: "skill" | "mcp",
   effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
-  targets: CliInstallTargets | undefined,
+  targets: CliConfigureTargets | undefined,
   root: CliProgram,
 ): boolean {
   if (!categoryKeys.includes(key)) return false;
@@ -105,7 +105,7 @@ export function isArtifactInScope(
   effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
   mode: InstallPlanMode,
   root: CliProgram,
-  targets?: CliInstallTargets,
+  targets?: CliConfigureTargets,
 ): boolean {
   if (mode === "uninstall-all") {
     return true;
@@ -150,7 +150,7 @@ export function shouldIncludeArtifact(
   detected?: Partial<Record<CliInstallArtifactKey, boolean>>,
 ): boolean {
   const target = installTargetForKey(key);
-  const targets = root.install?.targets;
+  const targets = root.configure?.targets;
 
   if (key !== "configure" && target && !target.isAvailable(root, paths)) {
     return false;
@@ -196,7 +196,7 @@ export function buildTargetPlanContext(
   opts: InstallOpts,
   detected: DetectedSnapshot,
 ): TargetPlanContext {
-  const effective = resolveEffectiveInstallTargets(root.install, root);
+  const effective = resolveEffectiveInstallTargets(root.configure, root);
   const mode = resolveInstallPlanMode(opts);
   const scope = resolveInstallScope(opts);
   const detPartial = Object.fromEntries(
@@ -236,8 +236,11 @@ export function resolveInstallTargetPreview(
   program: CliProgram,
   paths: InstallPaths,
 ): InstallTargetPreview {
-  const effective = resolveEffectiveInstallTargets(program.install, program);
-  const integration = resolveAgentIntegration(program.install, program.mcpServer?.enabled === true);
+  const effective = resolveEffectiveInstallTargets(program.configure, program);
+  const integration = resolveAgentIntegration(
+    program.configure,
+    program.mcpServer?.enabled === true,
+  );
 
   const keysForScope = (scope: InstallScope, mode: InstallPlanMode): CliInstallArtifactKey[] =>
     INSTALL_ARTIFACT_KEYS.filter((key) =>

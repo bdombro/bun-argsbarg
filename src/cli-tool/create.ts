@@ -44,11 +44,20 @@ export function keyToEnvPrefix(key: string): string {
     .toUpperCase();
 }
 
+/** PascalCase Homebrew formula class from CLI key; prefix `App` when Ruby constant rules require it. */
 export function classNameFromKey(key: string): string {
-  return key
+  const name = key
     .split(/[-_]/)
+    .filter((s) => s.length > 0)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join("");
+  if (name.length === 0) {
+    throw new Error(`Invalid CLI key: ${key}`);
+  }
+  if (!/^[A-Z]/.test(name)) {
+    return `App${name}`;
+  }
+  return name;
 }
 
 function tapLibraryParts(tap: string): { org: string; repo: string } {
@@ -131,6 +140,12 @@ export function inferCreateOptions(
   };
 }
 
+function assertReleaseRepoFormat(releaseRepo: string): void {
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(releaseRepo)) {
+    throw new Error(`Invalid release repo (expected org/repo): ${releaseRepo}`);
+  }
+}
+
 export function resolveCreateOptions(
   partial: Partial<CreateOptions>,
   baseDir?: string,
@@ -139,13 +154,20 @@ export function resolveCreateOptions(
   const tmpl = templateIdentity();
   const key = merged.key ?? tmpl.key ?? "full-example";
   const className = merged.className ?? classNameFromKey(key);
+  const releaseRepo = merged.releaseRepo;
+  if (!releaseRepo) {
+    throw new Error(
+      "GitHub release repo (org/repo) is required. Pass --release-repo or use the interactive wizard.",
+    );
+  }
+  assertReleaseRepoFormat(releaseRepo);
   const devTemplate = merged.devTemplate ?? (baseDir ? isDevTemplateDir(baseDir) : false);
   return {
     key,
     className,
-    tap: merged.tap ?? `local/${key}`,
-    homepage: merged.homepage ?? `https://github.com/${merged.releaseRepo ?? `example/${key}`}`,
-    releaseRepo: merged.releaseRepo ?? `example/${key}`,
+    tap: merged.tap ?? releaseRepo,
+    homepage: merged.homepage ?? `https://github.com/${releaseRepo}`,
+    releaseRepo,
     desc: merged.desc ?? `${className} CLI`,
     force: merged.force ?? false,
     dryRun: merged.dryRun ?? false,

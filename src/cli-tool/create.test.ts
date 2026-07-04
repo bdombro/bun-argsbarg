@@ -8,6 +8,7 @@ import {
   diffCreate,
   diffCreateDetails,
   renderCreateTree,
+  resolveCreateOptions,
   substituteTemplateContent,
 } from "./create.ts";
 
@@ -39,6 +40,27 @@ describe("argsbarg create", () => {
 
   test("classNameFromKey", () => {
     expect(classNameFromKey("sqsp-i18n")).toBe("SqspI18n");
+    expect(classNameFromKey("at1")).toBe("At1");
+    expect(classNameFromKey("1password")).toBe("App1password");
+  });
+
+  test("resolveCreateOptions derives identity defaults from key", () => {
+    expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe(
+      "App1password",
+    );
+    expect(
+      resolveCreateOptions({ key: "my-cli", className: "Custom", releaseRepo: "org/my-cli" })
+        .className,
+    ).toBe("Custom");
+    const opts = resolveCreateOptions({ key: "at1", releaseRepo: "bdombro/at1" });
+    expect(opts.tap).toBe("bdombro/at1");
+    expect(opts.releaseRepo).toBe("bdombro/at1");
+    expect(opts.homepage).toBe("https://github.com/bdombro/at1");
+    expect(opts.desc).toBe("At1 CLI");
+  });
+
+  test("resolveCreateOptions requires release repo", () => {
+    expect(() => resolveCreateOptions({ key: "at1" })).toThrow(/release repo/i);
   });
 
   test("renderCreateTree includes justfile and create-identity", () => {
@@ -113,7 +135,7 @@ describe("argsbarg create", () => {
   });
 
   test("--diff captures drift details", () => {
-    const drifts = diffCreateDetails("/nonexistent", { key: "x" });
+    const drifts = diffCreateDetails("/nonexistent", { key: "x", releaseRepo: "org/x" });
     expect(drifts.length).toBeGreaterThan(0);
   });
 });

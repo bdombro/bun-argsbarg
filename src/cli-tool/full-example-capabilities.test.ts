@@ -22,7 +22,7 @@ const sinkProgram = {
     topics: { readme: { text: "# readme\n" } },
   },
   mcpServer: { enabled: true },
-  install: {},
+  configure: {},
   commands: [
     {
       key: "status",
@@ -62,7 +62,7 @@ describe("full-example template", () => {
     expect(resolveCapabilities(sinkProgram)).toEqual({
       completion: true,
       mcp: true,
-      install: true,
+      configure: true,
       docs: true,
       configCommands: true,
     });

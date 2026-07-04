@@ -35,7 +35,7 @@ test("collectMcpTools lists user leaf commands only", () => {
   expect(names).toContain("stat_owner_lookup");
   expect(names).toContain("read");
   expect(names).not.toContain("hidden");
-  expect(names).not.toContain("install");
+  expect(names).not.toContain("configure");
   expect(names).not.toContain("mcp");
   expect(names).not.toContain("completion");
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
@@ -242,19 +242,19 @@ test("mcpToolCallToArgv expands varargs positionals", () => {
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
-test("reserved command name install is rejected", () => {
+test("reserved command name configure is rejected", () => {
   const root = testProgram({
     key: "app",
     description: "",
     commands: [
       {
-        key: "install",
+        key: "configure",
         description: "bad",
         handler: () => {},
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: install/);
+  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: configure/);
 });
 
 test("top-level command name mcp is allowed without mcpServer", () => {

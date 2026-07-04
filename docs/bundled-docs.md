@@ -50,7 +50,7 @@ myapp docs readme --save   # write ./docs/readme.md
 myapp docs schema --save   # write ./docs/schema.json
 ```
 
-When `docs` is enabled, top-level `myapp --help` points agents at `myapp docs skill`. The `docs skill` subcommand description recommends `install --skill` for a persisted bundle.
+When `docs` is enabled, top-level `myapp --help` points agents at `myapp docs skill`. The `docs skill` subcommand description recommends `configure` for a persisted bundle.
 
 ## Configuration
 
@@ -83,11 +83,11 @@ When `docs.enabled` is `true`:
 
 - **`docs schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
 - **`docs api`** — markdown rendering of the same command tree (options, positionals, subcommands, fallback routing).
-- **`docs skill`** — prints the compact `SKILL.md` index. Prefer `install --skill --yes` for agents (persists index + full API in `reference.md`).
+- **`docs skill`** — prints the compact `SKILL.md` index. Prefer `configure --sync --yes` for agents (persists index + full API in `reference.md`).
 
 ## MCP guide (`docs mcp`)
 
-When both `docs.enabled` and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `install --mcp`, and protocol notes.
+When both `docs.enabled` and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `configure --sync`, and protocol notes.
 
 There is no override API in v1 — customize behavior via `mcpTool.description` on leaf commands.
 
@@ -99,7 +99,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 
 | Channel | Role |
 | --- | --- |
-| `install --skill` | Writes compact `SKILL.md` + full-API `reference.md` to disk |
+| `configure` (skill targets) | Writes compact `SKILL.md` + full-API `reference.md` to disk |
 | `docs skill` | Print generated `SKILL.md` to stdout |
 | `docs api` | Print command tree markdown to stdout |
 | `docs schema` | Print command tree JSON to stdout |

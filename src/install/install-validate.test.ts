@@ -10,7 +10,7 @@ const base: CliProgram = {
   handler: () => {},
 };
 
-describe("validateInstallConfig", () => {
+describe("validateConfigureConfig", () => {
   test("accepts empty install config", () => {
     expect(() => cliValidateProgram(base)).not.toThrow();
   });
@@ -18,7 +18,7 @@ describe("validateInstallConfig", () => {
   test("rejects removed allSkills shorthand", () => {
     const program = {
       ...base,
-      install: { targets: { allSkills: true } },
+      configure: { targets: { allSkills: true } },
     } as CliProgram;
     expect(() => cliValidateProgram(program)).toThrow(CliSchemaValidationError);
     expect(() => cliValidateProgram(program)).toThrow(/allSkills/);
@@ -28,7 +28,7 @@ describe("validateInstallConfig", () => {
     const program: CliProgram = {
       ...base,
       mcpServer: { enabled: true },
-      install: {
+      configure: {
         agentIntegration: "mcp",
         targets: { cursorMcp: true, cursorSkill: true },
       },
@@ -39,7 +39,7 @@ describe("validateInstallConfig", () => {
   test("rejects explicit MCP target in skill integration mode", () => {
     const program: CliProgram = {
       ...base,
-      install: {
+      configure: {
         agentIntegration: "skill",
         targets: { cursorMcp: true },
       },
@@ -51,7 +51,7 @@ describe("validateInstallConfig", () => {
     const program: CliProgram = {
       ...base,
       mcpServer: { enabled: true },
-      install: {
+      configure: {
         agentIntegration: "both",
         targets: { cursorMcp: true, cursorSkill: true },
       },

@@ -1,3 +1,5 @@
+import { docsSkillTopicDescription } from "../builtins/configure-copy.ts";
+import { resolveCapabilities } from "../capabilities.ts";
 import {
   CliFallbackMode,
   type CliLeaf,
@@ -75,11 +77,7 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   leaves.push(
     docsLeaf(program, "schema", "Print the full command tree as JSON."),
     docsLeaf(program, "api", "Print the full command reference as markdown."),
-    docsLeaf(
-      program,
-      "skill",
-      "Print a reference agent SKILL, use `install --skill` for optimized.",
-    ),
+    docsLeaf(program, "skill", docsSkillTopicDescription(program, resolveCapabilities(program))),
   );
 
   return {

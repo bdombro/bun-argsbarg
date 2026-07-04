@@ -12,6 +12,22 @@ import { dirname, join } from "node:path";
 const PLACEHOLDER =
   /\*\*\{key\} conventions:\*\*|\*\*[^*\n]+ conventions:\*\* add below or in a separate/;
 
+const PLACEHOLDER_SUFFIX_LINE = /replace this line|add below or in a separate/i;
+
+/** Last real app-specific conventions block (not template placeholders). */
+function extractConventionSuffix(existing: string): string {
+  const lines = existing.split("\n");
+  let best = "";
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!/^\*\*[^*\n]+ conventions:\*\*/.test(line)) continue;
+    if (PLACEHOLDER_SUFFIX_LINE.test(line)) continue;
+    if (/^\*\*full-example conventions:\*\*/i.test(line)) continue;
+    best = lines.slice(i).join("\n").trimEnd();
+  }
+  return best;
+}
+
 function parentDir(absolute: string): string {
   const s = absolute.replace(/[/\\]+$/, "");
   const i = Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\"));
@@ -33,16 +49,15 @@ const template = readFileSync(templatePath, "utf8").trimEnd();
 const templateBody = template
   .split("\n")
   .filter((line) => !PLACEHOLDER.test(line))
+  .filter(
+    (line) => !(/^\*\*[^*\n]+ conventions:\*\*/.test(line) && PLACEHOLDER_SUFFIX_LINE.test(line)),
+  )
   .join("\n")
   .replace(/\n+$/, "");
 
 let suffix = "";
 if (existsSync(rulePath)) {
-  const existing = readFileSync(rulePath, "utf8");
-  const match = existing.match(/\n(\*\*[^*\n]+ conventions:\*\*[\s\S]*)$/i);
-  if (match?.[1] && !match[1].includes("add below or in a separate")) {
-    suffix = match[1].trimEnd();
-  }
+  suffix = extractConventionSuffix(readFileSync(rulePath, "utf8"));
 }
 
 const merged = suffix ? `${templateBody}\n\n${suffix}\n` : `${templateBody}\n`;

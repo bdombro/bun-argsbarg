@@ -23,9 +23,9 @@ export function insertGeneratedHint(
   return `${hint}${content}`;
 }
 
-/** Hint for `install --skill` output files. */
+/** Hint for `configure` skill output files. */
 export function skillInstallHint(program: CliProgram): string {
-  return generatedFileHtmlComment(`${program.key} install --skill`);
+  return generatedFileHtmlComment(`${program.key} configure`);
 }
 
 /** Applies install hints to SKILL.md (after frontmatter) and reference.md. */

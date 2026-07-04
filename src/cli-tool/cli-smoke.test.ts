@@ -11,9 +11,19 @@ describe("argsbarg cli-tool", () => {
     expect(proc.stdout.trim().length).toBeGreaterThan(0);
   });
 
-  test("completion subcommand emits bash script", () => {
-    const proc = spawnSync("bun", [main, "completion", "bash"], { encoding: "utf8" });
+  test("help lists create and version only (no install, completion, mcp)", () => {
+    const proc = spawnSync("bun", [main, "--help"], { encoding: "utf8" });
     expect(proc.status).toBe(0);
-    expect(proc.stdout).toContain("complete");
+    expect(proc.stdout).toContain("create");
+    expect(proc.stdout).toContain("version");
+    expect(proc.stdout).not.toContain("configure");
+    expect(proc.stdout).not.toContain("completion");
+    expect(proc.stdout).not.toContain("mcp");
+  });
+
+  test("completion subcommand is disabled", () => {
+    const proc = spawnSync("bun", [main, "completion", "bash"], { encoding: "utf8" });
+    expect(proc.status).toBe(1);
+    expect(proc.stderr).toContain("Shell completion is not available");
   });
 });

@@ -127,28 +127,28 @@ function installTargetExplicitTruthy(spec: InstallTargetSpec | undefined): boole
   return spec.enabled !== false;
 }
 
-/** Validates `program.install` targets and agentIntegration. */
-function validateInstallConfig(program: CliProgram): void {
-  const install = program.install;
-  if (!install) return;
+/** Validates `program.configure` targets and agentIntegration. */
+function validateConfigureConfig(program: CliProgram): void {
+  const configure = program.configure;
+  if (!configure) return;
 
-  if ("prefix" in install) {
+  if ("prefix" in configure) {
     throw new CliSchemaValidationError(
-      "install.prefix removed; app installs to ~/.local/bin/<key>",
+      "configure.prefix removed; app binary installs via Homebrew",
     );
   }
 
-  if (!install.targets) return;
+  if (!configure.targets) return;
 
-  const targets = install.targets;
+  const targets = configure.targets;
   if ("allSkills" in targets || "allMcps" in targets) {
     throw new CliSchemaValidationError(
-      "install.targets.allSkills/allMcps removed; use agentIntegration and per-key targets",
+      "configure.targets.allSkills/allMcps removed; use agentIntegration and per-key targets",
     );
   }
 
   const integration: InstallAgentIntegration =
-    install.agentIntegration ?? (program.mcpServer?.enabled === true ? "mcp" : "skill");
+    configure.agentIntegration ?? (program.mcpServer?.enabled === true ? "mcp" : "skill");
 
   for (const [mcpKey, skillKey] of AGENT_PAIRS) {
     const mcpSpec = targets[mcpKey];
@@ -159,18 +159,18 @@ function validateInstallConfig(program: CliProgram): void {
 
     if (mcpOn && skillOn && integration !== "both") {
       throw new CliSchemaValidationError(
-        `install.targets: ${host} has both MCP and skill configured; set agentIntegration: 'both' or disable one side`,
+        `configure.targets: ${host} has both MCP and skill configured; set agentIntegration: 'both' or disable one side`,
       );
     }
 
     if (integration === "skill" && mcpOn) {
       throw new CliSchemaValidationError(
-        `install.targets.${mcpKey} requires agentIntegration: 'both' when agentIntegration is 'skill'`,
+        `configure.targets.${mcpKey} requires agentIntegration: 'both' when agentIntegration is 'skill'`,
       );
     }
     if (integration === "mcp" && skillOn) {
       throw new CliSchemaValidationError(
-        `install.targets.${skillKey} requires agentIntegration: 'both' when agentIntegration is 'mcp'`,
+        `configure.targets.${skillKey} requires agentIntegration: 'both' when agentIntegration is 'mcp'`,
       );
     }
   }
@@ -202,8 +202,8 @@ export function cliValidateProgram(program: CliProgram): void {
     validateConfigBlock(program.appConfig);
   }
 
-  if (program.install !== undefined) {
-    validateInstallConfig(program);
+  if (program.configure !== undefined) {
+    validateConfigureConfig(program);
   }
 
   const caps = resolveCapabilities(program);
@@ -228,9 +228,9 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
         `mcpServer is only supported on the program root (not on ${node.key})`,
       );
     }
-    if (rogue.install !== undefined) {
+    if (rogue.configure !== undefined) {
       throw new CliSchemaValidationError(
-        `install is only supported on the program root (not on ${node.key})`,
+        `configure is only supported on the program root (not on ${node.key})`,
       );
     }
     if (rogue.docs !== undefined) {

@@ -85,7 +85,7 @@ describe("config/file", () => {
       expect(missing).toContain("apiToken");
       expect(missing).not.toContain("port");
       const msg = formatMissingConfigMessage(program, missing);
-      expect(msg).toContain("install --configure");
+      expect(msg).toContain("configure");
     } finally {
       if (prev !== undefined) process.env.API_TOKEN = prev;
     }

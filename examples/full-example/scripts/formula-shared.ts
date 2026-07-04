@@ -11,12 +11,12 @@ export const formulaInstallRuby = `def install
   end`;
 
 export const formulaPostInstallRuby = `def post_install
-    system bin/"${key}", "install", "--reinstall", "--yes"
+    system bin/"${key}", "configure", "--sync", "--yes"
   end`;
 
 export const formulaCaveatsRuby = `def caveats
     <<~EOS
-      Run \`${key} install --configure\` to set up app config (interactive).
+      Run \`${key} configure\` to set up agent artifacts and app config (interactive).
     EOS
   end`;
 

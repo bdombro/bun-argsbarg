@@ -105,11 +105,11 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
     "## Installation",
     "",
-    "### `install --mcp`",
+    "### `configure`",
     "",
   ];
 
-  if (caps.install) {
+  if (caps.configure) {
     lines.push(
       `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`brew install ${root.key}\`). Host configs reference the app by name.`,
       "",
@@ -123,7 +123,7 @@ export function generateMcpGuide(root: CliProgram): string {
 
   lines.push(
     "```bash",
-    `${root.key} install --mcp --yes`,
+    `${root.key} configure --sync --yes`,
     "```",
     "",
     "Merges the server entry below into host config when each host is present:",
@@ -177,7 +177,7 @@ export function generateMcpGuide(root: CliProgram): string {
   if (root.appConfig?.entries && Object.keys(root.appConfig.entries).length > 0) {
     lines.push("## Configuration", "");
     lines.push(
-      `Configure before first use in Cursor or Claude Desktop (MCP hosts are non-interactive): \`${root.key} install --configure\`.`,
+      `Configure before first use in Cursor or Claude Desktop (MCP hosts are non-interactive): \`${root.key} configure\`.`,
       "",
       `Default config file: \`${displayAppConfigPath(root)}\` (flat JSON keys).`,
       "",

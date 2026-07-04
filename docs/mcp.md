@@ -61,11 +61,11 @@ Use your real binary or script path. For a compiled CLI, `command` can be the in
 
 ### Claude Code
 
-`install --mcp` merges into `~/.claude.json` under `mcpServers`.
+`configure` (MCP targets) merges into `~/.claude.json` under `mcpServers`.
 
 ### Claude Desktop
 
-`install --mcp` also merges into Claude Desktop config when app data is present:
+`configure` (MCP targets) also merges into Claude Desktop config when app data is present:
 
 | Platform | Path |
 | --- | --- |
@@ -77,7 +77,7 @@ Restart Claude Desktop after config changes. You can also install a **`.mcpb`** 
 
 ### OpenCode
 
-When `~/.config/opencode` exists, **`install --mcp`** merges a local server under the top-level **`mcp`** key (not `mcpServers`):
+When `~/.config/opencode` exists, **`configure`** (MCP targets) merges a local server under the top-level **`mcp`** key (not `mcpServers`):
 
 ```json
 {
@@ -96,7 +96,7 @@ OpenCode reads `opencode.jsonc`, `opencode.json`, or `config.json` in that direc
 
 ### OpenAI Codex
 
-When **`codex`** is on PATH, **`install --mcp`** runs `codex mcp add <server> -- <binary> mcp`, which writes **`~/.codex/config.toml`**. Otherwise add manually:
+When **`codex`** is on PATH, **`configure`** (MCP targets) runs `codex mcp add <server> -- <binary> mcp`, which writes **`~/.codex/config.toml`**. Otherwise add manually:
 
 ```toml
 [mcp_servers.myapp]
@@ -110,7 +110,7 @@ Use **`codex mcp`** to list/add/remove servers, or **Settings → MCP → Open c
 
 **Web / Connectors (OpenAI’s documented path)** — **Settings → Connectors → Developer mode** with a **remote HTTPS MCP URL**. ChatGPT does not spawn local stdio binaries; bridge and tunnel local servers when needed.
 
-**Desktop JSON (gated auto-install)** — when ChatGPT app data exists, **`install --mcp`** also merges `mcpServers` into:
+**Desktop JSON (gated auto-install)** — when ChatGPT app data exists, **`configure`** (MCP targets) also merges `mcpServers` into:
 
 | Platform | Path |
 | --- | --- |
@@ -254,7 +254,7 @@ When both **`docs.enabled`** and **`mcpServer.enabled`** are true, each user key
 | MIME type | `text/markdown` |
 | Contents | Same body as `myapp docs <topicKey>` |
 
-Built-in docs subcommands (`schema`, `api`, `skill`, `mcp`) are **not** auto-exposed — use the schema resource, `install --skill`, or CLI `docs` instead. `docs` subcommands remain hidden from MCP `tools/list`.
+Built-in docs subcommands (`schema`, `api`, `skill`, `mcp`) are **not** auto-exposed — use the schema resource, `configure`, or CLI `docs` instead. `docs` subcommands remain hidden from MCP `tools/list`.
 
 Custom `mcpServer.resources` URIs must not collide with the schema URI or any auto docs topic URI (validated at program compile time).
 
@@ -326,7 +326,7 @@ At server start (`Cli.serveMcp()`), before the NDJSON loop:
 - JSON shape: flat object keyed by schema names — `{ "apiToken": "…" }`. Unknown keys rejected on load.
 - Loaded at MCP startup; host `process.env` wins for mapped env vars already set.
 - Missing required config does **not** exit the MCP server — enforced at `tools/call` with a helpful error.
-- Configure interactively: `myapp install --configure` (see [install.md](install.md)).
+- Configure interactively: `myapp configure` (see [configure.md](configure.md)).
 - Built-in `config get` / `config set` when `program.appConfig.commands` is enabled (default). Hosts inject `user_config` → env at spawn; they never write the argsbarg config file.
 
 Example:
@@ -411,11 +411,11 @@ skills/<dirName>/SKILL.md
 
 `plugin.json` references `.mcp.json` so Claude Desktop and Claude Code load the bundled MCP server when the plugin is enabled. The plugin zip preserves the executable bit on `bin/<key>`.
 
-The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the plugin’s MCP toolset (server id, `tools/list`, schema resource). It is not a shell CLI catalog and does not include `reference.md`. Use **`install --skill`** for a persisted shell-oriented skill bundle.
+The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the plugin’s MCP toolset (server id, `tools/list`, schema resource). It is not a shell CLI catalog and does not include `reference.md`. Use **`configure`** for a persisted shell-oriented skill bundle.
 
 Load locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
 
-Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `install --mcp` and MCP hosts). Use **`install --mcp`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
+Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` MCP targets and MCP hosts). Use **`configure --sync --yes`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
 
 ## Hidden commands and options
 

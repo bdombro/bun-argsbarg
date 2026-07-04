@@ -1,4 +1,3 @@
-import { resolveCapabilities } from "../capabilities.ts";
 import type { CliProgram } from "../types.ts";
 
 /**
@@ -8,6 +7,7 @@ export function cliBuiltinCompletionGroup(program: CliProgram): import("../types
   const appName = program.key;
   const router: import("../types.ts").CliRouter = {
     key: "completion",
+    hidden: true,
     description: "Generate the autocompletion script for shells.",
     commands: [
       {
@@ -44,10 +44,8 @@ export function cliBuiltinCompletionGroup(program: CliProgram): import("../types
       },
     ],
   };
-  if (resolveCapabilities(program).install) {
-    router.notes =
-      "Completions are installed by Homebrew during formula install.\n\n" +
-      "See: https://docs.brew.sh/Shell-Completion";
-  }
+  router.notes =
+    "Completions are installed by Homebrew during formula install.\n\n" +
+    "See: https://docs.brew.sh/Shell-Completion";
   return router;
 }

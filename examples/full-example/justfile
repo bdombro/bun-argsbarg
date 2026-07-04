@@ -46,8 +46,8 @@ format:
 install: install-local
 
 # Refresh skills and MCP without reinstalling the formula
-install-artifacts:
-    {{cli_key}} install --reinstall --yes
+sync-artifacts:
+    just run configure --sync --yes
 
 # Dev install: build, write dev formula, symlink tap, brew install
 install-local: build
@@ -57,14 +57,14 @@ install-local: build
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
     brew install --formula {{tap}}/{{cli_key}}
     @echo ""
-    @echo "Next: {{cli_key}} install --configure"
+    @echo "Next: {{cli_key}} configure"
 
 # Remove local dev install, then install from GitHub tap
 install-production: uninstall
     brew tap {{tap}}
     brew install --formula {{tap}}/{{cli_key}}
     @echo ""
-    @echo "Next: {{cli_key}} install --configure"
+    @echo "Next: {{cli_key}} configure"
 
 # Alias for backward compatibility
 reinstall: reinstall-local
@@ -112,11 +112,11 @@ uninstall: uninstall-artifacts uninstall-formula
 
 # Remove agent artifacts only (skills, MCP)
 uninstall-artifacts:
-    {{cli_key}} uninstall --yes
+    just run configure --remove-all --yes
 
 # Remove app config file only
 uninstall-config:
-    {{cli_key}} uninstall --configure --yes
+    just run configure --remove-config --yes
 
 # Remove formula and untap
 uninstall-formula:

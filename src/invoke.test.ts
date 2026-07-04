@@ -20,7 +20,7 @@ const program = {
   key: "t",
   description: "d",
   version: "0.0.0",
-  install: { enabled: false },
+  configure: { enabled: false },
   handler: (ctx) => console.log(ctx.invocation),
 };
 await new Cli(program).run([]);

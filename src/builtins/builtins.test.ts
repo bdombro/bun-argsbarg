@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { resolveCapabilities } from "../capabilities.ts";
+import { cliBuiltinDocsGroup } from "../docs/builtin.ts";
 import { ParseKind, parse, postParseValidate } from "../parse.ts";
 import type { CliProgram } from "../types.ts";
+import { cliBuiltinConfigureCommand, configureBuiltinOptions } from "./configure.ts";
+import { configureCommandDescription, configureSyncOptionDescription } from "./configure-copy.ts";
 import { exportPresentationBuiltins } from "./export.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
-import { cliBuiltinInstallCommand, installBuiltinOptions } from "./install.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
-import { cliBuiltinUninstallCommand, uninstallBuiltinOptions } from "./uninstall.ts";
 
 const fixture: CliProgram = {
   key: "myapp",
@@ -22,52 +24,61 @@ const fixture: CliProgram = {
   ],
 };
 
+const noMcp: CliProgram = {
+  key: "skillonly",
+  version: "0.0.0",
+  description: "Skills only.",
+  commands: [{ key: "ping", description: "Ping.", handler: () => {} }],
+};
+
 describe("builtins help copy", () => {
-  test("install command includes Homebrew-oriented description", () => {
-    const install = cliBuiltinInstallCommand(fixture);
-    expect(install.description).toContain("agent skills");
-    expect(install.notes).toContain("brew install");
-    const names = installBuiltinOptions(fixture).map((o) => o.name);
-    expect(names).toContain("all");
-    expect(names).toContain("mcp");
-    expect(names).not.toContain("app");
-    expect(names).not.toContain("completions");
-    expect(names).not.toContain("update");
-    expect(names.indexOf("all")).toBeLessThan(names.indexOf("mcp"));
-    expect(names.indexOf("mcp")).toBeLessThan(names.indexOf("status"));
-    expect(names).not.toContain("uninstall");
-    const yesOpt = installBuiltinOptions(fixture).find((o) => o.name === "yes");
+  test("configure command includes Homebrew-oriented description", () => {
+    const configure = cliBuiltinConfigureCommand(fixture);
+    expect(configure.description).toContain("agent skills");
+    expect(configure.description).toContain("MCP config");
+    expect(configure.notes).toContain("brew install");
+    const names = configureBuiltinOptions(fixture).map((o) => o.name);
+    expect(names).toContain("sync");
+    expect(names).toContain("remove-all");
+    expect(names).toContain("status");
+    const yesOpt = configureBuiltinOptions(fixture).find((o) => o.name === "yes");
     expect(yesOpt?.shortName).toBe("y");
   });
 
-  test("uninstall command includes removal guidance", () => {
-    const uninstall = cliBuiltinUninstallCommand(fixture);
-    expect(uninstall.notes).toContain("brew uninstall");
-    const names = uninstallBuiltinOptions(fixture).map((o) => o.name);
-    expect(names).toContain("all");
-    expect(names).not.toContain("status");
-    expect(names).not.toContain("reinstall");
+  test("configure copy omits MCP when mcpServer unset", () => {
+    const caps = resolveCapabilities(noMcp);
+    expect(configureCommandDescription(noMcp, caps)).toBe(
+      "Set up agent skills for this app (binary via Homebrew).",
+    );
+    expect(configureCommandDescription(noMcp, caps)).not.toContain("MCP");
+    expect(configureSyncOptionDescription(noMcp, caps)).not.toContain("MCP");
+    const configure = cliBuiltinConfigureCommand(noMcp);
+    expect(configure.description).not.toContain("MCP");
   });
 
-  test("install -y parses as --yes", () => {
+  test("configure notes mention brew upgrade and interactive configure", () => {
+    const configure = cliBuiltinConfigureCommand(fixture);
+    expect(configure.notes).toContain("brew upgrade");
+    expect(configure.notes).toContain("configure --sync --yes");
+    expect(configure.notes).toContain(`${fixture.key} configure`);
+
+    const withConfig: CliProgram = {
+      ...fixture,
+      appConfig: {
+        entries: { token: { description: "Token.", env: "TOKEN" } },
+      },
+    };
+    expect(configureBuiltinOptions(withConfig).map((o) => o.name)).toContain("remove-config");
+  });
+
+  test("configure -y parses as --yes", () => {
     const root = cliParseRoot(fixture);
-    const pr = postParseValidate(root, parse(root, ["install", "-y"]));
+    const pr = postParseValidate(root, parse(root, ["configure", "-y", "--sync"]));
     expect(pr.kind).toBe(ParseKind.Ok);
     if (pr.kind === ParseKind.Ok) {
       expect(pr.opts.yes).toBe("1");
+      expect(pr.opts.sync).toBe("1");
     }
-  });
-
-  test("install omits --mcp option when mcpServer unset", () => {
-    const noMcp: CliProgram = { key: "x", version: "0.0.0", description: "x", handler: () => {} };
-    const names = installBuiltinOptions(noMcp).map((o) => o.name);
-    expect(names).not.toContain("mcp");
-  });
-
-  test("install notes mention brew upgrade", () => {
-    const install = cliBuiltinInstallCommand(fixture);
-    expect(install.notes).toContain("brew upgrade");
-    expect(install.notes).toContain("install --configure");
   });
 
   test("mcp builtin description is user-facing", () => {
@@ -77,38 +88,30 @@ describe("builtins help copy", () => {
     };
     const mcp = cliBuiltinMcpCommand(withDocs);
     expect(mcp.description).toContain("MCP server");
-    expect(mcp.notes).toContain("install --mcp --yes");
+    expect(mcp.notes).toContain("configure");
     expect(mcp.notes).toContain("docs mcp");
   });
 });
 
 describe("presentation root", () => {
-  test("includes mcp and install when enabled", () => {
+  test("includes mcp and configure when enabled", () => {
     const root = cliPresentationRoot(fixture);
     const keys = root.commands?.map((c) => c.key) ?? [];
     expect(keys).toContain("mcp");
-    expect(keys).toContain("install");
-    expect(keys).toContain("uninstall");
+    expect(keys).toContain("configure");
+    expect(keys).not.toContain("completion");
+    expect(keys).not.toContain("install");
   });
 
-  test("omits install when install.enabled is false", () => {
-    const disabled: CliProgram = { ...fixture, install: { enabled: false } };
+  test("omits configure when configure.enabled is false", () => {
+    const disabled: CliProgram = { ...fixture, configure: { enabled: false } };
     const root = cliPresentationRoot(disabled);
-    expect(root.commands?.map((c) => c.key)).not.toContain("install");
+    expect(root.commands?.map((c) => c.key)).not.toContain("configure");
   });
+
   test("includes version builtin", () => {
     const root = cliPresentationRoot(fixture);
     expect(root.commands?.map((c) => c.key)).toContain("version");
-  });
-
-  test("root notes include agent hint when docs enabled", () => {
-    const withDocs: CliProgram = {
-      ...fixture,
-      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
-    };
-    const root = cliPresentationRoot(withDocs);
-    expect(root.notes).toContain("For AI agents: `myapp docs skill`.");
-    expect(root.notes).not.toContain("install --skill");
   });
 });
 
@@ -118,14 +121,14 @@ describe("completion emitters", () => {
     const fish = completionFishScript(schema);
     expect(fish).toContain("complete -c myapp");
     expect(fish).toContain("hello");
-    expect(fish).toContain("install");
+    expect(fish).toContain("configure");
   });
 
-  test("bash script includes install flags", () => {
+  test("bash script includes configure flags", () => {
     const schema = cliPresentationRoot(fixture);
     const bash = completionBashScript(schema);
-    expect(bash).toContain("--all");
-    expect(bash).toContain("install");
+    expect(bash).toContain("hello");
+    expect(bash).toContain("--sync");
   });
 
   test("zsh script registers compdef", () => {
@@ -153,11 +156,29 @@ describe("schema export builtins", () => {
     };
     const builtins = exportPresentationBuiltins(withConfig);
     expect(builtins.map((b) => b.key)).toContain("config");
+    expect(builtins.map((b) => b.key)).toContain("configure");
   });
 
-  test("exportPresentationBuiltins includes install options", () => {
+  test("exportPresentationBuiltins omits hidden completion", () => {
     const builtins = exportPresentationBuiltins(fixture);
-    const install = builtins.find((b) => b.key === "install");
-    expect(install?.options?.find((o) => o.name === "all")?.description).toContain("agent");
+    expect(builtins.map((b) => b.key)).not.toContain("completion");
+  });
+});
+
+describe("docs skill topic copy", () => {
+  test("mentions configure when configure is enabled", () => {
+    const withDocs: CliProgram = {
+      ...noMcp,
+      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
+    };
+    const skill = cliBuiltinDocsGroup(withDocs).commands.find((c) => c.key === "skill");
+    expect(skill?.description).toContain("configure");
+
+    const configureOff: CliProgram = {
+      ...withDocs,
+      configure: { enabled: false },
+    };
+    const skillOff = cliBuiltinDocsGroup(configureOff).commands.find((c) => c.key === "skill");
+    expect(skillOff?.description).not.toContain("configure");
   });
 });

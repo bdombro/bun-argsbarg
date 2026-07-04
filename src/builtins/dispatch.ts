@@ -1,7 +1,7 @@
 import { capabilityDeniedMessage, resolveCapabilities } from "../capabilities.ts";
 import { Cli } from "../cli.ts";
+import { cliConfigure } from "../configure/index.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import { cliInstall, cliUninstall } from "../install/index.ts";
 import { runMcpBundle } from "../mcp/bundle.ts";
 import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
@@ -12,10 +12,9 @@ import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { cliBuiltinConfigGroupIfEnabled } from "./config.ts";
-import { cliBuiltinInstallCommand } from "./install.ts";
+import { cliBuiltinConfigureCommand } from "./configure.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
-import { cliBuiltinUninstallCommand } from "./uninstall.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
 export interface DispatchBuiltinOpts {
@@ -45,6 +44,10 @@ export async function dispatchBuiltin(
   const caps = resolveCapabilities(program);
 
   if (pr.path[0] === "completion") {
+    if (!caps.completion) {
+      process.stderr.write(capabilityDeniedMessage("completion"));
+      process.exit(1);
+    }
     const schemaForCompletion = completionSchema(program, opts);
     if (pr.path[1] === "bash") {
       process.stdout.write(completionBashScript(schemaForCompletion));
@@ -93,28 +96,16 @@ export async function dispatchBuiltin(
     process.exit(1);
   }
 
-  if (pr.path[0] === "install") {
-    if (!caps.install) {
-      process.stderr.write(capabilityDeniedMessage("install"));
+  if (pr.path[0] === "configure") {
+    if (!caps.configure) {
+      process.stderr.write(capabilityDeniedMessage("configure"));
       process.exit(1);
     }
     if (pr.path.length !== 1) {
-      process.stderr.write(`Unknown subcommand: install ${pr.path.slice(1).join(" ")}\n`);
+      process.stderr.write(`Unknown subcommand: configure ${pr.path.slice(1).join(" ")}\n`);
       process.exit(1);
     }
-    await cliInstall(program, pr.opts);
-  }
-
-  if (pr.path[0] === "uninstall") {
-    if (!caps.install) {
-      process.stderr.write(capabilityDeniedMessage("install"));
-      process.exit(1);
-    }
-    if (pr.path.length !== 1) {
-      process.stderr.write(`Unknown subcommand: uninstall ${pr.path.slice(1).join(" ")}\n`);
-      process.exit(1);
-    }
-    await cliUninstall(program, pr.opts);
+    await cliConfigure(program, pr.opts);
   }
 }
 
@@ -141,23 +132,12 @@ export function builtinInterceptRoot(
     };
   }
 
-  if (first === "install" && caps.install) {
+  if (first === "configure" && caps.configure) {
     return {
       parseRoot: {
         key: program.key,
         description: program.description,
-        commands: [cliBuiltinInstallCommand(program)],
-      },
-      isLeafCompletionIntercept: false,
-    };
-  }
-
-  if (first === "uninstall" && caps.install) {
-    return {
-      parseRoot: {
-        key: program.key,
-        description: program.description,
-        commands: [cliBuiltinUninstallCommand(program)],
+        commands: [cliBuiltinConfigureCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };

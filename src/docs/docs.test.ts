@@ -106,7 +106,7 @@ test("docs mcp when MCP enabled", async () => {
   expect(result.stdout).toContain("MCP server (myapp)");
   expect(result.stdout).toContain("myapp mcp");
   expect(result.stdout).toContain("claude_desktop_config.json");
-  expect(result.stdout).toContain("install --mcp --yes");
+  expect(result.stdout).toContain("configure --sync --yes");
 });
 
 test("docs rejects unknown subcommand", async () => {
@@ -176,14 +176,14 @@ test("docs skill prints Cursor SKILL.md", async () => {
   expect(result.stdout).not.toContain("mcp.json");
 });
 
-test("docs skill help recommends install --skill", async () => {
+test("docs skill help recommends configure", async () => {
   const presentation = cliPresentationRoot(docsFixture());
   const docsNode = presentation.commands.find((c) => c.key === "docs");
   expect(docsNode && "commands" in docsNode).toBe(true);
   if (docsNode && "commands" in docsNode) {
     const skill = docsNode.commands.find((c) => c.key === "skill");
     expect(skill?.description).toContain("reference agent SKILL");
-    expect(skill?.description).toContain("install --skill");
+    expect(skill?.description).toContain("configure");
     expect(skill?.notes).toBeUndefined();
     expect(docsNode.notes).toContain("--save");
     expect(docsNode.notes).not.toContain("install --skill");
@@ -210,14 +210,14 @@ test("completions offer docs subcommands", () => {
   expect(bash).toContain("skill) echo");
 });
 
-test("generateMcpGuide includes schema URI and install targets", () => {
+test("generateMcpGuide includes schema URI and configure sync", () => {
   const guide = generateMcpGuide(docsFixture(true));
   expect(guide).toContain("myapp://schema");
   expect(guide).toContain("~/.cursor/mcp.json");
   expect(guide).toContain("claude_desktop_config.json");
   expect(guide).toContain("## Installation");
   expect(guide).toContain("## Running directly");
-  expect(guide).toContain("install --mcp");
+  expect(guide).toContain("configure --sync");
   expect(guide).toContain("brew install myapp");
   expect(guide).toContain("OpenAI Codex");
   expect(guide).toContain("ChatGPT");

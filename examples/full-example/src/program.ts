@@ -32,7 +32,7 @@ const configSchema = {
 export const program = {
   key: createIdentity.key,
   version: "1.0.0",
-  description: "Argsbarg full example — all builtins, schemagen, ctx.appConfig.",
+  description: createIdentity.desc,
   appConfig: {
     jsonSchema: APP_CONFIG_JSON_SCHEMA,
     entries: configSchema,
@@ -50,8 +50,8 @@ export const program = {
     mcpd: true,
     claudePlugin: true,
   },
-  install: {
-    // Defaults: agentIntegration picks skill vs MCP for --all; configure is opt-in.
+  configure: {
+    // Defaults: agentIntegration picks skill vs MCP for sync; app config is opt-in in interactive configure.
   },
   commands: [echoCommand, statusCommand],
 } satisfies CliProgram;
