@@ -6,15 +6,15 @@ Opt out with `configure: { enabled: false }` on the program root.
 
 ## End-user install (Homebrew)
 
-Private GitHub release downloads require `HOMEBREW_GITHUB_API_TOKEN` on `brew install` and `brew upgrade`. See [distribution-homebrew.md](distribution-homebrew.md#end-user-install) for token setup (`gh auth token` or a personal access token with **Contents** read).
+Private GitHub release downloads require [GitHub CLI](https://cli.github.com/) authentication for `brew install` and `brew upgrade`. See [distribution-homebrew.md](distribution-homebrew.md#end-user-install) (`brew install gh`, then `gh auth login`).
 
 ```bash
 brew tap <org>/<repo> git@github.com:<org>/<repo>.git
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install <tap>/<key>
+brew install <tap>/<key>
 <key> configure    # interactive: per-target prompts; run when app config is required
 ```
 
-Upgrade with `HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade <key>`. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
+Upgrade with `brew upgrade <key>`. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
 
 **Uninstall the binary:** remove agent artifacts first (while the CLI is still on PATH), then `brew uninstall`:
 
@@ -22,6 +22,8 @@ Upgrade with `HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade <key>`. 
 <key> configure --remove-all --yes
 brew uninstall <tap>/<key>
 ```
+
+`brew uninstall` runs the formula `uninstall` hook, which removes app config (`configure --remove-config --yes`). Skills and MCP entries are not removed by Homebrew — use `--remove-all` before uninstall when you want those gone too.
 
 ## Developer install
 
@@ -67,7 +69,7 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | Claude skill | Y/n prompt | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | Codex / OpenCode / OpenClaw skills | Y/n prompt | Agent-specific dirs when available |
 | MCP config | Y/n prompt when `mcpServer.enabled` | Cursor, Claude Code/Desktop, OpenCode, Codex, OpenClaw, ChatGPT desktop |
-| App config | auto-runs wizard | Interactive wizard writes `~/.local/lib/<key>/config.json` |
+| App config | auto-runs wizard | Interactive wizard writes `~/.local/lib/<key>/config.json` (schema-aware: comma-separated or JSON for primitive arrays) |
 
 ### Externally managed binary (Homebrew)
 
@@ -162,6 +164,18 @@ end
 ```
 
 This refreshes skills/MCP without running the configure wizard (app config is opt-in via interactive `configure`).
+
+## Formula `uninstall`
+
+Release formulae should run:
+
+```ruby
+def uninstall
+  system bin/"myapp", "configure", "--remove-config", "--yes"
+end
+```
+
+Homebrew calls this before removing the keg, so the binary is still on PATH. Safe no-op when app config was never created or `program.appConfig` is unset.
 
 ## Bootstrapping a new CLI
 

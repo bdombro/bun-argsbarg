@@ -58,11 +58,52 @@ describe("config/validate", () => {
   });
 
   test("parseConfigSetValue requires --json for objects", () => {
-    expect(() => parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, false)).toThrow(
+    expect(() => parseConfigSetValue("ttl:1", { type: "object" }, rootSchema, false)).toThrow(
       /--json/,
     );
     expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, true)).toEqual({
       ttl: 1,
     });
+    expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, false)).toEqual({
+      ttl: 1,
+    });
+  });
+
+  test("parseConfigSetValue accepts comma-separated string arrays", () => {
+    const servicesSchema = {
+      type: "array",
+      items: { type: "string" },
+    };
+    expect(parseConfigSetValue("a,b", servicesSchema, rootSchema, false)).toEqual(["a", "b"]);
+    expect(parseConfigSetValue('["a","b"]', servicesSchema, rootSchema, false)).toEqual(["a", "b"]);
+  });
+
+  test("parseConfigSetValue accepts comma-separated number arrays", () => {
+    const schema = { type: "array", items: { type: "integer" } };
+    expect(parseConfigSetValue("1, 2, 3", schema, rootSchema, false)).toEqual([1, 2, 3]);
+  });
+
+  test("parseConfigSetValue accepts comma-separated date arrays", () => {
+    const schema = {
+      type: "array",
+      items: { type: "string", format: "date" },
+    };
+    expect(parseConfigSetValue("2024-01-01,2024-02-01", schema, rootSchema, false)).toEqual([
+      "2024-01-01",
+      "2024-02-01",
+    ]);
+  });
+
+  test("parseConfigSetValue rejects non-primitive arrays without JSON", () => {
+    const schema = {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { ttl: { type: "number" } },
+        required: ["ttl"],
+      },
+    };
+    expect(() => parseConfigSetValue("a,b", schema, rootSchema, false)).toThrow(/--json/);
+    expect(parseConfigSetValue('[{"ttl":1}]', schema, rootSchema, false)).toEqual([{ ttl: 1 }]);
   });
 });

@@ -72,6 +72,8 @@ export function configureCommandNotes(program: CliProgram, _caps: CliCapabilitie
     `  ${app} configure --remove-all --yes`,
     `  brew uninstall <tap>/${app}`,
     "",
+    "App config is removed automatically by the formula uninstall hook during brew uninstall.",
+    "",
   ];
   if (program.appConfig) {
     lines.push("Remove app config only:", `  ${app} configure --remove-config --yes`, "");

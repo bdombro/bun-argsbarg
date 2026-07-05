@@ -14,6 +14,10 @@ export const formulaPostInstallRuby = `def post_install
     system bin/"${key}", "configure", "--sync", "--yes"
   end`;
 
+export const formulaUninstallRuby = `def uninstall
+    system bin/"${key}", "configure", "--remove-config", "--yes"
+  end`;
+
 export const formulaCaveatsRuby = `def caveats
     <<~EOS
       Run \`${key} configure\` to set up agent artifacts and app config (interactive).
@@ -92,6 +96,8 @@ export function renderFormula(coords: FormulaCoords): string {
   ${formulaInstallRuby}
 
   ${formulaPostInstallRuby}
+
+  ${formulaUninstallRuby}
 
   ${formulaCaveatsRuby}
 

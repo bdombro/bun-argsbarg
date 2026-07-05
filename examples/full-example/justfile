@@ -1,7 +1,5 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-export HOMEBREW_GITHUB_API_TOKEN := `gh auth token`
-
 cli_key := `bun scripts/print-identity.ts key`
 tap_org := `bun scripts/print-identity.ts tapOrg`
 tap_repo := `bun scripts/print-identity.ts tapRepo`
@@ -58,7 +56,7 @@ install-local: build
     @echo ""
     @echo "Next: {{cli_key}} configure"
 
-# Remove local dev install, then install from GitHub tap (private release assets need gh auth token)
+# Remove local dev install, then install from GitHub tap (requires gh auth login)
 install-production: uninstall
     brew tap {{release_repo}} {{tap_git_url}}
     brew install --formula {{release_repo}}/{{cli_key}}

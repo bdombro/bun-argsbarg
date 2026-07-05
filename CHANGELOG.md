@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.7] - 2026-07-05
+
+### Changed
+
+- **Homebrew install docs** — private taps: `brew install gh` and `gh auth login` only; removed legacy token env-var setup from docs and justfiles (template + consumers).
+- **App config array input** — interactive `configure` and `configure set` parse homogeneous primitive arrays from comma-separated values or JSON literals; objects and nested arrays still require `--json`.
+- **Homebrew formula `uninstall`** — generated formulae run `{key} configure --remove-config --yes` before the keg is removed (template + docs).
+
 ## [5.1.6] - 2026-07-05
 
 
@@ -20,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Template justfile** — export `HOMEBREW_GITHUB_API_TOKEN` from `gh auth token` at top of justfile; removed `scripts/ensure-brew-github-token.sh` and `HOMEBREW_NO_*` suppress vars.
+- **Template justfile** — removed `scripts/ensure-brew-github-token.sh` and `HOMEBREW_NO_*` suppress vars.
 
 ## [5.1.3] - 2026-07-04
 
@@ -28,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Private GitHub release installs** — release formulae use `GitHubPrivateReleaseDownloadStrategy` (GitHub API + `GitHub::API.credentials` / `HOMEBREW_GITHUB_API_TOKEN`); `just install-production` and `just test-release` export the token (with `gh auth token` fallback). Documented in `docs/distribution-homebrew.md`.
+- **Private GitHub release installs** — release formulae use `GitHubPrivateReleaseDownloadStrategy` (GitHub API + `GitHub::API.credentials`); documented in `docs/distribution-homebrew.md`.
 - **Homebrew install docs** — README template and consumer READMEs document private-tap install; `configure` CLI notes stay post-install only.
 
 ## [5.1.1] - 2026-07-04
@@ -619,7 +627,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.6...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.7...HEAD
+[5.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.7
 [5.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.6
 [5.1.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.5
 [5.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.4

@@ -22,30 +22,25 @@ Requires [Homebrew](https://brew.sh).
 
 ### End users
 
-Private GitHub release downloads require `HOMEBREW_GITHUB_API_TOKEN` on `brew install` and `brew upgrade`.
+Private GitHub release downloads require [GitHub CLI](https://cli.github.com/) authentication. Run once before `brew install` or `brew upgrade`:
 
-If [GitHub CLI](https://cli.github.com/) is installed:
+```bash
+brew install gh   # skip if already installed
+gh auth login     # skip if already authenticated
+```
+
+Install:
 
 ```bash
 brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install bdombro/bun-argsbarg/full-example
+brew install bdombro/bun-argsbarg/full-example
 full-example configure
-```
-
-Without `gh`, create a personal access token at [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new):
-
-- Resource owner — your org
-- Repository access — this repo (or all repositories)
-- Permissions — **Contents** (read-only)
-
-```bash
-HOMEBREW_GITHUB_API_TOKEN=YOUR_TOKEN brew install bdombro/bun-argsbarg/full-example
 ```
 
 Upgrade:
 
 ```bash
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew upgrade full-example
+brew upgrade full-example
 ```
 
 Shell completions install during `brew install`. See [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
@@ -59,11 +54,11 @@ brew install just bun
 just setup
 just install              # build + local dev formula
 just reinstall-local      # fast binary swap during development
-just install-production   # remote tap install (uses gh auth token)
+just install-production   # remote tap install (requires gh auth login)
 just test-release
 ```
 
-Undo a local dev install: `just uninstall` (formula + agent artifacts), `just uninstall-config` (app config only).
+Undo a local dev install: `just uninstall` (formula + agent artifacts; app config removed by formula `uninstall`), `just uninstall-config` (app config only, without uninstalling the formula).
 
 ## Schemagen markers
 

@@ -29,7 +29,8 @@ import {
   resolveAppConfig,
   stringifyConfigValue,
 } from "./resolve.ts";
-import { effectiveJsonSchema } from "./schema.ts";
+import { configPropertySchema, effectiveJsonSchema } from "./schema.ts";
+import { configValueInputHint, parseConfigSetValue } from "./validate.ts";
 
 export { displayAppConfigPath } from "./file.ts";
 
@@ -148,11 +149,15 @@ function promptConfigKey(
   configure: boolean,
   jsonSchemaRequired: Set<string> | undefined,
   hostEnv: Record<string, string | undefined>,
+  jsonSchema: Record<string, unknown> | undefined,
 ): { value: unknown; userTyped: boolean } {
   const baseTitle = entry.title ?? defaultConfigEntryTitle(key);
   const titleWithEnv = entry.env ? `${baseTitle} (${entry.env})` : baseTitle;
   const required = configEntryRequired(key, entry, jsonSchemaRequired);
   const heading = required || !configure ? titleWithEnv : `${titleWithEnv} (optional)`;
+  const propSchema = jsonSchema ? configPropertySchema(jsonSchema, key) : undefined;
+  const valueHint = jsonSchema ? configValueInputHint(propSchema, jsonSchema) : undefined;
+  const valueHintSuffix = valueHint ? ` (${valueHint})` : "";
   process.stderr.write(`${heading}\n`);
   process.stderr.write(`  ${entry.description}\n`);
   const hasCurrent = current !== undefined && current !== null && String(current).length > 0;
@@ -160,18 +165,20 @@ function promptConfigKey(
   if (hasCurrent) {
     process.stderr.write(`  Current: ${sensitive ? "REDACTED" : stringifyConfigValue(current)}\n`);
     const acceptPrompt = resolvedFromEnv(entry, hostEnv)
-      ? `  Value (Enter to copy from env): `
-      : `  Value (Enter to keep): `;
+      ? `  Value (Enter to copy from env)${valueHintSuffix}: `
+      : `  Value (Enter to keep)${valueHintSuffix}: `;
     process.stderr.write(acceptPrompt);
   } else {
-    process.stderr.write(`  Value: `);
+    process.stderr.write(`  Value${valueHintSuffix}: `);
   }
   const input = readPromptLine(sensitive);
   if (input.length === 0 && hasCurrent) {
     return { value: current, userTyped: false };
   }
   if (input.length > 0) {
-    return { value: input, userTyped: true };
+    const rootSchema = jsonSchema ?? { type: "object", properties: {} };
+    const parsed = parseConfigSetValue(input, propSchema, rootSchema, false);
+    return { value: parsed, userTyped: true };
   }
   return { value: undefined, userTyped: false };
 }
@@ -219,7 +226,15 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
       writeConfigureSetupHeading();
       headingWritten = true;
     }
-    const { value, userTyped } = promptConfigKey(key, entry, undefined, false, fromSchema, hostEnv);
+    const { value, userTyped } = promptConfigKey(
+      key,
+      entry,
+      undefined,
+      false,
+      fromSchema,
+      hostEnv,
+      jsonSchema,
+    );
     if (value !== undefined && String(value).length > 0) {
       updates[key] = value;
     }
@@ -262,7 +277,15 @@ export function runConfigure(
   for (const [key, entry] of Object.entries(program.appConfig.entries)) {
     const before = next[key];
     const current = resolved[key];
-    const { value, userTyped } = promptConfigKey(key, entry, current, true, fromSchema, hostEnv);
+    const { value, userTyped } = promptConfigKey(
+      key,
+      entry,
+      current,
+      true,
+      fromSchema,
+      hostEnv,
+      jsonSchema,
+    );
     if (value !== undefined && String(value).length > 0) {
       const storedInFile =
         key in existing &&

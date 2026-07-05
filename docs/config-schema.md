@@ -202,7 +202,7 @@ When `program.appConfig` is set and `commands !== false`:
 
 `configure get`/`set` skip required-config exit and TTY prompts. Sensitive values redact on `get` (`REDACTED` / `{ "set": true }` with `--json`).
 
-Object/array/`$ref` properties require `--json` on `configure set`.
+Object/array/`$ref` properties require `--json` on `configure set` when comma-separated or JSON-literal input does not apply (e.g. objects, arrays of objects). Homogeneous primitive arrays (`string[]`, `number[]`, `integer[]`, `boolean[]`, and `string[]` with `format: date` / `date-time` on items) accept comma-separated values or a JSON array in both `configure set` and interactive `configure`.
 
 ## Example in this repo
 

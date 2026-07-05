@@ -178,7 +178,8 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
       },
       {
         name: "value",
-        description: "Value to store (use --json for objects/arrays).",
+        description:
+          "Value to store (comma-separated or JSON for primitive arrays; --json for objects and nested arrays).",
         kind: CliOptionKind.String,
         argMin: 0,
         argMax: 1,

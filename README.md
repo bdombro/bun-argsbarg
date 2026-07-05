@@ -112,11 +112,13 @@ See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom 
 
 ### Configure CLI
 
-Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh. Private taps need `HOMEBREW_GITHUB_API_TOKEN` on install — see [docs/distribution-homebrew.md](docs/distribution-homebrew.md#end-user-install).
+Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh. Private taps require `gh auth login` — see [docs/distribution-homebrew.md](docs/distribution-homebrew.md#end-user-install).
 
 ```bash
+brew install gh
+gh auth login
 brew tap <org>/<repo> git@github.com:<org>/<repo>.git
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install <tap>/myapp
+brew install <tap>/myapp
 myapp configure    # interactive per-target setup; opt-in app config wizard
 ```
 

@@ -3,7 +3,15 @@ Draft-07 JSON Schema subset validator for program.appConfig files.
 Aligned with common ts-json-schema-generator output (local $ref, objects, scalars).
 */
 
+import { parseCommaList, parseDate, parseDateTime } from "../formats.ts";
+
 type JsonSchema = Record<string, unknown>;
+
+/** Homogeneous primitive `items` schema for comma-separated array input. */
+interface PrimitiveArrayItems {
+  kind: "string" | "integer" | "number" | "boolean";
+  format?: string;
+}
 
 export interface ValidateResult {
   valid: boolean;
@@ -247,6 +255,135 @@ function validateArray(
   }
 }
 
+function validateParsedConfigValue(
+  parsed: unknown,
+  propertySchema: JsonSchema | undefined,
+  rootSchema: JsonSchema,
+): unknown {
+  if (!propertySchema) {
+    return parsed;
+  }
+  const errors: string[] = [];
+  validateValue(parsed, propertySchema, rootSchema, "$", errors);
+  if (errors.length > 0) {
+    throw new Error(errors[0] ?? "Invalid config value");
+  }
+  return parsed;
+}
+
+function parseJsonLiteral(
+  raw: string,
+  propertySchema: JsonSchema | undefined,
+  rootSchema: JsonSchema,
+): unknown {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error("Invalid JSON");
+  }
+  return validateParsedConfigValue(parsed, propertySchema, rootSchema);
+}
+
+function homogeneousPrimitiveArrayItems(
+  arraySchema: JsonSchema,
+  rootSchema: JsonSchema,
+): PrimitiveArrayItems | undefined {
+  const items = arraySchema.items;
+  if (typeof items !== "object" || items === null || Array.isArray(items)) {
+    return undefined;
+  }
+  const resolved = resolveSchema(items as JsonSchema, rootSchema);
+  if (!resolved) {
+    return undefined;
+  }
+  const types = normalizeTypes(resolved.type);
+  if (types.length !== 1) {
+    return undefined;
+  }
+  const kind = types[0];
+  if (kind === "string" || kind === "integer" || kind === "number" || kind === "boolean") {
+    const format = typeof resolved.format === "string" ? resolved.format : undefined;
+    return { kind, format };
+  }
+  return undefined;
+}
+
+function parseBooleanToken(raw: string): boolean {
+  const lower = raw.trim().toLowerCase();
+  if (lower === "true" || lower === "1") return true;
+  if (lower === "false" || lower === "0") return false;
+  throw new Error("Expected boolean: true, false, 1, or 0");
+}
+
+function parsePrimitiveArraySegment(segment: string, items: PrimitiveArrayItems): unknown {
+  switch (items.kind) {
+    case "string": {
+      if (items.format === "date") {
+        return parseDate(segment);
+      }
+      if (items.format === "date-time") {
+        return parseDateTime(segment);
+      }
+      return segment;
+    }
+    case "integer": {
+      const n = Number(segment);
+      if (Number.isNaN(n) || !Number.isInteger(n)) {
+        throw new Error(`Expected integer: ${segment}`);
+      }
+      return n;
+    }
+    case "number": {
+      const n = Number(segment);
+      if (Number.isNaN(n)) {
+        throw new Error(`Expected number: ${segment}`);
+      }
+      return n;
+    }
+    case "boolean":
+      return parseBooleanToken(segment);
+  }
+}
+
+function parseHomogeneousPrimitiveArray(
+  raw: string,
+  arraySchema: JsonSchema,
+  rootSchema: JsonSchema,
+): unknown[] {
+  const items = homogeneousPrimitiveArrayItems(arraySchema, rootSchema);
+  if (!items) {
+    throw new Error("Use --json for object or array config values");
+  }
+  const segments = parseCommaList(raw);
+  if (segments.length === 0) {
+    throw new Error("Comma-separated list must contain at least one value");
+  }
+  return segments.map((segment) => parsePrimitiveArraySegment(segment, items));
+}
+
+/** Optional suffix for interactive configure value prompts (schema-aware). */
+export function configValueInputHint(
+  propertySchema: JsonSchema | undefined,
+  rootSchema: JsonSchema,
+): string | undefined {
+  if (!propertySchema) {
+    return undefined;
+  }
+  const resolved = resolveSchema(propertySchema, rootSchema);
+  if (!resolved) {
+    return undefined;
+  }
+  const types = normalizeTypes(resolved.type);
+  if (types.includes("array") && homogeneousPrimitiveArrayItems(resolved, rootSchema)) {
+    return "comma-separated or JSON array";
+  }
+  if (types.includes("array") || types.includes("object")) {
+    return "JSON";
+  }
+  return undefined;
+}
+
 /** Parse a CLI/MCP set value against a property schema. */
 export function parseConfigSetValue(
   raw: string,
@@ -255,28 +392,22 @@ export function parseConfigSetValue(
   useJson: boolean,
 ): unknown {
   if (useJson) {
-    const parsed = JSON.parse(raw) as unknown;
-    const errors: string[] = [];
-    if (propertySchema) {
-      validateValue(parsed, propertySchema, rootSchema, "$", errors);
-      if (errors.length > 0) {
-        throw new Error(errors[0] ?? "Invalid config value");
-      }
-    }
-    return parsed;
+    return parseJsonLiteral(raw, propertySchema, rootSchema);
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    return parseJsonLiteral(trimmed, propertySchema, rootSchema);
   }
 
   const resolved = propertySchema ? resolveSchema(propertySchema, rootSchema) : undefined;
   const types = resolved ? normalizeTypes(resolved.type) : ["string"];
 
   if (types.includes("boolean")) {
-    const lower = raw.trim().toLowerCase();
-    if (lower === "true" || lower === "1") return true;
-    if (lower === "false" || lower === "0") return false;
-    throw new Error("Expected boolean: true, false, 1, or 0");
+    return parseBooleanToken(trimmed);
   }
   if (types.includes("number") || types.includes("integer")) {
-    const n = Number(raw);
+    const n = Number(trimmed);
     if (Number.isNaN(n)) {
       throw new Error("Expected number");
     }
@@ -285,7 +416,14 @@ export function parseConfigSetValue(
     }
     return n;
   }
-  if (types.includes("object") || types.includes("array")) {
+  if (types.includes("array")) {
+    if (!resolved) {
+      throw new Error("Use --json for object or array config values");
+    }
+    const parsed = parseHomogeneousPrimitiveArray(trimmed, resolved, rootSchema);
+    return validateParsedConfigValue(parsed, propertySchema, rootSchema);
+  }
+  if (types.includes("object")) {
     throw new Error("Use --json for object or array config values");
   }
   return raw;
