@@ -1,8 +1,17 @@
 /** Shared Ruby fragments embedded in Homebrew formulae. */
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { $ } from "bun";
 import { createIdentity } from "./create-identity.ts";
 
 const { key, className, desc, homepage, releaseRepo } = createIdentity;
+
+/** GitHub release row used by {@link selectStaleReleaseTags}. */
+export interface ReleaseTag {
+  tagName: string;
+  publishedAt: string;
+}
 
 export const formulaInstallRuby = `def install
     bin.install "${key}"
@@ -36,10 +45,39 @@ export interface FormulaCoords {
   url: string;
   urlStanza: string;
   version: string;
+  /** SHA-256 hex digest of the release archive at `url` (zip for GitHub releases). */
   sha256: string;
   /** When true, embed {@link githubPrivateReleaseDownloadStrategyRuby} in the formula class. */
   privateRelease?: boolean;
 }
+
+/** Release asset filename on GitHub (zip containing the bare binary at archive root). */
+export function releaseArchiveName(): string {
+  return `${key}.zip`;
+}
+
+/** Build `{binaryPath}.zip` from a compiled binary; return archive path and sha256 of the zip. */
+export async function buildReleaseArchive(binaryPath: string): Promise<{ archivePath: string; sha256: string }> {
+  const archivePath = `${binaryPath}.zip`;
+  const result = await $`zip -j -9 ${archivePath} ${binaryPath}`.nothrow();
+  if (result.exitCode !== 0) {
+    throw new Error(`zip failed: ${result.stderr}`);
+  }
+  const sha256 = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
+  return { archivePath, sha256 };
+}
+
+/** Tags to delete when keeping only the newest release (sorted by `publishedAt` desc). */
+export function selectStaleReleaseTags(releases: ReleaseTag[]): string[] {
+  if (releases.length <= 1) {
+    return [];
+  }
+  const sorted = [...releases].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  return sorted.slice(1).map((r) => r.tagName);
+}
+
+/** GitHub `org/repo` slug for release and purge commands. */
+export const releaseRepoSlug = releaseRepo;
 
 /** Resolves private GitHub release assets via the API at download time. */
 export const githubPrivateReleaseDownloadStrategyRuby = `  class GitHubPrivateReleaseDownloadStrategy < CurlDownloadStrategy
@@ -82,7 +120,7 @@ export function releaseUrlStanza(url: string): string {
 }
 
 export function releaseFormulaUrl(version: string): string {
-  return `https://github.com/${releaseRepo}/releases/download/v${version}/${key}`;
+  return `https://github.com/${releaseRepo}/releases/download/v${version}/${releaseArchiveName()}`;
 }
 
 export function renderFormula(coords: FormulaCoords): string {

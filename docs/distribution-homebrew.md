@@ -118,8 +118,21 @@ Template source: [`examples/full-example/`](../examples/full-example/) in the ar
 ## Release workflow
 
 1. `just build` → `dist/{key}`
-2. `scripts/release.ts` → writes `Formula/{key}.rb` (GitHub URL + sha256), commits, tags, uploads `dist/{key}` to GitHub Releases
+2. `scripts/release.ts` → zips `dist/{key}` to `dist/{key}.zip`, writes `Formula/{key}.rb` (GitHub zip URL + archive sha256), commits, tags, uploads `dist/{key}.zip` to GitHub Releases
 3. Users `brew upgrade {key}` from the tap
+
+Requires the `zip` CLI on the release machine. `just install-local` still stages the bare binary via `file://` (no zip).
+
+### Stale release cleanup
+
+```bash
+just release --purge              # delete all GitHub releases except the newest (confirm on TTY)
+just release --purge --yes        # skip confirmation
+just release --purge --dry-run    # list tags that would be deleted
+just release patch --purge        # release, then purge older releases
+```
+
+`--purge` removes GitHub Release records and attached assets only — git tags remain on the remote. Old formula pins that reference deleted release URLs will fail until users upgrade.
 
 ## Removed (breaking)
 

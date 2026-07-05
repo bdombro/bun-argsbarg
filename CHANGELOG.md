@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.10] - 2026-07-05
+
+### Added
+
+- **Zip release assets** — Homebrew formulae download `{key}.zip` from GitHub Releases; `buildReleaseArchive` in `formula-shared.ts`; `just release --purge` to delete stale releases.
+
+### Changed
+
+- **Release workflow** — `scripts/release.ts` uploads a zip archive (smaller download) instead of a bare Mach-O binary; formula `sha256` pins the archive.
+
 ## [5.1.9] - 2026-07-05
 
 ### Added
@@ -646,7 +656,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.9...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.10...HEAD
+[5.1.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.10
 [5.1.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.9
 [5.1.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.8
 [5.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.7

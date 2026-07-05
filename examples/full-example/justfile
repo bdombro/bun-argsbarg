@@ -88,6 +88,10 @@ setup:
 test: check
     bun test .
 
+# Bump version, build, publish; or pass --purge to delete stale GitHub releases
+release *ARGS:
+    bun scripts/release.ts {{ARGS}}
+
 # Install release formula from tap and run formula test
 test-release:
     brew untap {{tap}} 2>/dev/null || true

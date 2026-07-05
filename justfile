@@ -95,7 +95,7 @@ test: check
 
 # Generate package type declarations (index.d.ts)
 typegen:
-    bunx dts-bundle-generator --out-file index.d.ts src/index.ts
+    bun run dts-bundle-generator --out-file index.d.ts src/index.ts
 
 # Typecheck without emitting build artifacts
 typecheck:
