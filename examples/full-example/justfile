@@ -49,13 +49,16 @@ install: install-local
 sync-artifacts:
     just run configure --sync --yes
 
-# Dev install: build, write dev formula, symlink tap, brew install
-install-local: build
-    @bun scripts/gen-dev-formula.ts
+# Normalize release formula (fix leftover dev formula or stale layout)
+ensure-release-formula:
+    bun scripts/ensure-release-formula.ts
+
+# Dev install: build, dev formula (restored after brew), symlink tap, brew install
+install-local: build ensure-release-formula
     @brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
-    brew install --formula {{tap}}/{{cli_key}}
+    bun scripts/with-dev-formula.ts -- brew install --formula {{tap}}/{{cli_key}}
     @echo ""
     @echo "Next: {{cli_key}} configure"
 

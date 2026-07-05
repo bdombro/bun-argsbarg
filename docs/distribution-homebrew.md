@@ -51,7 +51,7 @@ just reinstall-local   # fast binary swap (`install -m 755` into Cellar; run ins
 just uninstall        # undo formula + agent artifacts (not app config)
 ```
 
-Dev and release use the **same formula** (`Formula/{key}.rb`, class name, install/post_install/test). `gen-dev-formula.ts` only changes `url`, `version`, and `sha256` to point at the local binary in `Formula/.staging/`. Release bumps restore the GitHub URL via `scripts/release.ts`.
+Dev and release use the **same formula file** (`Formula/{key}.rb`, class name, install/post_install/test). `just install-local` temporarily overwrites it with a `file://` dev formula (staged under `Formula/.staging/`), runs `brew install`, then **restores** the release formula from backup. Release bumps rewrite the GitHub URL via `scripts/release.ts`.
 
 ### Developer uninstall
 
