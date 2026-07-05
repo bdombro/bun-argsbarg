@@ -49,12 +49,8 @@ install: install-local
 sync-artifacts:
     just run configure --sync --yes
 
-# Normalize release formula (fix leftover dev formula or stale layout)
-ensure-release-formula:
-    bun scripts/ensure-release-formula.ts
-
 # Dev install: build, dev formula (restored after brew), symlink tap, brew install
-install-local: build ensure-release-formula
+install-local: build
     @brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}

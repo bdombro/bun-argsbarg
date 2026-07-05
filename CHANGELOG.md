@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.6] - 2026-07-05
+
+
 ## [5.1.5] - 2026-07-05
 
 ### Changed
 
-- **`just install-local`** — back up release `Formula/{key}.rb`, write dev formula for `brew install`, then restore the release formula (`scripts/with-dev-formula.ts`).
-- **`just ensure-release-formula`** — normalize release formula layout; restore from install-local backup or fail with `git restore` hint if a dev `file://` formula is left on disk.
+- **`just install-local`** — back up release `Formula/{key}.rb`, write dev formula for `brew install`, then restore (`scripts/with-dev-formula.ts`; dropped `gen-dev-formula.ts` / `dev-formula.ts`).
 
 ## [5.1.4] - 2026-07-04
 
@@ -617,7 +619,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.5...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.6...HEAD
+[5.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.6
 [5.1.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.5
 [5.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.4
 [5.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.3

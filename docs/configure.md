@@ -27,7 +27,7 @@ brew uninstall <tap>/<key>
 
 ```bash
 just build
-just install-local    # same formula as production; gen-dev-formula uses file:// URL (`just install` is an alias)
+just install-local    # same formula as production; temporary file:// URL during brew install (`just install` is an alias)
 ```
 
 Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --sync --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Use `just sync-artifacts` to refresh agent artifacts without touching the binary.

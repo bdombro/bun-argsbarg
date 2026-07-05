@@ -264,7 +264,7 @@ To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-progr
 | Command layout | `src/commands/<name>/command.ts`; registration in `src/program.ts` |
 | MCP doc topics | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
 | Package import | `from "argsbarg"` (not relative to argsbarg `src/`) |
-| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/gen-dev-formula.ts`, `Formula/`, `justfile` |
+| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/with-dev-formula.ts`, `Formula/`, `justfile` |
 | Dev tooling | Biome (`just format` / `just lint`), TypeScript, colocated tests |
 | Cursor rules | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc` |
 
