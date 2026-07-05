@@ -50,6 +50,11 @@ if (sep === -1 || sep === process.argv.length - 1) {
 }
 
 const cmd = process.argv.slice(sep + 1);
+const executable = cmd[0];
+if (!executable) {
+  process.stderr.write("Usage: bun scripts/with-dev-formula.ts -- <command...>\n");
+  process.exit(1);
+}
 let restored = false;
 
 function restore(): void {
@@ -63,7 +68,7 @@ function restore(): void {
 try {
   backupReleaseFormula();
   writeDevFormula();
-  const result = spawnSync(cmd[0], cmd.slice(1), { stdio: "inherit" });
+  const result = spawnSync(executable, cmd.slice(1), { stdio: "inherit" });
   process.exitCode = result.status === null ? 1 : result.status;
 } finally {
   restore();
