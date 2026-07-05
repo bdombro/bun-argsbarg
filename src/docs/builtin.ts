@@ -25,11 +25,7 @@ const DOCS_SAVE_OPTION: CliOption = {
   kind: CliOptionKind.Presence,
 };
 
-function runDocsTopic(
-  program: CliProgram,
-  topic: string,
-  ctx: { hasFlag(name: string): boolean },
-): void {
+function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: string): boolean }): void {
   if (ctx.hasFlag("save")) {
     process.stdout.write(`${saveDocsTopic(program, topic)}\n`);
     return;

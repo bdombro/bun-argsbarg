@@ -11,12 +11,9 @@ import {
   resolveCapabilities,
   skipsRequiredAppConfigExit,
 } from "./capabilities.ts";
-import {
-  bootstrapAppConfig,
-  type EnsureAppConfigOpts,
-  ensureAppConfig,
-} from "./config/bootstrap.ts";
+import { bootstrapAppConfig, type EnsureAppConfigOpts, ensureAppConfig } from "./config/bootstrap.ts";
 import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "./config/context.ts";
+import { readAppConfigFileRaw, resolveAppConfigPath } from "./config/file.ts";
 import { effectiveJsonSchema } from "./config/schema.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
@@ -124,15 +121,7 @@ export class Cli {
       exitOnMissing: !skipRequiredConfig,
     });
 
-    const ctx = new CliContext(
-      this.program.key,
-      pr.path,
-      pr.args,
-      pr.opts,
-      this.program,
-      "cli",
-      snapshot,
-    );
+    const ctx = new CliContext(this.program.key, pr.path, pr.args, pr.opts, this.program, "cli", snapshot);
     try {
       await Promise.resolve(leaf.handler(ctx));
       process.exit(0);
@@ -171,15 +160,7 @@ export class Cli {
       exitOnMissing: false,
     });
 
-    const ctx = new CliContext(
-      this.program.key,
-      pr.path,
-      pr.args,
-      pr.opts,
-      this.program,
-      "mcp",
-      snapshot,
-    );
+    const ctx = new CliContext(this.program.key, pr.path, pr.args, pr.opts, this.program, "mcp", snapshot);
 
     let stdout = "";
     let stderr = "";
@@ -293,9 +274,7 @@ export class Cli {
   ): PreparedDispatch | { error: ParseResult } {
     const program = this.program;
     let parseRoot: CliNode;
-    let completionParseRoot: CliRouter = opts?.presentationFallback
-      ? this.presentationRoot
-      : this.parseRootMerged;
+    let completionParseRoot: CliRouter = opts?.presentationFallback ? this.presentationRoot : this.parseRootMerged;
     let isLeafCompletionIntercept = false;
 
     if (isCliLeaf(program)) {
@@ -387,7 +366,7 @@ export class Cli {
     const bootstrap = ensureAppConfig(this.program, opts);
     const snapshot = bootstrap
       ? createAppConfigSnapshot(this.program, bootstrap.fileData, bootstrap.resolved)
-      : createAppConfigSnapshot(this.program, {}, {});
+      : createAppConfigSnapshot(this.program, readAppConfigFileRaw(resolveAppConfigPath(this.program)), {});
     this._appConfig = snapshot;
     return snapshot;
   }

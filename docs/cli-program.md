@@ -432,7 +432,9 @@ await cli.run();
 
 See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
 
-**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` in handlers; env export remains for subprocess inheritance. `path` is the resolved absolute config file path (`~/.local/lib/<key>/config`); `dir` is its parent directory.
+**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` (schema-aware, resolved values); `getUnsafe`, `setUnsafe`, `readUnsafe` (raw file, works without `program.appConfig`); `path`, `dir`. Prefer `get`/`set` when `appConfig` is declared. Env export remains for subprocess inheritance. `path` is `~/.local/lib/<key>/config.json`; `dir` is its parent.
+
+**`_bindings`:** reserved metadata for per-key intent (`env`, `file`, `skip`). Set by the wizard, `configure set --from-env`, or `ctx.appConfig.set`. Does not change resolve order (env still wins when set).
 
 ## Reserved names
 

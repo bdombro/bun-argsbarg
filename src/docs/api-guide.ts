@@ -90,12 +90,7 @@ function fallbackLine(node: CliSchemaExport): string | null {
 }
 
 /** Renders one command node and recurses into subcommands. */
-function renderCommandNode(
-  rootKey: string,
-  path: string[],
-  node: CliSchemaExport,
-  lines: string[],
-): void {
+function renderCommandNode(rootKey: string, path: string[], node: CliSchemaExport, lines: string[]): void {
   const level = Math.min(path.length + 2, 6);
   const heading = "#".repeat(level);
   const cmd = commandPath(rootKey, path);

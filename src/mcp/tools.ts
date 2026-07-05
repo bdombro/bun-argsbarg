@@ -137,11 +137,7 @@ function positionalProperty(p: CliPositional): Record<string, unknown> {
 }
 
 /** Builds inputSchema for a leaf command. */
-function buildInputSchema(
-  root: CliProgram,
-  path: string[],
-  leaf: CliLeaf,
-): Record<string, unknown> {
+function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
@@ -222,12 +218,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
   /** Walks the command tree and appends leaf tools. */
   function walk(cmd: CliNode, path: string[]): void {
     if (isCliLeaf(cmd)) {
-      if (
-        cmd.key === "completion" ||
-        cmd.key === "configure" ||
-        cmd.key === "mcp" ||
-        cmd.key === "version"
-      ) {
+      if (cmd.key === "completion" || cmd.key === "configure" || cmd.key === "mcp" || cmd.key === "version") {
         return;
       }
       if (cmd.hidden || cmd.mcpTool?.enabled === false) {

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.9] - 2026-07-05
+
+### Added
+
+- **`configure --sync` config bootstrap** — creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps; Homebrew `post_install`).
+- **`_bindings` metadata** — per-key intent (`env` | `file` | `skip`) in config file; wizard persists env/skip choices; `configure set --from-env`.
+- **`ctx.appConfig` unsafe I/O** — `getUnsafe`, `setUnsafe`, `readUnsafe` for raw file access (works without `program.appConfig`).
+
+### Changed
+
+- **App config detection** — `appConfigInstalled` / `--status` use file existence only (not directory-only).
+- **Configure wizard** — skips addressed keys; Enter at env prompt persists `_bindings`; accurate write messaging.
+- **`configure --status`** — binding hints on required keys (`set (env)`, etc.).
+- **Partial config validation** — single-key / bindings-only writes skip required-property checks.
+- biome lineLength=120
+
 ## [5.1.8] - 2026-07-05
 
 
@@ -630,7 +646,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.8...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.9...HEAD
+[5.1.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.9
 [5.1.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.8
 [5.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.7
 [5.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.6

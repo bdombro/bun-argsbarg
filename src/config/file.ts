@@ -7,8 +7,9 @@ import { dirname, join } from "node:path";
 import { sanitizeToolSegment } from "../mcp/tools.ts";
 import { appConfigLibHome, displayHomePath } from "../paths/host.ts";
 import type { CliProgram } from "../types.ts";
+import { isFrameworkConfigKey, validateBindingsShape } from "./bindings.ts";
 import { effectiveJsonSchema } from "./schema.ts";
-import { validateConfigDocument } from "./validate.ts";
+import { validateConfigDocument, validateConfigDocumentPartial } from "./validate.ts";
 
 export type AppConfigFileData = Record<string, unknown>;
 
@@ -56,15 +57,13 @@ export function readAppConfigFileRaw(path: string): AppConfigFileData {
   return parseConfigJson(text, path);
 }
 
-/** Read and validate config file against program schema. */
-export function readAppConfigFile(program: CliProgram): AppConfigFileData {
-  const path = resolveAppConfigPath(program);
-  const data = readAppConfigFileRaw(path);
-  if (Object.keys(data).length === 0) {
-    return data;
-  }
-  validateAppConfigData(program, data, path);
-  return data;
+function isEmptyConfigDocument(data: AppConfigFileData): boolean {
+  return Object.keys(data).every((k) => isFrameworkConfigKey(k));
+}
+
+/** True when `config.json` exists on disk. */
+export function appConfigFileExists(program: CliProgram): boolean {
+  return existsSync(resolveAppConfigPath(program));
 }
 
 /** Validate in-memory config data; throws on failure. */
@@ -72,15 +71,21 @@ export function validateAppConfigData(
   program: CliProgram,
   data: AppConfigFileData,
   pathLabel?: string,
+  opts: { partial?: boolean } = {},
 ): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     throw new Error("program.appConfig is not set");
   }
+  const where = pathLabel ? displayHomePath(pathLabel) : "config";
+  const bindingErrors = validateBindingsShape(data);
+  if (bindingErrors.length > 0) {
+    throw new Error(`Invalid config in ${where}: ${bindingErrors.join("; ")}`);
+  }
   const allowed = new Set(Object.keys(appConfig.entries));
   for (const key of Object.keys(data)) {
+    if (isFrameworkConfigKey(key)) continue;
     if (!allowed.has(key)) {
-      const where = pathLabel ? displayHomePath(pathLabel) : "config";
       throw new Error(`Unknown config key '${key}' in ${where}`);
     }
   }
@@ -88,26 +93,61 @@ export function validateAppConfigData(
   if (!jsonSchema) {
     return;
   }
+  if (opts.partial || isEmptyConfigDocument(data)) {
+    const result = validateConfigDocumentPartial(data, jsonSchema);
+    if (!result.valid) {
+      throw new Error(`Invalid config in ${where}: ${result.errors.join("; ")}`);
+    }
+    return;
+  }
   const result = validateConfigDocument(data, jsonSchema);
   if (!result.valid) {
-    const where = pathLabel ? displayHomePath(pathLabel) : "config";
     throw new Error(`Invalid config in ${where}: ${result.errors.join("; ")}`);
   }
 }
 
-/** Merge-write schema keys to the config file (`0o600`). */
-export function writeAppConfigFile(program: CliProgram, data: AppConfigFileData): void {
-  validateAppConfigData(program, data, displayAppConfigPath(program));
+/** Write JSON to the config path without schema validation (`0o600`). */
+export function writeAppConfigFileRaw(program: CliProgram, data: AppConfigFileData, dry = false): void {
   const path = resolveAppConfigPath(program);
+  if (dry) return;
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
 }
 
-/** True when the app config file or config directory is present. */
-export function appConfigInstalled(program: CliProgram): boolean {
+/** Create `config.json` as `{}` when missing; returns absolute path if created. */
+export function ensureAppConfigFile(program: CliProgram, dry = false): string | null {
   const path = resolveAppConfigPath(program);
-  if (existsSync(path)) return true;
-  return existsSync(resolveAppConfigDir(program));
+  if (existsSync(path)) {
+    return null;
+  }
+  writeAppConfigFileRaw(program, {}, dry);
+  return path;
+}
+
+/** Read and validate config file against program schema. */
+export function readAppConfigFile(program: CliProgram): AppConfigFileData {
+  const path = resolveAppConfigPath(program);
+  const data = readAppConfigFileRaw(path);
+  if (isEmptyConfigDocument(data)) {
+    return data;
+  }
+  validateAppConfigData(program, data, path);
+  return data;
+}
+
+/** Merge-write schema keys to the config file (`0o600`). */
+export function writeAppConfigFile(
+  program: CliProgram,
+  data: AppConfigFileData,
+  opts: { partial?: boolean } = {},
+): void {
+  validateAppConfigData(program, data, displayAppConfigPath(program), opts);
+  writeAppConfigFileRaw(program, data);
+}
+
+/** True when the app config file is present. */
+export function appConfigInstalled(program: CliProgram): boolean {
+  return appConfigFileExists(program);
 }
 
 /** Removes the app config file and config directory when present. */

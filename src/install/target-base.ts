@@ -46,11 +46,7 @@ export abstract class InstallTarget {
 
   protected abstract isDetectedFromSnapshot(detected: DetectedSnapshot): boolean;
 
-  statusLine(
-    paths: InstallPaths,
-    root: CliProgram,
-    detected: InstalledArtifacts,
-  ): string | undefined {
+  statusLine(paths: InstallPaths, root: CliProgram, detected: InstalledArtifacts): string | undefined {
     if (!this.isDetectedFromInstalled(detected)) return undefined;
     return this.formatStatusLine(paths, root);
   }
@@ -78,12 +74,7 @@ export abstract class InstallTarget {
 
   protected abstract buildUninstallActions(ctx: TargetPlanContext): UninstallAction[];
 
-  contributeStatus(
-    paths: InstallPaths,
-    root: CliProgram,
-    detected: InstalledArtifacts,
-    status: InstallStatus,
-  ): void {
+  contributeStatus(paths: InstallPaths, root: CliProgram, detected: InstalledArtifacts, status: InstallStatus): void {
     const line = this.statusLine(paths, root, detected);
     if (!line) return;
     this.assignStatusLine(status, line);

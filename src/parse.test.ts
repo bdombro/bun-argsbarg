@@ -12,12 +12,7 @@ import { cliPresentationRoot } from "./builtins/presentation.ts";
 import { cliHelpRender } from "./help.ts";
 import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "./index.ts";
 import { applyShellEnv } from "./mcp/env.ts";
-import {
-  allMcpResources,
-  collectMcpTools,
-  mcpToolCallToArgv,
-  resolveMcpSchemaUri,
-} from "./mcp/tools.ts";
+import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpSchemaUri } from "./mcp/tools.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { generatePluginSkillBundle, generateSkillBundle } from "./skill/generate.ts";
@@ -338,10 +333,7 @@ test("trailing options include parent-scoped flags", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = postParseValidate(
-    root,
-    parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]),
-  );
+  const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.path).toEqual(["group", "leaf"]);
   expect(pr.args).toEqual(["./file"]);
@@ -415,10 +407,7 @@ test("stops parsing options at --", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = postParseValidate(
-    root,
-    parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]),
-  );
+  const pr = postParseValidate(root, parse(root, ["x", "--name", "pat", "--", "--name", "bob", "-x"]));
   expect(pr.kind).toBe(ParseKind.Ok);
   expect(pr.opts.name).toBe("pat");
   expect(pr.args).toEqual(["--name", "bob", "-x"]);
@@ -505,9 +494,7 @@ test("presence option cannot be required", () => {
 test("leaf completion help prints correctly", async () => {
   // Test the fix where `completion zsh -h` on a leaf root was incorrectly ignored.
   // We run this as a subprocess so we don't accidentally exit the test runner.
-  const { stdout, stderr, exitCode } = await $`bun run examples/minimal.ts completion zsh -h`
-    .nothrow()
-    .quiet();
+  const { stdout, stderr, exitCode } = await $`bun run examples/minimal.ts completion zsh -h`.nothrow().quiet();
   const out = stdout.toString();
   expect(exitCode).toBe(0);
   expect(out).toContain("Show help for this command.");
@@ -517,9 +504,7 @@ test("leaf completion help prints correctly", async () => {
 
 /** Docs schema exports JSON for nested CLIs. */
 test("docs schema exports JSON for nested CLIs", async () => {
-  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`
-    .nothrow()
-    .quiet();
+  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
   expect(stderr.toString()).toBe("");
 
@@ -543,11 +528,7 @@ test("docs schema exports JSON for leaf roots", async () => {
   expect(schema.key).toBe("minimal.ts");
   expect(schema.positionals[0].name).toBe("name");
   expect(schema.options[0].name).toBe("verbose");
-  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual([
-    "version",
-    "configure",
-    "docs",
-  ]);
+  expect(schema.commands.map((c: { key: string }) => c.key)).toEqual(["version", "configure", "docs"]);
 });
 
 test("version builtin prints program version", async () => {
@@ -956,9 +937,7 @@ test("Enum completions list choices in bash script", () => {
       {
         key: "run",
         description: "",
-        options: [
-          { name: "mode", description: "m", kind: CliOptionKind.Enum, choices: ["dev", "prod"] },
-        ],
+        options: [{ name: "mode", description: "m", kind: CliOptionKind.Enum, choices: ["dev", "prod"] }],
         handler: () => {},
       },
     ],
@@ -1047,9 +1026,7 @@ test("cliValidateProgram rejects invalid nested fallbackCommand", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(
-    /fallbackCommand 'missing' is not a child of 'docs'/,
-  );
+  expect(() => cliValidateProgram(root)).toThrow(/fallbackCommand 'missing' is not a child of 'docs'/);
 });
 
 test("cliValidateProgram accepts nested fallbackCommand when child exists", () => {
@@ -1279,9 +1256,7 @@ test("cliSkillInstall claude target uses .claude/skills", () => {
   try {
     const files = cliSkillInstall(nestedMcpFixture, "claude", { rimraf: true });
     expect(files.some((f) => f.includes(".claude/skills/nested_ts/"))).toBe(true);
-    expect(readFileSync(join(cwd, ".claude", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain(
-      "Claude Code",
-    );
+    expect(readFileSync(join(cwd, ".claude", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain("Claude Code");
   } finally {
     process.chdir(prev);
     rmSync(cwd, { recursive: true, force: true });

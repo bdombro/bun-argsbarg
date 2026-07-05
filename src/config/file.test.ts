@@ -7,13 +7,17 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { CliProgram } from "../types.ts";
+import { CONFIG_BINDINGS_KEY } from "./bindings.ts";
 import { bootstrapAppConfig } from "./bootstrap.ts";
 import {
+  appConfigFileExists,
+  ensureAppConfigFile,
   readAppConfigFile,
   resolveAppConfigDir,
   resolveAppConfigPath,
   uninstallAppConfig,
   writeAppConfigFile,
+  writeAppConfigFileRaw,
 } from "./file.ts";
 import { buildProgramUserConfig } from "./manifest.ts";
 import { formatMissingConfigMessage, missingRequiredConfig, resolveAppConfig } from "./resolve.ts";
@@ -58,9 +62,7 @@ describe("config/file", () => {
 
   test("resolveAppConfigPath uses config.json", () => {
     withHome((home) => {
-      expect(resolveAppConfigPath(program)).toBe(
-        join(home, ".local", "lib", "myapp", "config.json"),
-      );
+      expect(resolveAppConfigPath(program)).toBe(join(home, ".local", "lib", "myapp", "config.json"));
     });
   });
 
@@ -124,6 +126,47 @@ describe("config/file", () => {
       expect(uninstallAppConfig(program, false)).toEqual([configPath, `${configDir}/`]);
       expect(existsSync(configPath)).toBe(false);
       expect(existsSync(configDir)).toBe(false);
+    });
+  });
+
+  test("ensureAppConfigFile creates empty config", () => {
+    withHome(() => {
+      const created = ensureAppConfigFile(program);
+      expect(created).toBe(resolveAppConfigPath(program));
+      expect(appConfigFileExists(program)).toBe(true);
+      expect(readAppConfigFile(program)).toEqual({});
+    });
+  });
+
+  test("ensureAppConfigFile no-op when file exists", () => {
+    withHome(() => {
+      writeAppConfigFileRaw(program, { apiToken: "x" });
+      expect(ensureAppConfigFile(program)).toBeNull();
+    });
+  });
+
+  test("read allows _bindings framework key", () => {
+    withHome(() => {
+      writeAppConfigFileRaw(program, {
+        [CONFIG_BINDINGS_KEY]: { apiToken: "env" },
+      });
+      expect(readAppConfigFile(program)).toEqual({
+        [CONFIG_BINDINGS_KEY]: { apiToken: "env" },
+      });
+    });
+  });
+
+  test("partial write allows bindings without required keys", () => {
+    withHome(() => {
+      writeAppConfigFile(program, { [CONFIG_BINDINGS_KEY]: { apiToken: "env" } }, { partial: true });
+      expect(readAppConfigFile(program)[CONFIG_BINDINGS_KEY]).toEqual({ apiToken: "env" });
+    });
+  });
+
+  test("appConfigFileExists false when only directory exists", () => {
+    withHome(() => {
+      mkdirSync(resolveAppConfigDir(program), { recursive: true });
+      expect(appConfigFileExists(program)).toBe(false);
     });
   });
 });

@@ -7,11 +7,7 @@ export { buildDetectedSnapshot, detectInstalledArtifacts } from "./target-scope.
 export type { InstalledArtifacts, InstallStatus } from "./target-types.ts";
 
 /** Builds a status inventory from detected artifacts. */
-export function buildInstallStatus(
-  paths: InstallPaths,
-  detected: InstalledArtifacts,
-  root: CliProgram,
-): InstallStatus {
+export function buildInstallStatus(paths: InstallPaths, detected: InstalledArtifacts, root: CliProgram): InstallStatus {
   const status: InstallStatus = {};
   for (const target of INSTALL_TARGETS) {
     target.contributeStatus(paths, root, detected, status);

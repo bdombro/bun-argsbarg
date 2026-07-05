@@ -18,9 +18,7 @@ export function presentationNode(node: CliNode): CliNode | null {
   }
   const options = visibleOptions(node.options);
   if (isCliRouter(node)) {
-    const commands = node.commands
-      .map((ch) => presentationNode(ch))
-      .filter((ch): ch is CliNode => ch !== null);
+    const commands = node.commands.map((ch) => presentationNode(ch)).filter((ch): ch is CliNode => ch !== null);
     return { ...node, options, commands };
   }
   return { ...node, options };

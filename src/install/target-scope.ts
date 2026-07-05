@@ -1,5 +1,5 @@
 import { resolveCapabilities } from "../capabilities.ts";
-import { appConfigInstalled } from "../config/file.ts";
+import { appConfigFileExists } from "../config/file.ts";
 import type { CliConfigureTargets, CliProgram } from "../types.ts";
 import type { InstallPaths } from "./paths.ts";
 import {
@@ -46,10 +46,7 @@ function emptyInstalledArtifacts(): InstalledArtifacts {
 }
 
 /** Detects which install artifacts are currently present. */
-export function detectInstalledArtifacts(
-  paths: InstallPaths,
-  root: CliProgram,
-): InstalledArtifacts {
+export function detectInstalledArtifacts(paths: InstallPaths, root: CliProgram): InstalledArtifacts {
   const out = emptyInstalledArtifacts();
   for (const target of INSTALL_TARGETS) {
     target.applyDetected(paths, root, out);
@@ -73,14 +70,11 @@ export function buildDetectedSnapshot(root: CliProgram, paths: InstallPaths): De
   const base = detectInstalledArtifacts(paths, root);
   return {
     ...base,
-    appConfig: root.appConfig ? appConfigInstalled(root) : false,
+    appConfig: appConfigFileExists(root),
   };
 }
 
-function targetExplicitlyConfigured(
-  user: CliConfigureTargets | undefined,
-  key: CliInstallArtifactKey,
-): boolean {
+function targetExplicitlyConfigured(user: CliConfigureTargets | undefined, key: CliInstallArtifactKey): boolean {
   return user?.[key] !== undefined;
 }
 
@@ -220,10 +214,7 @@ export function buildTargetPlanContext(
 }
 
 /** Maps detected snapshot to artifact key (for tests and legacy callers). */
-export function detectedForArtifact(
-  key: CliInstallArtifactKey,
-  detected: DetectedSnapshot,
-): boolean {
+export function detectedForArtifact(key: CliInstallArtifactKey, detected: DetectedSnapshot): boolean {
   const target = installTargetForKey(key);
   if (key === "configure") {
     return detected.appConfig ?? false;
@@ -232,20 +223,12 @@ export function detectedForArtifact(
 }
 
 /** Resolved artifact keys for `--all`, `--mcp`, and `--skill` (availability-gated). */
-export function resolveInstallTargetPreview(
-  program: CliProgram,
-  paths: InstallPaths,
-): InstallTargetPreview {
+export function resolveInstallTargetPreview(program: CliProgram, paths: InstallPaths): InstallTargetPreview {
   const effective = resolveEffectiveInstallTargets(program.configure, program);
-  const integration = resolveAgentIntegration(
-    program.configure,
-    program.mcpServer?.enabled === true,
-  );
+  const integration = resolveAgentIntegration(program.configure, program.mcpServer?.enabled === true);
 
   const keysForScope = (scope: InstallScope, mode: InstallPlanMode): CliInstallArtifactKey[] =>
-    INSTALL_ARTIFACT_KEYS.filter((key) =>
-      shouldIncludeArtifact(key, program, paths, scope, mode, effective),
-    );
+    INSTALL_ARTIFACT_KEYS.filter((key) => shouldIncludeArtifact(key, program, paths, scope, mode, effective));
 
   return {
     agentIntegration: integration,

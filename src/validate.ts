@@ -29,15 +29,11 @@ function validateDocsConfig(docs: import("./types.ts").CliDocsConfig): void {
   }
   for (const reserved of DOCS_BUILTIN_TOPIC_KEYS) {
     if (reserved in docs.topics) {
-      throw new CliSchemaValidationError(
-        `docs.topics key '${reserved}' is reserved for the docs built-in`,
-      );
+      throw new CliSchemaValidationError(`docs.topics key '${reserved}' is reserved for the docs built-in`);
     }
   }
   if (docs.defaultTopic !== undefined && !(docs.defaultTopic in docs.topics)) {
-    throw new CliSchemaValidationError(
-      `docs.defaultTopic '${docs.defaultTopic}' is not a key in docs.topics`,
-    );
+    throw new CliSchemaValidationError(`docs.defaultTopic '${docs.defaultTopic}' is not a key in docs.topics`);
   }
   for (const key of keys) {
     const text = docs.topics[key]?.text;
@@ -57,18 +53,14 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
   const envNames = new Set<string>();
   for (const [key, entry] of Object.entries(entries)) {
     if (key.length === 0) {
-      throw new CliSchemaValidationError(
-        "program.appConfig.entries keys must be non-empty strings",
-      );
+      throw new CliSchemaValidationError("program.appConfig.entries keys must be non-empty strings");
     }
     if (entry === undefined || typeof entry !== "object") {
       throw new CliSchemaValidationError(`program.appConfig.entries['${key}'] must be an object`);
     }
     const description = entry.description;
     if (typeof description !== "string" || description.trim().length === 0) {
-      throw new CliSchemaValidationError(
-        `program.appConfig.entries['${key}'].description must be a non-empty string`,
-      );
+      throw new CliSchemaValidationError(`program.appConfig.entries['${key}'].description must be a non-empty string`);
     }
     if (entry.env !== undefined) {
       if (typeof entry.env !== "string" || entry.env.length === 0) {
@@ -82,9 +74,7 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
       envNames.add(entry.env);
     }
     if (entry.resolve !== undefined && typeof entry.resolve !== "function") {
-      throw new CliSchemaValidationError(
-        `program.appConfig.entries['${key}'].resolve must be a function when set`,
-      );
+      throw new CliSchemaValidationError(`program.appConfig.entries['${key}'].resolve must be a function when set`);
     }
   }
 
@@ -98,9 +88,7 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
     const properties = jsonSchema.properties;
     if (properties !== undefined) {
       if (typeof properties !== "object" || properties === null || Array.isArray(properties)) {
-        throw new CliSchemaValidationError(
-          "program.appConfig.jsonSchema.properties must be an object when set",
-        );
+        throw new CliSchemaValidationError("program.appConfig.jsonSchema.properties must be an object when set");
       }
       for (const key of Object.keys(entries)) {
         if (!(key in properties)) {
@@ -133,9 +121,7 @@ function validateConfigureConfig(program: CliProgram): void {
   if (!configure) return;
 
   if ("prefix" in configure) {
-    throw new CliSchemaValidationError(
-      "configure.prefix removed; app binary installs via Homebrew",
-    );
+    throw new CliSchemaValidationError("configure.prefix removed; app binary installs via Homebrew");
   }
 
   if (!configure.targets) return;
@@ -178,10 +164,7 @@ function validateConfigureConfig(program: CliProgram): void {
   }
 
   for (const mcpKey of MCP_KEYS) {
-    if (
-      !mcpServerRequiredForArtifact(mcpKey, mcpEnabled) &&
-      installTargetExplicitTruthy(targets[mcpKey])
-    ) {
+    if (!mcpServerRequiredForArtifact(mcpKey, mcpEnabled) && installTargetExplicitTruthy(targets[mcpKey])) {
       throw new CliSchemaValidationError(`configure.targets.${mcpKey} requires mcpServer.enabled`);
     }
   }
@@ -194,15 +177,11 @@ export function cliValidateProgram(program: CliProgram): void {
   }
 
   if (program.mcpServer !== undefined && program.mcpServer.enabled !== true) {
-    throw new CliSchemaValidationError(
-      "mcpServer requires enabled: true; omit mcpServer to disable MCP",
-    );
+    throw new CliSchemaValidationError("mcpServer requires enabled: true; omit mcpServer to disable MCP");
   }
 
   if (program.docs !== undefined && program.docs.enabled !== true) {
-    throw new CliSchemaValidationError(
-      "docs requires enabled: true; omit docs to disable bundled documentation",
-    );
+    throw new CliSchemaValidationError("docs requires enabled: true; omit docs to disable bundled documentation");
   }
 
   if (program.docs?.enabled === true) {
@@ -235,24 +214,16 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
   if (!isRoot) {
     const rogue = node as CliProgram;
     if (rogue.mcpServer !== undefined) {
-      throw new CliSchemaValidationError(
-        `mcpServer is only supported on the program root (not on ${node.key})`,
-      );
+      throw new CliSchemaValidationError(`mcpServer is only supported on the program root (not on ${node.key})`);
     }
     if (rogue.configure !== undefined) {
-      throw new CliSchemaValidationError(
-        `configure is only supported on the program root (not on ${node.key})`,
-      );
+      throw new CliSchemaValidationError(`configure is only supported on the program root (not on ${node.key})`);
     }
     if (rogue.docs !== undefined) {
-      throw new CliSchemaValidationError(
-        `docs is only supported on the program root (not on ${node.key})`,
-      );
+      throw new CliSchemaValidationError(`docs is only supported on the program root (not on ${node.key})`);
     }
     if (rogue.appConfig !== undefined) {
-      throw new CliSchemaValidationError(
-        `appConfig is only supported on the program root (not on ${node.key})`,
-      );
+      throw new CliSchemaValidationError(`appConfig is only supported on the program root (not on ${node.key})`);
     }
   }
 
@@ -266,20 +237,13 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
       throw new CliSchemaValidationError("Set outputSchema on the leaf only, not under mcpTool");
     }
     const resolved = outputSchema ?? legacyOutputSchema;
-    if (
-      resolved !== undefined &&
-      (typeof resolved !== "object" || resolved === null || Array.isArray(resolved))
-    ) {
-      throw new CliSchemaValidationError(
-        "outputSchema must be a JSON Schema object (not null or an array)",
-      );
+    if (resolved !== undefined && (typeof resolved !== "object" || resolved === null || Array.isArray(resolved))) {
+      throw new CliSchemaValidationError("outputSchema must be a JSON Schema object (not null or an array)");
     }
   } else {
     const rogue = node as unknown as CliLeaf;
     if (rogue.mcpTool !== undefined) {
-      throw new CliSchemaValidationError(
-        `mcpTool is only supported on leaf commands (not on ${node.key})`,
-      );
+      throw new CliSchemaValidationError(`mcpTool is only supported on leaf commands (not on ${node.key})`);
     }
   }
 
@@ -290,9 +254,7 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     for (const uri of uris) {
       if (reserved.has(uri)) {
         const kind = uri === schemaUri ? "built-in schema resource" : "auto docs topic resource";
-        throw new CliSchemaValidationError(
-          `mcpServer.resources URI '${uri}' conflicts with ${kind}`,
-        );
+        throw new CliSchemaValidationError(`mcpServer.resources URI '${uri}' conflicts with ${kind}`);
       }
     }
     if (new Set(uris).size !== uris.length) {
@@ -316,9 +278,7 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (node.fallbackCommand !== undefined) {
       const valid = node.commands.find((c) => c.key === node.fallbackCommand);
       if (!valid) {
-        throw new CliSchemaValidationError(
-          `fallbackCommand '${node.fallbackCommand}' is not a child of '${node.key}'`,
-        );
+        throw new CliSchemaValidationError(`fallbackCommand '${node.fallbackCommand}' is not a child of '${node.key}'`);
       }
     }
 
@@ -336,21 +296,15 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
   const seenShorts = new Set<string>();
   for (const opt of options) {
     if (opt.required && opt.kind === CliOptionKind.Presence) {
-      throw new CliSchemaValidationError(
-        `Presence option cannot be required: ${scopeKey}/${opt.name}`,
-      );
+      throw new CliSchemaValidationError(`Presence option cannot be required: ${scopeKey}/${opt.name}`);
     }
 
     if (opt.shortName !== undefined) {
       if (opt.shortName === "h") {
-        throw new CliSchemaValidationError(
-          `Short alias -h is reserved for help: ${scopeKey}/${opt.name}`,
-        );
+        throw new CliSchemaValidationError(`Short alias -h is reserved for help: ${scopeKey}/${opt.name}`);
       }
       if (seenShorts.has(opt.shortName)) {
-        throw new CliSchemaValidationError(
-          `Duplicate short alias -${opt.shortName} in scope ${scopeKey}`,
-        );
+        throw new CliSchemaValidationError(`Duplicate short alias -${opt.shortName} in scope ${scopeKey}`);
       }
       seenShorts.add(opt.shortName);
     }
@@ -362,9 +316,7 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
         );
       }
       if (new Set(opt.choices).size !== opt.choices.length) {
-        throw new CliSchemaValidationError(
-          `Option '${opt.name}' on '${scopeKey}': Enum choices must be distinct`,
-        );
+        throw new CliSchemaValidationError(`Option '${opt.name}' on '${scopeKey}': Enum choices must be distinct`);
       }
       for (const choice of opt.choices) {
         if (choice.length === 0) {
@@ -374,9 +326,7 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
         }
       }
     } else if (opt.choices !== undefined) {
-      throw new CliSchemaValidationError(
-        `Option '${opt.name}' on '${scopeKey}': choices is only valid for Enum kind`,
-      );
+      throw new CliSchemaValidationError(`Option '${opt.name}' on '${scopeKey}': choices is only valid for Enum kind`);
     }
 
     if (opt.format !== undefined || opt.pattern !== undefined || opt.default !== undefined) {
@@ -398,9 +348,7 @@ function validateOptionValueMetadata(scopeKey: string, opt: import("./types.ts")
   }
 
   if (opt.format !== undefined && opt.pattern !== undefined) {
-    throw new CliSchemaValidationError(
-      `Option ${label}: format and pattern are mutually exclusive`,
-    );
+    throw new CliSchemaValidationError(`Option ${label}: format and pattern are mutually exclusive`);
   }
 
   if (opt.format !== undefined) {
@@ -433,15 +381,10 @@ function validateOptionValueMetadata(scopeKey: string, opt: import("./types.ts")
   }
 }
 
-function validatePositionals(
-  scopeKey: string,
-  positionals: import("./types.ts").CliPositional[],
-): void {
+function validatePositionals(scopeKey: string, positionals: import("./types.ts").CliPositional[]): void {
   for (const p of positionals) {
     if (p.argMin !== undefined && p.argMin < 0) {
-      throw new CliSchemaValidationError(
-        `argMin must be >= 0 for positional ${scopeKey}/${p.name}`,
-      );
+      throw new CliSchemaValidationError(`argMin must be >= 0 for positional ${scopeKey}/${p.name}`);
     }
     if (p.argMax !== undefined && p.argMax < 0) {
       throw new CliSchemaValidationError(
@@ -450,9 +393,7 @@ function validatePositionals(
     }
     const { argMin = 1, argMax = 1 } = p;
     if (argMax > 0 && argMin > argMax) {
-      throw new CliSchemaValidationError(
-        `argMin must not exceed argMax for positional ${scopeKey}/${p.name}`,
-      );
+      throw new CliSchemaValidationError(`argMin must not exceed argMax for positional ${scopeKey}/${p.name}`);
     }
   }
 
@@ -473,9 +414,7 @@ function validatePositionals(
     }
     const { argMax = 1 } = positional;
     if (argMax === 0 && idx + 1 < positionals.length) {
-      throw new CliSchemaValidationError(
-        `Unlimited positional (argMax == 0) must be last in scope ${scopeKey}`,
-      );
+      throw new CliSchemaValidationError(`Unlimited positional (argMax == 0) must be last in scope ${scopeKey}`);
     }
   }
 }

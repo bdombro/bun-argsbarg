@@ -7,12 +7,7 @@ import { join } from "node:path";
 import { $ } from "bun";
 import type { CliProgram } from "./index.ts";
 import { buildToolCallSuccess } from "./mcp/result.ts";
-import {
-  collectMcpTools,
-  mcpToolCallToArgv,
-  mcpToolDescription,
-  sanitizeToolSegment,
-} from "./mcp/tools.ts";
+import { collectMcpTools, mcpToolCallToArgv, mcpToolDescription, sanitizeToolSegment } from "./mcp/tools.ts";
 import { cliSchemaExport } from "./schema.ts";
 import { mcpRequest, nestedMcpFixture, testProgram } from "./test-fixtures.ts";
 import { cliValidateProgram } from "./validate.ts";
@@ -489,10 +484,9 @@ test("minimal.ts mcp without opt-in fails", async () => {
 });
 
 test("MCP resources/list includes custom resource", async () => {
-  const responses = await mcpRequest(
-    [{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }],
-    { script: "examples/mcp-test.ts" },
-  );
+  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }], {
+    script: "examples/mcp-test.ts",
+  });
   const res = responses.get(10) as { result: { resources: { uri: string }[] } };
   const uris = res.result.resources.map((r) => r.uri);
   expect(uris).toContain("mcp_test://schema");

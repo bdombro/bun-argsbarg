@@ -87,9 +87,9 @@ describe("claude plugin", () => {
       execSync("unzip -o -q ../out.zip", { cwd: extract });
       const binMode = statSync(join(extract, "bin", "myapp")).mode & 0o777;
       expect(binMode & 0o111).not.toBe(0);
-      const pluginJson = JSON.parse(
-        readFileSync(join(extract, ".claude-plugin", "plugin.json"), "utf8"),
-      ) as { mcpServers: string };
+      const pluginJson = JSON.parse(readFileSync(join(extract, ".claude-plugin", "plugin.json"), "utf8")) as {
+        mcpServers: string;
+      };
       expect(pluginJson.mcpServers).toBe(".mcp.json");
     } finally {
       rmSync(work, { recursive: true, force: true });

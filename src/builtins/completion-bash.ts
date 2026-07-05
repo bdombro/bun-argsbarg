@@ -1,13 +1,7 @@
 import { CliOptionKind, type CliRouter } from "../types.ts";
 import { emitConsumeLong, emitConsumeShort, emitMatchChild } from "./completion-simulate-shared.ts";
 import { collectScopes, type ScopeRec } from "./scopes.ts";
-import {
-  escShellSingleQuoted,
-  identToken,
-  kHelpLong,
-  kHelpShort,
-  mainName,
-} from "./shell-helpers.ts";
+import { escShellSingleQuoted, identToken, kHelpLong, kHelpShort, mainName } from "./shell-helpers.ts";
 
 function emitSimulate(ident: string): string {
   let o = "_${ident}_nac_simulate() {\n".replace("${ident}", ident);
@@ -18,10 +12,7 @@ function emitSimulate(ident: string): string {
   o += "      ((i++)); continue\n";
   o += "    fi\n";
   o += "    if [[ $w == --* ]]; then\n";
-  o += '      steps=$(_${ident}_nac_consume_long "$sid" "$w" "${COMP_WORDS[i+1]}")\n'.replace(
-    "${ident}",
-    ident,
-  );
+  o += '      steps=$(_${ident}_nac_consume_long "$sid" "$w" "${COMP_WORDS[i+1]}")\n'.replace("${ident}", ident);
   o += "      case $steps in\n";
   o += "        0) break ;;\n";
   o += "        1) ((i++)) ;;\n";
@@ -54,20 +45,13 @@ function emitEnumReplyBash(ident: string, scopes: ScopeRec[]): string {
   o += '  local sid="$1" prev="$2" cur="$3"\n';
   o += "  case $sid in\n";
   for (const [i, sc] of scopes.entries()) {
-    const enumOpts = sc.opts.filter(
-      (op) => op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0,
-    );
+    const enumOpts = sc.opts.filter((op) => op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0);
     if (enumOpts.length === 0) continue;
     o += `    ${i})\n`;
     o += "      case $prev in\n";
     for (const op of enumOpts) {
       const words = (op.choices ?? []).map((c) => escShellSingleQuoted(c)).join(" ");
-      o +=
-        "        --" +
-        op.name +
-        ") COMPREPLY=( $(compgen -W '" +
-        words +
-        '\' -- "$cur") ); return 0 ;;\n';
+      o += `        --${op.name}) COMPREPLY=( $(compgen -W '${words}' -- "$cur") ); return 0 ;;\n`;
     }
     o += "      esac\n";
     o += "      ;;\n";
@@ -85,10 +69,7 @@ function emitMainBodyBash(schema: CliRouter, ident: string): string {
   o += '  local prev="${COMP_WORDS[COMP_CWORD-1]:-}"\n';
   o += "  _${ident}_nac_simulate\n".replace("${ident}", ident);
   o += "  local sid=$REPLY_SID\n";
-  o += '  if _${ident}_nac_enum_reply "$sid" "$prev" "$cur"; then return; fi\n'.replace(
-    "${ident}",
-    ident,
-  );
+  o += '  if _${ident}_nac_enum_reply "$sid" "$prev" "$cur"; then return; fi\n'.replace("${ident}", ident);
   o += "  if [[ $cur == -* ]]; then\n";
   o += '    local oname="A_${ident}_${sid}_opts"\n'.replace("${ident}", ident);
   o += "    local -a optsarr\n";
@@ -111,9 +92,7 @@ function emitMainBodyBash(schema: CliRouter, ident: string): string {
   o += "    fi\n";
   o += "  fi\n";
   o += "}\n\n";
-  o += "complete -F _${main} ${schema.key}\n"
-    .replace("${main}", main)
-    .replace("${schema.key}", schema.key);
+  o += "complete -F _${main} ${schema.key}\n".replace("${main}", main).replace("${schema.key}", schema.key);
   return o;
 }
 

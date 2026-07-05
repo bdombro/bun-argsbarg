@@ -7,11 +7,7 @@ import { buildDetectedSnapshot, buildTargetPlanContext } from "./target-scope.ts
 import type { InstallAction, InstallOpts, UninstallAction } from "./target-types.ts";
 
 /** Builds install actions for normal mode (--all / scoped targets). */
-export function buildInstallPlanFromTargets(
-  root: CliProgram,
-  paths: InstallPaths,
-  opts: InstallOpts,
-): InstallAction[] {
+export function buildInstallPlanFromTargets(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   const detected = buildDetectedSnapshot(root, paths);
   const ctx = buildTargetPlanContext(root, paths, opts, detected);
 

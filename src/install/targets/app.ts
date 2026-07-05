@@ -1,6 +1,6 @@
 import type { CliProgram } from "../../types.ts";
 import { isExternallyManagedBinary } from "../binary-placement.ts";
-import { displayInstallPath, type InstallPaths } from "../paths.ts";
+import type { InstallPaths } from "../paths.ts";
 import { InstallTarget } from "../target-base.ts";
 import type {
   DetectedSnapshot,
@@ -25,7 +25,7 @@ class AppInstallTarget extends InstallTarget {
     return true;
   }
 
-  isDetected(paths: InstallPaths, root: CliProgram): boolean {
+  isDetected(_paths: InstallPaths, root: CliProgram): boolean {
     return isExternallyManagedBinary(root.key) || false;
   }
 

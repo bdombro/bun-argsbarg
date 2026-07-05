@@ -7,12 +7,7 @@ import type { Cli } from "../cli.ts";
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
 import { buildToolCallSuccess } from "./result.ts";
-import {
-  allMcpResources,
-  collectMcpTools,
-  mcpToolCallToArgv,
-  resolveMcpServerInfo,
-} from "./tools.ts";
+import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpServerInfo } from "./tools.ts";
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 
@@ -110,10 +105,7 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
         return;
       }
       const rawArgs = params.arguments;
-      if (
-        rawArgs !== undefined &&
-        (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs))
-      ) {
+      if (rawArgs !== undefined && (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs))) {
         writeError(id, -32602, "Invalid params: arguments must be an object");
         return;
       }
@@ -162,8 +154,7 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
         });
         return;
       }
-      const errText =
-        invokeResult.stderr.trim() || invokeResult.errorMsg || `Exit code ${invokeResult.exitCode}`;
+      const errText = invokeResult.stderr.trim() || invokeResult.errorMsg || `Exit code ${invokeResult.exitCode}`;
       writeResponse({
         jsonrpc: "2.0",
         id,

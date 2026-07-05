@@ -8,7 +8,8 @@ Argsbarg apps distribute the **binary and shell completions** through Homebrew, 
 | --- | --- |
 | Binary + completions | Formula `install` block |
 | Skills + MCP | Formula `post_install` → `{key} configure --sync --yes` |
-| App config | User opt-in: `{key} configure` (interactive; not run from formula `post_install`) |
+| App config file | Bootstrapped as `{}` on `post_install` via `--sync` (`~/.local/lib/<key>/config.json`) |
+| App config values | User opt-in: `{key} configure` (interactive wizard when `program.appConfig` has entries) |
 | App config cleanup | Formula `uninstall` → `{key} configure --remove-config --yes` |
 
 **Only tap-from-repo** — in-repo `Formula/` or GitHub tap. Not Homebrew core.
@@ -89,7 +90,7 @@ Local dev formulae (`just install-local`) use a plain `file://` URL and do not n
 
 Completions require users to configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
 
-**Why configure is separate from `post_install`:** the wizard is interactive (TTY + prompts for secrets). Formula `post_install` runs non-interactively during `brew install` and in CI (`brew test`). Apps with `appConfig` print a one-line configure hint in formula `caveats` instead.
+**Why the wizard is separate from `post_install`:** prompting for secrets requires a TTY. `post_install` only bootstraps an empty `config.json` and refreshes skills/MCP. Apps with `appConfig` print a one-line configure hint in formula `caveats` for the interactive wizard.
 
 **MCP hosts:** when `mcpServer.enabled` is true, add a caveats line that chat apps (Cursor, Claude Desktop, etc.) must be **restarted** after `brew install` / `brew upgrade` — `post_install` updates MCP config on disk, but hosts typically load it only at startup.
 

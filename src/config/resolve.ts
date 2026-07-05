@@ -35,10 +35,7 @@ export function captureMappedHostEnv(program: CliProgram): Record<string, string
   return out;
 }
 
-function envOverrideValue(
-  envName: string,
-  hostEnv?: Record<string, string | undefined>,
-): string | undefined {
+function envOverrideValue(envName: string, hostEnv?: Record<string, string | undefined>): string | undefined {
   const val = hostEnv && envName in hostEnv ? hostEnv[envName] : process.env[envName];
   if (val === undefined || val.length === 0) {
     return undefined;

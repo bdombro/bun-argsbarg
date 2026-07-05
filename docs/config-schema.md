@@ -42,11 +42,13 @@ await cli.run();
 | Interactive `configure` / `--status` | Auto-runs config wizard when `entries` is non-empty; `--status` for read-only inventory |
 | Built-in `configure get` / `configure set` | Read/write resolved values (opt-out via `commands: false`) |
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
-| `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `path`, `dir` — prefer over `process.env` |
+| `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `getUnsafe`, `setUnsafe`, `readUnsafe`, `path`, `dir` — prefer `get`/`set` when `appConfig` is set |
 
-**Validation at runtime** — argsbarg validates the config file and `config set` / `ctx.appConfig.set` against the effective JSON Schema (block `jsonSchema` or synthesized all-string schema).
+**Handler access** — with `program.appConfig`: `get` / `set` / `require` use schema validation and resolved values. `getUnsafe` / `setUnsafe` / `readUnsafe` read and write the raw file (for `_bindings` and ad-hoc keys). Without `program.appConfig`, only `path`, `dir`, and the `*Unsafe` methods work.
 
-**No public config I/O exports** — consumers use `program.appConfig` for authoring and `ctx.appConfig` in handlers.
+**`_bindings`** — reserved top-level metadata: `{ "_bindings": { "apiToken": "env" } }`. Set via wizard (Enter to use env), `configure set --from-env`, or `ctx.appConfig.set` (marks `file`). Optional keys can be bound to `skip`.
+
+**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema. Partial writes (bindings only, single-key updates) skip required-property checks.
 
 See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and `configure get`/`set`.
 

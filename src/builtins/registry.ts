@@ -8,11 +8,7 @@ import { cliBuiltinVersionCommand } from "./version.ts";
 
 type BuiltinFactory = (program: CliProgram) => CliNode | null;
 
-function pushBuiltin(
-  builtins: CliNode[],
-  program: CliProgram,
-  factory: BuiltinFactory | null,
-): void {
+function pushBuiltin(builtins: CliNode[], program: CliProgram, factory: BuiltinFactory | null): void {
   if (!factory) {
     return;
   }

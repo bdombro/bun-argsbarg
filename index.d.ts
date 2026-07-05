@@ -7,11 +7,15 @@ export declare function displayAppConfigPath(program: CliProgram): string;
 export type ResolvedConfig = Record<string, unknown>;
 declare class EmptyAppConfigSnapshot {
 	private readonly program;
-	constructor(program: CliProgram);
+	private fileData;
+	constructor(program: CliProgram, fileData?: Record<string, unknown>);
 	get(_key: string): undefined;
 	require(key: string): never;
 	set(_key: string, _value: unknown): void;
 	read(): ResolvedConfig;
+	readUnsafe(): Record<string, unknown>;
+	getUnsafe(key: string): unknown;
+	setUnsafe(key: string, value: unknown): void;
 	/** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
 	get path(): string;
 	/** Resolved absolute directory containing the config file. */
@@ -26,13 +30,18 @@ declare class AppConfigSnapshot {
 	require(key: string): unknown;
 	set(key: string, value: unknown): void;
 	read(): ResolvedConfig;
+	readUnsafe(): Record<string, unknown>;
+	getUnsafe(key: string): unknown;
+	setUnsafe(key: string, value: unknown): void;
 	/** Resolved absolute path to the app JSON config file (`~/.local/lib/<key>/config.json`). */
 	get path(): string;
 	/** Resolved absolute directory containing the config file. */
 	get dir(): string;
 	/** Replace snapshot after external bootstrap (internal). */
 	refresh(fileData: Record<string, unknown>, resolved: ResolvedConfig): void;
+	private persistFileData;
 	private assertEntryKey;
+	private assertUnsafeKey;
 }
 export type AnyAppConfigSnapshot = AppConfigSnapshot | EmptyAppConfigSnapshot;
 /** Coerced leaf inputs keyed by option and positional names. */

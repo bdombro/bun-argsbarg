@@ -9,12 +9,7 @@ import { join } from "node:path";
 import { exportPresentationBuiltins } from "./builtins/export.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import { cliHelpRender } from "./help.ts";
-import {
-  defaultMcpBundlePaths,
-  generateMcpManifest,
-  packMcpBundle,
-  runMcpBundle,
-} from "./mcp/bundle.ts";
+import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle, runMcpBundle } from "./mcp/bundle.ts";
 import { collectMcpTools } from "./mcp/tools.ts";
 import { cliSchemaExport } from "./schema.ts";
 import { CliOptionKind, type CliProgram } from "./types.ts";
@@ -128,8 +123,7 @@ describe("mcp bundle", () => {
     expect(manifest.manifest_version).toBe("0.3");
     expect((manifest.server as { type: string }).type).toBe("binary");
     expect((manifest.server as { entry_point: string }).entry_point).toBe("myapp");
-    const mcpConfig = (manifest.server as { mcp_config: { command: string; args: string[] } })
-      .mcp_config;
+    const mcpConfig = (manifest.server as { mcp_config: { command: string; args: string[] } }).mcp_config;
     expect(mcpConfig.command).toBe("${__dirname}/myapp");
     expect(mcpConfig.args).toEqual(["mcp"]);
     expect((manifest.compatibility as { platforms: string[] }).platforms).toEqual(["darwin"]);
@@ -185,10 +179,7 @@ describe("mcp bundle", () => {
       }
       const lines = stdout.join("").trim().split("\n");
       const norm = (p: string) => realpathSync.native(p);
-      expect(lines.map(norm)).toEqual([
-        norm(join(dist, "myapp.mcpb")),
-        norm(join(dist, "claude-plugin", "myapp.zip")),
-      ]);
+      expect(lines.map(norm)).toEqual([norm(join(dist, "myapp.mcpb")), norm(join(dist, "claude-plugin", "myapp.zip"))]);
       const zip = readFileSync(join(dist, "claude-plugin", "myapp.zip"));
       expect(zip.indexOf(Buffer.from(".mcp.json"))).toBeGreaterThanOrEqual(0);
     } finally {

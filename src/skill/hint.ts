@@ -9,11 +9,7 @@ export function generatedFileHtmlComment(source: string): string {
 }
 
 /** Prepends a hint, or inserts after frontmatter when requested. */
-export function insertGeneratedHint(
-  content: string,
-  hint: string,
-  options?: { afterFrontmatter?: boolean },
-): string {
+export function insertGeneratedHint(content: string, hint: string, options?: { afterFrontmatter?: boolean }): string {
   if (options?.afterFrontmatter) {
     const match = content.match(MARKDOWN_FRONTMATTER_RE);
     if (match) {

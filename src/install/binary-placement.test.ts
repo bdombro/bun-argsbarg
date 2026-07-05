@@ -3,15 +3,11 @@ Tests for install/binary-placement module behavior.
 */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CliProgram } from "../types.ts";
-import {
-  isAppInstalled,
-  isExternallyManagedBinary,
-  resolvePathCommand,
-} from "./binary-placement.ts";
+import { isAppInstalled, isExternallyManagedBinary, resolvePathCommand } from "./binary-placement.ts";
 
 const program: CliProgram = {
   key: "placementapp",

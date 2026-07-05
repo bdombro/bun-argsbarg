@@ -4,6 +4,7 @@ Interactive and automated `configure` command orchestration (agent artifacts and
 
 import { resolveCapabilities } from "../capabilities.ts";
 import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
+import { ensureAppConfigFile } from "../config/file.ts";
 import { resolveInstallPaths } from "../install/paths.ts";
 import { buildInstallPlan, buildUpdatePlan } from "../install/plan.ts";
 import {
@@ -25,11 +26,7 @@ import type {
   TargetPlanContext,
   UninstallAction,
 } from "../install/target-types.ts";
-import {
-  buildUninstallPlan,
-  skillDirFromUninstallSummary,
-  uninstallSkillDir,
-} from "../install/uninstall.ts";
+import { buildUninstallPlan, skillDirFromUninstallSummary, uninstallSkillDir } from "../install/uninstall.ts";
 import { cliSkillInstall, skillTargetFromActionKind } from "../skill/install.ts";
 import type { CliProgram } from "../types.ts";
 import { artifactPromptLabel, promptTargetAction } from "./prompt.ts";
@@ -218,8 +215,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
     if (actions.length === 0) continue;
 
     const installActions = actions.filter(
-      (a): a is InstallAction =>
-        "kind" in a && typeof a.kind === "string" && a.kind.includes("-mcp"),
+      (a): a is InstallAction => "kind" in a && typeof a.kind === "string" && a.kind.includes("-mcp"),
     );
     if (choice === "install" && resolveCapabilities(root).mcp && installActions.length > 0) {
       runTargetPreflight(root, paths, mutationOpts, installActions);
@@ -241,6 +237,17 @@ async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Pro
     return [];
   }
 
+  const changed: string[] = [];
+
+  if (installOpts.reinstall && !installOpts.uninstall) {
+    const bootstrapped = ensureAppConfigFile(root, !!installOpts.dry);
+    if (bootstrapped) {
+      const display = displayAppConfigPath(root);
+      changed.push(display);
+      installOut(`Initialized config: ${display}`, installOpts);
+    }
+  }
+
   let actions: Array<InstallAction | UninstallAction>;
   if (installOpts.uninstall) {
     actions = buildUninstallPlan(root, paths, installOpts);
@@ -257,14 +264,11 @@ async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Pro
     runTargetPreflight(root, paths, installOpts, installActions);
   }
 
-  return executePlan(root, actions, installOpts, true);
+  return [...changed, ...executePlan(root, actions, installOpts, true)];
 }
 
 /** Main configure command orchestrator. */
-export async function cliConfigure(
-  root: CliProgram,
-  rawOpts: Record<string, string>,
-): Promise<never> {
+export async function cliConfigure(root: CliProgram, rawOpts: Record<string, string>): Promise<never> {
   const opts = parseConfigureOpts(rawOpts);
   const err = validateConfigureOpts(opts);
   if (err) {
@@ -276,9 +280,7 @@ export async function cliConfigure(
 
   let changed: string[] = [];
   try {
-    changed = isInteractive
-      ? await runInteractiveConfigure(root, opts)
-      : await runAutomatedConfigure(root, opts);
+    changed = isInteractive ? await runInteractiveConfigure(root, opts) : await runAutomatedConfigure(root, opts);
   } catch (mutationErr) {
     installErr(mutationErr instanceof Error ? mutationErr.message : String(mutationErr));
     process.exit(1);

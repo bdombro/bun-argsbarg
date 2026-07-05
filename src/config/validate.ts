@@ -4,6 +4,7 @@ Aligned with common ts-json-schema-generator output (local $ref, objects, scalar
 */
 
 import { parseCommaList, parseDate, parseDateTime } from "../formats.ts";
+import { isFrameworkConfigKey } from "./bindings.ts";
 
 type JsonSchema = Record<string, unknown>;
 
@@ -21,7 +22,14 @@ export interface ValidateResult {
 /** Validate `data` against a JSON Schema root. Returns human-readable error messages. */
 export function validateConfigDocument(data: unknown, rootSchema: JsonSchema): ValidateResult {
   const errors: string[] = [];
-  validateValue(data, rootSchema, rootSchema, "$", errors);
+  validateValue(data, rootSchema, rootSchema, "$", errors, false);
+  return { valid: errors.length === 0, errors };
+}
+
+/** Validate present keys only — skips root `required` checks (partial writes / bootstrap). */
+export function validateConfigDocumentPartial(data: unknown, rootSchema: JsonSchema): ValidateResult {
+  const errors: string[] = [];
+  validateValue(data, rootSchema, rootSchema, "$", errors, true);
   return { valid: errors.length === 0, errors };
 }
 
@@ -31,6 +39,7 @@ function validateValue(
   root: JsonSchema,
   path: string,
   errors: string[],
+  partial: boolean,
 ): void {
   const resolved = resolveSchema(schema, root);
   if (!resolved) {
@@ -59,7 +68,7 @@ function validateValue(
         continue;
       }
       const branchErrs: string[] = [];
-      validateValue(value, branch as JsonSchema, root, path, branchErrs);
+      validateValue(value, branch as JsonSchema, root, path, branchErrs, partial);
       if (branchErrs.length === 0) {
         return;
       }
@@ -93,10 +102,10 @@ function validateValue(
     errors.push(`${path}: must be null`);
   }
   if (types.includes("object") || (types.length === 0 && isPlainObject(value))) {
-    validateObject(value, resolved, root, path, errors);
+    validateObject(value, resolved, root, path, errors, partial);
   }
   if (types.includes("array") || (types.length === 0 && Array.isArray(value))) {
-    validateArray(value, resolved, root, path, errors);
+    validateArray(value, resolved, root, path, errors, partial);
   }
 }
 
@@ -165,13 +174,7 @@ function validateString(value: unknown, schema: JsonSchema, path: string, errors
   }
 }
 
-function validateNumber(
-  value: unknown,
-  schema: JsonSchema,
-  path: string,
-  errors: string[],
-  integer: boolean,
-): void {
+function validateNumber(value: unknown, schema: JsonSchema, path: string, errors: string[], integer: boolean): void {
   if (typeof value !== "number" || Number.isNaN(value)) {
     errors.push(`${path}: must be number`);
     return;
@@ -193,6 +196,7 @@ function validateObject(
   root: JsonSchema,
   path: string,
   errors: string[],
+  partial: boolean,
 ): void {
   if (!isPlainObject(value)) {
     errors.push(`${path}: must be object`);
@@ -207,22 +211,25 @@ function validateObject(
   if (propMap) {
     for (const [key, propSchema] of Object.entries(propMap)) {
       if (key in value) {
-        validateValue(value[key], propSchema, root, `${path}.${key}`, errors);
+        validateValue(value[key], propSchema, root, `${path}.${key}`, errors, partial);
       }
     }
   }
 
-  const required = schema.required;
-  if (Array.isArray(required)) {
-    for (const key of required) {
-      if (typeof key === "string" && !(key in value)) {
-        errors.push(`${path}: missing required property '${key}'`);
+  if (!partial) {
+    const required = schema.required;
+    if (Array.isArray(required)) {
+      for (const key of required) {
+        if (typeof key === "string" && !(key in value)) {
+          errors.push(`${path}: missing required property '${key}'`);
+        }
       }
     }
   }
 
   if (schema.additionalProperties === false && propMap) {
     for (const key of Object.keys(value)) {
+      if (isFrameworkConfigKey(key)) continue;
       if (!(key in propMap)) {
         errors.push(`${path}: unknown property '${key}'`);
       }
@@ -236,6 +243,7 @@ function validateArray(
   root: JsonSchema,
   path: string,
   errors: string[],
+  partial: boolean,
 ): void {
   if (!Array.isArray(value)) {
     errors.push(`${path}: must be array`);
@@ -250,12 +258,12 @@ function validateArray(
   const items = schema.items;
   if (typeof items === "object" && items !== null && !Array.isArray(items)) {
     for (let i = 0; i < value.length; i++) {
-      validateValue(value[i], items as JsonSchema, root, `${path}[${i}]`, errors);
+      validateValue(value[i], items as JsonSchema, root, `${path}[${i}]`, errors, partial);
     }
   }
 }
 
-function validateParsedConfigValue(
+export function validateParsedConfigValue(
   parsed: unknown,
   propertySchema: JsonSchema | undefined,
   rootSchema: JsonSchema,
@@ -264,18 +272,14 @@ function validateParsedConfigValue(
     return parsed;
   }
   const errors: string[] = [];
-  validateValue(parsed, propertySchema, rootSchema, "$", errors);
+  validateValue(parsed, propertySchema, rootSchema, "$", errors, false);
   if (errors.length > 0) {
     throw new Error(errors[0] ?? "Invalid config value");
   }
   return parsed;
 }
 
-function parseJsonLiteral(
-  raw: string,
-  propertySchema: JsonSchema | undefined,
-  rootSchema: JsonSchema,
-): unknown {
+function parseJsonLiteral(raw: string, propertySchema: JsonSchema | undefined, rootSchema: JsonSchema): unknown {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
@@ -346,11 +350,7 @@ function parsePrimitiveArraySegment(segment: string, items: PrimitiveArrayItems)
   }
 }
 
-function parseHomogeneousPrimitiveArray(
-  raw: string,
-  arraySchema: JsonSchema,
-  rootSchema: JsonSchema,
-): unknown[] {
+function parseHomogeneousPrimitiveArray(raw: string, arraySchema: JsonSchema, rootSchema: JsonSchema): unknown[] {
   const items = homogeneousPrimitiveArrayItems(arraySchema, rootSchema);
   if (!items) {
     throw new Error("Use --json for object or array config values");

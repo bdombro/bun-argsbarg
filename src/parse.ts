@@ -204,8 +204,7 @@ function consumeOptions(
           report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false },
           nextIndex: idx,
         };
-      if (err)
-        return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
+      if (err) return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
     } else {
       const err = consumeShort(tok);
       if (err === "")
@@ -213,8 +212,7 @@ function consumeOptions(
           report: { err: null, stoppedOnUnknown: true, sawDoubleDash: false },
           nextIndex: idx,
         };
-      if (err)
-        return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
+      if (err) return { report: { err, stoppedOnUnknown: false, sawDoubleDash: false }, nextIndex: idx };
     }
   }
 
@@ -317,11 +315,7 @@ function finishLeaf(
       }
     }
     if (count < argMin) {
-      return errorResult(
-        `Expected at least ${argMin} argument(s) for ${p.name}, got ${count}`,
-        path,
-        [],
-      );
+      return errorResult(`Expected at least ${argMin} argument(s) for ${p.name}, got ${count}`, path, []);
     }
   }
 
@@ -360,11 +354,7 @@ function finishLeaf(
 // ── Main Parser ───────────────────────────────────────────────────────────────
 
 /** Builds a user-error parse result; `path` defaults to `errorHelpPath`. */
-function errorResult(
-  errorMsg: string,
-  errorHelpPath: string[] = [],
-  path: string[] = errorHelpPath,
-): ParseResult {
+function errorResult(errorMsg: string, errorHelpPath: string[] = [], path: string[] = errorHelpPath): ParseResult {
   return {
     kind: ParseKind.Error,
     path,
@@ -466,9 +456,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         node = findChild(root.commands, cmdName);
         if (!node) {
           return errorResult(
-            forcePositionals
-              ? `Expected subcommand but got positional: ${cmdName}`
-              : `Unknown command: ${cmdName}`,
+            forcePositionals ? `Expected subcommand but got positional: ${cmdName}` : `Unknown command: ${cmdName}`,
             path,
             [],
           );
@@ -504,10 +492,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       if (isCliRouter(current) && current.commands.length > 0) {
         const fb = current.fallbackCommand;
         const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
-        if (
-          fb !== undefined &&
-          (fm === CliFallbackMode.MissingOnly || fm === CliFallbackMode.MissingOrUnknown)
-        ) {
+        if (fb !== undefined && (fm === CliFallbackMode.MissingOnly || fm === CliFallbackMode.MissingOrUnknown)) {
           const fbNode = findChild(current.commands, fb);
           if (fbNode) {
             path.push(fb);
@@ -520,15 +505,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       if (!isCliLeaf(current)) {
         return helpResult(path, false);
       }
-      return finishLeaf(
-        current,
-        i,
-        argv,
-        path,
-        opts,
-        collectOptionDefs(root, path),
-        forcePositionals,
-      );
+      return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
     }
 
     const tok = argv[i];
@@ -550,8 +527,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       const fb = current.fallbackCommand;
       const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
       const canRouteUnknown =
-        fb !== undefined &&
-        (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
+        fb !== undefined && (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
 
       if (canRouteUnknown && fb !== undefined) {
         const fbNode = findChild(current.commands, fb);
@@ -563,9 +539,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       }
 
       return errorResult(
-        forcePositionals
-          ? `Expected subcommand but got positional: ${tok}`
-          : `Unknown subcommand: ${tok}`,
+        forcePositionals ? `Expected subcommand but got positional: ${tok}` : `Unknown subcommand: ${tok}`,
         path,
       );
     }
@@ -573,15 +547,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     if (!isCliLeaf(current)) {
       return helpResult(path, false);
     }
-    return finishLeaf(
-      current,
-      i,
-      argv,
-      path,
-      opts,
-      collectOptionDefs(root, path),
-      forcePositionals,
-    );
+    return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals);
   }
 }
 

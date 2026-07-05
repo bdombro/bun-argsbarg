@@ -58,10 +58,7 @@ export function defaultClaudePluginPaths(program: CliProgram, cwd = process.cwd(
 }
 
 /** Generates `.claude-plugin/plugin.json` object. */
-export function generatePluginManifest(
-  program: CliProgram,
-  _binaryName: string,
-): Record<string, unknown> {
+export function generatePluginManifest(program: CliProgram, _binaryName: string): Record<string, unknown> {
   const bundle = program.mcpServer?.bundle;
   const manifest: Record<string, unknown> = {
     name: pluginName(program),
@@ -78,10 +75,7 @@ export function generatePluginManifest(
 }
 
 /** Generates plugin `.mcp.json` stdio server config. */
-export function generatePluginMcpJson(
-  program: CliProgram,
-  binaryName: string,
-): Record<string, unknown> {
+export function generatePluginMcpJson(program: CliProgram, binaryName: string): Record<string, unknown> {
   const mcp: Record<string, unknown> = {
     command: `\${CLAUDE_PLUGIN_ROOT}/bin/${binaryName}`,
     args: ["mcp"],
@@ -117,12 +111,7 @@ function collectZipEntries(rootDir: string, dir = rootDir): ZipFileEntry[] {
   return entries;
 }
 
-function writePluginTree(
-  pluginRoot: string,
-  program: CliProgram,
-  binaryPath: string,
-  binaryName: string,
-): void {
+function writePluginTree(pluginRoot: string, program: CliProgram, binaryPath: string, binaryName: string): void {
   const bundle = generatePluginSkillBundle(program);
   const skillMd = applyPluginSkillHint(program, bundle.skillMd);
 
@@ -155,9 +144,7 @@ export function packClaudePlugin(program: CliProgram, opts: PackMcpBundleOpts = 
   const binaryName = basename(binaryPath);
 
   if (!existsSync(binaryPath)) {
-    throw new Error(
-      `Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`,
-    );
+    throw new Error(`Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`);
   }
 
   const staging = mkdtempSync(join(tmpdir(), "claude-plugin-"));

@@ -252,20 +252,10 @@ function renderTextBox(title: string, lines: string[], hw: number, color: boolea
 
   for (const line of lines) {
     const padded = padVisible(line, contentWidth);
-    out.push(
-      (color ? style.gray(kBoxV) : kBoxV) +
-        " " +
-        padded +
-        " " +
-        (color ? style.gray(kBoxV) : kBoxV),
-    );
+    out.push(`${color ? style.gray(kBoxV) : kBoxV} ${padded} ${color ? style.gray(kBoxV) : kBoxV}`);
   }
 
-  out.push(
-    color
-      ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR)
-      : kBoxBL + repeatBoxH(borderWidth) + kBoxBR,
-  );
+  out.push(color ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR) : kBoxBL + repeatBoxH(borderWidth) + kBoxBR);
 
   return out;
 }
@@ -287,11 +277,7 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
   const bodyLines: string[] = [];
   for (const row of rows) {
     const wrapped = wrapText(row.description, descWidth);
-    const first =
-      row.label +
-      spaces(labelWidth - visibleWidth(row.label)) +
-      "  " +
-      (color ? style.white(wrapped[0]) : wrapped[0]);
+    const first = `${row.label + spaces(labelWidth - visibleWidth(row.label))}  ${color ? style.white(wrapped[0]) : wrapped[0]}`;
     bodyLines.push(first);
     for (let idx = 1; idx < wrapped.length; idx++) {
       const pad = color ? style.gray(spaces(labelWidth)) : spaces(labelWidth);
@@ -324,20 +310,10 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
 
   for (const line of bodyLines) {
     const padded = padVisible(line, contentWidth);
-    out.push(
-      (color ? style.gray(kBoxV) : kBoxV) +
-        " " +
-        padded +
-        " " +
-        (color ? style.gray(kBoxV) : kBoxV),
-    );
+    out.push(`${color ? style.gray(kBoxV) : kBoxV} ${padded} ${color ? style.gray(kBoxV) : kBoxV}`);
   }
 
-  out.push(
-    color
-      ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR)
-      : kBoxBL + repeatBoxH(borderWidth) + kBoxBR,
-  );
+  out.push(color ? style.gray(kBoxBL + repeatBoxH(borderWidth) + kBoxBR) : kBoxBL + repeatBoxH(borderWidth) + kBoxBR);
 
   return out;
 }
@@ -402,13 +378,7 @@ function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
 
 // ── Main Help Render ──────────────────────────────────────────────────────────
 
-function appendNotesBox(
-  lines: string[],
-  notes: string | undefined,
-  appKey: string,
-  hw: number,
-  color: boolean,
-): void {
+function appendNotesBox(lines: string[], notes: string | undefined, appKey: string, hw: number, color: boolean): void {
   if ((notes ?? "").length === 0) {
     return;
   }
@@ -441,21 +411,14 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
       ).join("\n"),
     );
 
-    const optBox = renderTableBox(
-      "Options",
-      rowsForOptions(visibleOptions(schema.options), color),
-      hw,
-      color,
-    );
+    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(schema.options), color), hw, color);
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
     }
     if ((schema.commands ?? []).length > 0) {
       lines.push("");
-      lines.push(
-        renderTableBox("Commands", rowsForSubcommands(schema.commands ?? []), hw, color).join("\n"),
-      );
+      lines.push(renderTableBox("Commands", rowsForSubcommands(schema.commands ?? []), hw, color).join("\n"));
     }
     appendNotesBox(lines, schema.notes, schema.key, hw, color);
     return `${lines.join("\n")}\n\n`;
@@ -496,12 +459,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
     ).join("\n"),
   );
 
-  const optBox = renderTableBox(
-    "Options",
-    rowsForOptions(visibleOptions(node.options), color),
-    hw,
-    color,
-  );
+  const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
   if (optBox.length > 0) {
     lines.push("");
     lines.push(optBox.join("\n"));

@@ -20,7 +20,7 @@ function enabledKinds(program: CliProgram, caps: CliCapabilities): Kind[] {
 
 function joinEnglish(items: string[]): string {
   if (items.length === 0) return "agent artifacts";
-  if (items.length === 1) return items[0]!;
+  if (items.length === 1) return items[0] ?? "agent artifacts";
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
@@ -41,7 +41,7 @@ export function configureSyncOptionDescription(program: CliProgram, caps: CliCap
   return `Refresh installed ${short(program, caps)}. Used by Homebrew post_install.`;
 }
 
-export function docsSkillTopicDescription(program: CliProgram, caps: CliCapabilities): string {
+export function docsSkillTopicDescription(_program: CliProgram, caps: CliCapabilities): string {
   if (caps.configure) {
     return "Print a reference agent SKILL; run `configure` to install an optimized copy.";
   }
@@ -78,9 +78,6 @@ export function configureCommandNotes(program: CliProgram, _caps: CliCapabilitie
   if (program.appConfig) {
     lines.push("Remove app config only:", `  ${app} configure --remove-config --yes`, "");
   }
-  lines.push(
-    "Use --dry to preview changes without writing files.",
-    "Use --json for machine-readable output.",
-  );
+  lines.push("Use --dry to preview changes without writing files.", "Use --json for machine-readable output.");
   return lines.join("\n");
 }

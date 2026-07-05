@@ -21,20 +21,12 @@ export function docsSaveGeneratedHint(program: CliProgram, topic: string): strin
 }
 
 /** Inserts save hint without breaking YAML frontmatter (`docs skill`). */
-export function applySaveGeneratedHint(
-  program: CliProgram,
-  topic: string,
-  content: string,
-): string {
+export function applySaveGeneratedHint(program: CliProgram, topic: string, content: string): string {
   if (!docsTopicIsGeneratedByArgsbarg(topic)) {
     return content;
   }
   const hint = docsSaveGeneratedHint(program, topic);
-  return insertGeneratedHint(
-    content,
-    hint,
-    topic === "skill" ? { afterFrontmatter: true } : undefined,
-  );
+  return insertGeneratedHint(content, hint, topic === "skill" ? { afterFrontmatter: true } : undefined);
 }
 
 /** File body for `--save` (hint on argsbarg-generated markdown only). */

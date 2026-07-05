@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { readBindings } from "../config/bindings.ts";
 import { resolveAppConfigPath, writeAppConfigFile } from "../config/file.ts";
 import { Cli, type CliProgram } from "../index.ts";
 
@@ -90,6 +91,33 @@ describe("builtins/config", () => {
       if (prevHome === undefined) delete process.env.HOME;
       else process.env.HOME = prevHome;
       if (prev !== undefined) process.env.API_TOKEN = prev;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("config set --from-env stores binding without literal", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cfg-from-env-"));
+    const prevHome = process.env.HOME;
+    process.env.HOME = dir;
+    const prev = process.env.API_TOKEN;
+    process.env.API_TOKEN = "from-env";
+    try {
+      const program = configFixture();
+      writeAppConfigFile(program, { apiToken: "seed" }, { partial: true });
+      const result = await new Cli(program).invoke(["configure", "set", "apiToken", "--from-env"]);
+      expect(result.exitCode).toBe(0);
+      const raw = await new Cli(program).invoke(["configure", "get", "apiToken"]);
+      expect(raw.stdout.trim()).toBe("REDACTED");
+      const configPath = resolveAppConfigPath(program);
+      const { readFileSync } = await import("node:fs");
+      const onDisk = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+      expect(onDisk.apiToken).toBeUndefined();
+      expect(readBindings(onDisk).apiToken).toBe("env");
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+      if (prev === undefined) delete process.env.API_TOKEN;
+      else process.env.API_TOKEN = prev;
       rmSync(dir, { recursive: true, force: true });
     }
   });

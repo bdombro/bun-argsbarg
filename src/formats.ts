@@ -108,11 +108,7 @@ export function formatValidationError(format: CliValueFormat, value: string): st
 }
 
 /** Validates a string value against format and/or pattern metadata. */
-export function validateFormatValue(
-  value: string,
-  format?: CliValueFormat,
-  pattern?: string,
-): void {
+export function validateFormatValue(value: string, format?: CliValueFormat, pattern?: string): void {
   if (format !== undefined) {
     switch (format) {
       case CliValueFormat.Duration:

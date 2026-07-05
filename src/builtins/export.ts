@@ -41,9 +41,7 @@ function exportBuiltinNode(cmd: CliNode): CliSchemaExport | null {
     if (cmd.fallbackMode !== undefined) {
       out.fallbackMode = cmd.fallbackMode;
     }
-    const children = cmd.commands
-      .map((ch) => exportBuiltinNode(ch))
-      .filter((ch): ch is CliSchemaExport => ch !== null);
+    const children = cmd.commands.map((ch) => exportBuiltinNode(ch)).filter((ch): ch is CliSchemaExport => ch !== null);
     if (children.length > 0) {
       out.commands = children;
     }

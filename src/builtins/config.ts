@@ -2,6 +2,7 @@
 Built-in `configure get` / `configure set` subcommands.
 */
 
+import { clearFileValue, setBinding } from "../config/bindings.ts";
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import {
   configCommandsEnabled,
@@ -28,12 +29,7 @@ const PRETTY_OPTION: CliOption = {
   kind: CliOptionKind.Presence,
 };
 
-function configGetOutput(
-  program: CliProgram,
-  key: string | undefined,
-  json: boolean,
-  pretty: boolean,
-): void {
+function configGetOutput(program: CliProgram, key: string | undefined, json: boolean, pretty: boolean): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return;
@@ -106,6 +102,31 @@ function configGetOutput(
   }
 }
 
+const FROM_ENV_OPTION: CliOption = {
+  name: "from-env",
+  description: "Bind this key to its mapped environment variable (no literal value stored).",
+  kind: CliOptionKind.Presence,
+};
+
+function configSetFromEnv(program: CliProgram, key: string): void {
+  const appConfig = program.appConfig;
+  if (!appConfig) {
+    return;
+  }
+  const entry = appConfig.entries[key];
+  if (!entry?.env) {
+    process.stderr.write(`Configuration key '${key}' has no env mapping for --from-env.\n`);
+    process.exit(1);
+  }
+  const hostEnv = captureMappedHostEnv(program);
+  const { fileData } = bootstrapAppConfig(program, { validateFile: true });
+  let next = clearFileValue(fileData, key);
+  next = setBinding(next, key, "env");
+  writeAppConfigFile(program, next, { partial: true });
+  const resolved = resolveAppConfig(program, next, hostEnv);
+  exportConfigToEnv(program, resolved, hostEnv);
+}
+
 function configSetRun(program: CliProgram, key: string, rawValue: string, useJson: boolean): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
@@ -135,8 +156,8 @@ function configSetRun(program: CliProgram, key: string, rawValue: string, useJso
 
   const hostEnv = captureMappedHostEnv(program);
   const { fileData } = bootstrapAppConfig(program, { validateFile: true });
-  const next = { ...fileData, [key]: parsed };
-  writeAppConfigFile(program, next);
+  const next = setBinding({ ...fileData, [key]: parsed }, key, "file");
+  writeAppConfigFile(program, next, { partial: true });
   const resolved = resolveAppConfig(program, next, hostEnv);
   exportConfigToEnv(program, resolved, hostEnv);
 }
@@ -166,7 +187,7 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
   return {
     key: "set",
     description: "Write one configuration key to the config file.",
-    options: [JSON_OPTION],
+    options: [JSON_OPTION, FROM_ENV_OPTION],
     mcpTool: mcpSetEnabled ? undefined : { enabled: false },
     positionals: [
       {
@@ -191,10 +212,19 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
         process.stderr.write("configure set requires a key.\n");
         process.exit(1);
       }
+      if (ctx.hasFlag("from-env")) {
+        const raw = ctx.args[1];
+        if (raw !== undefined && raw.length > 0) {
+          process.stderr.write("configure set --from-env does not accept a value.\n");
+          process.exit(1);
+        }
+        configSetFromEnv(program, key);
+        return;
+      }
       const raw = ctx.args[1];
       if (raw === undefined || raw.length === 0) {
         if (!ctx.hasFlag("json")) {
-          process.stderr.write("configure set requires a value (or --json).\n");
+          process.stderr.write("configure set requires a value (or --from-env).\n");
           process.exit(1);
         }
         process.stderr.write("configure set requires a value.\n");

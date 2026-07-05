@@ -61,7 +61,5 @@ test("docsMcpResources empty when MCP disabled", () => {
 
 test("reservedDocsTopicResourceUris matches docsMcpResources URIs", () => {
   const program = fixture();
-  expect(reservedDocsTopicResourceUris(program)).toEqual(
-    docsMcpResources(program).map((r) => r.uri),
-  );
+  expect(reservedDocsTopicResourceUris(program)).toEqual(docsMcpResources(program).map((r) => r.uri));
 });

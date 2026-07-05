@@ -20,10 +20,8 @@ build:
     @rm -f .*.bun-build
 
 # Run schemagen, git diff check, typecheck, and format
-check: schemagen
+check: schemagen format typecheck
     git diff --exit-code schemas/
-    just typecheck
-    just format
 
 # Run the CLI from source with optional args; restarts on file changes
 dev *ARGS:
@@ -38,7 +36,7 @@ alias fmt := format
 
 # Format and lint sources (auto-fix)
 format:
-    bun run biome check ./src ./scripts --write
+    bun run biome check ./src ./scripts --write --unsafe
 
 # Alias for backward compatibility
 install: install-local
@@ -81,7 +79,6 @@ run *ARGS:
 # Generate JSON Schema artifacts from TypeScript types
 schemagen:
     bun run schemagen
-    just format
 
 # Install bun/npm dependencies
 setup:

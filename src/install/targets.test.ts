@@ -95,10 +95,7 @@ describe("resolveEffectiveInstallTargets", () => {
       isArtifactInScope(
         "cursorMcp",
         scope,
-        resolveEffectiveInstallTargets(
-          { targets: { cursorMcp: true }, agentIntegration: "both" },
-          program,
-        ),
+        resolveEffectiveInstallTargets({ targets: { cursorMcp: true }, agentIntegration: "both" }, program),
         "install-scoped",
         program,
       ),
@@ -117,13 +114,9 @@ describe("resolveEffectiveInstallTargets", () => {
     };
     const effective = resolveEffectiveInstallTargets(program.configure, program);
     const scope = { mcp: true, skill: true, configure: true };
-    expect(isArtifactInScope("cursorSkill", scope, effective, "install-scoped", program)).toBe(
-      true,
-    );
+    expect(isArtifactInScope("cursorSkill", scope, effective, "install-scoped", program)).toBe(true);
     expect(isArtifactInScope("cursorMcp", scope, effective, "install-scoped", program)).toBe(true);
     expect(isArtifactInScope("configure", scope, effective, "install-scoped", program)).toBe(true);
-    expect(isArtifactInScope("claudeSkill", scope, effective, "install-scoped", program)).toBe(
-      true,
-    );
+    expect(isArtifactInScope("claudeSkill", scope, effective, "install-scoped", program)).toBe(true);
   });
 });

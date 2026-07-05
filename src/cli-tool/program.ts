@@ -40,8 +40,7 @@ export const program = {
         },
         {
           name: "desc",
-          description:
-            "App + formula description (default: <ClassName> CLI; stored in create-identity.ts).",
+          description: "App + formula description (default: <ClassName> CLI; stored in create-identity.ts).",
           kind: CliOptionKind.String,
         },
         { name: "force", description: "Overwrite existing files.", kind: CliOptionKind.Presence },

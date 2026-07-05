@@ -69,9 +69,7 @@ export async function runPostCreate(targetDir: string, dryRun: boolean): Promise
       run: () => {
         if (dryRun) return;
         if (shouldSkipGitBootstrap(abs)) {
-          process.stderr.write(
-            "Skipping git bootstrap (existing repo or nested in git work tree).\n",
-          );
+          process.stderr.write("Skipping git bootstrap (existing repo or nested in git work tree).\n");
           return;
         }
         let proc = Bun.spawnSync(["git", "init"], {

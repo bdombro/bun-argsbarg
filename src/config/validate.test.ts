@@ -24,10 +24,7 @@ const rootSchema = {
 /** Tests for config/validate. */
 describe("config/validate", () => {
   test("accepts valid document", () => {
-    const result = validateConfigDocument(
-      { apiToken: "x", maxRetries: 3, prefs: { ttl: 3600 } },
-      rootSchema,
-    );
+    const result = validateConfigDocument({ apiToken: "x", maxRetries: 3, prefs: { ttl: 3600 } }, rootSchema);
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
   });
@@ -39,10 +36,7 @@ describe("config/validate", () => {
   });
 
   test("rejects unknown property when additionalProperties is false", () => {
-    const result = validateConfigDocument(
-      { apiToken: "x", maxRetries: 1, extra: true },
-      rootSchema,
-    );
+    const result = validateConfigDocument({ apiToken: "x", maxRetries: 1, extra: true }, rootSchema);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("extra"))).toBe(true);
   });
@@ -58,9 +52,7 @@ describe("config/validate", () => {
   });
 
   test("parseConfigSetValue requires --json for objects", () => {
-    expect(() => parseConfigSetValue("ttl:1", { type: "object" }, rootSchema, false)).toThrow(
-      /--json/,
-    );
+    expect(() => parseConfigSetValue("ttl:1", { type: "object" }, rootSchema, false)).toThrow(/--json/);
     expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, true)).toEqual({
       ttl: 1,
     });

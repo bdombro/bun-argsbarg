@@ -39,9 +39,7 @@ function collectInteractiveOptions(
   );
 
   process.stderr.write(`\nTarget: ${baseDir}\n`);
-  process.stderr.write(
-    `Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}  Release: ${opts.releaseRepo}\n`,
-  );
+  process.stderr.write(`Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}  Release: ${opts.releaseRepo}\n`);
   process.stderr.write(`Homepage: ${opts.homepage}\n\n`);
   const tree = renderCreateTree(opts);
   process.stderr.write(`Files (${tree.size}):\n`);
@@ -101,11 +99,7 @@ export async function runCreate(input: Partial<CreateOptions> & { dir?: string }
   }
 }
 
-async function runCreateApply(
-  baseDir: string,
-  opts: CreateOptions,
-  dryRun: boolean,
-): Promise<number> {
+async function runCreateApply(baseDir: string, opts: CreateOptions, dryRun: boolean): Promise<number> {
   if (dryRun) {
     const written = applyCreate(baseDir, { ...opts, dryRun: true, check: false });
     process.stdout.write(`Would write ${written.length} file(s) under ${baseDir}\n`);

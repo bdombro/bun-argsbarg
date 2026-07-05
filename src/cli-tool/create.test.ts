@@ -52,13 +52,10 @@ describe("argsbarg create", () => {
 
   /** ResolveCreateOptions derives identity defaults from key. */
   test("resolveCreateOptions derives identity defaults from key", () => {
-    expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe(
-      "App1password",
+    expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe("App1password");
+    expect(resolveCreateOptions({ key: "my-cli", className: "Custom", releaseRepo: "org/my-cli" }).className).toBe(
+      "Custom",
     );
-    expect(
-      resolveCreateOptions({ key: "my-cli", className: "Custom", releaseRepo: "org/my-cli" })
-        .className,
-    ).toBe("Custom");
     const opts = resolveCreateOptions({ key: "at1", releaseRepo: "bdombro/at1" });
     expect(opts.tap).toBe("bdombro/at1");
     expect(opts.releaseRepo).toBe("bdombro/at1");

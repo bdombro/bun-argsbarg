@@ -7,20 +7,12 @@ import type { InstallAction, InstallOpts } from "./target-types.ts";
 export type { InstallAction, InstallActionKind, InstallOpts } from "./target-types.ts";
 
 /** Builds install actions for normal mode (--all / scoped targets). */
-export function buildInstallPlan(
-  root: CliProgram,
-  paths: InstallPaths,
-  opts: InstallOpts,
-): InstallAction[] {
+export function buildInstallPlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   return buildInstallPlanFromTargets(root, paths, opts);
 }
 
 /** Builds update/reinstall actions; greenfield fallback when nothing detected. */
-export function buildUpdatePlan(
-  root: CliProgram,
-  paths: InstallPaths,
-  opts: InstallOpts,
-): InstallAction[] {
+export function buildUpdatePlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   const refresh = buildInstallPlanFromTargets(root, paths, {
     ...opts,
     reinstall: true,

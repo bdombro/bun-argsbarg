@@ -79,12 +79,10 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
 
   const configStatus = appConfigStatus(root);
   if (configStatus) {
-    installOut(
-      `  app config: ${configStatus.path}${configStatus.exists ? "" : " (missing)"}`,
-      opts,
-    );
+    installOut(`  app config: ${configStatus.path}${configStatus.exists ? "" : " (missing)"}`, opts);
     for (const req of configStatus.required) {
-      installOut(`    ${req.key}: ${req.set ? "set" : "missing"}`, opts);
+      const bindingHint = req.binding && req.binding !== "missing" && req.set ? ` (${req.binding})` : "";
+      installOut(`    ${req.key}: ${req.set ? "set" : "missing"}${bindingHint}`, opts);
     }
   }
 }

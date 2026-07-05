@@ -32,10 +32,7 @@ function realpathOrSelf(path: string): string {
 }
 
 /** True when PATH resolves to the running executable (e.g. Homebrew Cellar). */
-export function isExternallyManagedBinary(
-  key: string,
-  execPath: string = process.execPath,
-): boolean {
+export function isExternallyManagedBinary(key: string, execPath: string = process.execPath): boolean {
   const resolved = resolvePathCommand(key);
   if (!resolved) return false;
   return resolved === realpathOrSelf(execPath);

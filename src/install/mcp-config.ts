@@ -29,12 +29,7 @@ export function readMcpServerEntry(path: string, name: string): McpServerEntry |
 }
 
 /** Returns an error message when existing entry conflicts, or null if safe to merge. */
-export function checkMcpConflict(
-  path: string,
-  name: string,
-  expected: McpServerEntry,
-  yes: boolean,
-): string | null {
+export function checkMcpConflict(path: string, name: string, expected: McpServerEntry, yes: boolean): string | null {
   const existing = readMcpServerEntry(path, name);
   if (existing && !entriesEqual(existing, expected) && !yes) {
     return (
@@ -48,12 +43,7 @@ export function checkMcpConflict(
 }
 
 /** Merges MCP server entry into config file. */
-export function mergeMcpConfig(
-  path: string,
-  name: string,
-  entry: McpServerEntry,
-  dry: boolean,
-): void {
+export function mergeMcpConfig(path: string, name: string, entry: McpServerEntry, dry: boolean): void {
   if (dry) return;
   let data: Record<string, unknown> = {};
   if (existsSync(path)) {

@@ -51,9 +51,7 @@ export function bootstrapMcpEnv(config: { shellEnv?: boolean | string }): void {
       : (process.env.SHELL ?? (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash"));
   const captured = captureShellEnv(shell);
   if (Object.keys(captured).length === 0) {
-    process.stderr.write(
-      `[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`,
-    );
+    process.stderr.write(`[argsbarg] shellEnv: failed to capture shell environment from ${shell}\n`);
   } else {
     applyShellEnv(captured);
   }

@@ -19,10 +19,7 @@ export type { InstallTargetSpec, ResolvedInstallTarget } from "../types.ts";
 
 export type { InstallPlanMode, InstallScope } from "./target-types.ts";
 
-export function resolveAgentIntegration(
-  configure?: CliConfigureConfig,
-  mcpEnabled = false,
-): InstallAgentIntegration {
+export function resolveAgentIntegration(configure?: CliConfigureConfig, mcpEnabled = false): InstallAgentIntegration {
   return configure?.agentIntegration ?? (mcpEnabled ? "mcp" : "skill");
 }
 
@@ -95,10 +92,7 @@ export function resolveEffectiveInstallTargets(
   const user = configure?.targets;
   const out = {} as Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   for (const key of INSTALL_ARTIFACT_KEYS) {
-    out[key] = resolveInstallTargetSpec(
-      user?.[key],
-      artifactDefaults(key, integration, mcpEnabled),
-    );
+    out[key] = resolveInstallTargetSpec(user?.[key], artifactDefaults(key, integration, mcpEnabled));
   }
   applyAgentPairDedupe(out, user, integration);
   return out;
@@ -132,10 +126,6 @@ export function resolveInstallPlanMode(opts: {
 }
 
 /** @deprecated Use target registry. */
-export function isInstallTargetAvailable(
-  key: CliInstallArtifactKey,
-  root: CliProgram,
-  paths: InstallPaths,
-): boolean {
+export function isInstallTargetAvailable(key: CliInstallArtifactKey, root: CliProgram, paths: InstallPaths): boolean {
   return installTargetForKey(key)?.isAvailable(root, paths) ?? false;
 }

@@ -6,11 +6,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  appConfigHasEntries,
-  parseConfigureOpts,
-  validateConfigureOpts,
-} from "../configure/index.ts";
+import { appConfigFileExists } from "../config/file.ts";
+import { appConfigHasEntries, parseConfigureOpts, validateConfigureOpts } from "../configure/index.ts";
+import { Cli } from "../index.ts";
 import { detectInstalledArtifacts } from "../install/detect-installed.ts";
 import { parseInstallOpts } from "../install/opts.ts";
 import { resolveClaudeDesktopMcpPath, resolveInstallPaths } from "../install/paths.ts";
@@ -155,5 +153,21 @@ describe("app config wizard", () => {
   test("appConfigHasEntries false for empty entries or missing appConfig", () => {
     expect(appConfigHasEntries({ ...fixture, appConfig: { entries: {} } })).toBe(false);
     expect(appConfigHasEntries(fixture)).toBe(false);
+  });
+});
+
+describe("configure --sync bootstrap", () => {
+  test("creates config.json for apps without appConfig", async () => {
+    const program: CliProgram = {
+      key: "syncboot",
+      version: "0.0.0",
+      description: "Sync bootstrap test.",
+      handler: () => {},
+      configure: { enabled: true },
+    };
+    expect(appConfigFileExists(program)).toBe(false);
+    const result = await new Cli(program).invoke(["configure", "--sync", "--yes"]);
+    expect(result.exitCode).toBe(0);
+    expect(appConfigFileExists(program)).toBe(true);
   });
 });

@@ -57,12 +57,7 @@ class OpenCodeMcpInstallTarget extends InstallTarget {
 
   preflight(ctx: TargetPlanContext): string | null {
     const entry = expectedOpenCodeMcpEntry(ctx.root);
-    return checkOpenCodeMcpConflict(
-      ctx.paths.opencodeMcpPath,
-      ctx.paths.mcpName,
-      entry,
-      !!ctx.opts.yes,
-    );
+    return checkOpenCodeMcpConflict(ctx.paths.opencodeMcpPath, ctx.paths.mcpName, entry, !!ctx.opts.yes);
   }
 
   protected buildInstallActions(ctx: TargetPlanContext): InstallAction[] {

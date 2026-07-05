@@ -9,8 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const PLACEHOLDER =
-  /\*\*\{key\} conventions:\*\*|\*\*[^*\n]+ conventions:\*\* add below or in a separate/;
+const PLACEHOLDER = /\*\*\{key\} conventions:\*\*|\*\*[^*\n]+ conventions:\*\* add below or in a separate/;
 
 const PLACEHOLDER_SUFFIX_LINE = /replace this line|add below or in a separate/i;
 
@@ -41,17 +40,14 @@ if (!consumerDir) {
   process.exit(1);
 }
 
-const templatePath =
-  process.argv[3] ?? join(repoRoot, "examples/full-example/.cursor/rules/cli-program.mdc");
+const templatePath = process.argv[3] ?? join(repoRoot, "examples/full-example/.cursor/rules/cli-program.mdc");
 const rulePath = join(consumerDir, ".cursor/rules/cli-program.mdc");
 
 const template = readFileSync(templatePath, "utf8").trimEnd();
 const templateBody = template
   .split("\n")
   .filter((line) => !PLACEHOLDER.test(line))
-  .filter(
-    (line) => !(/^\*\*[^*\n]+ conventions:\*\*/.test(line) && PLACEHOLDER_SUFFIX_LINE.test(line)),
-  )
+  .filter((line) => !(/^\*\*[^*\n]+ conventions:\*\*/.test(line) && PLACEHOLDER_SUFFIX_LINE.test(line)))
   .join("\n")
   .replace(/\n+$/, "");
 

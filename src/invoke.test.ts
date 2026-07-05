@@ -188,9 +188,7 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
       {
         key: "x",
         description: "",
-        positionals: [
-          { name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
-        ],
+        positionals: [{ name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 }],
         handler: (ctx: CliContext) => {
           captured = ctx.positional("opt");
         },

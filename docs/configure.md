@@ -54,7 +54,7 @@ Dev flow matches release: formula `install` copies the binary and generates comp
 
 # Read or write app config (non-interactive; when program.appConfig is set)
 <key> configure get [key] [--json] [--pretty]
-<key> configure set <key> <value> [--json]
+<key> configure set <key> <value> [--json] [--from-env]
 ```
 
 Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remove-all`**, **`--remove-config`**) — see [Confirmation](#confirmation).
@@ -69,14 +69,14 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | Claude skill | Y/n prompt | `~/.claude/skills/<dir>/` when `~/.claude` exists |
 | Codex / OpenCode / OpenClaw skills | Y/n prompt | Agent-specific dirs when available |
 | MCP config | Y/n prompt when `mcpServer.enabled` | Cursor, Claude Code/Desktop, OpenCode, Codex, OpenClaw, ChatGPT desktop |
-| App config | auto-runs wizard | Interactive wizard writes `~/.local/lib/<key>/config.json` (schema-aware: comma-separated or JSON for primitive arrays) |
+| App config | auto-runs wizard | Interactive wizard may update `~/.local/lib/<key>/config.json` when values change; `--sync` bootstraps an empty file on install |
 
 ### Externally managed binary (Homebrew)
 
 When **`PATH`** resolves the program key to the **running executable** (e.g. after `brew install`):
 
 - **`configure --status`** shows `app: system (PATH)`
-- **`--sync`** refreshes skills and MCP only — not the binary or completions
+- **`--sync`** refreshes skills and MCP; also creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps)
 
 MCP config uses the command name on **`PATH`**, not a Cellar path.
 
@@ -110,13 +110,19 @@ Artifact keys: `chatgptMcp`, `claudeCodeMcp`, `claudeDesktopMcp`, `claudeSkill`,
 
 ## App config (`program.appConfig`)
 
-When `program.appConfig` is set, ArgsBarg manages a flat JSON config file at `~/.local/lib/<sanitized-key>/config.json`.
+Every app gets `~/.local/lib/<sanitized-key>/config.json` on first **`configure --sync`** (Homebrew `post_install`), even without `program.appConfig`.
+
+When `program.appConfig` is set, ArgsBarg manages schema-driven values in that file.
 
 | Mode | Description |
 | --- | --- |
-| Interactive `configure` | Config wizard when you accept the configure target |
-| `--status` | Shows config path and which required keys are set or missing |
+| `configure --sync` | Bootstraps `config.json` as `{}` when missing |
+| Interactive `configure` | Config wizard when `entries` is non-empty; writes only when values or `_bindings` change |
+| `--status` | Shows config path, required keys (`set` / `missing`), and binding hints (`env`, `file`, `skip`) |
 | `--remove-config --yes` | Removes the config directory |
+| `configure set --from-env` | Bind a key to its mapped env var (stores `_bindings`, no literal secret) |
+
+Per-key intent is stored under the reserved `_bindings` object (e.g. `"apiToken": "env"`). Env still wins at resolve time when set; bindings record user choice and suppress re-prompts.
 
 Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 
@@ -127,7 +133,7 @@ Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 | Flag | Description |
 | --- | --- |
 | `--status` | Read-only inventory |
-| `--sync` | Refresh installed agent artifacts (Homebrew `post_install`; greenfield → full sync plan) |
+| `--sync` | Refresh installed agent artifacts; bootstrap `config.json` when missing (Homebrew `post_install`; greenfield → full sync plan) |
 | `--remove-all` | Remove all detected agent artifacts |
 | `--remove-config` | Remove app config directory only |
 

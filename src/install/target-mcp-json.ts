@@ -25,14 +25,8 @@ export interface McpJsonHostSpec {
   label: string;
   pairedSkillKey?: CliInstallArtifactKey;
   configPath: (paths: InstallPaths) => string;
-  detectedKey: keyof Pick<
-    InstalledArtifacts,
-    "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp"
-  >;
-  statusField: keyof Pick<
-    InstallStatus,
-    "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp"
-  >;
+  detectedKey: keyof Pick<InstalledArtifacts, "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp">;
+  statusField: keyof Pick<InstallStatus, "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp">;
   isAvailable: (root: CliProgram, paths: InstallPaths) => boolean;
   /** Append server name to status line (default false). */
   statusIncludesServer?: boolean;
@@ -89,12 +83,7 @@ export class McpJsonInstallTarget extends InstallTarget {
 
   preflight(ctx: TargetPlanContext): string | null {
     const entry = expectedMcpEntry(ctx.root);
-    return checkMcpConflict(
-      this.spec.configPath(ctx.paths),
-      ctx.paths.mcpName,
-      entry,
-      !!ctx.opts.yes,
-    );
+    return checkMcpConflict(this.spec.configPath(ctx.paths), ctx.paths.mcpName, entry, !!ctx.opts.yes);
   }
 
   protected buildInstallActions(ctx: TargetPlanContext): InstallAction[] {

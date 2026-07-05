@@ -30,11 +30,7 @@ function resolveSkillDir(target: SkillTarget, dirName: string, global: boolean):
 }
 
 /** Writes SKILL.md and reference.md; returns changed file paths. */
-export function cliSkillInstall(
-  root: CliProgram,
-  target: SkillTarget,
-  opts: SkillInstallOpts,
-): string[] {
+export function cliSkillInstall(root: CliProgram, target: SkillTarget, opts: SkillInstallOpts): string[] {
   const bundle = generateSkillBundle(root, target);
   const { skillMd, referenceMd } = applySkillInstallHints(root, bundle.skillMd, bundle.referenceMd);
   const dir = resolveSkillDir(target, bundle.dirName, opts.global ?? false);

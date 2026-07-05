@@ -45,7 +45,6 @@ export function cliBuiltinCompletionGroup(program: CliProgram): import("../types
     ],
   };
   router.notes =
-    "Completions are installed by Homebrew during formula install.\n\n" +
-    "See: https://docs.brew.sh/Shell-Completion";
+    "Completions are installed by Homebrew during formula install.\n\n" + "See: https://docs.brew.sh/Shell-Completion";
   return router;
 }

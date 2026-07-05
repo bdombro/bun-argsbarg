@@ -44,11 +44,7 @@ export function emitConsumeLong(ident: string, scopes: ScopeRec[]): string {
 }
 
 /** Emits `_<ident>_nac_consume_short`; dialect selects substring syntax. */
-export function emitConsumeShort(
-  ident: string,
-  scopes: ScopeRec[],
-  dialect: CompletionShellDialect,
-): string {
+export function emitConsumeShort(ident: string, scopes: ScopeRec[], dialect: CompletionShellDialect): string {
   const firstChar = dialect === "bash" ? "ch=${rest:0:1}" : "ch=${rest[1,1]}";
   const restAdvance = dialect === "bash" ? "rest=${rest:1}" : "rest=${rest[2,-1]}";
 
@@ -93,11 +89,7 @@ export function emitConsumeShort(
 }
 
 /** Emits `_<ident>_nac_match_child` — identical for bash and zsh. */
-export function emitMatchChild(
-  ident: string,
-  scopes: ScopeRec[],
-  pathIndex: Record<string, number>,
-): string {
+export function emitMatchChild(ident: string, scopes: ScopeRec[], pathIndex: Record<string, number>): string {
   let o = "_${ident}_nac_match_child() {\n".replace("${ident}", ident);
   o += '  local sid="$1" w="$2"\n';
   o += "  case $sid in\n";

@@ -52,9 +52,7 @@ describe("builtins help copy", () => {
 
   test("configure copy omits MCP when mcpServer unset", () => {
     const caps = resolveCapabilities(noMcp);
-    expect(configureCommandDescription(noMcp, caps)).toBe(
-      "Set up agent skills for this app (binary via Homebrew).",
-    );
+    expect(configureCommandDescription(noMcp, caps)).toBe("Set up agent skills for this app (binary via Homebrew).");
     expect(configureCommandDescription(noMcp, caps)).not.toContain("MCP");
     expect(configureSyncOptionDescription(noMcp, caps)).not.toContain("MCP");
     const configure = cliBuiltinConfigureCommand(noMcp);

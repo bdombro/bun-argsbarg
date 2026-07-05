@@ -3,12 +3,7 @@ import type { InstallPaths } from "./paths.ts";
 
 export type { InstallTargetSpec, ResolvedInstallTarget } from "../types.ts";
 
-export type InstallPlanMode =
-  | "install-all"
-  | "install-scoped"
-  | "uninstall-all"
-  | "uninstall-scoped"
-  | "refresh";
+export type InstallPlanMode = "install-all" | "install-scoped" | "uninstall-all" | "uninstall-scoped" | "refresh";
 
 export interface InstallScope {
   all?: boolean;

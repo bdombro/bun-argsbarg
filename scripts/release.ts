@@ -188,10 +188,7 @@ function promoteChangelog(content: string, version: string, date: string): strin
   }
   const bodyStart = lineEnd + 1;
   const nextIdx = content.indexOf("\n## [", bodyStart);
-  const body =
-    nextIdx === -1
-      ? content.slice(bodyStart).trimEnd()
-      : content.slice(bodyStart, nextIdx).trimEnd();
+  const body = nextIdx === -1 ? content.slice(bodyStart).trimEnd() : content.slice(bodyStart, nextIdx).trimEnd();
   const tail = nextIdx === -1 ? "" : content.slice(nextIdx + 1);
   const before = content.slice(0, idx);
   const newBlock = `${header}\n\n## [${version}] - ${date}\n${body}\n\n`;
@@ -253,11 +250,7 @@ try {
   run("git tag", ["git", "tag", "-a", tag, "-m", msg], repoRoot);
   run("git push", ["git", "push"], repoRoot);
   run("git push tags", ["git", "push", "--tags"], repoRoot);
-  run(
-    "gh release",
-    ["gh", "release", "create", tag, "--title", tag, "--notes-file", notesPath],
-    repoRoot,
-  );
+  run("gh release", ["gh", "release", "create", tag, "--title", tag, "--notes-file", notesPath], repoRoot);
   run("npm publish", ["npm", "publish"], repoRoot);
 } finally {
   await unlink(notesPath).catch(() => {});

@@ -64,9 +64,7 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
     };
   }
 
-  const userCommands = program.commands
-    .map((ch) => presentationNode(ch))
-    .filter((ch): ch is CliNode => ch !== null);
+  const userCommands = program.commands.map((ch) => presentationNode(ch)).filter((ch): ch is CliNode => ch !== null);
 
   return {
     key: program.key,
@@ -80,10 +78,7 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
 }
 
 /** Root help notes: consumer `program.notes` plus agent discovery when `docs` is enabled. */
-export function presentationRootNotes(
-  program: CliProgram,
-  caps: CliCapabilities,
-): string | undefined {
+export function presentationRootNotes(program: CliProgram, caps: CliCapabilities): string | undefined {
   const parts: string[] = [];
   if ((program.notes ?? "").trim().length > 0) {
     parts.push((program.notes ?? "").trim());

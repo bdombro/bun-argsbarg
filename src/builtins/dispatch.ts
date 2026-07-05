@@ -11,11 +11,7 @@ import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
-import {
-  CONFIGURE_RUN_KEY,
-  cliBuiltinConfigureCommand,
-  isConfigureConfigPath,
-} from "./configure.ts";
+import { CONFIGURE_RUN_KEY, cliBuiltinConfigureCommand, isConfigureConfigPath } from "./configure.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
@@ -35,11 +31,7 @@ function completionSchema(program: CliProgram, opts: DispatchBuiltinOpts): CliRo
 /**
  * Handles built-in commands after parse.
  */
-export async function dispatchBuiltin(
-  program: CliProgram,
-  pr: ParseResult,
-  opts: DispatchBuiltinOpts,
-): Promise<void> {
+export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts: DispatchBuiltinOpts): Promise<void> {
   if (pr.kind !== ParseKind.Ok) {
     return;
   }

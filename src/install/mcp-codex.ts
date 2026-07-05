@@ -45,8 +45,7 @@ export function readCodexMcpEntry(path: string, name: string): McpServerEntry | 
   const transport = block.match(/transport\s*=\s*\{[^}]*type\s*=\s*"stdio"[^}]*\}/s)?.[0];
   const search = transport ?? block;
 
-  const cmd =
-    search.match(/command\s*=\s*"([^"]*)"/)?.[1] ?? search.match(/command\s*=\s*'([^']*)'/)?.[1];
+  const cmd = search.match(/command\s*=\s*"([^"]*)"/)?.[1] ?? search.match(/command\s*=\s*'([^']*)'/)?.[1];
   if (!cmd) return undefined;
 
   const argsMatch = search.match(/args\s*=\s*\[([^\]]*)\]/s);

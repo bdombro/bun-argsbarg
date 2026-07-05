@@ -70,9 +70,7 @@ function tapLibraryParts(tap: string): { org: string; repo: string } {
 }
 
 /** Parse `scripts/create-identity.ts` for inference and template defaults. */
-export function parseCreateIdentityFile(
-  path: string,
-): Partial<CreateOptions> & { envPrefix?: string } {
+export function parseCreateIdentityFile(path: string): Partial<CreateOptions> & { envPrefix?: string } {
   if (!existsSync(path)) return {};
   const text = readFileSync(path, "utf8");
   const pick = (field: string) => text.match(new RegExp(`${field}:\\s*"([^"]*)"`))?.[1];
@@ -109,18 +107,8 @@ export function templateIdentity(): {
   };
 }
 
-export function inferCreateOptions(
-  baseDir: string,
-  partial: Partial<CreateOptions>,
-): Partial<CreateOptions> {
-  if (
-    partial.key &&
-    partial.className &&
-    partial.homepage &&
-    partial.releaseRepo &&
-    partial.desc &&
-    partial.tap
-  ) {
+export function inferCreateOptions(baseDir: string, partial: Partial<CreateOptions>): Partial<CreateOptions> {
+  if (partial.key && partial.className && partial.homepage && partial.releaseRepo && partial.desc && partial.tap) {
     return partial;
   }
   const fromIdentity = parseCreateIdentityFile(join(baseDir, CREATE_IDENTITY_REL));
@@ -146,19 +134,14 @@ function assertReleaseRepoFormat(releaseRepo: string): void {
   }
 }
 
-export function resolveCreateOptions(
-  partial: Partial<CreateOptions>,
-  baseDir?: string,
-): CreateOptions {
+export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: string): CreateOptions {
   const merged = baseDir ? inferCreateOptions(baseDir, partial) : partial;
   const tmpl = templateIdentity();
   const key = merged.key ?? tmpl.key ?? "full-example";
   const className = merged.className ?? classNameFromKey(key);
   const releaseRepo = merged.releaseRepo;
   if (!releaseRepo) {
-    throw new Error(
-      "GitHub release repo (org/repo) is required. Pass --release-repo or use the interactive wizard.",
-    );
+    throw new Error("GitHub release repo (org/repo) is required. Pass --release-repo or use the interactive wizard.");
   }
   assertReleaseRepoFormat(releaseRepo);
   const devTemplate = merged.devTemplate ?? (baseDir ? isDevTemplateDir(baseDir) : false);

@@ -1,10 +1,5 @@
 import type { CliProgram } from "../types.ts";
-import {
-  checkCodexMcpConflict,
-  codexMcpHasServer,
-  mergeCodexMcpConfig,
-  removeCodexMcpConfig,
-} from "./mcp-codex.ts";
+import { checkCodexMcpConflict, codexMcpHasServer, mergeCodexMcpConfig, removeCodexMcpConfig } from "./mcp-codex.ts";
 import { expectedMcpEntry } from "./mcp-config.ts";
 import {
   checkOpenclawMcpConflict,
@@ -37,20 +32,9 @@ export interface McpCliHostSpec {
   hasServer: (home: string, name: string) => boolean;
   installMessage: string;
   uninstallMessage: string;
-  merge: (
-    home: string,
-    name: string,
-    entry: ReturnType<typeof expectedMcpEntry>,
-    dry: boolean,
-    yes: boolean,
-  ) => string;
+  merge: (home: string, name: string, entry: ReturnType<typeof expectedMcpEntry>, dry: boolean, yes: boolean) => string;
   remove: (home: string, name: string, dry: boolean) => void;
-  preflight: (
-    home: string,
-    name: string,
-    entry: ReturnType<typeof expectedMcpEntry>,
-    yes: boolean,
-  ) => string | null;
+  preflight: (home: string, name: string, entry: ReturnType<typeof expectedMcpEntry>, yes: boolean) => string | null;
 }
 
 /** MCP host registered via an external CLI (codex, openclaw). */
@@ -108,13 +92,7 @@ export class McpCliInstallTarget extends InstallTarget {
         summary: `${this.spec.label}: ${displayInstallPath(configPath)}`,
         message: this.spec.installMessage.replace("{name}", ctx.paths.mcpName),
         run: () => {
-          const written = this.spec.merge(
-            userHome(),
-            ctx.paths.mcpName,
-            entry,
-            ctx.dry,
-            !!ctx.opts.yes,
-          );
+          const written = this.spec.merge(userHome(), ctx.paths.mcpName, entry, ctx.dry, !!ctx.opts.yes);
           return [written];
         },
       },

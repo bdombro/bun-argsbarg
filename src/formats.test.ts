@@ -3,13 +3,7 @@ Tests for formats module behavior.
 */
 
 import { expect, test } from "bun:test";
-import {
-  parseCommaList,
-  parseDate,
-  parseDateTime,
-  parseDurationMs,
-  validateFormatValue,
-} from "./formats.ts";
+import { parseCommaList, parseDate, parseDateTime, parseDurationMs, validateFormatValue } from "./formats.ts";
 import { CliValueFormat } from "./types.ts";
 
 test("parseDurationMs parses minutes and hours", () => {

@@ -46,9 +46,7 @@ export function configUserConfigKey(key: string): string {
 }
 
 /** Required keys from a JSON Schema object root. */
-export function jsonSchemaRequiredKeys(
-  jsonSchema: Record<string, unknown>,
-): Set<string> | undefined {
+export function jsonSchemaRequiredKeys(jsonSchema: Record<string, unknown>): Set<string> | undefined {
   const required = jsonSchema.required;
   if (!Array.isArray(required)) {
     return undefined;

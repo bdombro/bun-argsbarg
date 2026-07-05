@@ -6,9 +6,7 @@ import type { CliAppConfigEntry, CliProgram } from "../types.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 
 /** Synthesize a draft-07 object schema with string properties from metadata entries. */
-export function synthesizeAllStringSchema(
-  schema: Record<string, CliAppConfigEntry>,
-): Record<string, unknown> {
+export function synthesizeAllStringSchema(schema: Record<string, CliAppConfigEntry>): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
   for (const [key, entry] of Object.entries(schema)) {

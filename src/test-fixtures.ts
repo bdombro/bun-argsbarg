@@ -1,9 +1,7 @@
 import type { CliProgram } from "./types.ts";
 import { CliFallbackMode, CliOptionKind } from "./types.ts";
 
-export function testProgram(
-  prog: Record<string, unknown> & { key: string; description: string },
-): CliProgram {
+export function testProgram(prog: Record<string, unknown> & { key: string; description: string }): CliProgram {
   return { version: "0.0.0", ...prog } as CliProgram;
 }
 

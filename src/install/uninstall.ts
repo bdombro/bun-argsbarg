@@ -8,11 +8,7 @@ import type { InstallOpts, UninstallAction } from "./target-types.ts";
 export type { InstallActionKind, InstallOpts, UninstallAction } from "./target-types.ts";
 
 /** Builds uninstall actions for scoped targets or --all (ignores install.targets on --all). */
-export function buildUninstallPlan(
-  root: CliProgram,
-  paths: InstallPaths,
-  opts: InstallOpts,
-): UninstallAction[] {
+export function buildUninstallPlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): UninstallAction[] {
   return buildUninstallPlanFromTargets(root, paths, opts);
 }
 
@@ -24,10 +20,7 @@ export function uninstallSkillDir(dir: string, dry: boolean): string[] {
 }
 
 /** Skill directory for uninstall action summary prefix. */
-export function skillDirFromUninstallSummary(
-  summary: string,
-  paths: InstallPaths,
-): string | undefined {
+export function skillDirFromUninstallSummary(summary: string, paths: InstallPaths): string | undefined {
   const target = skillTargetForUninstallSummary(summary);
   return target?.skillDir(paths);
 }

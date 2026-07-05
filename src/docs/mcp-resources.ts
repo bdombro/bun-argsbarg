@@ -3,12 +3,7 @@ Auto MCP resources for user docs.topics when docs and MCP are both enabled.
 */
 
 import type { CliProgram } from "../types.ts";
-import {
-  docsEnabled,
-  docsTopicContent,
-  docsTopicDescription,
-  docsUserTopicKeys,
-} from "./resolve.ts";
+import { docsEnabled, docsTopicContent, docsTopicDescription, docsUserTopicKeys } from "./resolve.ts";
 
 /** Default URI pattern for a docs topic MCP resource (`<mcpId>://docs/<topicKey>`). */
 export function defaultDocsTopicResourceUri(mcpId: string, topicKey: string): string {

@@ -57,9 +57,7 @@ describe("opencode mcp config", () => {
 
   test("resolveOpenCodeConfigPathForInstall defaults to config.json", () => {
     mkdirSync(opencodeConfigDir(home), { recursive: true });
-    expect(resolveOpenCodeConfigPathForInstall(home)).toBe(
-      join(opencodeConfigDir(home), "config.json"),
-    );
+    expect(resolveOpenCodeConfigPathForInstall(home)).toBe(join(opencodeConfigDir(home), "config.json"));
   });
 
   test("mergeOpenCodeMcpConfig writes mcp block", () => {

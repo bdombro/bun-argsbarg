@@ -7,7 +7,7 @@ _:
     @just --list
 
 # Typecheck and format the codebase
-check: typecheck format
+check: format typecheck
 
 consumer_apps := "idp-trees sqsp-qa-manager-poc sqsp-i18n-tools-poc"
 
@@ -79,7 +79,7 @@ example-watch *ARGS:
 
 # Format and lint the codebase (auto-fix)
 format:
-    bun run biome check ./src ./scripts --write
+    bun run biome check ./src ./scripts --write --unsafe
 
 # Lint the codebase without writing
 lint:

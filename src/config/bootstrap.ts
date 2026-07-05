@@ -6,14 +6,10 @@ settings are present before the CLI or MCP server handles a request.
 import { readSync } from "node:fs";
 import { readPromptLine as readStdinLine } from "../prompt.ts";
 import type { CliAppConfigEntry, CliProgram } from "../types.ts";
+import { bindingForKey, clearFileValue, isKeyAddressed, readBindings, setBinding } from "./bindings.ts";
+import { configEntryRequired, configEntrySensitive, defaultConfigEntryTitle, jsonSchemaRequiredKeys } from "./entry.ts";
 import {
-  configEntryRequired,
-  configEntrySensitive,
-  defaultConfigEntryTitle,
-  jsonSchemaRequiredKeys,
-} from "./entry.ts";
-import {
-  appConfigInstalled,
+  appConfigFileExists,
   displayAppConfigPath,
   readAppConfigFile,
   readAppConfigFileRaw,
@@ -53,13 +49,8 @@ export interface ConfigBootstrapResult {
 }
 
 /** Read the config file, merge env overrides, and export mapped values into `process.env`. */
-export function bootstrapAppConfig(
-  program: CliProgram,
-  opts: { validateFile: boolean },
-): ConfigBootstrapResult {
-  const fileData = opts.validateFile
-    ? readAppConfigFile(program)
-    : readAppConfigFileRaw(resolveAppConfigPath(program));
+export function bootstrapAppConfig(program: CliProgram, opts: { validateFile: boolean }): ConfigBootstrapResult {
+  const fileData = opts.validateFile ? readAppConfigFile(program) : readAppConfigFileRaw(resolveAppConfigPath(program));
   const hostEnv = captureMappedHostEnv(program);
   const resolved = resolveAppConfig(program, fileData, hostEnv);
   exportConfigToEnv(program, resolved, hostEnv);
@@ -88,7 +79,6 @@ function readSensitiveLine(): string {
       }
       const byte = buf[0];
       if (byte === 3) {
-        // Raw mode delivers Ctrl+C as ETX instead of SIGINT.
         process.stderr.write("\n");
         process.exit(130);
       }
@@ -130,10 +120,7 @@ function readPromptLine(mask: boolean): string {
 }
 
 /** Whether this setting already has a non-empty value in the user's shell environment. */
-function resolvedFromEnv(
-  entry: CliAppConfigEntry,
-  hostEnv: Record<string, string | undefined>,
-): boolean {
+function resolvedFromEnv(entry: CliAppConfigEntry, hostEnv: Record<string, string | undefined>): boolean {
   if (!entry.env) {
     return false;
   }
@@ -165,7 +152,7 @@ function promptConfigKey(
   if (hasCurrent) {
     process.stderr.write(`  Current: ${sensitive ? "REDACTED" : stringifyConfigValue(current)}\n`);
     const acceptPrompt = resolvedFromEnv(entry, hostEnv)
-      ? `  Value (Enter to copy from env)${valueHintSuffix}: `
+      ? `  Value (Enter to use env)${valueHintSuffix}: `
       : `  Value (Enter to keep)${valueHintSuffix}: `;
     process.stderr.write(acceptPrompt);
   } else {
@@ -202,6 +189,16 @@ function shouldShowConfigureSetupHeading(program: CliProgram): boolean {
   return Object.keys(program.appConfig.entries).length > 0;
 }
 
+function isPresent(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string" && value.length === 0) return false;
+  return true;
+}
+
+function bindingsDiffer(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return JSON.stringify(readBindings(a)) !== JSON.stringify(readBindings(b));
+}
+
 /** Ask the user for each required setting that is still empty; returns updates to save to the config file. */
 function promptMissingRequired(program: CliProgram): Record<string, unknown> {
   const appConfig = program.appConfig;
@@ -212,31 +209,29 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
   const jsonSchema = effectiveJsonSchema(program);
   const fromSchema = jsonSchema ? jsonSchemaRequiredKeys(jsonSchema) : undefined;
   const hostEnv = captureMappedHostEnv(program);
-  const { resolved } = bootstrapAppConfig(program, { validateFile: false });
+  const path = resolveAppConfigPath(program);
+  const fileData = readAppConfigFileRaw(path);
+  const resolved = resolveAppConfig(program, fileData, hostEnv);
   let headingWritten = false;
   for (const [key, entry] of Object.entries(appConfig.entries)) {
     if (!configEntryRequired(key, entry, fromSchema)) {
       continue;
     }
-    const current = resolved[key];
-    if (current !== undefined && current !== null && String(current).length > 0) {
+    const bindings = readBindings(fileData);
+    if (bindings[key] === "env" && !isPresent(resolved[key])) {
+      // Re-prompt when env binding is broken.
+    } else if (isKeyAddressed(key, fileData, entry) && isPresent(resolved[key])) {
       continue;
     }
+    const current = resolved[key];
     if (!headingWritten) {
       writeConfigureSetupHeading();
       headingWritten = true;
     }
-    const { value, userTyped } = promptConfigKey(
-      key,
-      entry,
-      undefined,
-      false,
-      fromSchema,
-      hostEnv,
-      jsonSchema,
-    );
-    if (value !== undefined && String(value).length > 0) {
+    const { value, userTyped } = promptConfigKey(key, entry, current, false, fromSchema, hostEnv, jsonSchema);
+    if (userTyped && value !== undefined && String(value).length > 0) {
       updates[key] = value;
+      Object.assign(updates, setBinding(updates, key, "file"));
     }
   }
   return updates;
@@ -267,7 +262,7 @@ export function runConfigure(
   const jsonSchema = effectiveJsonSchema(program);
   const fromSchema = jsonSchema ? jsonSchemaRequiredKeys(jsonSchema) : undefined;
   const resolved = resolveAppConfig(program, existing, hostEnv);
-  const next: Record<string, unknown> = { ...existing };
+  let next: Record<string, unknown> = { ...existing };
   let changed = false;
 
   if (opts.showHeading !== false && shouldShowConfigureSetupHeading(program)) {
@@ -275,35 +270,51 @@ export function runConfigure(
   }
 
   for (const [key, entry] of Object.entries(program.appConfig.entries)) {
+    const bindings = readBindings(existing);
+    if (bindings[key] === "env" && !isPresent(resolved[key])) {
+      // Re-prompt when env binding is broken.
+    } else if (isKeyAddressed(key, existing, entry)) {
+      continue;
+    }
+
     const before = next[key];
+    const bindingsBefore = readBindings(next);
     const current = resolved[key];
-    const { value, userTyped } = promptConfigKey(
-      key,
-      entry,
-      current,
-      true,
-      fromSchema,
-      hostEnv,
-      jsonSchema,
-    );
-    if (value !== undefined && String(value).length > 0) {
-      const storedInFile =
-        key in existing &&
-        existing[key] !== undefined &&
-        existing[key] !== null &&
-        String(existing[key]).length > 0;
-      if (!userTyped && !storedInFile) {
-        continue;
-      }
-      if (JSON.stringify(value) !== JSON.stringify(before)) {
+    const required = configEntryRequired(key, entry, fromSchema);
+    const { value, userTyped } = promptConfigKey(key, entry, current, true, fromSchema, hostEnv, jsonSchema);
+
+    if (userTyped && value !== undefined && String(value).length > 0) {
+      if (JSON.stringify(value) !== JSON.stringify(before) || bindingsBefore[key] !== "file") {
         changed = true;
       }
-      next[key] = value;
+      next = setBinding({ ...next, [key]: value }, key, "file");
+      continue;
+    }
+
+    if (!userTyped && isPresent(current) && resolvedFromEnv(entry, hostEnv)) {
+      const storedInFile =
+        key in existing && existing[key] !== undefined && existing[key] !== null && String(existing[key]).length > 0;
+      if (!storedInFile) {
+        const withBinding = setBinding(clearFileValue(next, key), key, "env");
+        if (bindingsDiffer(next, withBinding) || key in next) {
+          changed = true;
+        }
+        next = withBinding;
+      }
+      continue;
+    }
+
+    if (!userTyped && !required && !isPresent(current) && inputWasSkipped(value, userTyped)) {
+      const withBinding = setBinding(next, key, "skip");
+      if (bindingsDiffer(next, withBinding)) {
+        changed = true;
+      }
+      next = withBinding;
     }
   }
 
   if (changed) {
-    writeAppConfigFile(program, next);
+    writeAppConfigFile(program, next, { partial: true });
     const updated = resolveAppConfig(program, next, hostEnv);
     exportConfigToEnv(program, updated, hostEnv);
     return { path, changed: true };
@@ -311,12 +322,16 @@ export function runConfigure(
   return { path, changed: false };
 }
 
+function inputWasSkipped(value: unknown, userTyped: boolean): boolean {
+  return !userTyped && (value === undefined || String(value).length === 0);
+}
+
 /** Summary for `configure --status`: config path, whether the file exists, and which required settings are set (never their values). */
 export function appConfigStatus(program: CliProgram):
   | {
       path: string;
       exists: boolean;
-      required: Array<{ key: string; set: boolean }>;
+      required: Array<{ key: string; set: boolean; binding?: "env" | "file" | "skip" | "missing" }>;
     }
   | undefined {
   if (!program.appConfig) {
@@ -336,19 +351,19 @@ export function appConfigStatus(program: CliProgram):
   const fromSchema = jsonSchema ? jsonSchemaRequiredKeys(jsonSchema) : undefined;
   const required = Object.entries(program.appConfig.entries)
     .filter(([key, entry]) => configEntryRequired(key, entry, fromSchema))
-    .map(([key]) => ({
-      key,
-      set:
-        resolved[key] !== undefined && resolved[key] !== null && String(resolved[key]).length > 0,
-    }));
-  return { path, exists: appConfigInstalled(program), required };
+    .map(([key]) => {
+      const set = resolved[key] !== undefined && resolved[key] !== null && String(resolved[key]).length > 0;
+      return {
+        key,
+        set,
+        binding: bindingForKey(key, fileData, set),
+      };
+    });
+  return { path, exists: appConfigFileExists(program), required };
 }
 
 /** Load config at startup, optionally prompt the user, and fail if required settings are still missing. */
-export function ensureAppConfig(
-  program: CliProgram,
-  opts: EnsureAppConfigOpts,
-): ConfigBootstrapResult | undefined {
+export function ensureAppConfig(program: CliProgram, opts: EnsureAppConfigOpts): ConfigBootstrapResult | undefined {
   if (!program.appConfig) {
     return undefined;
   }
@@ -377,7 +392,7 @@ export function ensureAppConfig(
     const updates = promptMissingRequired(program);
     if (Object.keys(updates).length > 0) {
       const merged = { ...fileData, ...updates };
-      writeAppConfigFile(program, merged);
+      writeAppConfigFile(program, merged, { partial: true });
       fileData = merged;
       resolved = resolveAppConfig(program, fileData, hostEnv);
       exportConfigToEnv(program, resolved, hostEnv);

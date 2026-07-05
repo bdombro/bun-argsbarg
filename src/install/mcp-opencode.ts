@@ -6,11 +6,7 @@ import { expectedMcpEntry } from "./mcp-config.ts";
 export const OPENCODE_CONFIG_SCHEMA = "https://opencode.ai/config.json";
 
 /** Global OpenCode config filenames, in precedence order (matches OpenCode). */
-export const OPENCODE_CONFIG_FILENAMES = [
-  "opencode.jsonc",
-  "opencode.json",
-  "config.json",
-] as const;
+export const OPENCODE_CONFIG_FILENAMES = ["opencode.jsonc", "opencode.json", "config.json"] as const;
 
 export interface OpenCodeLocalMcpEntry {
   type: "local";
@@ -71,10 +67,7 @@ function readConfig(path: string): Record<string, unknown> {
 }
 
 /** Reads `mcp[name]` when it is a local stdio server. */
-export function readOpenCodeMcpEntry(
-  path: string,
-  name: string,
-): OpenCodeLocalMcpEntry | undefined {
+export function readOpenCodeMcpEntry(path: string, name: string): OpenCodeLocalMcpEntry | undefined {
   if (!existsSync(path)) return undefined;
   try {
     const data = readConfig(path);
@@ -122,12 +115,7 @@ export function checkOpenCodeMcpConflict(
 }
 
 /** Merges a local MCP entry into OpenCode `mcp` config. */
-export function mergeOpenCodeMcpConfig(
-  path: string,
-  name: string,
-  entry: OpenCodeLocalMcpEntry,
-  dry: boolean,
-): void {
+export function mergeOpenCodeMcpConfig(path: string, name: string, entry: OpenCodeLocalMcpEntry, dry: boolean): void {
   if (dry) return;
   const data = readConfig(path);
   if (!data.$schema) data.$schema = OPENCODE_CONFIG_SCHEMA;

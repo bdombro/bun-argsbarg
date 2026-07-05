@@ -2,12 +2,7 @@ import { resolveCapabilities } from "../capabilities.ts";
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
 import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../install/mcp-opencode.ts";
-import {
-  collectMcpTools,
-  type McpToolDef,
-  mcpServerId,
-  resolveMcpSchemaUri,
-} from "../mcp/tools.ts";
+import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
 import { collectOptionDefs } from "../parse.ts";
 import { CliOptionKind, type CliProgram } from "../types.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
@@ -115,10 +110,7 @@ export function generateMcpGuide(root: CliProgram): string {
       "",
     );
   } else {
-    lines.push(
-      `The CLI binary \`${root.key}\` must already be on your PATH. Host configs reference it by name.`,
-      "",
-    );
+    lines.push(`The CLI binary \`${root.key}\` must already be on your PATH. Host configs reference it by name.`, "");
   }
 
   lines.push(
@@ -217,9 +209,7 @@ export function generateMcpGuide(root: CliProgram): string {
     if (docs) {
       for (const key of docsUserTopicKeys(docs)) {
         const uri = resolveDocsTopicResourceUri(root, key);
-        lines.push(
-          `| Docs topic \`${key}\` | \`${uri}\` — same markdown as \`${root.key} docs ${key}\` |`,
-        );
+        lines.push(`| Docs topic \`${key}\` | \`${uri}\` — same markdown as \`${root.key} docs ${key}\` |`);
       }
     }
   }

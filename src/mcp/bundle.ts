@@ -3,15 +3,7 @@ Packs a CLI program into an MCP Bundle (`.mcpb`) for Claude Desktop.
 Expects `dist/<program.key>` as the compiled binary input.
 */
 
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildProgramUserConfig } from "../config/manifest.ts";
@@ -56,10 +48,7 @@ function defaultAuthor(bundle?: CliMcpBundleConfig): {
 }
 
 /** Generates MCPB `manifest.json` object from program schema and MCP tools. */
-export function generateMcpManifest(
-  program: CliProgram,
-  binaryName: string,
-): Record<string, unknown> {
+export function generateMcpManifest(program: CliProgram, binaryName: string): Record<string, unknown> {
   const bundle = program.mcpServer?.bundle;
   const tools = collectMcpTools(program).map((t) => ({
     name: t.name,
@@ -123,9 +112,7 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
   const binaryName = basename(binaryPath);
 
   if (!existsSync(binaryPath)) {
-    throw new Error(
-      `Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`,
-    );
+    throw new Error(`Binary not found: ${binaryPath}. Build with compile first (expected dist/${program.key}).`);
   }
 
   const staging = mkdtempSync(join(tmpdir(), "mcpb-"));
@@ -164,9 +151,7 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
 export function runMcpBundle(program: CliProgram): void {
   const mcp = program.mcpServer;
   if (!mcp?.mcpd && !mcp?.claudePlugin) {
-    throw new Error(
-      "mcp bundle: enable mcpServer.mcpd and/or mcpServer.claudePlugin on the program root.",
-    );
+    throw new Error("mcp bundle: enable mcpServer.mcpd and/or mcpServer.claudePlugin on the program root.");
   }
 
   const lines: string[] = [];

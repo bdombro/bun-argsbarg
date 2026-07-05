@@ -85,11 +85,7 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-mcp-"));
   const configFile = join(dir, ".local", "lib", "mcp_test", "config");
   mkdirSync(dirname(configFile), { recursive: true });
-  writeFileSync(
-    configFile,
-    `${JSON.stringify({ argsTestSecret: "file-value" }, null, 2)}\n`,
-    "utf8",
-  );
+  writeFileSync(configFile, `${JSON.stringify({ argsTestSecret: "file-value" }, null, 2)}\n`, "utf8");
   const responses = await mcpRequest(
     [
       {

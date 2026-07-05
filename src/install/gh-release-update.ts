@@ -1,12 +1,4 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { CliUpdateGetLatest } from "../types.ts";
@@ -150,9 +142,7 @@ export function createGhFetchLatest(
               ? ` ${config.repoEnvHint}`
               : ` No releases found for ${config.repo}.`
             : "";
-      throw new Error(
-        `Failed to fetch latest release from ${config.repo}: ${detail || "unknown error"}.${hint}`,
-      );
+      throw new Error(`Failed to fetch latest release from ${config.repo}: ${detail || "unknown error"}.${hint}`);
     }
 
     let parsed: { tagName?: string };
@@ -172,16 +162,11 @@ export function createGhFetchLatest(
 
 function ensureGhAvailable(): void {
   if (Bun.which("gh") === null) {
-    throw new Error(
-      "GitHub CLI (gh) is required. Install from https://cli.github.com/ and run `gh auth login`.",
-    );
+    throw new Error("GitHub CLI (gh) is required. Install from https://cli.github.com/ and run `gh auth login`.");
   }
 }
 
-async function downloadReleaseAsset(
-  config: GhReleaseUpdateConfig,
-  tempDir: string,
-): Promise<string> {
+async function downloadReleaseAsset(config: GhReleaseUpdateConfig, tempDir: string): Promise<string> {
   const result = await runGh([
     "release",
     "download",
@@ -206,9 +191,7 @@ async function downloadReleaseAsset(
   return downloadedPath;
 }
 
-async function runGh(
-  args: string[],
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runGh(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn(["gh", ...args], { stdout: "pipe", stderr: "pipe" });
   const [exitCode, stdout, stderr] = await Promise.all([
     proc.exited,
