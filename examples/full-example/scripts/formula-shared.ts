@@ -80,7 +80,10 @@ export function selectStaleReleaseTags(releases: ReleaseTag[]): string[] {
 export const releaseRepoSlug = releaseRepo;
 
 /** Resolves private GitHub release assets via the API at download time. */
-export const githubPrivateReleaseDownloadStrategyRuby = `  class GitHubPrivateReleaseDownloadStrategy < CurlDownloadStrategy
+export const githubPrivateReleaseDownloadStrategyRuby = `  # Private/internal releases: default CurlDownloadStrategy cannot fetch non-public
+  # GitHub release assets. Resolve the asset via the API and authenticate with
+  # GitHub::API.credentials (set up via \`gh auth login\` or HOMEBREW_GITHUB_API_TOKEN).
+  class GitHubPrivateReleaseDownloadStrategy < CurlDownloadStrategy
     def initialize(url, name, version, **meta)
       super
       pattern = %r{https://github\\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/(\\S+)}
