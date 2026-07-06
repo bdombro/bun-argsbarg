@@ -12,6 +12,7 @@ import type {
   TargetPlanContext,
   UninstallAction,
 } from "./target-types.ts";
+import { uninstallSkillDir } from "./uninstall.ts";
 
 export interface SkillHostSpec {
   key: CliInstallArtifactKey;
@@ -97,7 +98,7 @@ export class SkillInstallTarget extends InstallTarget {
         kind: this.actionKind,
         summary: `${this.uninstallPrefix}: ${displayInstallPath(dir)}/`,
         message: `Removing ${this.spec.label} skill ${displayInstallPath(dir)}/`,
-        run: () => [],
+        run: () => uninstallSkillDir(dir, ctx.dry),
       },
     ];
   }

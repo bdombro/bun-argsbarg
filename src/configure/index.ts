@@ -121,7 +121,10 @@ function executePlan(
     if ("kind" in action && action.kind) {
       const skillTarget = skillTargetFromActionKind(action.kind);
       if (skillTarget) {
-        if (opts.uninstall) {
+        const runResult = action.run();
+        if (runResult.length > 0) {
+          changed.push(...runResult);
+        } else if (opts.uninstall) {
           const skillDir = skillDirFromUninstallSummary(action.summary, paths);
           if (skillDir) {
             changed.push(...uninstallSkillDir(skillDir, !!opts.dry));
@@ -228,7 +231,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
       runTargetPreflight(root, paths, mutationOpts, installActions);
     }
 
-    changed.push(...executePlan(root, actions, mutationOpts, true));
+    changed.push(...executePlan(root, actions, { ...mutationOpts, uninstall: choice === "uninstall" }, true));
   }
 
   return changed;

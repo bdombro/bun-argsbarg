@@ -13,6 +13,8 @@ import { detectInstalledArtifacts } from "../install/detect-installed.ts";
 import { parseInstallOpts } from "../install/opts.ts";
 import { resolveClaudeDesktopMcpPath, resolveInstallPaths } from "../install/paths.ts";
 import { buildInstallPlan, buildUpdatePlan } from "../install/plan.ts";
+import { installTargetForKey } from "../install/target-registry.ts";
+import { buildDetectedSnapshot, buildTargetPlanContext } from "../install/target-scope.ts";
 import { buildUninstallPlan } from "../install/uninstall.ts";
 import type { CliProgram } from "../types.ts";
 
@@ -151,6 +153,29 @@ describe("remove plan", () => {
 
     const result = await new Cli(skillApp).invoke(["configure", "--remove-all", "--yes"]);
     expect(result.exitCode).toBe(0);
+    expect(existsSync(paths.cursorSkillDir)).toBe(false);
+  });
+
+  test("scoped skill uninstall action removes directory without global uninstall flag", () => {
+    const skillApp: CliProgram = {
+      ...fixture,
+      configure: { agentIntegration: "skill" },
+    };
+    const paths = resolveInstallPaths(skillApp);
+    mkdirSync(paths.cursorSkillDir, { recursive: true });
+    writeFileSync(join(paths.cursorSkillDir, "SKILL.md"), "# test\n", "utf8");
+
+    const detected = buildDetectedSnapshot(skillApp, paths);
+    const ctx = buildTargetPlanContext(skillApp, paths, {}, detected);
+    const target = installTargetForKey("cursorSkill");
+    expect(target).toBeDefined();
+    const actions = target!.planUninstall({
+      ...ctx,
+      mode: "uninstall-scoped",
+      include: (key) => key === "cursorSkill",
+    });
+    expect(actions).toHaveLength(1);
+    expect(actions[0]!.run().length).toBeGreaterThan(0);
     expect(existsSync(paths.cursorSkillDir)).toBe(false);
   });
 });
