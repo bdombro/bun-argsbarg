@@ -7,7 +7,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfigFileExists } from "../config/file.ts";
-import { appConfigHasEntries, parseConfigureOpts, validateConfigureOpts } from "../configure/index.ts";
+import {
+  appConfigHasEntries,
+  formatConfigureMutationSummary,
+  parseConfigureOpts,
+  validateConfigureOpts,
+} from "../configure/index.ts";
 import { Cli } from "../index.ts";
 import { detectInstalledArtifacts } from "../install/detect-installed.ts";
 import { parseInstallOpts } from "../install/opts.ts";
@@ -61,6 +66,45 @@ describe("configure opts", () => {
   test("remove-all requires --yes", () => {
     const opts = parseConfigureOpts({ "remove-all": "1" });
     expect(validateConfigureOpts(opts)).toContain("--yes");
+  });
+});
+
+describe("configure mutation summary", () => {
+  test("interactive uninstall reports removed artifacts not file count", () => {
+    const msg = formatConfigureMutationSummary(
+      { paths: ["~/.cursor/skills/testapp/"], installed: 0, removed: 1, configured: 0 },
+      {},
+    );
+    expect(msg).toBe("Removed 1 artifact.");
+  });
+
+  test("interactive install reports installed artifacts not file count", () => {
+    const msg = formatConfigureMutationSummary(
+      {
+        paths: ["~/.cursor/skills/testapp/SKILL.md", "~/.cursor/skills/testapp/reference.md"],
+        installed: 1,
+        removed: 0,
+        configured: 0,
+      },
+      {},
+    );
+    expect(msg).toBe("Installed 1 artifact.");
+  });
+
+  test("sync mode uses synced verb and artifact count", () => {
+    const msg = formatConfigureMutationSummary(
+      { paths: ["a", "b", "c"], installed: 3, removed: 0, configured: 0 },
+      { sync: true },
+    );
+    expect(msg).toBe("Synced 3 artifacts.");
+  });
+
+  test("remove-all uses removed verb", () => {
+    const msg = formatConfigureMutationSummary(
+      { paths: ["a"], installed: 0, removed: 2, configured: 0 },
+      { removeAll: true },
+    );
+    expect(msg).toBe("Removed 2 artifacts.");
   });
 });
 

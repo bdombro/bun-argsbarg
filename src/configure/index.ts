@@ -105,46 +105,113 @@ function runSkillAction(root: CliProgram, kind: InstallActionKind, opts: Install
   });
 }
 
+/** Tallies configure mutations for the closing summary and `--json` output. */
+export interface ConfigureMutationSummary {
+  paths: string[];
+  installed: number;
+  removed: number;
+  configured: number;
+}
+
+function emptyMutationSummary(): ConfigureMutationSummary {
+  return { paths: [], installed: 0, removed: 0, configured: 0 };
+}
+
+function mergeMutationSummary(into: ConfigureMutationSummary, from: ConfigureMutationSummary): void {
+  into.paths.push(...from.paths);
+  into.installed += from.installed;
+  into.removed += from.removed;
+  into.configured += from.configured;
+}
+
+function recordArtifactMutation(
+  summary: ConfigureMutationSummary,
+  paths: string[],
+  kind: "installed" | "removed" | "configured",
+): void {
+  if (paths.length === 0) return;
+  summary.paths.push(...paths);
+  summary[kind]++;
+}
+
+/** Human-readable closing line for configure mutations. */
+export function formatConfigureMutationSummary(summary: ConfigureMutationSummary, opts: ConfigureOpts): string | null {
+  if (summary.paths.length === 0) return null;
+
+  if (opts.removeAll || opts.removeConfig) {
+    const n = summary.removed;
+    if (n === 0) return null;
+    return n === 1 ? "Removed 1 artifact." : `Removed ${n} artifacts.`;
+  }
+
+  if (opts.sync) {
+    const n = summary.installed;
+    if (n === 0) return null;
+    return n === 1 ? "Synced 1 artifact." : `Synced ${n} artifacts.`;
+  }
+
+  const parts: string[] = [];
+  if (summary.removed > 0) {
+    parts.push(summary.removed === 1 ? "Removed 1 artifact" : `Removed ${summary.removed} artifacts`);
+  }
+  if (summary.installed > 0) {
+    parts.push(summary.installed === 1 ? "Installed 1 artifact" : `Installed ${summary.installed} artifacts`);
+  }
+  if (summary.configured > 0) {
+    parts.push("Updated app config");
+  }
+  if (parts.length === 0) return null;
+  return `${parts.join("; ")}.`;
+}
+
+/** Runs one install/uninstall action and returns changed paths. */
+function runPlanAction(
+  root: CliProgram,
+  action: InstallAction | UninstallAction,
+  opts: InstallOpts,
+  paths: ReturnType<typeof resolveInstallPaths>,
+): string[] {
+  if ("kind" in action && action.kind) {
+    const skillTarget = skillTargetFromActionKind(action.kind);
+    if (skillTarget) {
+      const runResult = action.run();
+      if (runResult.length > 0) return runResult;
+      if (opts.uninstall) {
+        const skillDir = skillDirFromUninstallSummary(action.summary, paths);
+        return skillDir ? uninstallSkillDir(skillDir, !!opts.dry) : [];
+      }
+      return runSkillAction(root, action.kind as InstallActionKind, opts);
+    }
+  }
+  if (!("kind" in action) || !action.kind) {
+    const skillDir = skillDirFromUninstallSummary(action.summary, paths);
+    if (skillDir) return uninstallSkillDir(skillDir, !!opts.dry);
+  }
+  return action.run();
+}
+
 /** Runs install or uninstall actions and collects changed paths. */
 function executePlan(
   root: CliProgram,
   actions: Array<InstallAction | UninstallAction>,
   opts: InstallOpts,
   showProgress: boolean,
-): string[] {
-  const changed: string[] = [];
+): ConfigureMutationSummary {
+  const summary = emptyMutationSummary();
   const paths = resolveInstallPaths(root);
   for (const action of actions) {
     if (showProgress) {
       installInfo(action.message, opts);
     }
-    if ("kind" in action && action.kind) {
-      const skillTarget = skillTargetFromActionKind(action.kind);
-      if (skillTarget) {
-        const runResult = action.run();
-        if (runResult.length > 0) {
-          changed.push(...runResult);
-        } else if (opts.uninstall) {
-          const skillDir = skillDirFromUninstallSummary(action.summary, paths);
-          if (skillDir) {
-            changed.push(...uninstallSkillDir(skillDir, !!opts.dry));
-          }
-        } else {
-          changed.push(...runSkillAction(root, action.kind as InstallActionKind, opts));
-        }
-        continue;
-      }
+    const changed = runPlanAction(root, action, opts, paths);
+    if (changed.length === 0) continue;
+    if (action.kind === "configure") {
+      recordArtifactMutation(summary, changed, opts.uninstall ? "removed" : "configured");
+    } else {
+      recordArtifactMutation(summary, changed, opts.uninstall ? "removed" : "installed");
     }
-    if (!("kind" in action) || !action.kind) {
-      const skillDir = skillDirFromUninstallSummary(action.summary, paths);
-      if (skillDir) {
-        changed.push(...uninstallSkillDir(skillDir, !!opts.dry));
-        continue;
-      }
-    }
-    changed.push(...action.run());
   }
-  return changed;
+  return summary;
 }
 
 /** Builds plan context limited to a single artifact key. */
@@ -184,7 +251,7 @@ function actionsForTarget(
 }
 
 /** Walks enabled targets with per-target prompts (TTY required). */
-async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): Promise<string[]> {
+async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): Promise<ConfigureMutationSummary> {
   if (!process.stdin.isTTY) {
     throw new Error("Interactive configure requires a TTY. Use flags such as --sync --yes.");
   }
@@ -194,7 +261,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
   const detected = buildDetectedSnapshot(root, paths);
   const effective = resolveEffectiveInstallTargets(root.configure, root);
   const mutationOpts: InstallOpts = { dry: opts.dry, json: opts.json };
-  const changed: string[] = [];
+  const summary = emptyMutationSummary();
 
   for (const target of INSTALL_TARGETS) {
     if (target.key === "app") continue;
@@ -208,7 +275,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
       const result = runConfigure(root, { context: "standalone", showHeading: false });
       if (result.changed) {
         installOut(`Wrote config: ${displayAppConfigPath(root)}`, mutationOpts);
-        changed.push(displayAppConfigPath(root));
+        recordArtifactMutation(summary, [displayAppConfigPath(root)], "configured");
       }
       continue;
     }
@@ -231,29 +298,32 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
       runTargetPreflight(root, paths, mutationOpts, installActions);
     }
 
-    changed.push(...executePlan(root, actions, { ...mutationOpts, uninstall: choice === "uninstall" }, true));
+    mergeMutationSummary(
+      summary,
+      executePlan(root, actions, { ...mutationOpts, uninstall: choice === "uninstall" }, true),
+    );
   }
 
-  return changed;
+  return summary;
 }
 
 /** Runs sync, remove, or status modes without per-target prompts. */
-async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Promise<string[]> {
+async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Promise<ConfigureMutationSummary> {
   const installOpts = configureToInstallOpts(opts);
   const paths = resolveInstallPaths(root);
 
   if (installOpts.status) {
     printInstallStatus(root, installOpts);
-    return [];
+    return emptyMutationSummary();
   }
 
-  const changed: string[] = [];
+  const summary = emptyMutationSummary();
 
   if (installOpts.reinstall && !installOpts.uninstall) {
     const bootstrapped = ensureAppConfigFile(root, !!installOpts.dry);
     if (bootstrapped) {
       const display = displayAppConfigPath(root);
-      changed.push(display);
+      recordArtifactMutation(summary, [display], "configured");
       installOut(`Initialized config: ${display}`, installOpts);
     }
   }
@@ -274,7 +344,8 @@ async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Pro
     runTargetPreflight(root, paths, installOpts, installActions);
   }
 
-  return [...changed, ...executePlan(root, actions, installOpts, true)];
+  mergeMutationSummary(summary, executePlan(root, actions, installOpts, true));
+  return summary;
 }
 
 /** Main configure command orchestrator. */
@@ -288,22 +359,22 @@ export async function cliConfigure(root: CliProgram, rawOpts: Record<string, str
 
   const isInteractive = !opts.sync && !opts.removeAll && !opts.removeConfig && !opts.status;
 
-  let changed: string[] = [];
+  let summary = emptyMutationSummary();
   try {
-    changed = isInteractive ? await runInteractiveConfigure(root, opts) : await runAutomatedConfigure(root, opts);
+    summary = isInteractive ? await runInteractiveConfigure(root, opts) : await runAutomatedConfigure(root, opts);
   } catch (mutationErr) {
     installErr(mutationErr instanceof Error ? mutationErr.message : String(mutationErr));
     process.exit(1);
   }
 
   if (opts.json && !opts.status) {
-    process.stdout.write(`${JSON.stringify(changed, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(summary.paths, null, 2)}\n`);
     process.exit(0);
   }
 
-  if (!opts.status && changed.length > 0) {
-    const verb = opts.removeAll || opts.removeConfig ? "Removed" : opts.sync ? "Synced" : "Updated";
-    installOut(`${verb} ${changed.length} file(s).`, configureToInstallOpts(opts));
+  const closing = formatConfigureMutationSummary(summary, opts);
+  if (!opts.status && closing) {
+    installOut(closing, configureToInstallOpts(opts));
   }
 
   process.exit(0);
