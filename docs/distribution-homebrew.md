@@ -10,7 +10,7 @@ Argsbarg apps distribute the **binary and shell completions** through Homebrew, 
 | Skills + MCP | Formula `post_install` → `{key} configure --sync --yes` |
 | App config file | Bootstrapped as `{}` on `post_install` via `--sync` (`~/.local/lib/<key>/config.json`) |
 | App config values | User opt-in: `{key} configure` (interactive wizard when `program.appConfig` has entries) |
-| App config cleanup | Formula `uninstall` → `{key} configure --remove-config --yes` |
+| App config cleanup | Formula `uninstall` → `{key} configure --remove-all --yes` |
 
 **Only tap-from-repo** — in-repo `Formula/` or GitHub tap. Not Homebrew core.
 
@@ -62,13 +62,13 @@ If `brew install` fails, run `bun scripts/dev-formula.ts reset` manually to rest
 
 | Recipe | Removes |
 | --- | --- |
-| `just uninstall` | Formula `{key}` + tap symlink + skills/MCP; app config via formula `uninstall` |
+| `just uninstall` | Formula `{key}` + tap symlink + skills/MCP + app config via formula `uninstall` |
 | `just uninstall-config` | App config file only (`configure --remove-config --yes`) |
-| `just uninstall-release` | Release formula from `{tap}` (keeps tap; app config via formula `uninstall`) |
-| `just uninstall-release-tap` | Release formula + `brew untap {tap}` (app config via formula `uninstall`) |
+| `just uninstall-release` | Release formula from `{tap}` (keeps tap; agent artifacts via formula `uninstall`) |
+| `just uninstall-release-tap` | Release formula + `brew untap {tap}` (agent artifacts via formula `uninstall`) |
 | `just test-release` | Install release formula and run formula test |
 
-End users: `<key> configure --remove-all --yes` then `brew uninstall <tap>/<key>`. `brew uninstall` also removes app config via the formula `uninstall` hook (skills/MCP are not removed automatically).
+End users: `brew uninstall <tap>/<key>`. The formula `uninstall` hook runs `configure --remove-all --yes` (skills, MCP, and app config).
 
 ## Formula pattern
 
@@ -83,7 +83,7 @@ def post_install
 end
 
 def uninstall
-  system bin/"{key}", "configure", "--remove-config", "--yes"
+  system bin/"{key}", "configure", "--remove-all", "--yes"
 end
 ```
 

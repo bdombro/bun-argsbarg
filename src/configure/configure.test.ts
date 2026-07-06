@@ -3,7 +3,7 @@ Tests for configure/configure module behavior.
 */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfigFileExists } from "../config/file.ts";
@@ -136,6 +136,22 @@ describe("remove plan", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUninstallPlan(fixture, paths, parseInstallOpts({ uninstall: "1", all: "1" }));
     expect(plan.length).toBe(0);
+  });
+
+  test("configure --remove-all removes installed cursor skill", async () => {
+    const skillApp: CliProgram = {
+      ...fixture,
+      configure: { agentIntegration: "skill" },
+    };
+    const paths = resolveInstallPaths(skillApp);
+    mkdirSync(paths.cursorSkillDir, { recursive: true });
+    writeFileSync(join(paths.cursorSkillDir, "SKILL.md"), "# test\n", "utf8");
+
+    expect(detectInstalledArtifacts(paths, skillApp).cursorSkill).toBe(true);
+
+    const result = await new Cli(skillApp).invoke(["configure", "--remove-all", "--yes"]);
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(paths.cursorSkillDir)).toBe(false);
   });
 });
 

@@ -68,11 +68,10 @@ export function configureCommandNotes(program: CliProgram, _caps: CliCapabilitie
     "See what is installed:",
     `  ${app} configure --status`,
     "",
-    "Remove agent artifacts before brew uninstall:",
-    `  ${app} configure --remove-all --yes`,
+    "Uninstall:",
     `  brew uninstall <tap>/${app}`,
     "",
-    "App config is removed automatically by the formula uninstall hook during brew uninstall.",
+    "The formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).",
     "",
   ];
   if (program.appConfig) {

@@ -16,6 +16,6 @@
 ### Consumers
 
 - **qa-cli** — argsbarg program with Ink UI; commands under `src/commands/`
-- **idp-trees** — argsbarg program with headless JSON ops; `cli/dispatch.ts` pattern
+- **sqsp-workspaces** — argsbarg program with headless JSON ops; `cli/dispatch.ts` pattern
 
 See [README.md](README.md) and [CHANGELOG.md](CHANGELOG.md) for release history.

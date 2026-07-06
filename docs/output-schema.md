@@ -43,7 +43,7 @@ Production CLIs with several JSON commands tend to use **codegen** so types, han
 
 ## Recommended pipeline (copy per repo)
 
-No shared npm package — each app copies the same **contract**. Reference implementations: **sqsp-qa-manager-poc**, **idp-trees**, **sqsp-i18n-tools-poc** (see each repo’s `docs/architecture.md` for which commands use which schema root).
+No shared npm package — each app copies the same **contract**. Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-i18n-tools-poc** (see each repo’s `docs/architecture.md` for which commands use which schema root).
 
 ```mermaid
 flowchart LR

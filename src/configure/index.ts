@@ -121,7 +121,14 @@ function executePlan(
     if ("kind" in action && action.kind) {
       const skillTarget = skillTargetFromActionKind(action.kind);
       if (skillTarget) {
-        changed.push(...runSkillAction(root, action.kind as InstallActionKind, opts));
+        if (opts.uninstall) {
+          const skillDir = skillDirFromUninstallSummary(action.summary, paths);
+          if (skillDir) {
+            changed.push(...uninstallSkillDir(skillDir, !!opts.dry));
+          }
+        } else {
+          changed.push(...runSkillAction(root, action.kind as InstallActionKind, opts));
+        }
         continue;
       }
     }

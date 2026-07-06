@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [5.1.12] - 2026-07-05
+## [5.1.13] - 2026-07-06
+
+### Fixed
+
+- **`configure --remove-all`** — skill uninstall actions no longer reinstall skills after printing "Removing …".
+
+### Changed
+
+- **Homebrew formula `uninstall`** — generated formulae run `{key} configure --remove-all --yes` (skills, MCP, and app config).
 
 ### Changed
 
@@ -665,8 +673,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.12...HEAD
-[5.1.12]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.12
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.13...HEAD
+[5.1.13]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.13
 [5.1.11]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.11
 [5.1.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.10
 [5.1.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.9

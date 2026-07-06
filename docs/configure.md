@@ -16,14 +16,15 @@ brew install <tap>/<key>
 
 Upgrade with `brew upgrade <key>`. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
 
-**Uninstall the binary:** remove agent artifacts first (while the CLI is still on PATH), then `brew uninstall`:
+**Uninstall the binary:**
 
 ```bash
-<key> configure --remove-all --yes
 brew uninstall <tap>/<key>
 ```
 
-`brew uninstall` runs the formula `uninstall` hook, which removes app config (`configure --remove-config --yes`). Skills and MCP entries are not removed by Homebrew — use `--remove-all` before uninstall when you want those gone too.
+`brew uninstall` runs the formula `uninstall` hook (`configure --remove-all --yes`), which removes detected skills, MCP entries, and app config while the binary is still on PATH.
+
+To remove app config only (keep skills/MCP), run `configure --remove-config --yes` before uninstall.
 
 ## Developer install
 
@@ -177,11 +178,11 @@ Release formulae should run:
 
 ```ruby
 def uninstall
-  system bin/"myapp", "configure", "--remove-config", "--yes"
+  system bin/"myapp", "configure", "--remove-all", "--yes"
 end
 ```
 
-Homebrew calls this before removing the keg, so the binary is still on PATH. Safe no-op when app config was never created or `program.appConfig` is unset.
+Removes detected skills, MCP entries, and app config while the binary is still on PATH. Safe no-op when nothing was installed.
 
 ## Bootstrapping a new CLI
 

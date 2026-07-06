@@ -24,7 +24,7 @@ export const formulaPostInstallRuby = `def post_install
   end`;
 
 export const formulaUninstallRuby = `def uninstall
-    system bin/"${key}", "configure", "--remove-config", "--yes"
+    system bin/"${key}", "configure", "--remove-all", "--yes"
   end`;
 
 export const formulaCaveatsRuby = `def caveats
