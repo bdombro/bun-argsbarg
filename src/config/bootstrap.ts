@@ -176,6 +176,8 @@ export interface RunInstallConfigureOpts {
   context?: "standalone" | "after-install";
   /** When false, omit the "Configuration Setup" banner (e.g. inside interactive `configure`). */
   showHeading?: boolean;
+  /** When true, prompt every entry (Enter keeps the current value). */
+  rePromptAll?: boolean;
 }
 
 /** Print the "Configuration Setup" heading before the configure prompts. */
@@ -197,6 +199,24 @@ function isPresent(value: unknown): boolean {
 
 function bindingsDiffer(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(readBindings(a)) !== JSON.stringify(readBindings(b));
+}
+
+/** Whether the configure wizard should prompt for a config key. */
+export function shouldWizardPromptConfigKey(
+  key: string,
+  fileData: Record<string, unknown>,
+  entry: CliAppConfigEntry,
+  resolved: Record<string, unknown>,
+  opts: Pick<RunInstallConfigureOpts, "rePromptAll">,
+): boolean {
+  const bindings = readBindings(fileData);
+  if (bindings[key] === "env" && !isPresent(resolved[key])) {
+    return true;
+  }
+  if (opts.rePromptAll) {
+    return true;
+  }
+  return !isKeyAddressed(key, fileData, entry);
 }
 
 /** Ask the user for each required setting that is still empty; returns updates to save to the config file. */
@@ -270,10 +290,7 @@ export function runConfigure(
   }
 
   for (const [key, entry] of Object.entries(program.appConfig.entries)) {
-    const bindings = readBindings(existing);
-    if (bindings[key] === "env" && !isPresent(resolved[key])) {
-      // Re-prompt when env binding is broken.
-    } else if (isKeyAddressed(key, existing, entry)) {
+    if (!shouldWizardPromptConfigKey(key, existing, entry, resolved, opts)) {
       continue;
     }
 
@@ -383,7 +400,7 @@ export function ensureAppConfig(program: CliProgram, opts: EnsureAppConfigOpts):
 
   if (opts.interactive && process.stdin.isTTY) {
     if (opts.configure) {
-      runConfigure(program, { context: "standalone" });
+      runConfigure(program, { context: "standalone", rePromptAll: true });
       fileData = readAppConfigFileRaw(resolveAppConfigPath(program));
       resolved = resolveAppConfig(program, fileData, hostEnv);
       exportConfigToEnv(program, resolved, hostEnv);

@@ -118,12 +118,12 @@ When `program.appConfig` is set, ArgsBarg manages schema-driven values in that f
 | Mode | Description |
 | --- | --- |
 | `configure --sync` | Bootstraps `config.json` as `{}` when missing |
-| Interactive `configure` | Config wizard when `entries` is non-empty; writes only when values or `_bindings` change |
+| Interactive `configure` | Config wizard when `entries` is non-empty; re-prompts every entry (Enter keeps current); writes only when values or `_bindings` change |
 | `--status` | Shows config path, required keys (`set` / `missing`), and binding hints (`env`, `file`, `skip`) |
 | `--remove-config --yes` | Removes the config directory |
 | `configure set --from-env` | Bind a key to its mapped env var (stores `_bindings`, no literal secret) |
 
-Per-key intent is stored under the reserved `_bindings` object (e.g. `"apiToken": "env"`). Env still wins at resolve time when set; bindings record user choice and suppress re-prompts.
+Per-key intent is stored under the reserved `_bindings` object (e.g. `"apiToken": "env"`). Env still wins at resolve time when set; bindings record user choice. CLI startup only prompts for missing required keys; interactive `configure` re-prompts all entries.
 
 Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 

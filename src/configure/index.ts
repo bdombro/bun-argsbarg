@@ -272,7 +272,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
     if (target.key === "configure") {
       if (!appConfigHasEntries(root)) continue;
 
-      const result = runConfigure(root, { context: "standalone", showHeading: false });
+      const result = runConfigure(root, { context: "standalone", showHeading: false, rePromptAll: true });
       if (result.changed) {
         installOut(`Wrote config: ${displayAppConfigPath(root)}`, mutationOpts);
         recordArtifactMutation(summary, [displayAppConfigPath(root)], "configured");
