@@ -10,6 +10,7 @@ parsed values.
 import type { AnyAppConfigSnapshot } from "./config/context.ts";
 import { EmptyAppConfigSnapshot } from "./config/context.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
+import { readLeafInputsAsync as loadLeafInputsAsync } from "./leaf-inputs.ts";
 import { collectOptionDefs } from "./parse.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
 import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram, CliRespondOptions } from "./types.ts";
@@ -17,7 +18,7 @@ import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.t
 import { strictParseDouble } from "./utils.ts";
 
 /** Coerced leaf inputs keyed by option and positional names. */
-export type CliLeafInputs = Record<string, boolean | number | string | string[] | undefined>;
+export type CliLeafInputs = Record<string, boolean | number | string | string[] | unknown | undefined>;
 
 /**
  * Values passed to a leaf command handler after parsing: app name, routed path, args, and merged options.
@@ -163,13 +164,30 @@ export class CliContext {
     return out;
   }
 
-  private _readOptionValue(opt: CliOption): boolean | number | string | string[] | undefined {
+  /**
+   * Reads coerced leaf inputs, resolving Json options from flags, piped stdin (when `pipable`),
+   * or MCP/API toolArgs, and validates against `leaf.inputSchema` when set.
+   */
+  async readLeafInputsAsync(): Promise<CliLeafInputs> {
+    return loadLeafInputsAsync(this);
+  }
+
+  private _readOptionValue(opt: CliOption): boolean | number | string | string[] | unknown | undefined {
     if (opt.kind === CliOptionKind.Presence) {
       return this.hasFlag(opt.name);
     }
     if (opt.kind === CliOptionKind.Number) {
       const n = this.numberOpt(opt.name);
       return n === null ? undefined : n;
+    }
+    if (opt.kind === CliOptionKind.Json) {
+      const raw = this.stringOpt(opt.name);
+      if (raw === undefined) return undefined;
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        return undefined;
+      }
     }
     if (opt.format === CliValueFormat.Duration) {
       return this.durationOpt(opt.name);

@@ -116,6 +116,8 @@ function optionProperty(opt: CliOption): Record<string, unknown> {
       return { type: "number", ...base };
     case CliOptionKind.Enum:
       return { type: "string", enum: opt.choices, ...base };
+    case CliOptionKind.Json:
+      return { type: "object", ...base };
   }
 }
 
@@ -287,6 +289,9 @@ export function mcpToolCallToArgv(
   const argv = [...tool.path];
 
   for (const opt of collectOptionDefs(root, tool.path)) {
+    if (opt.kind === CliOptionKind.Json) {
+      continue;
+    }
     const val = args[opt.name];
     if (val === undefined) {
       continue;

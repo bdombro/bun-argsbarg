@@ -142,7 +142,7 @@ Mirror the [output-schema.md](output-schema.md) pattern for config:
 
 ```mermaid
 flowchart LR
-  subgraph types [schema.ts]
+  subgraph types [types.ts]
     Marker["export type configType = AppConfig"]
   end
   subgraph gen [argsbarg schemagen]
@@ -164,14 +164,14 @@ flowchart LR
 | Piece | Convention |
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled with argsbarg) |
-| Discovery | `export type configType = …` in `src/config/schema.ts` (type defined in same file) |
+| Discovery | `export type configType = …` in `src/config/types.ts` |
 | Artifacts | `src/config/__generated__/` — gitignored; run `just schemagen` after clone |
 | Consumer CI | Optional: `ajv` + `ajv-formats` against the same committed JSON (not an argsbarg runtime dep) |
 
 Example:
 
 ```typescript
-// src/config/schema.ts
+// src/config/types.ts
 export interface AppConfig {
   apiToken: string;
 }

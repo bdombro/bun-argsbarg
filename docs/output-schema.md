@@ -50,13 +50,13 @@ Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-
 
 ```mermaid
 flowchart LR
-  subgraph types [schema.ts]
+  subgraph types [types.ts]
     Config["export type configType = AppConfig"]
     Output["export type outputType = StatusJsonOutput"]
     Input["export type inputType = ToolInput (optional)"]
   end
   subgraph gen [argsbarg schemagen]
-    Discover["discover schema.ts roots"]
+    Discover["discover types.ts roots"]
     Gen["ts-json-schema-generator"]
   end
   subgraph artifacts [Gitignored __generated__]
@@ -74,8 +74,8 @@ flowchart LR
 | Piece | Convention |
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled as an argsbarg dependency) |
-| Discovery | Walk `src/**/schema.ts`; generate from `export type outputType = …` / `inputType` / `configType` when the target type is **defined in that file** |
-| Artifacts | `src/**/__generated__/` — gitignored; run schemagen after clone or when `schema.ts` changes |
+| Discovery | Walk `src/**/types.ts` for `export type outputType` / `inputType` / `configType`; generate from the aliased type in the same file |
+| Artifacts | `src/**/__generated__/` — gitignored; run schemagen after clone or when `types.ts` changes |
 | Invocation | `just schemagen` — justfile exports `node_modules/.bin` on `PATH` for local `argsbarg` |
 | tsconfig | `"resolveJsonModule": true` |
 | CI | `just check`: `schemagen` → typecheck (no git diff on generated files) |
@@ -84,12 +84,10 @@ flowchart LR
 
 ### Declaring a schema root
 
-Put schema-facing interfaces in **`schema.ts`** next to the command (or in a shared module when several commands reuse one shape). Export a role alias:
+Put schema-facing interfaces and role exports in **`types.ts`** (or `core/types.ts` for shared shapes):
 
 ```typescript
-// src/commands/status/schema.ts
-import type { WorkspaceStatus } from "./types.ts";
-
+// src/commands/status/types.ts
 /** JSON stdout for `myapp status --json`. */
 export interface StatusJsonOutput {
   workspaces: WorkspaceStatus[];
@@ -99,10 +97,10 @@ export interface StatusJsonOutput {
 export type outputType = StatusJsonOutput;
 ```
 
-```typescript
-// src/ui/runHeadless/schema.ts — shared by many mutating commands
-import type { HeadlessTaskResult } from "./types.ts";
+Handlers and other modules import from the same **`types.ts`** module.
 
+```typescript
+// src/ui/runHeadless/types.ts — shared by many mutating commands
 export interface HeadlessOpResult {
   command: string;
   exitCode: number;
@@ -113,31 +111,35 @@ export type outputType = HeadlessOpResult;
 ```
 
 ```typescript
-// src/commands/render-invoice/schema.ts — custom HTTP/MCP body (pdf-gen)
-export interface RenderInvoiceToolInput {
+// src/commands/render-invoice/types.ts — custom HTTP/MCP body (pdf-gen)
+export interface RenderInvoiceInput {
   format: "pdf" | "html";
   invoice: InvoiceData;
 }
 
-export type inputType = RenderInvoiceToolInput;
-export type outputType = RenderInvoiceWrittenOutput;
+export interface RenderInvoiceOutput {
+  bytes: number;
+}
+
+export type inputType = RenderInvoiceInput;
+export type outputType = RenderInvoiceOutput;
 ```
 
 | Export | Role |
 | --- | --- |
-| `export type configType = AppConfig` | `program.appConfig.jsonSchema` (one per repo, typically `src/config/schema.ts`) |
+| `export type configType = AppConfig` | `program.appConfig.jsonSchema` (one per repo, typically `src/config/types.ts`) |
 | `export type outputType = …` | `leaf.outputSchema` |
 | `export type inputType = …` | `leaf.inputSchema` (only when the tool body is not flat CLI flags) |
 
-**Domain helpers** stay in `types.ts` (or `core/types.ts`). Discovery scans only `schema.ts`. Re-export-only files (`export type outputType = HeadlessOpResult` pointing at another module) are **not** generation roots — generate once from the canonical definition file.
+**Domain helpers** and **role exports** live in `types.ts`. Commands without structured JSON omit role exports. Shared shapes (e.g. `HeadlessOpResult`) are defined once in `types.ts` with a single `outputType`; other commands import `{ outputSchema }` from that module’s `__generated__/index.ts`.
 
-Commands without structured JSON omit `schema.ts`. Shared shapes (e.g. `HeadlessOpResult`) live in one canonical `schema.ts`; other commands import `{ outputSchema }` from that module’s `__generated__/index.ts`.
+For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the `inputType` property) and use `await ctx.readLeafInputsAsync()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
 
 When you do **not** set `inputSchema`, argsbarg builds tool input from CLI `options` + `positionals`.
 
 ### Generated artifacts
 
-Schemagen writes under `__generated__/` beside each `schema.ts`:
+Schemagen writes under `__generated__/` beside each `types.ts` with role exports:
 
 | Kind | Generated file | Exported const (from `__generated__/index.ts`) |
 | --- | --- | --- |
@@ -174,15 +176,15 @@ appConfig: { jsonSchema: configSchema, entries: { … } },
 
 **Goal:** generated schemas match what handlers actually print, with descriptions agents can read in `docs api`.
 
-1. **Schema roots** — `export interface` in `schema.ts`, with `export type outputType = …` (or `inputType` / `configType`).
+1. **Schema roots** — `export interface` in `types.ts`, with `export type outputType = …` (or `inputType` / `configType`).
 2. **Per property** — `/** … */` on every field that should appear in JSON Schema `properties` (including nested named types).
 3. **Unions / enums** — document the alias; generator emits `enum` / `anyOf` with type-level description.
 4. **Formats** — property JSDoc can include `@format date-time` for ISO timestamps; add a smoke test that the generated property has `format: "date-time"`.
-5. **Do not hand-edit** `__generated__/` — change types/JSDoc in `schema.ts`, run `just schemagen`.
+5. **Do not hand-edit** `__generated__/` — change types/JSDoc in `types.ts`, run `just schemagen`.
 
 ### Narrowing when runtime ≠ stdout
 
-When a shared runtime type is **wider** than one command’s JSON, add a **schema-facing** root in `schema.ts`:
+When a shared runtime type is **wider** than one command’s JSON, add a **schema-facing** root in `types.ts`:
 
 ```typescript
 /** JSON stdout for `myapp pr` and `myapp file`. */
@@ -211,7 +213,7 @@ Per consumer repo (optional):
 
 ## Contributor workflow
 
-1. Add or edit schema roots in `src/**/schema.ts` with `outputType` / `inputType` / `configType` and per-field JSDoc.
+1. Add or edit schema roots in `src/**/types.ts` with `outputType` / `inputType` / `configType` and per-field JSDoc.
 2. `just schemagen` — refresh `src/**/__generated__/`.
 3. Import `{ outputSchema }` / `{ inputSchema }` / `{ configSchema }` from the relevant `__generated__/index.ts`.
 4. `just docgen` / `myapp docs api --save` — refresh consumer docs.
@@ -219,7 +221,7 @@ Per consumer repo (optional):
 
 Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md`.
 
-**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo — `schema.ts` roots, `__generated__/`, and `status` leaf with `outputSchema`.
+**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo — `types.ts` roots, `__generated__/`, and `status` leaf with `outputSchema`.
 
 ## Out of scope
 

@@ -1,10 +1,10 @@
 import type { SchemaRootKind } from "./discover-schema-roots.ts";
 
-/** Directory name for generated schema artifacts (next to `schema.ts`). */
+/** Directory name for generated schema artifacts (next to `types.ts`). */
 export const GENERATED_DIR = "__generated__";
 
-/** TypeScript schema root filename under `src/`. */
-export const SCHEMA_FILE = "schema.ts";
+/** TypeScript schemagen manifest filename under `src/`. */
+export const TYPES_FILE = "types.ts";
 
 /** JSON basename for a schema root kind (`outputSchema.json`, etc.). */
 export function schemaJsonBasename(kind: SchemaRootKind): string {

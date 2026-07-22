@@ -28,6 +28,7 @@ export {
   shouldRunHeadlessWithYes,
   wantsExplicitJson,
 } from "./headless.ts";
+export { LeafInputError, readLeafInputsAsync } from "./leaf-inputs.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
 export type {

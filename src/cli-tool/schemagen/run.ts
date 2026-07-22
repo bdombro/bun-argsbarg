@@ -36,8 +36,9 @@ function resolveTsconfig(projectRoot: string, tsconfig: string): string {
 }
 
 function generateJson(projectRoot: string, tsconfigPath: string, root: SchemaRoot): Record<string, unknown> {
+  const typeFile = join(projectRoot, root.sourcePath);
   const generator = createGenerator({
-    path: join(projectRoot, root.path),
+    path: typeFile,
     type: root.typeName,
     tsconfig: tsconfigPath,
     topRef: false,

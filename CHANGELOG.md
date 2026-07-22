@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.0] - 2026-07-22
+
+### Added
+
+- **`CliOptionKind.Json`** and **`pipable`** — JSON object options with CLI `--name '<json>'` or piped stdin when the flag is omitted (flag wins if set). MCP/API values merge from `toolArgs`.
+- **`ctx.readLeafInputsAsync()`** — resolves Json options (flag, stdin, or `toolArgs`) and validates against `leaf.inputSchema` when set.
+
+### Changed
+
+- **Schemagen discovery** — role exports (`configType` / `inputType` / `outputType`) live in `src/**/types.ts` instead of thin `schema.ts` manifests.
+
 ## [6.0.2] - 2026-07-22
 
 ### Added
 
-- **`argsbarg schemagen`** — centralized JSON Schema generation from `src/**/schema.ts` into colocated `__generated__/` directories (`configSchema.json`, `inputSchema.json`, `outputSchema.json`, plus `index.ts` re-exports). Removes orphan `__generated__/` trees and stale JSON when schema roots or kinds are removed.
+- **`argsbarg schemagen`** — centralized JSON Schema generation from thin `src/**/schema.ts` manifests into colocated `__generated__/` directories. Follows role aliases (`configType` / `inputType` / `outputType`) to types in sibling modules (typically `types.ts`).
 - **`argsbarg/schemagen`** export — `runSchemagen`, `discoverSchemaRoots`, and naming helpers (`src/cli-tool/schemagen/`).
 
 ### Changed
@@ -739,7 +750,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.0...HEAD
+[6.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.0
 [6.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.2
 [6.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.1
 [6.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.0

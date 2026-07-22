@@ -39,10 +39,10 @@ function makeTempProject(): string {
   return root;
 }
 
-function writeSchema(root: string, relDir: string, body: string): void {
+function writeTypes(root: string, relDir: string, body: string): void {
   const dir = join(root, "src", relDir);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "schema.ts"), body);
+  writeFileSync(join(dir, "types.ts"), body);
 }
 
 describe("schemagen", () => {
@@ -62,14 +62,38 @@ describe("schemagen", () => {
     expect(counts).toEqual({ configRoots: 1, inputRoots: 0, outputRoots: 1 });
   });
 
-  test("removes stale JSON files when a schema kind is dropped", () => {
+  test("discovers roots from types.ts with interface and role export", () => {
     const root = makeTempProject();
-    writeSchema(
+    const dir = join(root, "src/commands/demo");
+    writeTypes(
       root,
       "commands/demo",
-      `/** Tool input. */
-export interface DemoInput { id: string; }
-/** Tool output. */
+      `export interface DemoOutput { ok: boolean; }
+
+/** Schemagen root for leaf outputSchema. */
+export type outputType = DemoOutput;
+`,
+    );
+
+    const roots = discoverSchemaRoots(root);
+    expect(roots).toEqual([
+      {
+        kind: "output",
+        typeName: "DemoOutput",
+        path: "src/commands/demo/types.ts",
+        sourcePath: "src/commands/demo/types.ts",
+      },
+    ]);
+    runSchemagen({ projectRoot: root });
+    expect(existsSync(join(dir, "__generated__/outputSchema.json"))).toBe(true);
+  });
+
+  test("removes stale JSON files when a schema kind is dropped", () => {
+    const root = makeTempProject();
+    writeTypes(
+      root,
+      "commands/demo",
+      `export interface DemoInput { id: string; }
 export interface DemoOutput { ok: boolean; }
 export type inputType = DemoInput;
 export type outputType = DemoOutput;
@@ -81,11 +105,10 @@ export type outputType = DemoOutput;
     expect(existsSync(join(generatedDir, "inputSchema.json"))).toBe(true);
     expect(existsSync(join(generatedDir, "outputSchema.json"))).toBe(true);
 
-    writeSchema(
+    writeTypes(
       root,
       "commands/demo",
-      `/** Tool output. */
-export interface DemoOutput { ok: boolean; }
+      `export interface DemoOutput { ok: boolean; }
 export type outputType = DemoOutput;
 `,
     );
@@ -96,7 +119,7 @@ export type outputType = DemoOutput;
     expect(existsSync(join(generatedDir, "index.ts"))).toBe(true);
   });
 
-  test("removes orphan __generated__ when schema.ts is gone", () => {
+  test("removes orphan __generated__ when types.ts manifest is gone", () => {
     const root = makeTempProject();
     const generatedDir = join(root, "src/orphan/__generated__");
     mkdirSync(generatedDir, { recursive: true });
@@ -107,14 +130,9 @@ export type outputType = DemoOutput;
     expect(existsSync(generatedDir)).toBe(false);
   });
 
-  test("removes __generated__ when schema.ts has no discoverable roots", () => {
+  test("removes __generated__ when types.ts has no discoverable roots", () => {
     const root = makeTempProject();
-    writeSchema(
-      root,
-      "commands/empty",
-      `export type outputType = never;
-`,
-    );
+    writeTypes(root, "commands/empty", `export type outputType = never;\n`);
     const generatedDir = join(root, "src/commands/empty/__generated__");
     mkdirSync(generatedDir, { recursive: true });
     writeFileSync(join(generatedDir, "outputSchema.json"), "{}\n");

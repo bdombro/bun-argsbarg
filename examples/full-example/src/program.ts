@@ -4,10 +4,10 @@ Kitchen-sink CliProgram — every argsbarg builtin enabled; command registration
 
 import type { CliAppConfig, CliAppConfigEntry, CliProgram } from "argsbarg";
 import readmeText from "../README.md" with { type: "text" };
-import { configSchema } from "./config/__generated__/index.ts";
 import { createIdentity } from "../scripts/create-identity.ts";
 import { echoCommand } from "./commands/echo/command.ts";
 import { statusCommand } from "./commands/status/command.ts";
+import { configSchema } from "./config/__generated__/index.ts";
 
 const configEntries = {
   apiToken: {

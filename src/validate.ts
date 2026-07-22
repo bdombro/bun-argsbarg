@@ -247,6 +247,31 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (resolved !== undefined && (typeof resolved !== "object" || resolved === null || Array.isArray(resolved))) {
       throw new CliSchemaValidationError("outputSchema must be a JSON Schema object (not null or an array)");
     }
+    const inputSchema = node.inputSchema;
+    if (
+      inputSchema !== undefined &&
+      (typeof inputSchema !== "object" || inputSchema === null || Array.isArray(inputSchema))
+    ) {
+      throw new CliSchemaValidationError("inputSchema must be a JSON Schema object (not null or an array)");
+    }
+    if (inputSchema !== undefined) {
+      const properties = inputSchema.properties;
+      if (
+        properties !== undefined &&
+        (typeof properties !== "object" || properties === null || Array.isArray(properties))
+      ) {
+        throw new CliSchemaValidationError(`inputSchema.properties must be an object on ${node.key}`);
+      }
+      if (properties) {
+        for (const opt of node.options ?? []) {
+          if (opt.kind === CliOptionKind.Json && !(opt.name in properties)) {
+            throw new CliSchemaValidationError(
+              `Json option '${opt.name}' is missing from inputSchema.properties on ${node.key}`,
+            );
+          }
+        }
+      }
+    }
   } else {
     const rogue = node as unknown as CliLeaf;
     if (rogue.mcpTool !== undefined) {
@@ -301,7 +326,22 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
 
 function validateOptions(scopeKey: string, options: import("./types.ts").CliOption[]): void {
   const seenShorts = new Set<string>();
+  let pipableCount = 0;
   for (const opt of options) {
+    if (opt.pipable) {
+      pipableCount++;
+      if (opt.kind !== CliOptionKind.Json) {
+        throw new CliSchemaValidationError(`pipable is only valid on Json kind: ${scopeKey}/${opt.name}`);
+      }
+    }
+    if (opt.kind === CliOptionKind.Json) {
+      if (opt.format !== undefined || opt.pattern !== undefined || opt.default !== undefined) {
+        throw new CliSchemaValidationError(
+          `Json option cannot use format, pattern, or default: ${scopeKey}/${opt.name}`,
+        );
+      }
+    }
+
     if (opt.required && opt.kind === CliOptionKind.Presence) {
       throw new CliSchemaValidationError(`Presence option cannot be required: ${scopeKey}/${opt.name}`);
     }
@@ -339,6 +379,9 @@ function validateOptions(scopeKey: string, options: import("./types.ts").CliOpti
     if (opt.format !== undefined || opt.pattern !== undefined || opt.default !== undefined) {
       validateOptionValueMetadata(scopeKey, opt);
     }
+  }
+  if (pipableCount > 1) {
+    throw new CliSchemaValidationError(`At most one pipable Json option per command: ${scopeKey}`);
   }
 }
 

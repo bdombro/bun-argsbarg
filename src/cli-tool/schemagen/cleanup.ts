@@ -5,7 +5,7 @@ Remove stale __generated__/ directories and files after schemagen runs.
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type { SchemaRoot } from "./discover-schema-roots.ts";
-import { GENERATED_DIR, SCHEMA_FILE, schemaJsonBasename } from "./names.ts";
+import { GENERATED_DIR, schemaJsonBasename, TYPES_FILE } from "./names.ts";
 
 function listGeneratedDirs(srcDir: string, projectRoot: string, out: string[]): void {
   for (const ent of readdirSync(srcDir)) {
@@ -38,8 +38,8 @@ export function cleanStaleGenerated(
 
   for (const relGeneratedDir of generatedDirs) {
     const generatedDir = join(projectRoot, relGeneratedDir);
-    const relSchemaPath = relative(projectRoot, join(dirname(generatedDir), SCHEMA_FILE));
-    const roots = existsSync(join(projectRoot, relSchemaPath)) ? (activeBySchemaFile.get(relSchemaPath) ?? []) : [];
+    const relTypesPath = relative(projectRoot, join(dirname(generatedDir), TYPES_FILE));
+    const roots = existsSync(join(projectRoot, relTypesPath)) ? (activeBySchemaFile.get(relTypesPath) ?? []) : [];
 
     if (roots.length === 0) {
       rmSync(generatedDir, { recursive: true, force: true });

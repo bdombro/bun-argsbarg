@@ -208,6 +208,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.commaListOpt("services")` — comma-list options as `string[] | undefined`.
 - `ctx.dateOpt("on")` / `ctx.dateTimeOpt("since")` — ISO date / date-time options.
 - `ctx.readLeafInputs()` — coerced option and positional values for the current leaf (schema-driven).
+- `ctx.readLeafInputsAsync()` — like `readLeafInputs()`, plus Json options (flag, piped stdin, MCP `toolArgs`) and `inputSchema` validation.
 - `ctx.typedOpt<T>("custom", parseFn)` — custom parsing for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
@@ -267,8 +268,8 @@ To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-progr
 | Area                  | Files / wiring                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `api`, `configure get`/`set`      |
-| `program.appConfig`   | `src/config/schema.ts` → `configSchema` from `__generated__/`                         |
-| `outputSchema`        | `src/commands/status/schema.ts` → `outputSchema` from `__generated__/`                  |
+| `program.appConfig`   | `src/config/types.ts` → `configSchema` from `__generated__/`                         |
+| `outputSchema`        | `src/commands/status/types.ts` → `outputSchema` from `__generated__/`                  |
 | Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
 | Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
 | MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |

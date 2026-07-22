@@ -178,6 +178,8 @@ function optKindLabel(k: CliOptionKind, o?: CliOption): string {
       }
       return ` <${choices.slice(0, 3).join("|")}|…>`;
     }
+    case CliOptionKind.Json:
+      return " <json>";
   }
 }
 

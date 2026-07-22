@@ -12,7 +12,7 @@ import type { CliContext } from "./context.ts";
 export type CliInvocation = "cli" | "mcp" | "api";
 
 /**
- * Option kinds: presence (boolean flag), string (free-form text), number (strict double), or enum (fixed choices).
+ * Option kinds: presence (boolean flag), string (free-form text), number (strict double), enum (fixed choices), or json (parsed JSON object/array).
  */
 export enum CliOptionKind {
   /** Boolean flag: no value token (may be implicit `"1"` when set). */
@@ -23,6 +23,8 @@ export enum CliOptionKind {
   Number = "number",
   /** Fixed set of allowed string values. Requires non-empty `choices` on the option. */
   Enum = "enum",
+  /** JSON object or array (parsed from `--name '<json>'`, piped stdin when `pipable`, or MCP/API tool body). */
+  Json = "json",
 }
 
 /**
@@ -89,6 +91,11 @@ export interface CliOption {
   default?: string;
   /** Regex pattern for string options. Mutually exclusive with `format`. */
   pattern?: string;
+  /**
+   * When `true` on a `Json` option, CLI may omit `--name` and supply JSON via stdin instead.
+   * If `--name` is set, the flag value wins and stdin is not read.
+   */
+  pipable?: boolean;
 }
 
 /**

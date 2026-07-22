@@ -22,12 +22,12 @@ After imports, put **exported** symbols first (alphabetical within each kind), t
 | --- | --- | --- |
 | `src/index.ts` | Thin entry: `new Cli(program).run()` | Inline leaf handlers, business logic |
 | `src/program.ts` | `CliProgram` assembly: `docs`, `install`, `appConfig`, `commands: […]` | Inline leaf handlers, business logic |
-| `src/commands/<name>/` | One user-facing command: `command.ts`, optional `types.ts` + `schema.ts` | Shared helpers used by multiple commands (lift to `commands/` or `core/`) |
-| `src/config/` | App config types (`schema.ts` for schemagen) | Command handlers |
+| `src/commands/<name>/` | One user-facing command: `command.ts`, `types.ts` (with role exports when needed) | Shared helpers used by multiple commands (lift to `commands/` or `core/`) |
+| `src/config/` | App config types (`types.ts` with `configType` for schemagen) | Command handlers |
 | `src/**/__generated__/` | Generated JSON Schema + `index.ts` re-exports | Hand-edited generated files |
 | `scripts/` | Dev tooling (formula helpers) | Production command paths |
 
-When adding commands: `src/commands/<name>/command.ts` + `types.ts` / `schema.ts` if needed; register in `program.ts` **alphabetically by command key**.
+When adding commands: `src/commands/<name>/command.ts` + `types.ts` (add `outputType` / `inputType` when needed); register in `program.ts` **alphabetically by command key**.
 
 **Argsbarg schema:** `.cursor/rules/cli-program.mdc`.
 
@@ -35,6 +35,6 @@ When adding commands: `src/commands/<name>/command.ts` + `types.ts` / `schema.ts
 
 - **Runtime:** Bun (`just test`, `just dev`).
 - **Tests:** colocate `*.test.ts` next to the module.
-- **Schemagen:** after changing `src/**/schema.ts`, run `just schemagen` (`__generated__/` is gitignored).
+- **Schemagen:** after changing `src/**/types.ts`, run `just schemagen` (`__generated__/` is gitignored).
 
 **full-example conventions:** replace with domain-specific layout notes (JSON-only vs Ink, shared flags, etc.).

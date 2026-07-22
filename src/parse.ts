@@ -583,6 +583,9 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
 
   for (const d of defs) {
     if (d.required && !(d.name in opts)) {
+      if (d.kind === CliOptionKind.Json) {
+        continue;
+      }
       return errorResult(`Missing required option: --${d.name}`, pr.path);
     }
   }
@@ -591,6 +594,14 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
     const d = findOptionByName(defs, k);
     if (!d) {
       return errorResult(`Unknown option key: ${k}`, pr.path);
+    }
+    if (d.kind === CliOptionKind.Json) {
+      try {
+        JSON.parse(v);
+      } catch {
+        return errorResult(`Invalid JSON for option --${k}`, pr.path);
+      }
+      continue;
     }
     if (d.kind === CliOptionKind.Number) {
       if (!fullStringIsDouble(v)) {

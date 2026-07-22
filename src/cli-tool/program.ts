@@ -95,7 +95,8 @@ export const program = {
     },
     {
       key: "schemagen",
-      description: "Generate JSON Schema artifacts from src/**/schema.ts into colocated __generated__/ directories.",
+      description:
+        "Generate JSON Schema artifacts from src/**/types.ts role exports into colocated __generated__/ directories.",
       options: [
         {
           name: "root",

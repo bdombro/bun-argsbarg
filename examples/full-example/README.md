@@ -9,7 +9,7 @@ From a git checkout at this directory (requires [Homebrew](https://brew.sh), [ju
 ```bash
 brew install just bun
 just setup
-just schemagen   # after changing src/**/schema.ts
+just schemagen   # after changing src/**/types.ts
 just run status --json
 just run docs readme
 ```
@@ -62,13 +62,13 @@ Undo a local dev install: `just uninstall` (formula + agent artifacts; app confi
 
 ## Schemagen roots
 
-| Export in `schema.ts` | Generated artifact | Import on leaf / program |
+| Export in `types.ts` | Generated artifact | Import on leaf / program |
 | --- | --- | --- |
-| `export type configType = …` | `__generated__/configSchema.json` | `{ configSchema }` from `config/__generated__/index.ts` → `program.appConfig.jsonSchema` |
-| `export type outputType = …` | `__generated__/outputSchema.json` | `{ outputSchema }` from `__generated__/index.ts` → `leaf.outputSchema` |
-| `export type inputType = …` | `__generated__/inputSchema.json` | `{ inputSchema }` from `__generated__/index.ts` → `leaf.inputSchema` |
+| `export type configType = …` | `config/__generated__/configSchema.json` | `{ configSchema }` from `config/__generated__/index.ts` |
+| `export type outputType = …` | `__generated__/outputSchema.json` | `{ outputSchema }` from `__generated__/index.ts` |
+| `export type inputType = …` | `__generated__/inputSchema.json` | `{ inputSchema }` from `__generated__/index.ts` |
 
-Discovery walks `src/**/schema.ts` only. Domain helpers stay in sibling `types.ts`. `__generated__/` is gitignored — run `argsbarg schemagen` (via `just schemagen` or `just setup`).
+Type definitions and schemagen role exports live in `types.ts`. Run `argsbarg schemagen` (via `just schemagen` or `just setup`).
 
 ## Consumer docs
 

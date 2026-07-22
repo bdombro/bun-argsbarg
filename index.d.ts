@@ -45,7 +45,7 @@ declare class AppConfigSnapshot {
 }
 export type AnyAppConfigSnapshot = AppConfigSnapshot | EmptyAppConfigSnapshot;
 /** Coerced leaf inputs keyed by option and positional names. */
-export type CliLeafInputs = Record<string, boolean | number | string | string[] | undefined>;
+export type CliLeafInputs = Record<string, boolean | number | string | string[] | unknown | undefined>;
 /**
  * Values passed to a leaf command handler after parsing: app name, routed path, args, and merged options.
  */
@@ -92,6 +92,11 @@ export declare class CliContext {
 	positional(name: string): string | string[] | undefined;
 	/** Reads coerced option and positional values for the current leaf from schema metadata. */
 	readLeafInputs(): CliLeafInputs;
+	/**
+	 * Reads coerced leaf inputs, resolving Json options from flags, piped stdin (when `pipable`),
+	 * or MCP/API toolArgs, and validates against `leaf.inputSchema` when set.
+	 */
+	readLeafInputsAsync(): Promise<CliLeafInputs>;
 	private _readOptionValue;
 	private _leafNode;
 	private _posMap;
@@ -102,7 +107,7 @@ export declare class CliContext {
  */
 export type CliInvocation = "cli" | "mcp" | "api";
 /**
- * Option kinds: presence (boolean flag), string (free-form text), number (strict double), or enum (fixed choices).
+ * Option kinds: presence (boolean flag), string (free-form text), number (strict double), enum (fixed choices), or json (parsed JSON object/array).
  */
 export declare enum CliOptionKind {
 	/** Boolean flag: no value token (may be implicit `"1"` when set). */
@@ -112,7 +117,9 @@ export declare enum CliOptionKind {
 	/** Strict floating-point value (parsed at validation time). */
 	Number = "number",
 	/** Fixed set of allowed string values. Requires non-empty `choices` on the option. */
-	Enum = "enum"
+	Enum = "enum",
+	/** JSON object or array (parsed from `--name '<json>'`, piped stdin when `pipable`, or MCP/API tool body). */
+	Json = "json"
 }
 /**
  * Named validation/coercion for string options (`format` on `CliOption`).
@@ -176,6 +183,11 @@ export interface CliOption {
 	default?: string;
 	/** Regex pattern for string options. Mutually exclusive with `format`. */
 	pattern?: string;
+	/**
+	 * When `true` on a `Json` option, CLI may omit `--name` and supply JSON via stdin instead.
+	 * If `--name` is set, the flag value wins and stdin is not read.
+	 */
+	pipable?: boolean;
 }
 /**
  * An ordered positional argument slot, listed on leaf `positionals`.
@@ -631,6 +643,15 @@ dryRun?: boolean,
 interactive?: boolean): void;
 /** Prefixes a success message when running in dry-run mode. */
 export declare function formatDryRunMessage(message: string, dryRun: boolean): string;
+/** Thrown when {@link CliContext.readLeafInputsAsync} cannot resolve or validate inputs. */
+export declare class LeafInputError extends Error {
+	constructor(message: string);
+}
+/**
+ * Reads coerced leaf inputs, resolving Json options from flags, piped stdin, or toolArgs,
+ * and validates against `leaf.inputSchema` when set.
+ */
+export declare function readLeafInputsAsync(ctx: CliContext): Promise<CliLeafInputs>;
 /** Resolved paths for `mcp bundle`. */
 export interface McpBundlePaths {
 	binaryPath: string;

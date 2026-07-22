@@ -223,8 +223,36 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs()
 | `format: date-time` | `string` (normalized UTC ISO) |
 | Single positional | `string` or `undefined` |
 | Varargs positional | `string[]` or `undefined` |
+| `kind: json` | parsed object/array or `undefined` (use `readLeafInputsAsync()` for pipable stdin and MCP merge) |
 
 Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `readLeafInputs()` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `readLeafInputs()` for coerced values.
+
+### Json options and piped stdin
+
+For nested tool bodies (e.g. invoice template data), declare a matching property in schemagen `inputType`, wire `inputSchema` on the leaf, and add a **`kind: Json`** option with the same name:
+
+```typescript
+{
+  name: "invoice",
+  description: "Invoice template data. Pass JSON via --invoice or pipe to stdin.",
+  kind: CliOptionKind.Json,
+  pipable: true,
+  required: true,
+}
+```
+
+| Surface | How `invoice` is supplied |
+| --- | --- |
+| CLI | `--invoice '<json>'` **or** omit the flag and pipe JSON to stdin |
+| MCP / HTTP | `invoice` object in the tool JSON body (`ctx.toolArgs`) |
+
+**Precedence:** if `--invoice` is set, the flag value wins and stdin is not read.
+
+Use **`await ctx.readLeafInputsAsync()`** (not sync `readLeafInputs()`) so Json options resolve from flags, piped stdin, or `toolArgs`. When `leaf.inputSchema` is set, argsbarg validates the merged inputs (same JSON Schema subset as `program.appConfig`).
+
+At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
+
+See [output-schema.md](output-schema.md) for schemagen `inputType` and [api-server.md](api-server.md) for HTTP tool bodies.
 
 `CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.
 
