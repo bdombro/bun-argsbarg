@@ -142,32 +142,42 @@ Mirror the [output-schema.md](output-schema.md) pattern for config:
 
 ```mermaid
 flowchart LR
-  subgraph types [Schema-facing TS + JSDoc]
-    TypesTs["src/**/types.ts"]
-    Marker["JSDoc contains Config schema"]
+  subgraph types [schema-types.ts]
+    Marker["export type configType = AppConfig"]
   end
   subgraph gen [just schemagen]
-    Script["scripts/generate-config-schemas.ts"]
+    Script["scripts/schemagen.ts"]
     Gen["ts-json-schema-generator"]
   end
   subgraph artifacts [Committed]
-    Json["src/schemas/generated/app-config.json"]
-    Bridge["src/schemas/configSchemas.ts"]
+    Json["schemas/generated/app-config.json"]
+    Bridge["schemas/configSchemas.ts"]
   end
   subgraph runtime [Runtime]
     Program["program.appConfig.jsonSchema"]
     Validate["argsbarg runtime subset validator"]
   end
-  TypesTs --> Marker --> Script --> Gen --> Json
+  types --> Script --> Gen --> Json
   Script --> Bridge --> Program --> Validate
 ```
 
 | Piece | Convention |
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) |
-| Discovery | JSDoc marker **`Config schema`** on the root config interface |
+| Discovery | `export type configType = …` in `src/config/schema-types.ts` (type defined in same file) |
 | Artifacts | Commit `app-config.json` and `configSchemas.ts` bridge exporting `APP_CONFIG_JSON_SCHEMA` |
 | Consumer CI | Optional: `ajv` + `ajv-formats` against the same committed JSON (not an argsbarg runtime dep) |
+
+Example:
+
+```typescript
+// src/config/schema-types.ts
+export interface AppConfig {
+  apiToken: string;
+}
+
+export type configType = AppConfig;
+```
 
 ### Supported AppConfig shapes (argsbarg runtime validator)
 

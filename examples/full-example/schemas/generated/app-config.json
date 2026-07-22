@@ -35,6 +35,6 @@
     "maxRetries"
   ],
   "additionalProperties": false,
-  "description": "Config schema\n\nApplication settings for `full-example` (`program.appConfig`).",
+  "description": "Application settings for `full-example` (`program.appConfig`).",
   "definitions": {}
 }

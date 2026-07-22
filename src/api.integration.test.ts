@@ -8,7 +8,7 @@ import { $ } from "bun";
 import { generateOpenApi } from "./api/openapi.ts";
 import { API_CORS_HEADERS } from "./api/result.ts";
 import { handleApiRequest } from "./api/server.ts";
-import { Cli, CliContext, type CliContext as CliContextType, CliOptionKind } from "./index.ts";
+import { Cli, CliContext, type CliContext as CliContextType, CliOptionKind, cliErrWithHelp } from "./index.ts";
 import { nestedMcpFixture, testProgram } from "./test-fixtures.ts";
 import { cliValidateProgram } from "./validate.ts";
 
@@ -290,6 +290,37 @@ describe("HTTP API routes", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("Missing argument: path");
+    expect(body).not.toHaveProperty("stderr");
+    expect(body.error).not.toContain("\u001B[");
+  });
+
+  test("POST /tools/:name returns plain JSON validation errors", async () => {
+    const failProgram = testProgram({
+      key: "app",
+      description: "Test app",
+      apiServer: { enabled: true },
+      commands: [
+        {
+          key: "fail",
+          description: "Fails with cliErrWithHelp.",
+          handler: (ctx: CliContextType) => {
+            cliErrWithHelp(ctx, "bad input");
+          },
+        },
+      ],
+    });
+    cliValidateProgram(failProgram);
+    const res = await apiRequest(
+      failProgram,
+      new Request("http://127.0.0.1/tools/fail", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toEqual({ error: "bad input" });
   });
 
   test("GET /openapi.json lists tool paths", async () => {
@@ -304,7 +335,10 @@ describe("HTTP API routes", () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/openapi-browser"));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
-    expect(await res.text()).toContain("@scalar/api-reference");
+    const html = await res.text();
+    expect(html).toContain("@scalar/api-reference");
+    expect(html).toContain('orderSchemaPropertiesBy: "preserve"');
+    expect(html).toContain("orderRequiredPropertiesFirst: false");
   });
 });
 
@@ -317,6 +351,55 @@ test("generateOpenApi maps binary content types", () => {
     schema: { format: string };
   };
   expect(pdf.schema.format).toBe("binary");
+});
+
+test("generateOpenApi dereferences nested inputSchema definitions", () => {
+  const program = testProgram({
+    key: "app",
+    description: "Test app",
+    apiServer: { enabled: true },
+    commands: [
+      {
+        key: "render",
+        description: "Render a document.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            invoice: { $ref: "#/definitions/InvoiceData" },
+          },
+          definitions: {
+            InvoiceData: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+              },
+              required: ["id"],
+            },
+          },
+        },
+        handler: () => ({ ok: true }),
+      },
+    ],
+  });
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as {
+    paths: Record<
+      string,
+      {
+        post: {
+          requestBody: {
+            content: Record<string, { schema: { properties: { invoice: Record<string, unknown> } } }>;
+          };
+        };
+      }
+    >;
+  };
+  const schema = doc.paths["/tools/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
+  expect(schema.properties.invoice).toEqual({
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+  });
 });
 
 test("ctx.respond throws when called twice", () => {

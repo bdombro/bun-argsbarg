@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.1] - 2026-07-22
+
+### Added
+
+- **OpenAPI schema dereferencing** — inline internal `$ref` pointers when building OpenAPI documents so API reference UIs show nested request shapes.
+
+### Changed
+
+- **Schemagen discovery contract** — `examples/full-example` and docs now use `src/**/schema-types.ts` with `export type configType` / `outputType` / `inputType` instead of JSDoc markers (`Config schema`, `JSON payload`, `Tool input`) on `types.ts`.
+- **HTTP tool errors** — return a plain `{ "error": "..." }` JSON body without ANSI color codes or appended CLI help text.
+- **`cliErrWithHelp`** — on `api` / `mcp` invocations, throws a plain error instead of printing contextual help.
+- **`GET /openapi-browser`** — Scalar config preserves schema property order from the OpenAPI document (`orderSchemaPropertiesBy: "preserve"`).
+
 ## [6.0.0] - 2026-07-22
 
 ### Added
@@ -715,7 +728,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.1...HEAD
+[6.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.1
 [6.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.0
 [5.1.16]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.16
 [5.1.15]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.15

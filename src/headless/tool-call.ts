@@ -2,7 +2,7 @@
 Shared headless tool dispatch for MCP and HTTP: config bootstrap, argv conversion, and invoke.
 */
 
-import { apiErrorResponse, apiSuccessResponse } from "../api/result.ts";
+import { apiErrorResponse, apiSuccessResponse, firstErrorLine } from "../api/result.ts";
 import type { Cli, CliInvokeResult } from "../cli.ts";
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
@@ -137,11 +137,21 @@ export function headlessSuccessToHttpResponse(
 
 /** Maps a headless failure result to a JSON HTTP error Response. */
 export function headlessFailureToHttpResponse(result: HeadlessToolCallFailure): Response {
-  const status = result.kind === "argv" || result.kind === "help" ? 400 : 500;
+  const status = resolveHttpErrorStatus(result);
   return apiErrorResponse(status, {
-    error: result.message,
-    exitCode: result.exitCode,
-    stdout: result.stdout,
-    stderr: result.stderr,
+    error: firstErrorLine(result.message),
   });
+}
+
+function resolveHttpErrorStatus(result: HeadlessToolCallFailure): number {
+  if (result.kind === "argv" || result.kind === "help") {
+    return 400;
+  }
+  if (result.kind === "invoke" && result.message.includes("ctx.respond()")) {
+    return 500;
+  }
+  if (result.exitCode === 1) {
+    return 400;
+  }
+  return 500;
 }

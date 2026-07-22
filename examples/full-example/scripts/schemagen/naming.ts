@@ -16,6 +16,23 @@ export function camelToScreamingSnake(name: string): string {
   return camelToKebab(name).replace(/-/g, "_").toUpperCase();
 }
 
+/** Generated JSON filename for a tool-input schema root. */
+export function outfileForInputType(typeName: string): string {
+  if (typeName.endsWith("ToolInput")) {
+    return `${camelToKebab(typeName.slice(0, -"ToolInput".length))}-tool-input.json`;
+  }
+  return `${camelToKebab(typeName)}-tool-input.json`;
+}
+
+/** Bridge export constant for a tool-input schema root. */
+export function inputSchemaExportName(typeName: string): string {
+  if (typeName.endsWith("ToolInput")) {
+    const base = typeName.slice(0, -"ToolInput".length);
+    return `${camelToScreamingSnake(base)}_TOOL_INPUT_SCHEMA`;
+  }
+  return `${camelToScreamingSnake(typeName)}_TOOL_INPUT_SCHEMA`;
+}
+
 /** Generated JSON filename for an output-schema root type. */
 export function outfileForOutputType(typeName: string): string {
   if (typeName.endsWith("JsonOutput")) {

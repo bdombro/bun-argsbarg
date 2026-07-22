@@ -3,7 +3,7 @@ Auto MCP resources for user docs.topics when docs and MCP are both enabled.
 */
 
 import type { CliProgram } from "../types.ts";
-import { docsEnabled, docsTopicContent, docsTopicDescription, docsUserTopicKeys } from "./resolve.ts";
+import { docsEnabled, docsTopicDescription, docsTopicText, docsUserTopicKeys } from "./resolve.ts";
 
 /** Default URI pattern for a docs topic MCP resource (`<mcpId>://docs/<topicKey>`). */
 export function defaultDocsTopicResourceUri(mcpId: string, topicKey: string): string {
@@ -45,7 +45,10 @@ export function docsMcpResources(program: CliProgram): {
       name: key,
       description: docsTopicDescription(key, topic.description),
       mimeType: "text/markdown",
-      load: () => docsTopicContent(program, key),
+      load: () => {
+        const text = docsTopicText(program, key);
+        return text.endsWith("\n") ? text : `${text}\n`;
+      },
     };
   });
 }

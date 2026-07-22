@@ -7,6 +7,9 @@ import type { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
 
 export function cliErrWithHelp(ctx: CliContext, msg: string): never {
+  if (ctx.invocation === "api" || ctx.invocation === "mcp") {
+    throw new Error(msg);
+  }
   const color = process.stderr.isTTY;
   const line = color ? `\u001B[31m${msg}\u001B[0m` : msg;
   process.stderr.write(`${line}\n`);

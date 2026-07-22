@@ -23,6 +23,6 @@
     "apiTokenSet",
     "version"
   ],
-  "description": "JSON payload for `full-example status --json`.",
+  "description": "JSON stdout for `full-example status --json`.",
   "definitions": {}
 }

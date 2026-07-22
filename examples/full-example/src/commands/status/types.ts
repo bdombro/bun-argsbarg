@@ -1,11 +1,1 @@
-/** JSON payload for `full-example status --json`. */
-export interface StatusJsonOutput {
-  /** Resolved AWS region. */
-  defaultRegion?: string;
-  /** Resolved retry count. */
-  maxRetries?: number;
-  /** Whether apiToken is set (value never included). */
-  apiTokenSet: boolean;
-  /** App version from program root. */
-  version: string;
-}
+export type { StatusJsonOutput } from "./schema-types.ts";

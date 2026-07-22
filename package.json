@@ -1,24 +1,25 @@
 {
   "name": "argsbarg",
-  "version": "6.0.0",
-  "type": "module",
-  "engines": {
-    "bun": ">=1.3"
-  },
-  "scripts": {
-    "//just": "echo this app uses justfile for development tasks"
-  },
+  "version": "6.0.1",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
-  "types": "./index.d.ts",
-  "bin": {
-    "argsbarg": "src/cli-tool/main.ts"
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@types/bun": "^1.3.12",
+    "dts-bundle-generator": "^9.5.1",
+    "typescript": "^5.9.3"
   },
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "default": "./src/index.ts"
     }
+  },
+  "bin": {
+    "argsbarg": "src/cli-tool/main.ts"
+  },
+  "engines": {
+    "bun": ">=1.3"
   },
   "files": [
     "src",
@@ -29,10 +30,9 @@
     "LICENSE",
     "CHANGELOG.md"
   ],
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@types/bun": "^1.3.12",
-    "dts-bundle-generator": "^9.5.1",
-    "typescript": "^5.9.3"
-  }
+  "scripts": {
+    "//just": "echo this app uses justfile for development tasks"
+  },
+  "type": "module",
+  "types": "./index.d.ts"
 }

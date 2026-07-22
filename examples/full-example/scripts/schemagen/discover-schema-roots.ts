@@ -1,5 +1,5 @@
 /*
-Discovers schema roots in src (recursive) types.ts files by JSDoc markers.
+Discovers schema roots in schema-types.ts files via configType / inputType / outputType exports.
 Copy per consumer repo — see docs/output-schema.md and docs/config-schema.md.
 */
 
@@ -7,87 +7,142 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import {
   configSchemaExportName,
+  inputSchemaExportName,
   outfileForConfigType,
+  outfileForInputType,
   outfileForOutputType,
   outputSchemaExportName,
 } from "./naming.ts";
 
-export type SchemaRootKind = "config" | "output";
+export type SchemaRootKind = "config" | "input" | "output";
+
+export type SchemaRole = "configType" | "inputType" | "outputType";
 
 export interface SchemaRoot {
   kind: SchemaRootKind;
   typeName: string;
-  /** Path relative to project root (e.g. src/types.ts). */
-  relFile: string;
+  /** Path relative to project root (e.g. src/config/schema-types.ts). */
+  path: string;
   outfile: string;
   exportName: string;
 }
 
-const CONFIG_MARKER = "Config schema";
-const OUTPUT_MARKER = "JSON payload";
+const SCHEMA_TYPES_FILE = "schema-types.ts";
 
-const INTERFACE_RE = /\/\*\*([\s\S]*?)\*\/\s*export\s+interface\s+(\w+)/g;
+const ROLE_EXPORT_RE = /export\s+type\s+(configType|inputType|outputType)\s*=\s*(\w+)/g;
 
-function listTypesTsFiles(srcDir: string, baseDir: string, out: string[]): void {
+const ROLE_TO_KIND: Record<SchemaRole, SchemaRootKind> = {
+  configType: "config",
+  inputType: "input",
+  outputType: "output",
+};
+
+function listSchemaTypesFiles(srcDir: string, baseDir: string, out: string[]): void {
   for (const ent of readdirSync(srcDir)) {
     const full = join(srcDir, ent);
     const st = statSync(full);
     if (st.isDirectory()) {
-      listTypesTsFiles(full, baseDir, out);
+      listSchemaTypesFiles(full, baseDir, out);
       continue;
     }
-    if (ent === "types.ts") {
+    if (ent === SCHEMA_TYPES_FILE) {
       out.push(relative(baseDir, full));
     }
   }
 }
 
-function classifyRoot(jsDoc: string, typeName: string, relFile: string): SchemaRoot | undefined {
-  const hasConfig = jsDoc.includes(CONFIG_MARKER);
-  const hasOutput = jsDoc.includes(OUTPUT_MARKER);
-  if (hasConfig && hasOutput) {
-    throw new Error(`${relFile}: ${typeName} has both Config schema and JSON payload markers`);
+/** True when `typeName` is declared in this file (not a re-export alias to another module). */
+function isTypeDefinedInFile(text: string, typeName: string): boolean {
+  if (new RegExp(`export\\s+interface\\s+${typeName}\\b`).test(text)) {
+    return true;
   }
-  if (!hasConfig && !hasOutput) {
-    return undefined;
+  if (new RegExp(`export\\s+type\\s+${typeName}\\s*=`).test(text)) {
+    return !["configType", "inputType", "outputType"].includes(typeName);
   }
-  if (hasConfig) {
+  return false;
+}
+
+function rootForRole(role: SchemaRole, typeName: string, path: string): SchemaRoot {
+  const kind = ROLE_TO_KIND[role];
+  if (kind === "config") {
     return {
-      kind: "config",
+      kind,
       typeName,
-      relFile,
+      path,
       outfile: outfileForConfigType(typeName),
       exportName: configSchemaExportName(typeName),
     };
   }
+  if (kind === "input") {
+    return {
+      kind,
+      typeName,
+      path,
+      outfile: outfileForInputType(typeName),
+      exportName: inputSchemaExportName(typeName),
+    };
+  }
   return {
-    kind: "output",
+    kind,
     typeName,
-    relFile,
+    path,
     outfile: outfileForOutputType(typeName),
     exportName: outputSchemaExportName(typeName),
   };
 }
 
-/** Find all schema roots under `src/` in files named types.ts. */
+function discoverFromFile(path: string, text: string): SchemaRoot[] {
+  const rolesSeen = new Set<SchemaRole>();
+  const roots: SchemaRoot[] = [];
+
+  for (const match of text.matchAll(ROLE_EXPORT_RE)) {
+    const role = match[1] as SchemaRole | undefined;
+    const typeName = match[2];
+    if (!role || !typeName) {
+      continue;
+    }
+    if (rolesSeen.has(role)) {
+      throw new Error(`${path}: duplicate export type ${role}`);
+    }
+    rolesSeen.add(role);
+    if (!isTypeDefinedInFile(text, typeName)) {
+      continue;
+    }
+    roots.push(rootForRole(role, typeName, path));
+  }
+
+  return roots;
+}
+
+/** Find all schema roots under `src/` in files named schema-types.ts. */
 export function discoverSchemaRoots(projectRoot: string): SchemaRoot[] {
   const srcDir = join(projectRoot, "src");
   const files: string[] = [];
-  listTypesTsFiles(srcDir, projectRoot, files);
+  listSchemaTypesFiles(srcDir, projectRoot, files);
+
   const roots: SchemaRoot[] = [];
-  for (const relFile of files.sort()) {
-    const text = readFileSync(join(projectRoot, relFile), "utf8");
-    for (const match of text.matchAll(INTERFACE_RE)) {
-      const jsDoc = match[1] ?? "";
-      const typeName = match[2];
-      if (!typeName) {
-        continue;
+  const typeOwners = new Map<string, string>();
+
+  for (const relPath of files.sort()) {
+    const text = readFileSync(join(projectRoot, relPath), "utf8");
+    for (const root of discoverFromFile(relPath, text)) {
+      const prev = typeOwners.get(root.typeName);
+      if (prev) {
+        throw new Error(
+          `${relPath}: duplicate schema root type ${root.typeName} (already declared in ${prev})`,
+        );
       }
-      const root = classifyRoot(jsDoc, typeName, relFile);
-      if (root) {
-        roots.push(root);
-      }
+      typeOwners.set(root.typeName, relPath);
+      roots.push(root);
     }
   }
+
+  const configRoots = roots.filter((r) => r.kind === "config");
+  if (configRoots.length > 1) {
+    throw new Error(
+      `multiple config schema roots: ${configRoots.map((r) => `${r.typeName} (${r.path})`).join(", ")}`,
+    );
+  }
+
   return roots;
 }

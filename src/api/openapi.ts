@@ -4,6 +4,7 @@ Hand-built OpenAPI 3.1 document from exposed MCP tools.
 
 import { collectMcpTools } from "../mcp/tools.ts";
 import type { CliProgram } from "../types.ts";
+import { dereferenceJsonSchema } from "./schema-deref.ts";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
@@ -18,8 +19,9 @@ function buildSuccessResponse(tool: ReturnType<typeof collectMcpTools>[number]):
   const media: Record<string, unknown> = {};
 
   if (contentType.includes("application/json")) {
+    const outputSchema = tool.outputSchema ?? { type: "object" };
     media[contentType] = {
-      schema: tool.outputSchema ?? { type: "object" },
+      schema: dereferenceJsonSchema(outputSchema),
     };
   } else if (contentType.includes("text/html")) {
     media[contentType] = { schema: { type: "string" } };
@@ -48,7 +50,7 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
           required: false,
           content: {
             [JSON_CONTENT_TYPE]: {
-              schema: tool.inputSchema,
+              schema: dereferenceJsonSchema(tool.inputSchema),
             },
           },
         },

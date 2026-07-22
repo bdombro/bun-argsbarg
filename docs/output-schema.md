@@ -23,8 +23,9 @@ export const status = {
 | `myapp docs api` | Markdown per-command **Output** section |
 | `myapp docs skill` | `reference.md` for agent skills |
 | MCP `tools/list` | Optional `outputSchema` on each tool |
+| HTTP `GET /openapi.json` | Response schema per tool |
 
-**Not validated at runtime** — argsbarg does not parse or reject handler stdout against the schema today. The schema is documentation and MCP metadata.
+**Not validated at runtime** — argsbarg does not parse or reject handler stdout against the schema today. The schema is documentation and MCP/HTTP metadata.
 
 **Set on the leaf only** — not under `mcpTool` (legacy `mcpTool.outputSchema` still resolves but is deprecated).
 
@@ -43,31 +44,29 @@ Production CLIs with several JSON commands tend to use **codegen** so types, han
 
 ## Recommended pipeline (copy per repo)
 
-No shared npm package — each app copies the same **contract**. Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-i18n-tools-poc** (see each repo’s `docs/architecture.md` for which commands use which schema root).
+No shared npm package — each app copies the same **contract**. Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-i18n-tools-poc**, **pdf-gen** (see each repo’s `docs/architecture.md` for which commands use which schema root).
 
 ```mermaid
 flowchart LR
-  subgraph types [Schema-facing TS + JSDoc]
-    TypesTs["src/**/types.ts"]
-    Marker["JSDoc contains JSON payload"]
-    Narrow["Narrowed types where needed"]
+  subgraph types [schema-types.ts]
+    Config["export type configType = AppConfig"]
+    Output["export type outputType = StatusJsonOutput"]
+    Input["export type inputType = ToolInput (optional)"]
   end
   subgraph gen [just schemagen]
-    Discover["scripts/schemagen/discover-schema-roots.ts"]
-    Script["scripts/generate-output-schemas.ts"]
+    Discover["discover-schema-roots.ts"]
+    Script["schemagen.ts / generate-output-schemas.ts"]
     Gen["ts-json-schema-generator"]
   end
   subgraph artifacts [Committed]
-    Json["src/schemas/generated/*.json"]
-    Bridge["src/schemas/outputSchemas.ts"]
+    Json["schemas/generated/*.json"]
+    Bridge["outputSchemas.ts / inputSchemas.ts"]
   end
   subgraph runtime [Runtime]
-    Leaves["leaf outputSchema"]
+    Leaves["leaf outputSchema / inputSchema"]
     Docgen["just docgen"]
   end
-  TypesTs --> Marker --> Discover
-  Narrow --> Discover
-  Discover --> Script --> Gen --> Json
+  types --> Discover --> Script --> Gen --> Json
   Script --> Bridge --> Leaves --> Docgen
 ```
 
@@ -75,61 +74,95 @@ flowchart LR
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (`createGenerator` with `jsDoc: "extended"`) |
 | Config | `tsconfig: "tsconfig.json"`, `topRef: false`, `skipTypeCheck: false` |
-| Discovery | Walk `src/**/types.ts`; treat `export interface` as a schema root when its JSDoc contains **`JSON payload`** |
-| Artifacts | Commit `src/schemas/generated/*.json` **and** auto-generated `src/schemas/outputSchemas.ts` |
+| Discovery | Walk `src/**/schema-types.ts`; generate from `export type outputType = …` / `inputType` / `configType` when the target type is **defined in that file** |
+| Artifacts | Commit `schemas/generated/*.json` **and** auto-generated bridge modules |
 | tsconfig | `"resolveJsonModule": true` |
-| CI | `just check`: `schemagen` → `git diff --exit-code src/schemas/generated/ src/schemas/outputSchemas.ts` → typecheck |
+| CI | `just check`: `schemagen` → `git diff --exit-code schemas/` → typecheck |
 | Docgen | `docgen` depends on `schemagen` so saved `./docs/api.md` and `./docs/cli-schema.json` are fresh |
 
 Copy these scripts into each consumer repo (they are intentionally duplicated, not published):
 
-- `scripts/generate-output-schemas.ts` — generate JSON + rewrite the bridge
+- `scripts/schemagen.ts` or `scripts/generate-output-schemas.ts` — generate JSON + rewrite bridges
 - `scripts/schemagen/discover-schema-roots.ts` — find roots and map names → filenames / export constants
 - `scripts/schemagen/discover-schema-roots.test.ts` — lock discovery and naming per app
 
-### Marking a schema root
+### Declaring a schema root
 
-Put schema-facing interfaces in **`src/**/types.ts`** (e.g. `src/commands/status/types.ts`, `src/ui/runHeadless/types.ts`, `src/core/types.ts`). Add a JSDoc line containing **`JSON payload`** on the exported interface:
+Put schema-facing interfaces in **`schema-types.ts`** next to the command (or in a shared module when several commands reuse one shape). Export a role alias:
 
 ```typescript
-/** JSON payload for `myapp status --json`. */
+// src/commands/status/schema-types.ts
+import type { WorkspaceStatus } from "./types.ts";
+
+/** JSON stdout for `myapp status --json`. */
 export interface StatusJsonOutput {
-  items: StatusJsonItem[];
+  workspaces: WorkspaceStatus[];
 }
 
-/** JSON payload written to stdout after a headless mutating command. */
+/** Schemagen root for leaf outputSchema. */
+export type outputType = StatusJsonOutput;
+```
+
+```typescript
+// src/ui/runHeadless/schema-types.ts — shared by many mutating commands
+import type { HeadlessTaskResult } from "./types.ts";
+
 export interface HeadlessOpResult {
   command: string;
   exitCode: number;
   tasks: HeadlessTaskResult[];
 }
+
+export type outputType = HeadlessOpResult;
 ```
 
-`discoverSchemaRoots` scans only files named `types.ts` under `src/`. Nested helper interfaces in the same file are included in the generated schema when referenced by a root; they are **not** separate JSON files unless they are also marked roots.
+```typescript
+// src/commands/render-invoice/schema-types.ts — custom HTTP/MCP body (pdf-gen)
+export interface RenderInvoiceToolInput {
+  format: "pdf" | "html";
+  invoice: InvoiceData;
+}
+
+export type inputType = RenderInvoiceToolInput;
+export type outputType = RenderInvoiceWrittenOutput;
+```
+
+| Export | Role |
+| --- | --- |
+| `export type configType = AppConfig` | `program.appConfig.jsonSchema` (one per repo, typically `src/config/schema-types.ts`) |
+| `export type outputType = …` | `leaf.outputSchema` |
+| `export type inputType = …` | `leaf.inputSchema` (only when the tool body is not flat CLI flags) |
+
+**Domain helpers** stay in `types.ts` (or `core/types.ts`). Discovery scans only `schema-types.ts`. Re-export-only files (`export type outputType = HeadlessOpResult` pointing at another module) are **not** generation roots — generate once from the canonical definition file.
+
+Commands without structured JSON omit `schema-types.ts` and import a shared bridge constant (e.g. `HEADLESS_OP_RESULT_OUTPUT_SCHEMA`).
+
+When you do **not** set `inputSchema`, argsbarg builds tool input from CLI `options` + `positionals`.
 
 ### Stable naming (outfile + bridge export)
 
-Discovery maps each root type name to a generated filename and `outputSchemas.ts` constant. Suffix conventions (implemented in `outfileForType` / `schemaExportName`):
+Discovery maps each root type name to a generated filename and bridge constant. Suffix conventions (implemented in `outfileForOutputType` / `outputSchemaExportName`):
 
 | Type suffix | Example type | Generated file | Bridge export |
 | --- | --- | --- | --- |
 | `JsonOutput` | `StatusJsonOutput` | `status.json` | `STATUS_JSON_OUTPUT_SCHEMA` |
 | `OpResult` | `HeadlessOpResult` | `headless-op-result.json` | `HEADLESS_OP_RESULT_OUTPUT_SCHEMA` |
 | `Output` | `OpenUrlOutput` | `open-url.json` | `OPEN_URL_OUTPUT_SCHEMA` |
-| `Result` | `UidsResult` | `uids.json` | `UIDS_OUTPUT_SCHEMA` |
+| `Result` | `PrResult` | `pr.json` | `PR_RESULT_OUTPUT_SCHEMA` |
+| `ToolInput` | `RenderInvoiceToolInput` | `render-invoice-tool-input.json` | `RENDER_INVOICE_TOOL_INPUT_SCHEMA` |
 
 Prefer these suffixes for new roots so filenames and import constants stay predictable across repos.
 
 ### Generated bridge
 
-`scripts/generate-output-schemas.ts` rewrites `src/schemas/outputSchemas.ts` on every run:
+`scripts/schemagen.ts` rewrites `schemas/outputSchemas.ts` on every run:
 
 ```typescript
-// Auto-generated by scripts/generate-output-schemas.ts — do not edit by hand.
+// Auto-generated by scripts/schemagen.ts — do not edit by hand.
 
 import status from "./generated/status.json";
 
-/** JSON Schema for `myapp status --json`. */
+/** JSON Schema for leaf outputSchema from `StatusJsonOutput`. */
 export const STATUS_JSON_OUTPUT_SCHEMA = status as Record<string, unknown>;
 ```
 
@@ -139,26 +172,24 @@ Wire the constant on each leaf that emits that shape (several commands may share
 
 **Goal:** generated schemas match what handlers actually print, with descriptions agents can read in `docs api`.
 
-1. **Schema roots** — `export interface` in a `types.ts` file, with **`JSON payload`** in the interface JSDoc naming which command(s) emit it.
+1. **Schema roots** — `export interface` in `schema-types.ts`, with `export type outputType = …` (or `inputType` / `configType`).
 2. **Per property** — `/** … */` on every field that should appear in JSON Schema `properties` (including nested named types).
 3. **Unions / enums** — document the alias; generator emits `enum` / `anyOf` with type-level description.
 4. **Formats** — property JSDoc can include `@format date-time` for ISO timestamps; add a smoke test that the generated property has `format: "date-time"`.
-5. **Do not hand-edit** `src/schemas/generated/` or `src/schemas/outputSchemas.ts` — change types/JSDoc, run `just schemagen`, commit both.
+5. **Do not hand-edit** `schemas/generated/` or bridge modules — change types/JSDoc, run `just schemagen`, commit both.
 
 ### Narrowing when runtime ≠ stdout
 
-When a shared runtime type is **wider** than one command’s JSON, add a **schema-facing** root in `types.ts` (still marked `JSON payload`):
+When a shared runtime type is **wider** than one command’s JSON, add a **schema-facing** root in `schema-types.ts`:
 
 ```typescript
-/** Runtime union across commands. */
-export type ResultSource = TranslationReadinessSource | { kind: "uids"; uids: string[] };
-
-/** JSON payload for `myapp pr` and `myapp file`. */
+/** JSON stdout for `myapp pr` and `myapp file`. */
 export interface TranslationReadinessResult {
   source: TranslationReadinessSource;
   evaluatedAt: string;
-  // ...
 }
+
+export type outputType = TranslationReadinessResult;
 ```
 
 Patterns:
@@ -173,18 +204,18 @@ Handlers keep using runtime types; only discovered roots (and their type graph) 
 Per repo:
 
 - **`scripts/schemagen/discover-schema-roots.test.ts`** — asserts which roots are discovered and stable outfile / export-name mapping.
-- **`src/schemas/outputSchemas.test.ts`** (optional) — schema shape smoke tests: object root, key `description` fields, enums, `@format date-time`.
+- **`schemas/outputSchemas.test.ts`** (optional) — schema shape smoke tests: object root, key `description` fields, enums, `@format date-time`.
 
 ## Contributor workflow
 
-1. Add or edit schema-facing interfaces in `src/**/types.ts` with **`JSON payload`** JSDoc and per-field descriptions.
-2. `just schemagen` — refresh `src/schemas/generated/` and `src/schemas/outputSchemas.ts`.
-3. Import the bridge constant on the relevant leaf `outputSchema` fields.
-4. Commit generated JSON and the bridge with the type changes.
+1. Add or edit schema roots in `src/**/schema-types.ts` with `outputType` / `inputType` / `configType` and per-field JSDoc.
+2. `just schemagen` — refresh `schemas/generated/` and bridge modules.
+3. Import the bridge constant on the relevant leaf `outputSchema` / `inputSchema` fields.
+4. Commit generated JSON and bridges with the type changes.
 5. `just docgen` / `myapp docs api --save` — refresh consumer docs.
 6. Document which commands use which roots in **your** `docs/architecture.md` (argsbarg does not maintain per-app tables).
 
-Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md` and your `src/schemas/` layout.
+Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md` and your `schemas/` layout.
 
 **Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo (shipped in npm as `node_modules/argsbarg/examples/full-example/`) — discovery script, bridges, and `status` leaf with `outputSchema`.
 
@@ -193,10 +224,10 @@ Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/c
 - Shared codegen package or monorepo tooling
 - Runtime Zod / `.parse()` on stdout in argsbarg
 - `outputSchema` for plain-text, streaming, or Ink-only commands
-- Schema roots outside `src/**/types.ts` (use a dedicated `types.ts` next to handlers instead of `resolve.ts`)
 
 ## See also
 
+- [config-schema.md](config-schema.md) — `configType` / `program.appConfig`
 - [cli-program.md](cli-program.md) — structured stdout, headless JSON, `read*Flags`
 - [mcp.md](mcp.md) — `tools/list`, `structuredContent`
 - [bundled-docs.md](bundled-docs.md) — `docs api` / `docs cli-schema` docgen

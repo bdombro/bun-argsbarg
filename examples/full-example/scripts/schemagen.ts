@@ -1,5 +1,5 @@
 /*
-Generate JSON Schema artifacts and bridge modules from discovered types.ts roots.
+Generate JSON Schema artifacts and bridge modules from discovered schema-types.ts roots.
 */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -13,7 +13,7 @@ const generatedDir = join(projectRoot, "schemas", "generated");
 
 function generateJson(root: SchemaRoot): Record<string, unknown> {
   const generator = createGenerator({
-    path: join(projectRoot, root.relFile),
+    path: join(projectRoot, root.path),
     type: root.typeName,
     tsconfig: join(projectRoot, "tsconfig.json"),
     topRef: false,
@@ -52,6 +52,7 @@ function writeBridge(path: string, scriptName: string, roots: SchemaRoot[], bann
 
 const roots = discoverSchemaRoots(projectRoot);
 const configRoots = roots.filter((r) => r.kind === "config");
+const inputRoots = roots.filter((r) => r.kind === "input");
 const outputRoots = roots.filter((r) => r.kind === "output");
 
 mkdirSync(generatedDir, { recursive: true });
@@ -70,6 +71,14 @@ writeBridge(
   configRoots,
   "JSON Schema for program.appConfig.jsonSchema from",
 );
+if (inputRoots.length > 0) {
+  writeBridge(
+    join(projectRoot, "schemas", "inputSchemas.ts"),
+    "schemagen.ts",
+    inputRoots,
+    "JSON Schema for leaf inputSchema from",
+  );
+}
 writeBridge(
   join(projectRoot, "schemas", "outputSchemas.ts"),
   "schemagen.ts",
@@ -77,4 +86,6 @@ writeBridge(
   "JSON Schema for leaf outputSchema from",
 );
 
-console.log(`config roots: ${configRoots.length}, output roots: ${outputRoots.length}`);
+console.log(
+  `config roots: ${configRoots.length}, input roots: ${inputRoots.length}, output roots: ${outputRoots.length}`,
+);

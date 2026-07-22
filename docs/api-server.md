@@ -134,7 +134,7 @@ All responses include wide-open CORS headers (`Access-Control-Allow-Origin: *`).
 
 ## OpenAPI
 
-Call `generateOpenApi(program)` or `openApiJson(program)` from the package, fetch `GET /openapi.json` from a running server, or run `myapp docs openapi` / `myapp docs openapi --save` (writes `./docs/openapi.json` when `docs.enabled` and `apiServer.enabled`). Tools with custom `inputSchema` on the leaf are reflected in the document.
+Call `generateOpenApi(program)` or `openApiJson(program)` from the package, fetch `GET /openapi.json` from a running server, or run `myapp docs openapi` / `myapp docs openapi --save` (writes `./docs/openapi.json` when `docs.enabled` and `apiServer.enabled`). Nested `inputSchema` / `outputSchema` `$ref` pointers are dereferenced when the OpenAPI document is built so API reference UIs can show nested request shapes.
 
 ## Complex tool inputs
 

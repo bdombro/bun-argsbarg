@@ -9,7 +9,7 @@ _:
 # Typecheck and format the codebase
 check: format typecheck
 
-consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
+consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc ~/dev/ss/pdf-gen"
 
 # Verify committed schemas match schemagen output and template drift in examples/full-example
 check-full-example: full-example-schemagen
@@ -53,7 +53,7 @@ consumers-dev:
       dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
       echo "==> $(basename "$dir") ($dir) → file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" "$template")
+      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
     done
 
 # Pin consumers to ^<this repo version>, install, merge Cursor rule, build, docgen

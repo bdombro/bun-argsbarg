@@ -9,7 +9,7 @@ From a git checkout at this directory (requires [Homebrew](https://brew.sh), [ju
 ```bash
 brew install just bun
 just setup
-just schemagen   # after changing src/**/types.ts
+just schemagen   # after changing src/**/schema-types.ts
 just run status --json
 just run docs readme
 ```
@@ -60,14 +60,15 @@ just test-release
 
 Undo a local dev install: `just uninstall` (formula + agent artifacts; app config removed by formula `uninstall`), `just uninstall-config` (app config only, without uninstalling the formula).
 
-## Schemagen markers
+## Schemagen roots
 
-| Marker in interface JSDoc | Artifact |
+| Export in `schema-types.ts` | Artifact |
 | --- | --- |
-| `Config schema` | `schemas/configSchemas.ts` + `schemas/generated/*-config.json` |
-| `JSON payload` | `schemas/outputSchemas.ts` + `schemas/generated/*.json` |
+| `export type configType = …` | `schemas/configSchemas.ts` + `schemas/generated/*-config.json` |
+| `export type outputType = …` | `schemas/outputSchemas.ts` + `schemas/generated/*.json` |
+| `export type inputType = …` | `schemas/inputSchemas.ts` + `schemas/generated/*-tool-input.json` |
 
-Discovery walks `src/**/types.ts` only.
+Discovery walks `src/**/schema-types.ts` only. Domain helpers stay in sibling `types.ts`.
 
 ## Consumer docs
 

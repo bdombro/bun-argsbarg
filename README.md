@@ -167,7 +167,7 @@ Add app-specific conventions in a second rule if needed. Copy the rule from the 
 
 1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
 2. Call `await new Cli(program).run()` — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
-3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1**.
+3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1** (CLI only; API/MCP invocations throw a plain `Error`).
 
 
 
@@ -267,8 +267,8 @@ To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-progr
 | Area                  | Files / wiring                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `api`, `configure get`/`set`      |
-| `program.appConfig`   | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts`                              |
-| `outputSchema`        | `src/commands/status/types.ts` → `schemas/outputSchemas.ts`                            |
+| `program.appConfig`   | `src/config/schema-types.ts` (`AppConfig`) → `schemas/configSchemas.ts`              |
+| `outputSchema`        | `src/commands/status/schema-types.ts` → `schemas/outputSchemas.ts`                   |
 | Schemagen             | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts`                  |
 | Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
 | MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |

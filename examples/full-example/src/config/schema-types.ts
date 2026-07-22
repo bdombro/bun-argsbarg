@@ -1,6 +1,4 @@
 /**
- * Config schema
- *
  * Application settings for `full-example` (`program.appConfig`).
  */
 export interface AppConfig {
@@ -21,3 +19,6 @@ export interface AppConfig {
     ttl: number;
   };
 }
+
+/** Schemagen root for program.appConfig.jsonSchema. */
+export type configType = AppConfig;

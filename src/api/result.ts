@@ -12,6 +12,21 @@ export interface ApiToolCallErrorBody {
   stderr?: string;
 }
 
+/** Strips ANSI escape sequences from CLI-formatted text. */
+export function stripAnsi(text: string): string {
+  const ansiEscape = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+  return text.replace(ansiEscape, "");
+}
+
+/** Returns the first non-empty line of text with ANSI escapes removed. */
+export function firstErrorLine(text: string): string {
+  const line = stripAnsi(text)
+    .split("\n")
+    .map((part) => part.trim())
+    .find((part) => part.length > 0);
+  return line ?? stripAnsi(text).trim();
+}
+
 /** Wide-open CORS headers applied to all API responses. */
 export const API_CORS_HEADERS: Readonly<Record<string, string>> = {
   "access-control-allow-origin": "*",
@@ -82,8 +97,15 @@ export function apiDocsHtml(): string {
   <title>API Reference</title>
 </head>
 <body>
-  <script id="api-reference" data-url="/openapi.json"></script>
+  <div id="api-reference"></div>
   <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <script>
+    Scalar.createApiReference("#api-reference", {
+      url: "/openapi.json",
+      orderSchemaPropertiesBy: "preserve",
+      orderRequiredPropertiesFirst: false,
+    });
+  </script>
 </body>
 </html>`;
 }
