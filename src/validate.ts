@@ -180,6 +180,10 @@ export function cliValidateProgram(program: CliProgram): void {
     throw new CliSchemaValidationError("mcpServer requires enabled: true; omit mcpServer to disable MCP");
   }
 
+  if (program.apiServer !== undefined && program.apiServer.enabled !== true) {
+    throw new CliSchemaValidationError("apiServer requires enabled: true; omit apiServer to disable HTTP API");
+  }
+
   if (program.docs !== undefined && program.docs.enabled !== true) {
     throw new CliSchemaValidationError("docs requires enabled: true; omit docs to disable bundled documentation");
   }
@@ -215,6 +219,9 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     const rogue = node as CliProgram;
     if (rogue.mcpServer !== undefined) {
       throw new CliSchemaValidationError(`mcpServer is only supported on the program root (not on ${node.key})`);
+    }
+    if (rogue.apiServer !== undefined) {
+      throw new CliSchemaValidationError(`apiServer is only supported on the program root (not on ${node.key})`);
     }
     if (rogue.configure !== undefined) {
       throw new CliSchemaValidationError(`configure is only supported on the program root (not on ${node.key})`);

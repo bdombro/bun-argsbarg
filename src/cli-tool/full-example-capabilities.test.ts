@@ -26,6 +26,7 @@ const sinkProgram = {
     topics: { readme: { text: "# readme\n" } },
   },
   mcpServer: { enabled: true },
+  apiServer: { enabled: true },
   configure: {},
   commands: [
     {
@@ -54,6 +55,7 @@ describe("full-example template", () => {
   /** Tests that program source enables every builtin flag. */
   test("program source enables every builtin flag", () => {
     expect(programSource).toContain("mcpServer: {");
+    expect(programSource).toContain("apiServer: {");
     expect(programSource).toContain("enabled: true");
     expect(programSource).toContain("docs:");
     expect(programSource).toContain("appConfig:");
@@ -66,6 +68,7 @@ describe("full-example template", () => {
 
   test("resolveCapabilities matches full sink shape", () => {
     expect(resolveCapabilities(sinkProgram)).toEqual({
+      api: true,
       completion: true,
       mcp: true,
       configure: true,

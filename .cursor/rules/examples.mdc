@@ -6,7 +6,7 @@ alwaysApply: false
 
 When changing argsbarg **builtins**, **capabilities**, or **schemagen documentation**:
 
-1. Update **`examples/full-example/`** so it still enables every capability (`completion`, `version`, `configure`, `docs`, `mcp`).
+1. Update **`examples/full-example/`** so it still enables every capability (`completion`, `version`, `configure`, `docs`, `mcp`, `api`).
 2. Run **`just check-full-example`** from the argsbarg repo root (schemagen + schema git diff + `create --check`).
 3. Run **`just test`** — includes `src/cli-tool/full-example-capabilities.test.ts`.
 

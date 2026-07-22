@@ -6,8 +6,15 @@ import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
 import type { CliProgram } from "./index.ts";
-import { buildToolCallSuccess } from "./mcp/result.ts";
-import { collectMcpTools, mcpToolCallToArgv, mcpToolDescription, sanitizeToolSegment } from "./mcp/tools.ts";
+import { buildToolCallSuccessFromResponse } from "./mcp/result.ts";
+import {
+  apiToolName,
+  collectMcpTools,
+  mcpToolCallToArgv,
+  mcpToolDescription,
+  mcpToolName,
+  sanitizeToolSegment,
+} from "./mcp/tools.ts";
 import { cliSchemaExport } from "./schema.ts";
 import { mcpRequest, nestedMcpFixture, testProgram } from "./test-fixtures.ts";
 import { cliValidateProgram } from "./validate.ts";
@@ -24,17 +31,25 @@ test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
   expect(mcpToolDescription([], "helloapp", "Tiny demo.")).toBe("helloapp — Tiny demo.");
 });
 
+test("apiToolName hyphen-joins path; mcpToolName sanitizes to underscores", () => {
+  expect(apiToolName(nestedMcpFixture, ["stat", "owner", "lookup"])).toBe("stat-owner-lookup");
+  expect(mcpToolName(nestedMcpFixture, ["stat", "owner", "lookup"])).toBe("stat_owner_lookup");
+  expect(apiToolName(nestedMcpFixture, ["render-invoice"])).toBe("render-invoice");
+  expect(mcpToolName(nestedMcpFixture, ["render-invoice"])).toBe("render_invoice");
+});
+
 test("collectMcpTools lists user leaf commands only", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const names = tools.map((t) => t.name);
   expect(names).toContain("stat_owner_lookup");
+  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  expect(lookup.apiName).toBe("stat-owner-lookup");
+  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
   expect(names).toContain("read");
   expect(names).not.toContain("hidden");
   expect(names).not.toContain("configure");
   expect(names).not.toContain("mcp");
   expect(names).not.toContain("completion");
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
-  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
 });
 
 /** Tests that collectMcpTools appends leaf notes to MCP tool description. */
@@ -345,44 +360,35 @@ test("mcpTool on routing node is rejected", () => {
   expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
 });
 
-test("buildToolCallSuccess returns stdout only", () => {
-  const result = buildToolCallSuccess("hello\n", "");
+test("buildToolCallSuccessFromResponse maps JSON object", () => {
+  const result = buildToolCallSuccessFromResponse({ body: { a: 1 } });
   expect(result.isError).toBe(false);
-  expect(result.content).toEqual([{ type: "text", text: "hello\n" }]);
-  expect(result.structuredContent).toBeUndefined();
-});
-
-test("buildToolCallSuccess adds stderr as second content block", () => {
-  const result = buildToolCallSuccess("out\n", "warn\n");
-  expect(result.content).toEqual([
-    { type: "text", text: "out\n" },
-    { type: "text", text: "warn" },
-  ]);
-  expect(result.structuredContent).toBeUndefined();
-});
-
-test("buildToolCallSuccess stderr-only still includes stdout slot", () => {
-  const result = buildToolCallSuccess("", "warn\n");
-  expect(result.content).toEqual([
-    { type: "text", text: "" },
-    { type: "text", text: "warn" },
-  ]);
-});
-
-test("buildToolCallSuccess parses JSON structuredContent", () => {
-  const result = buildToolCallSuccess('{"a":1}\n', "");
   expect(result.structuredContent).toEqual({ a: 1 });
-  expect(result.content[0]?.text).toBe('{"a":1}\n');
+  expect(result.content[0]?.text).toBe("");
 });
 
-test("buildToolCallSuccess skips structuredContent for plain text", () => {
-  const result = buildToolCallSuccess("lookup user=x\n", "");
-  expect(result.structuredContent).toBeUndefined();
+test("buildToolCallSuccessFromResponse maps string body", () => {
+  const result = buildToolCallSuccessFromResponse({
+    body: "lookup user=x",
+    contentType: "text/plain; charset=utf-8",
+  });
+  expect(result.structuredContent).toEqual({
+    content: "lookup user=x",
+    contentType: "text/plain; charset=utf-8",
+  });
 });
 
-test("buildToolCallSuccess parses JSON primitives", () => {
-  const result = buildToolCallSuccess("true\n", "");
-  expect(result.structuredContent).toBe(true);
+test("buildToolCallSuccessFromResponse maps binary body as base64", () => {
+  const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+  const result = buildToolCallSuccessFromResponse({
+    body: bytes,
+    contentType: "application/pdf",
+  });
+  expect(result.structuredContent).toEqual({
+    data: "JVBERg==",
+    contentType: "application/pdf",
+    encoding: "base64",
+  });
 });
 
 test("MCP initialize returns tools and resources capabilities", async () => {
@@ -425,9 +431,11 @@ test("MCP tools/call runs stat_owner_lookup", async () => {
       },
     },
   ]);
-  const res = responses.get(4) as { result: { content: { text: string }[]; isError: boolean } };
+  const res = responses.get(4) as {
+    result: { content: { text: string }[]; structuredContent?: { content: string }; isError: boolean };
+  };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text).toContain("lookup user=test");
+  expect(res.result.structuredContent?.content).toContain("lookup user=test");
 });
 
 /** MCP tools/call returns structuredContent for JSON stdout. */
@@ -453,7 +461,6 @@ test("MCP tools/call returns structuredContent for JSON stdout", async () => {
   };
   expect(res.result.isError).toBe(false);
   expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
-  expect(JSON.parse(res.result.content[0]?.text.trim())).toEqual({ user: "test", path: readme });
 });
 
 /** MCP tools/call errors on missing required positional. */

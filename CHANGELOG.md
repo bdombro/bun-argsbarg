@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-07-22
+
+### Added
+
+- **`apiServer`** — opt-in HTTP tool server (`myapp api`). Exposes leaf commands over `GET /health`, `GET /openapi.json`, `GET /openapi-browser`, and `POST /tools/:name`. Defaults to `127.0.0.1:3000`. Independent of `mcpServer`.
+- **`ctx.respond()`** — set machine-readable responses for API/MCP; polymorphic CLI stdout printing.
+- **Implicit handler return values** — non-undefined return values become JSON responses for headless invocations.
+- **`apiResponse`** leaf metadata — default HTTP `Content-Type` and `Content-Disposition`.
+- **`generateOpenApi(program)`** — hand-built OpenAPI 3.1 document; served at `GET /openapi.json`.
+- **`GET /openapi-browser`** — Scalar API reference UI (CDN). Replaces `GET /docs`.
+- **`ctx.toolArgs`** — original flat tool JSON for API/MCP handlers with custom `inputSchema`.
+- **Wide-open CORS** — `Access-Control-Allow-Origin: *` on all API responses.
+- **`docs http`** — auto-generated HTTP API guide when `docs` and `apiServer` are both enabled.
+- **`docs openapi`** — print OpenAPI 3.1 JSON (`myapp docs openapi`); save with `--save` to `./docs/openapi.json` when `apiServer` is enabled.
+- **`Cli.invoke(argv, { invocation, toolArgs })`** — optional invocation source (`"mcp"` default, `"api"` for HTTP).
+- **`ctx.invocation === "api"`** — headless helpers treat API like MCP.
+
+### Changed
+
+- **HTTP success responses** — raw body (JSON/HTML/PDF bytes); no `{ ok, stdout, stderr }` envelope.
+- **MCP/API tool handlers** — must `ctx.respond()` or return a value; stdout is not part of success payloads.
+- **MCP binary** — `Uint8Array` responses encoded as base64 in `structuredContent`.
+- **Removed `POST /tools`** — MCP-shaped invoke endpoint; use `POST /tools/:name` only.
+- **HTTP API tool names** — hyphen-joined command paths (e.g. `render-invoice`, `stat-owner-lookup`); MCP keeps underscore-sanitized names (`render_invoice`, `stat_owner_lookup`).
+- **Removed `GET /docs`** — use **`GET /openapi-browser`** for the Scalar API reference UI.
+- **Removed `GET /schema`** from the HTTP API — use `myapp docs cli-schema`, MCP `://schema`, or `GET /openapi.json` / `docs openapi` instead.
+- **Removed `GET /tools`** from the HTTP API — use `GET /openapi.json` for tool discovery.
+- **Renamed `docs schema` → `docs cli-schema`** — saved file is `./docs/cli-schema.json` (disambiguates CLI tree JSON from OpenAPI and JSON Schema artifacts).
+- **Custom `inputSchema`** on leaves is used for MCP/HTTP tool metadata when set.
+
 ## [5.1.16] - 2026-07-07
 
 
@@ -685,7 +715,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v5.1.16...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.0
 [5.1.16]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.16
 [5.1.15]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.15
 [5.1.14]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.14

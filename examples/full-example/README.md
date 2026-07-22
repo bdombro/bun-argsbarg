@@ -69,6 +69,14 @@ Undo a local dev install: `just uninstall` (formula + agent artifacts; app confi
 
 Discovery walks `src/**/types.ts` only.
 
+## Consumer docs
+
+Regenerate committed reference docs under `docs/` (see [docs/README.md](docs/README.md)):
+
+```bash
+just docgen
+```
+
 ## Environment
 
 Optional overrides for `program.appConfig` (the configure wizard is the usual path):

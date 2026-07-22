@@ -7,6 +7,7 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
+export { generateOpenApi, openApiJson } from "./api/openapi.ts";
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "./cli.ts";
 export { cliErrWithHelp } from "./cli-errors.ts";
 export { displayAppConfigPath, resolveAppConfigPath } from "./config/file.ts";
@@ -30,6 +31,8 @@ export {
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
 export type {
+  CliApiResponseConfig,
+  CliApiServerConfig,
   CliAppConfig,
   CliAppConfigEntry,
   CliAppConfigResolveContext,
@@ -47,6 +50,8 @@ export type {
   CliOption,
   CliPositional,
   CliProgram,
+  CliRespondBody,
+  CliRespondOptions,
   InstallAgentIntegration,
   InstallTargetSpec,
   ResolvedInstallTarget,

@@ -41,8 +41,10 @@ export function mcpServerId(root: CliProgram): string {
 
 /** One MCP tool derived from a leaf CLI command. */
 export interface McpToolDef {
-  /** MCP tool name (underscore-separated path). */
+  /** MCP tool name (underscore-separated, sanitized segments). */
   name: string;
+  /** HTTP API tool name (hyphen-separated path; preserves command key spelling). */
+  apiName: string;
   /** Tool description from the leaf command. */
   description: string;
   /** Command path segments from the program root. */
@@ -67,6 +69,14 @@ export function mcpToolName(root: CliProgram, path: string[]): string {
     return sanitizeToolSegment(root.key);
   }
   return path.map(sanitizeToolSegment).join("_");
+}
+
+/** Builds the HTTP API tool name for a leaf at the given path (hyphen-joined, unsanitized). */
+export function apiToolName(root: CliProgram, path: string[]): string {
+  if (path.length === 0) {
+    return root.key;
+  }
+  return path.join("-");
 }
 
 /** JSON Schema property for one option. */
@@ -197,7 +207,7 @@ export function allMcpResources(root: CliProgram): McpResourceEntry[] {
   const builtIn: McpResourceEntry = {
     uri: schemaUri,
     name: "cli-schema",
-    description: "Full CLI command tree (same as docs schema).",
+    description: "Full CLI command tree (same as docs cli-schema).",
     mimeType: "application/json",
     load: () => cliSchemaJson(root),
   };
@@ -227,10 +237,11 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
       const outputSchema = leafOutputSchema(cmd);
       out.push({
         name: mcpToolName(root, path),
+        apiName: apiToolName(root, path),
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
-        inputSchema: buildInputSchema(root, path, cmd),
+        inputSchema: cmd.inputSchema ?? buildInputSchema(root, path, cmd),
         ...(outputSchema === undefined ? {} : { outputSchema }),
       });
       return;

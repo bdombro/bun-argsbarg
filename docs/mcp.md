@@ -171,7 +171,7 @@ Each tool’s `description` includes the human CLI path and the leaf’s help te
 
 ### Per-leaf visibility
 
-Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/list` while keeping it in the CLI and in `docs schema` output:
+Set `mcpTool: { enabled: false }` on a **leaf command** to hide it from `tools/list` while keeping it in the CLI and in `docs cli-schema` output:
 
 ```typescript
 {
@@ -232,11 +232,11 @@ On success (`isError: false`):
 
 On failure (parse error, validation error, non-zero exit, thrown error), the message is returned as text content with `isError: true`. Handler stderr is included when present.
 
-Help and `docs schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
+Help and `docs cli-schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
 
 ## Schema and custom resources
 
-The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp docs schema`. Override with `schemaResourceUri` if needed.
+The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp docs cli-schema`. Override with `schemaResourceUri` if needed.
 
 | Property | Value |
 | --- | --- |
@@ -419,7 +419,7 @@ Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` 
 
 ## Hidden commands and options
 
-Set **`hidden: true`** on a command or option to omit it from help listings, `docs schema` / `docs api`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
+Set **`hidden: true`** on a command or option to omit it from help listings, `docs cli-schema` / `docs api`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
 
 ## Reserved names
 
@@ -436,4 +436,4 @@ Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1)
 - **User schema only** — tool dispatch uses your program root, not merged presentation builtins.
 - **Buffered output** — MCP tool results are sent after the handler finishes. Incremental stdout (log tail, progress) is not streamed; a future release may add MCP progress notifications.
 
-For the `docs schema` export used by the resource, see [docs/bundled-docs.md](bundled-docs.md).
+For the `docs cli-schema` export used by the resource, see [docs/bundled-docs.md](bundled-docs.md).

@@ -11,7 +11,8 @@ import type { AnyAppConfigSnapshot } from "./config/context.ts";
 import { EmptyAppConfigSnapshot } from "./config/context.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
 import { collectOptionDefs } from "./parse.ts";
-import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
+import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
+import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram, CliRespondOptions } from "./types.ts";
 import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
 
@@ -29,6 +30,10 @@ export class CliContext {
   readonly opts: Record<string, string>;
   readonly invocation: CliInvocation;
   readonly appConfig: AnyAppConfigSnapshot;
+  /** Original flat tool arguments for API/MCP invocations (when provided). */
+  readonly toolArgs?: Record<string, unknown>;
+
+  private response?: CliRespondOptions;
 
   /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
@@ -39,6 +44,7 @@ export class CliContext {
     program: CliProgram,
     invocation: CliInvocation = "cli",
     appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(program),
+    toolArgs?: Record<string, unknown>,
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
@@ -47,6 +53,28 @@ export class CliContext {
     this.program = program;
     this.invocation = invocation;
     this.appConfig = appConfig;
+    this.toolArgs = toolArgs;
+  }
+
+  /**
+   * Sets the machine-readable response for API/MCP invocations, or writes to stdout in CLI mode.
+   * May only be called once per invocation.
+   */
+  respond(opts: CliRespondOptions): void {
+    if (this.response !== undefined) {
+      throw new Error("ctx.respond() was already called for this invocation");
+    }
+    const normalized = normalizeRespondOptions(opts);
+    if (this.invocation === "cli") {
+      writeRespondBodyToStdout(normalized.body);
+      return;
+    }
+    this.response = normalized;
+  }
+
+  /** Returns the respond payload set by {@link respond}, if any. */
+  getResponse(): CliRespondOptions | undefined {
+    return this.response;
   }
 
   /** Returns whether a presence flag was set (including implicit "1" for boolean options). */

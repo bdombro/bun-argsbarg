@@ -503,8 +503,8 @@ test("leaf completion help prints correctly", async () => {
 });
 
 /** Docs schema exports JSON for nested CLIs. */
-test("docs schema exports JSON for nested CLIs", async () => {
-  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs schema`.nothrow().quiet();
+test("docs cli-schema exports JSON for nested CLIs", async () => {
+  const { stdout, stderr, exitCode } = await $`bun run examples/nested.ts docs cli-schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
   expect(stderr.toString()).toBe("");
 
@@ -520,8 +520,8 @@ test("docs schema exports JSON for nested CLIs", async () => {
 });
 
 /** Docs schema exports JSON for leaf roots. */
-test("docs schema exports JSON for leaf roots", async () => {
-  const { stdout, exitCode } = await $`bun run examples/minimal.ts docs schema`.nothrow().quiet();
+test("docs cli-schema exports JSON for leaf roots", async () => {
+  const { stdout, exitCode } = await $`bun run examples/minimal.ts docs cli-schema`.nothrow().quiet();
   expect(exitCode).toBe(0);
 
   const schema = JSON.parse(stdout.toString());
@@ -658,8 +658,8 @@ test("docs help lists schema, api, and skill subcommands", () => {
     ],
   });
   const help = cliHelpRender(cliPresentationRoot(root), ["docs"], false);
-  expect(help).toContain("schema");
-  expect(help).toContain("Print the full command tree as JSON.");
+  expect(help).toContain("cli-schema");
+  expect(help).toContain("Print the full CLI command tree as JSON.");
   expect(help).toContain("api");
   expect(help).toContain("markdown");
   expect(help).toContain("skill");
@@ -812,6 +812,16 @@ test("cliValidateProgram rejects empty mcpServer", () => {
     handler: () => {},
   });
   expect(() => cliValidateProgram(root)).toThrow(/mcpServer requires enabled: true/);
+});
+
+test("cliValidateProgram rejects empty apiServer", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    apiServer: {} as { enabled: boolean },
+    handler: () => {},
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/apiServer requires enabled: true/);
 });
 
 test("resolveMcpSchemaUri uses sanitized root key", () => {

@@ -8,6 +8,7 @@ import type { CliProgram } from "./types.ts";
 
 /** Platform builtins derived from program config and runtime. */
 export interface CliCapabilities {
+  api: boolean;
   completion: boolean;
   mcp: boolean;
   configure: boolean;
@@ -19,6 +20,7 @@ export interface CliCapabilities {
 export function resolveCapabilities(program: CliProgram): CliCapabilities {
   const configure = program.configure?.enabled !== false;
   return {
+    api: program.apiServer?.enabled === true,
     completion: program.completion?.enabled !== false,
     mcp: program.mcpServer?.enabled === true,
     configure,
@@ -42,6 +44,9 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   if (caps.mcp) {
     names.push("mcp");
   }
+  if (caps.api) {
+    names.push("api");
+  }
   return names;
 }
 
@@ -60,13 +65,15 @@ export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities
   return false;
 }
 
-export type CapabilityFeature = "mcp" | "configure" | "docs" | "completion";
+export type CapabilityFeature = "api" | "mcp" | "configure" | "docs" | "completion";
 
 /** Stderr message when a disabled built-in is invoked from the CLI. */
 export function capabilityDeniedMessage(feature: CapabilityFeature): string {
   switch (feature) {
     case "completion":
       return "Shell completion is not available for this app.\n";
+    case "api":
+      return "HTTP API is not available for this app.\n";
     case "mcp":
       return "MCP is not available for this app.\n";
     case "configure":
@@ -88,6 +95,10 @@ export function assertBuiltinAllowed(argv: string[], caps: CliCapabilities): voi
   }
   if (first === "mcp" && !caps.mcp) {
     process.stderr.write(capabilityDeniedMessage("mcp"));
+    process.exit(1);
+  }
+  if (first === "api" && !caps.api) {
+    process.stderr.write(capabilityDeniedMessage("api"));
     process.exit(1);
   }
   if (first === "configure" && !caps.configure) {

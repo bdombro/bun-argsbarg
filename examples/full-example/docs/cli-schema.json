@@ -1,0 +1,453 @@
+{
+  "key": "full-example",
+  "description": "Argsbarg full example reference app",
+  "commands": [
+    {
+      "key": "echo",
+      "description": "Echo a message (MCP-friendly leaf).",
+      "options": [
+        {
+          "name": "message",
+          "description": "Text to print.",
+          "kind": "string",
+          "required": true
+        }
+      ],
+      "commands": [
+        {
+          "key": "version",
+          "description": "Print the program version."
+        },
+        {
+          "key": "configure",
+          "description": "Set up agent skills, MCP config, and app config for this app (binary via Homebrew).",
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example configure --sync --yes\n\nInteractive setup (per target):\n  full-example configure\n\nUpgrade:\n  brew upgrade full-example\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nRemove app config only:\n  full-example configure --remove-config --yes\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+          "options": [
+            {
+              "name": "sync",
+              "description": "Refresh installed skills, MCP, and config. Used by Homebrew post_install.",
+              "kind": "presence"
+            },
+            {
+              "name": "remove-all",
+              "description": "Remove all detected agent artifacts (skills and MCP).",
+              "kind": "presence"
+            },
+            {
+              "name": "remove-config",
+              "description": "Remove the app config file only.",
+              "kind": "presence"
+            },
+            {
+              "name": "status",
+              "description": "Print what is currently installed (read-only).",
+              "kind": "presence"
+            },
+            {
+              "name": "yes",
+              "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+              "kind": "presence",
+              "shortName": "y"
+            },
+            {
+              "name": "dry",
+              "description": "Show what would change without writing files.",
+              "kind": "presence"
+            },
+            {
+              "name": "json",
+              "description": "Print changed paths or status JSON on stdout.",
+              "kind": "presence"
+            }
+          ],
+          "fallbackCommand": "run",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "get",
+              "description": "Print resolved configuration value(s).",
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Emit JSON (compact).",
+                  "kind": "presence"
+                },
+                {
+                  "name": "pretty",
+                  "description": "Pretty-print JSON (requires --json).",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "set",
+              "description": "Write one configuration key to the config file.",
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Emit JSON (compact).",
+                  "kind": "presence"
+                },
+                {
+                  "name": "from-env",
+                  "description": "Bind this key to its mapped environment variable (no literal value stored).",
+                  "kind": "presence"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "docs",
+          "description": "Print bundled CLI documentation.",
+          "notes": "Topics print to stdout. Add --save to write files under ./docs/.",
+          "options": [
+            {
+              "name": "save",
+              "description": "Write documentation to ./docs/.",
+              "kind": "presence"
+            }
+          ],
+          "fallbackCommand": "readme",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "readme",
+              "description": "Print README (user guide).",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "mcp",
+              "description": "Print MCP server setup and tool guidance.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "http",
+              "description": "Print HTTP API setup and tool guidance.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "openapi",
+              "description": "Print the HTTP OpenAPI 3.1 document as JSON.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "cli-schema",
+              "description": "Print the full CLI command tree as JSON.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "api",
+              "description": "Print the full command reference as markdown.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "skill",
+              "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "mcp",
+          "description": "MCP server and bundle tools.",
+          "notes": "Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:\n\n  command: full-example\n  args: mcp\n\nOr:\n\n  full-example configure\n\nFull setup guide: full-example docs mcp",
+          "fallbackCommand": "serve",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "bundle",
+              "description": "Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>."
+            }
+          ]
+        },
+        {
+          "key": "api",
+          "description": "HTTP API server for tools.",
+          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /openapi.json, GET /openapi-browser, POST /tools/:name\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+          "fallbackCommand": "serve",
+          "fallbackMode": "missingOnly"
+        }
+      ]
+    },
+    {
+      "key": "status",
+      "description": "Show resolved config and app version.",
+      "options": [
+        {
+          "name": "json",
+          "description": "Emit JSON.",
+          "kind": "presence"
+        }
+      ],
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "defaultRegion": {
+            "type": "string",
+            "description": "Resolved AWS region."
+          },
+          "maxRetries": {
+            "type": "number",
+            "description": "Resolved retry count."
+          },
+          "apiTokenSet": {
+            "type": "boolean",
+            "description": "Whether apiToken is set (value never included)."
+          },
+          "version": {
+            "type": "string",
+            "description": "App version from program root."
+          }
+        },
+        "required": [
+          "apiTokenSet",
+          "version"
+        ],
+        "description": "JSON payload for `full-example status --json`.",
+        "definitions": {}
+      },
+      "commands": [
+        {
+          "key": "version",
+          "description": "Print the program version."
+        },
+        {
+          "key": "configure",
+          "description": "Set up agent skills, MCP config, and app config for this app (binary via Homebrew).",
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example configure --sync --yes\n\nInteractive setup (per target):\n  full-example configure\n\nUpgrade:\n  brew upgrade full-example\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nRemove app config only:\n  full-example configure --remove-config --yes\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+          "options": [
+            {
+              "name": "sync",
+              "description": "Refresh installed skills, MCP, and config. Used by Homebrew post_install.",
+              "kind": "presence"
+            },
+            {
+              "name": "remove-all",
+              "description": "Remove all detected agent artifacts (skills and MCP).",
+              "kind": "presence"
+            },
+            {
+              "name": "remove-config",
+              "description": "Remove the app config file only.",
+              "kind": "presence"
+            },
+            {
+              "name": "status",
+              "description": "Print what is currently installed (read-only).",
+              "kind": "presence"
+            },
+            {
+              "name": "yes",
+              "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+              "kind": "presence",
+              "shortName": "y"
+            },
+            {
+              "name": "dry",
+              "description": "Show what would change without writing files.",
+              "kind": "presence"
+            },
+            {
+              "name": "json",
+              "description": "Print changed paths or status JSON on stdout.",
+              "kind": "presence"
+            }
+          ],
+          "fallbackCommand": "run",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "get",
+              "description": "Print resolved configuration value(s).",
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Emit JSON (compact).",
+                  "kind": "presence"
+                },
+                {
+                  "name": "pretty",
+                  "description": "Pretty-print JSON (requires --json).",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "set",
+              "description": "Write one configuration key to the config file.",
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Emit JSON (compact).",
+                  "kind": "presence"
+                },
+                {
+                  "name": "from-env",
+                  "description": "Bind this key to its mapped environment variable (no literal value stored).",
+                  "kind": "presence"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "docs",
+          "description": "Print bundled CLI documentation.",
+          "notes": "Topics print to stdout. Add --save to write files under ./docs/.",
+          "options": [
+            {
+              "name": "save",
+              "description": "Write documentation to ./docs/.",
+              "kind": "presence"
+            }
+          ],
+          "fallbackCommand": "readme",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "readme",
+              "description": "Print README (user guide).",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "mcp",
+              "description": "Print MCP server setup and tool guidance.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "http",
+              "description": "Print HTTP API setup and tool guidance.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "openapi",
+              "description": "Print the HTTP OpenAPI 3.1 document as JSON.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "cli-schema",
+              "description": "Print the full CLI command tree as JSON.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "api",
+              "description": "Print the full command reference as markdown.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            },
+            {
+              "key": "skill",
+              "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+              "options": [
+                {
+                  "name": "save",
+                  "description": "Write documentation to ./docs/.",
+                  "kind": "presence"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "mcp",
+          "description": "MCP server and bundle tools.",
+          "notes": "Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:\n\n  command: full-example\n  args: mcp\n\nOr:\n\n  full-example configure\n\nFull setup guide: full-example docs mcp",
+          "fallbackCommand": "serve",
+          "fallbackMode": "missingOnly",
+          "commands": [
+            {
+              "key": "bundle",
+              "description": "Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>."
+            }
+          ]
+        },
+        {
+          "key": "api",
+          "description": "HTTP API server for tools.",
+          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /openapi.json, GET /openapi-browser, POST /tools/:name\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+          "fallbackCommand": "serve",
+          "fallbackMode": "missingOnly"
+        }
+      ]
+    }
+  ]
+}

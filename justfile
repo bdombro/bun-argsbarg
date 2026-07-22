@@ -9,7 +9,7 @@ _:
 # Typecheck and format the codebase
 check: format typecheck
 
-consumer_apps := "sqsp-workspaces sqsp-qa-manager-poc sqsp-i18n-tools-poc"
+consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
 
 # Verify committed schemas match schemagen output and template drift in examples/full-example
 check-full-example: full-example-schemagen
@@ -46,13 +46,13 @@ full-example-schemagen:
 consumers-dev:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
-    ss="$root/../../ss"
     template="${root}/examples/full-example/.cursor/rules/cli-program.mdc"
     echo "argsbarg@file:<relative-to-consumer> → ${root}"
-    for app in {{consumer_apps}}; do
-      dir="$(cd "$ss/$app" && pwd)"
+    for path in {{consumer_apps}}; do
+      dir="${path/#\~/$HOME}"
+      dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
-      echo "==> $app ($dir) → file:${rel}"
+      echo "==> $(basename "$dir") ($dir) → file:${rel}"
       (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" "$template")
     done
 
@@ -60,22 +60,38 @@ consumers-dev:
 consumers-sync:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
-    ss="$root/../../ss"
     latest="$(bun -e "console.log(JSON.parse(require('node:fs').readFileSync('${root}/package.json','utf8')).version)")"
     echo "argsbarg@^${latest}"
-    for app in {{consumer_apps}}; do
-      dir="$(cd "$ss/$app" && pwd)"
-      echo "==> $app ($dir)"
+    for path in {{consumer_apps}}; do
+      dir="${path/#\~/$HOME}"
+      dir="$(cd "$dir" && pwd)"
+      echo "==> $(basename "$dir") ($dir)"
       (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
     done
 
 # Run the minimal example once
-example *ARGS:
+example-minimal *ARGS:
     bun ./examples/minimal.ts {{ARGS}}
 
 # Run the minimal example and watch for changes
-example-watch *ARGS:
+example-minimal-watch *ARGS:
     bun --watch ./examples/minimal.ts {{ARGS}}
+
+# Run the nested example once
+example-nested *ARGS:
+    bun ./examples/nested.ts {{ARGS}}
+
+# Run the nested example and watch for changes
+example-nested-watch *ARGS:
+    bun --watch ./examples/nested.ts {{ARGS}}
+
+# Run the nested example once
+example-servers *ARGS:
+    bun ./examples/servers.ts {{ARGS}}
+
+# Run the nested example and watch for changes
+example-servers-watch *ARGS:
+    bun --watch ./examples/servers.ts {{ARGS}}
 
 # Format and lint the codebase (auto-fix)
 format:

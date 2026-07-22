@@ -12,7 +12,9 @@ import {
   DOCS_ROUTER_DESCRIPTION,
   docsEffectiveDefaultTopic,
   docsEnabled,
+  docsIncludesHttpTopic,
   docsIncludesMcpTopic,
+  docsIncludesOpenApiTopic,
   docsTopicDescription,
   docsUserTopicKeys,
   printDocsTopic,
@@ -70,8 +72,16 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
     leaves.push(docsLeaf(program, "mcp", "Print MCP server setup and tool guidance."));
   }
 
+  if (docsIncludesHttpTopic(program)) {
+    leaves.push(docsLeaf(program, "http", "Print HTTP API setup and tool guidance."));
+  }
+
+  if (docsIncludesOpenApiTopic(program)) {
+    leaves.push(docsLeaf(program, "openapi", "Print the HTTP OpenAPI 3.1 document as JSON."));
+  }
+
   leaves.push(
-    docsLeaf(program, "schema", "Print the full command tree as JSON."),
+    docsLeaf(program, "cli-schema", "Print the full CLI command tree as JSON."),
     docsLeaf(program, "api", "Print the full command reference as markdown."),
     docsLeaf(program, "skill", docsSkillTopicDescription(program, resolveCapabilities(program))),
   );

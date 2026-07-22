@@ -4,9 +4,14 @@ import { isInteractiveTty } from "./utils.ts";
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;
 
-/** True when `--json` was passed or the handler was invoked via MCP. */
+/** True when the handler was invoked via MCP or HTTP API. */
+function isToolInvocation(invocation: CliContext["invocation"]): boolean {
+  return invocation === "mcp" || invocation === "api";
+}
+
+/** True when `--json` was passed or the handler was invoked headlessly over MCP/HTTP. */
 export function wantsExplicitJson(ctx: HeadlessContext, hasJsonFlag: boolean): boolean {
-  return hasJsonFlag || ctx.invocation === "mcp";
+  return hasJsonFlag || isToolInvocation(ctx.invocation);
 }
 
 /**
@@ -19,7 +24,7 @@ export function shouldRunHeadless(
   hasDryRunFlag = false,
   interactive: boolean = isInteractiveTty,
 ): boolean {
-  if (ctx.invocation === "mcp") return true;
+  if (isToolInvocation(ctx.invocation)) return true;
   if (hasJsonFlag || hasDryRunFlag) return true;
   return !interactive;
 }
@@ -35,7 +40,7 @@ export function shouldRunHeadlessWithPositionals(
   hasDryRunFlag = false,
   interactive: boolean = isInteractiveTty,
 ): boolean {
-  if (ctx.invocation === "mcp") return true;
+  if (isToolInvocation(ctx.invocation)) return true;
   if (hasJsonFlag || hasDryRunFlag) return true;
   return !interactive && positionals.length > 0;
 }
@@ -49,7 +54,7 @@ export function shouldRunHeadlessWithYes(
   opts: { yes: boolean; hasRequiredArgs: boolean; dryRun?: boolean },
   interactive: boolean = isInteractiveTty,
 ): boolean {
-  if (ctx.invocation === "mcp") {
+  if (isToolInvocation(ctx.invocation)) {
     return opts.hasRequiredArgs && (opts.yes || Boolean(opts.dryRun));
   }
   if (opts.dryRun && opts.hasRequiredArgs) return true;

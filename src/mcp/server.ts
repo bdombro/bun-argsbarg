@@ -4,10 +4,8 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import type { Cli } from "../cli.ts";
-import { bootstrapAppConfig } from "../config/bootstrap.ts";
-import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
-import { buildToolCallSuccess } from "./result.ts";
-import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpServerInfo } from "./tools.ts";
+import { executeHeadlessToolCall, lookupHeadlessTool } from "../headless/tool-call.ts";
+import { allMcpResources, collectMcpTools, resolveMcpServerInfo } from "./tools.ts";
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 
@@ -109,57 +107,41 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
         writeError(id, -32602, "Invalid params: arguments must be an object");
         return;
       }
-      const toolList = collectMcpTools(root);
-      const tool = toolList.find((t) => t.name === name);
-      if (!tool) {
-        writeError(id, -32602, `Unknown tool: ${name}`);
-        return;
-      }
-      const { resolved } = bootstrapAppConfig(root, { validateFile: false });
-      const missingConfig = missingRequiredConfig(root, resolved);
-      if (missingConfig.length > 0) {
+      const lookup = lookupHeadlessTool(root, name);
+      if (!lookup.ok) {
+        if (lookup.kind === "unknown") {
+          writeError(id, -32602, lookup.message);
+          return;
+        }
         writeResponse({
           jsonrpc: "2.0",
           id,
           result: {
-            content: [
-              {
-                type: "text",
-                text: formatMcpMissingConfigMessage(root, missingConfig),
-              },
-            ],
+            content: [{ type: "text", text: lookup.message }],
             isError: true,
           },
         });
         return;
       }
-      const argvResult = mcpToolCallToArgv(root, tool, (rawArgs ?? {}) as Record<string, unknown>);
-      if ("error" in argvResult) {
+      const invokeResult = await executeHeadlessToolCall(
+        cli,
+        lookup.tool,
+        (rawArgs ?? {}) as Record<string, unknown>,
+        "mcp",
+      );
+      if (invokeResult.ok) {
         writeResponse({
           jsonrpc: "2.0",
           id,
-          result: {
-            content: [{ type: "text", text: argvResult.error }],
-            isError: true,
-          },
+          result: invokeResult.mcpResult,
         });
         return;
       }
-      const invokeResult = await cli.invoke(argvResult);
-      if (invokeResult.kind === "ok" && invokeResult.exitCode === 0) {
-        writeResponse({
-          jsonrpc: "2.0",
-          id,
-          result: buildToolCallSuccess(invokeResult.stdout, invokeResult.stderr),
-        });
-        return;
-      }
-      const errText = invokeResult.stderr.trim() || invokeResult.errorMsg || `Exit code ${invokeResult.exitCode}`;
       writeResponse({
         jsonrpc: "2.0",
         id,
         result: {
-          content: [{ type: "text", text: errText }],
+          content: [{ type: "text", text: invokeResult.message }],
           isError: true,
         },
       });

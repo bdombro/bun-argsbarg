@@ -19,7 +19,7 @@ export const status = {
 
 | Where argsbarg uses it | Purpose |
 | --- | --- |
-| `myapp docs schema` | Full command tree JSON export |
+| `myapp docs cli-schema` | Full command tree JSON export |
 | `myapp docs api` | Markdown per-command **Output** section |
 | `myapp docs skill` | `reference.md` for agent skills |
 | MCP `tools/list` | Optional `outputSchema` on each tool |
@@ -79,7 +79,7 @@ flowchart LR
 | Artifacts | Commit `src/schemas/generated/*.json` **and** auto-generated `src/schemas/outputSchemas.ts` |
 | tsconfig | `"resolveJsonModule": true` |
 | CI | `just check`: `schemagen` → `git diff --exit-code src/schemas/generated/ src/schemas/outputSchemas.ts` → typecheck |
-| Docgen | `docgen` depends on `schemagen` so saved `./docs/api.md` and `./docs/schema.json` are fresh |
+| Docgen | `docgen` depends on `schemagen` so saved `./docs/api.md` and `./docs/cli-schema.json` are fresh |
 
 Copy these scripts into each consumer repo (they are intentionally duplicated, not published):
 
@@ -199,5 +199,5 @@ Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/c
 
 - [cli-program.md](cli-program.md) — structured stdout, headless JSON, `read*Flags`
 - [mcp.md](mcp.md) — `tools/list`, `structuredContent`
-- [bundled-docs.md](bundled-docs.md) — `docs api` / `docs schema` docgen
+- [bundled-docs.md](bundled-docs.md) — `docs api` / `docs cli-schema` docgen
 - [docs/README.md](README.md) — documentation map

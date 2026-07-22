@@ -27,10 +27,14 @@ check: schemagen format typecheck
 dev *ARGS:
     bun --watch ./src/index.ts {{ARGS}}
 
-# Regenerate docs/schema.json and docs/skill.md
+# Regenerate consumer docs under ./docs/
 docgen: schemagen
-    @just run docs schema --save
+    @just run docs cli-schema --save
+    @just run docs api --save
     @just run docs skill --save
+    @just run docs mcp --save
+    @just run docs http --save
+    @just run docs openapi --save
 
 alias fmt := format
 

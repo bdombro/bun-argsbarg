@@ -28,7 +28,7 @@ Update `CHANGELOG.md` under `[Unreleased]` before releasing.
 
 ## Local consumer apps
 
-Sibling repos under `../../ss/` (paths are machine-specific; adjust in `justfile` if needed):
+Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_apps` variable, e.g. `~/dev/ss/sqsp-workspaces`):
 
 | Recipe | When | Effect |
 | --- | --- | --- |

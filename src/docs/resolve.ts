@@ -1,11 +1,13 @@
+import { openApiJson } from "../api/openapi.ts";
 import { cliSchemaJson } from "../schema.ts";
 import { generateSkillBundle } from "../skill/generate.ts";
 import type { CliDocsConfig, CliProgram } from "../types.ts";
 import { generateApiGuide } from "./api-guide.ts";
+import { generateHttpGuide } from "./http-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 
 /** Built-in docs subcommand keys not allowed in `docs.topics`. */
-export const DOCS_BUILTIN_TOPIC_KEYS = ["mcp", "all", "schema", "api", "skill"] as const;
+export const DOCS_BUILTIN_TOPIC_KEYS = ["http", "mcp", "all", "cli-schema", "api", "skill", "openapi"] as const;
 
 export type DocsBuiltinTopicKey = (typeof DOCS_BUILTIN_TOPIC_KEYS)[number];
 
@@ -43,6 +45,16 @@ export function docsIncludesMcpTopic(program: CliProgram): boolean {
   return docsEnabled(program) && program.mcpServer?.enabled === true;
 }
 
+/** Whether HTTP auto-guide topic is included. */
+export function docsIncludesHttpTopic(program: CliProgram): boolean {
+  return docsEnabled(program) && program.apiServer?.enabled === true;
+}
+
+/** Whether OpenAPI export topic is included. */
+export function docsIncludesOpenApiTopic(program: CliProgram): boolean {
+  return docsIncludesHttpTopic(program);
+}
+
 /** Leaf help description for a user topic. */
 export function docsTopicDescription(key: string, custom?: string): string {
   if (custom) {
@@ -67,6 +79,12 @@ export function docsTopicText(program: CliProgram, topic: string): string {
     }
     return generateMcpGuide(program);
   }
+  if (topic === "http") {
+    if (!docsIncludesHttpTopic(program)) {
+      throw new Error("Unknown docs topic 'http'.");
+    }
+    return generateHttpGuide(program);
+  }
   const entry = docs.topics[topic];
   if (!entry) {
     throw new Error(`Unknown docs topic '${topic}'.`);
@@ -76,8 +94,14 @@ export function docsTopicText(program: CliProgram, topic: string): string {
 
 /** Full file body for a docs topic (stdout or `--save`). */
 export function docsTopicContent(program: CliProgram, topic: string): string {
-  if (topic === "schema") {
+  if (topic === "cli-schema") {
     return cliSchemaJson(program);
+  }
+  if (topic === "openapi") {
+    if (!docsIncludesOpenApiTopic(program)) {
+      throw new Error("Unknown docs topic 'openapi'.");
+    }
+    return openApiJson(program);
   }
   if (topic === "api") {
     return generateApiGuide(program);

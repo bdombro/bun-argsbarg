@@ -9,9 +9,9 @@ Two documentation layers often coexist in a consumer repo:
 | Layer | Contents | How agents/humans get it |
 | --- | --- | --- |
 | **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wire via [full-example Cursor rule](../examples/full-example/.cursor/rules/cli-program.mdc) or `AGENTS.md` |
-| **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs api`, `docs schema`, `docs mcp` — save with `--save` to `./docs/` |
+| **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs api`, `docs cli-schema`, `docs mcp` — save with `--save` to `./docs/` |
 
-`docs api` and `docs schema` embed each leaf’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.
+`docs api` and `docs cli-schema` embed each leaf’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.
 
 Do not confuse them: editing `./docs/api.md` after docgen updates **your** app reference; it does not change argsbarg's framework guides. When MCP behavior changes (e.g. varargs arrays in 3.6+), update consumer `docs/mcp.md` via **`myapp docs mcp --save`** and bump the `argsbarg` dependency.
 
@@ -42,12 +42,15 @@ const cli = {
 myapp docs              # first topic (readme) via fallback
 myapp docs readme
 myapp docs architecture
-myapp docs schema       # full command tree as JSON
+myapp docs cli-schema       # full command tree as JSON
 myapp docs api          # command tree as markdown
 myapp docs skill        # generated Cursor SKILL.md
 myapp docs mcp          # auto-generated when mcpServer.enabled
+myapp docs http         # auto-generated when apiServer.enabled
+myapp docs openapi      # OpenAPI 3.1 JSON when apiServer.enabled
 myapp docs readme --save   # write ./docs/readme.md
-myapp docs schema --save   # write ./docs/schema.json
+myapp docs cli-schema --save   # write ./docs/cli-schema.json
+myapp docs openapi --save  # write ./docs/openapi.json
 ```
 
 When `docs` is enabled, top-level `myapp --help` points agents at `myapp docs skill`. The `docs skill` subcommand description recommends `configure` for a persisted bundle.
@@ -61,7 +64,7 @@ When `docs` is enabled, top-level `myapp --help` points agents at `myapp docs sk
 | `defaultTopic` | first key in `topics` | `fallbackCommand` for bare `myapp docs` |
 | `topics` | *(required)* | Topic key → `{ text, description? }` |
 
-Reserved topic keys in `topics`: **`mcp`**, **`all`**, **`schema`**, **`api`**, **`skill`** (reserved — use the matching `docs <name>` subcommand instead).
+Reserved topic keys in `topics`: **`http`**, **`mcp`**, **`all`**, **`schema`**, **`api`**, **`skill`**, **`openapi`** (reserved — use the matching `docs <name>` subcommand instead).
 
 When `description` is omitted on a topic, ArgsBarg generates leaf help (`readme` → "Print README (user guide).").
 
@@ -77,11 +80,11 @@ Bun embeds the file when you `bun build --compile`. ArgsBarg does not read the f
 
 Inline topics in your program root when the set is small; use a separate module only if the import map grows enough to clutter `index.tsx`.
 
-## Schema, API, and skill (`docs schema`, `docs api`, `docs skill`)
+## CLI schema, API, and skill (`docs cli-schema`, `docs api`, `docs skill`)
 
 When `docs.enabled` is `true`:
 
-- **`docs schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
+- **`docs cli-schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
 - **`docs api`** — markdown rendering of the same command tree (options, positionals, subcommands, fallback routing).
 - **`docs skill`** — prints the compact `SKILL.md` index. Prefer `configure --sync --yes` for agents (persists index + full API in `reference.md`).
 
@@ -90,6 +93,16 @@ When `docs.enabled` is `true`:
 When both `docs.enabled` and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `configure --sync`, and protocol notes.
 
 There is no override API in v1 — customize behavior via `mcpTool.description` on leaf commands.
+
+## HTTP guide (`docs http`)
+
+When both `docs.enabled` and `apiServer.enabled` are `true`, ArgsBarg injects a **`docs http`** topic with curl examples, endpoints, and tool list.
+
+Shell invocation tables remain under **`docs api`** (not HTTP).
+
+## OpenAPI (`docs openapi`)
+
+When both `docs.enabled` and `apiServer.enabled` are `true`, ArgsBarg injects a **`docs openapi`** topic with the same OpenAPI 3.1 document served at `GET /openapi.json`.
 
 ## MCP tools
 
@@ -102,7 +115,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 | `configure` (skill targets) | Writes compact `SKILL.md` + full-API `reference.md` to disk |
 | `docs skill` | Print generated `SKILL.md` to stdout |
 | `docs api` | Print command tree markdown to stdout |
-| `docs schema` | Print command tree JSON to stdout |
+| `docs cli-schema` | Print command tree JSON to stdout |
 | `docs` | Bundled markdown topics on stdout |
 | MCP docs topic resources | User `docs.topics` on the MCP wire (`<mcpId>://docs/<topic>`) when docs + MCP enabled |
 | `mcp` | Callable tools + schema resource |
@@ -116,8 +129,9 @@ Pass **`--save`** on `docs` or any docs subcommand to write files under **`./doc
 | Command | Output |
 | --- | --- |
 | `docs readme --save` | `./docs/readme.md` |
-| `docs schema --save` | `./docs/schema.json` |
+| `docs cli-schema --save` | `./docs/cli-schema.json` |
+| `docs openapi --save` | `./docs/openapi.json` |
 | `docs api --save` | `./docs/api.md` |
 | `docs skill --save` | `./docs/skill.md` |
 
-Argsbarg-generated markdown (`mcp`, `api`, `skill`) includes a `Generated by … docs … --save` HTML comment (`skill` places it after YAML frontmatter so parsers still work). `schema.json` and argsbarg-generated markdown resolve `{argsbarg:program}` in `notes` to the program key. Consumer-authored topic files are written as-is.
+Argsbarg-generated markdown (`mcp`, `api`, `skill`) includes a `Generated by … docs … --save` HTML comment (`skill` places it after YAML frontmatter so parsers still work). `cli-schema.json`, `openapi.json`, and argsbarg-generated markdown resolve `{argsbarg:program}` in `notes` to the program key. Consumer-authored topic files are written as-is.

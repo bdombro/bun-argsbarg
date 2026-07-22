@@ -50,5 +50,8 @@ export const program = {
     mcpd: true,
     claudePlugin: true,
   },
+  apiServer: {
+    enabled: true,
+  },
   commands: [echoCommand, statusCommand],
 } satisfies CliProgram;

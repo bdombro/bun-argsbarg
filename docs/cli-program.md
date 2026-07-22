@@ -27,6 +27,20 @@ const cli = {
 
 No `mcpTool` blocks required. Every leaf becomes an MCP tool; `inputSchema` comes from options and positionals.
 
+## HTTP API (optional)
+
+```typescript
+const cli = {
+  key: "myapp",
+  version: "1.0.0",
+  description: "One-line summary of what the CLI does.",
+  apiServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
+  commands: [/* ... */],
+} satisfies CliProgram;
+```
+
+`apiServer` and `mcpServer` are independent. Tool exposure uses the same rules (`mcpTool.enabled: false` hides from MCP and HTTP). See [api-server.md](api-server.md).
+
 ## Inline schema by default
 
 ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliProgram` and leaf fields inline** (`key`, `description`, `options`, `positionals`, `handler`) so a reader sees the full command contract in one place.
@@ -131,7 +145,7 @@ On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when
 }
 ```
 
-Exported in `docs schema`, `docs api`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
+Exported in `docs cli-schema`, `docs api`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
 
 For a **outputSchema codegen guidelines** (TypeScript types → JSON Schema → `outputSchema` constants), see [output-schema.md](output-schema.md).
 
@@ -300,10 +314,11 @@ Ink + headless + MCP apps benefit from `read*Flags(ctx)` + `resolve*Input(flags)
 Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
 
 - **MCP** (`ctx.invocation === "mcp"` — always non-interactive)
+- **HTTP API** (`ctx.invocation === "api"` — same headless rules as MCP)
 - **Non-TTY CLI** (pipes, CI, `myapp cmd --yes` in a script)
 - **Explicit flags** (`--json`, `--dry-run`)
 
-Use **one headless implementation** for all three; do not fork separate "MCP handlers."
+Use **one headless implementation** for MCP, HTTP API, and scripted CLI; do not fork separate transport handlers.
 
 ### When to branch
 

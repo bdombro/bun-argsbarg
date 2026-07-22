@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Stage or restore the dev Homebrew formula for `just install-local`.
- * `install` — back up release `Formula/{key}.rb` and write a `file://` dev formula.
+ * `install` — back up release `Formula/full-example.rb` and write a `file://` dev formula.
  * `reset` — restore the release formula from backup.
  */
 

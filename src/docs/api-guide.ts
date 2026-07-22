@@ -152,7 +152,7 @@ export function generateApiGuideBody(program: CliProgram): string {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
-/** Generates markdown API reference from the same export as `docs schema`. */
+/** Generates markdown API reference from the same export as `docs cli-schema`. */
 export function generateApiGuide(program: CliProgram): string {
   const schema = cliSchemaExport(program);
   const lines: string[] = [
@@ -160,7 +160,7 @@ export function generateApiGuide(program: CliProgram): string {
     "",
     schema.description,
     "",
-    `Machine-readable export: \`${program.key} docs schema\``,
+    `Machine-readable export: \`${program.key} docs cli-schema\``,
     "",
   ];
 

@@ -64,10 +64,19 @@ const program = {
                   process.exit(1);
                 }
                 if (ctx.hasFlag("json")) {
-                  console.log(JSON.stringify({ user, path }));
-                } else {
-                  console.log(`lookup user=${user} path=${path}`);
+                  const payload = { user, path };
+                  if (ctx.invocation === "cli") {
+                    console.log(JSON.stringify(payload));
+                    return;
+                  }
+                  return payload;
                 }
+                const text = `lookup user=${user} path=${path}`;
+                if (ctx.invocation === "cli") {
+                  console.log(text);
+                  return;
+                }
+                return text;
               },
             },
           ],

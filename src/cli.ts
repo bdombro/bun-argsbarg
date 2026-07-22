@@ -3,6 +3,7 @@ Runtime entry point: validate program, cache derived state, run / invoke / MCP s
 */
 
 import { format } from "node:util";
+import { apiServeHttp } from "./api/server.ts";
 import { builtinInterceptRoot, dispatchBuiltin } from "./builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "./builtins/presentation.ts";
 import {
@@ -21,7 +22,7 @@ import { bootstrapMcpEnv } from "./mcp/env.ts";
 import { mcpServeStdioLoop } from "./mcp/server.ts";
 import { ParseKind, type ParseResult, parse, postParseValidate } from "./parse.ts";
 import { type CliSchemaExport, cliSchemaExport } from "./schema.ts";
-import type { CliHandler, CliLeaf, CliNode, CliProgram, CliRouter } from "./types.ts";
+import type { CliHandler, CliInvocation, CliLeaf, CliNode, CliProgram, CliRespondOptions, CliRouter } from "./types.ts";
 import { isCliLeaf, isCliRouter } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";
 
@@ -35,6 +36,8 @@ export interface CliInvokeResult {
   stdout: string;
   stderr: string;
   errorMsg?: string;
+  /** Headless response payload when invocation is `api` or `mcp` and the handler succeeded. */
+  response?: CliRespondOptions;
 }
 
 class CliInvokeExit extends Error {
@@ -123,7 +126,10 @@ export class Cli {
 
     const ctx = new CliContext(this.program.key, pr.path, pr.args, pr.opts, this.program, "cli", snapshot);
     try {
-      await Promise.resolve(leaf.handler(ctx));
+      const handlerResult = await Promise.resolve(leaf.handler(ctx));
+      if (handlerResult !== undefined && ctx.getResponse() === undefined) {
+        ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
+      }
       process.exit(0);
     } catch (err) {
       if (err instanceof Error) {
@@ -133,7 +139,11 @@ export class Cli {
     }
   }
 
-  async invoke(argv: string[]): Promise<CliInvokeResult> {
+  async invoke(
+    argv: string[],
+    opts?: { invocation?: CliInvocation; toolArgs?: Record<string, unknown> },
+  ): Promise<CliInvokeResult> {
+    const invocation = opts?.invocation ?? "mcp";
     const prep = this.prepareDispatch(argv, { presentationFallback: true });
     if ("error" in prep) {
       if (prep.error.kind === ParseKind.Help) {
@@ -142,7 +152,7 @@ export class Cli {
           exitCode: 1,
           stdout: "",
           stderr: "",
-          errorMsg: "Help is not available via MCP tool calls.",
+          errorMsg: "Help is not available via tool calls.",
         };
       }
       return {
@@ -160,7 +170,16 @@ export class Cli {
       exitOnMissing: false,
     });
 
-    const ctx = new CliContext(this.program.key, pr.path, pr.args, pr.opts, this.program, "mcp", snapshot);
+    const ctx = new CliContext(
+      this.program.key,
+      pr.path,
+      pr.args,
+      pr.opts,
+      this.program,
+      invocation,
+      snapshot,
+      opts?.toolArgs,
+    );
 
     let stdout = "";
     let stderr = "";
@@ -213,12 +232,30 @@ export class Cli {
         });
       }
 
-      await Promise.resolve(leaf.handler(ctx));
-      return { kind: "ok", exitCode: 0, stdout, stderr };
+      const handlerResult = await Promise.resolve(leaf.handler(ctx));
+      if (handlerResult !== undefined && ctx.getResponse() === undefined) {
+        ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
+      }
+
+      const response = ctx.getResponse();
+      return {
+        kind: "ok",
+        exitCode: 0,
+        stdout,
+        stderr,
+        ...(response ? { response } : {}),
+      };
     } catch (err) {
       if (err instanceof CliInvokeExit) {
         if (err.code === 0) {
-          return { kind: "ok", exitCode: 0, stdout, stderr };
+          const response = ctx.getResponse();
+          return {
+            kind: "ok",
+            exitCode: 0,
+            stdout,
+            stderr,
+            ...(response ? { response } : {}),
+          };
         }
         const msg = stderr.trim() || `Exit code ${err.code}`;
         return { kind: "error", exitCode: err.code, stdout, stderr, errorMsg: msg };
@@ -263,6 +300,21 @@ export class Cli {
         process.stderr.write(`${err.message}\n`);
       } else {
         process.stderr.write("MCP server error.\n");
+      }
+      process.exit(1);
+    }
+  }
+
+  async serveApi(): Promise<never> {
+    try {
+      bootstrapAppConfig(this.program, { validateFile: false });
+      await apiServeHttp(this);
+      process.exit(0);
+    } catch (err) {
+      if (err instanceof Error) {
+        process.stderr.write(`${err.message}\n`);
+      } else {
+        process.stderr.write("HTTP API server error.\n");
       }
       process.exit(1);
     }

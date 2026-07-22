@@ -9,7 +9,7 @@ import type { CliContext } from "./context.ts";
 /**
  * How a leaf handler was dispatched.
  */
-export type CliInvocation = "cli" | "mcp";
+export type CliInvocation = "cli" | "mcp" | "api";
 
 /**
  * Option kinds: presence (boolean flag), string (free-form text), number (strict double), or enum (fixed choices).
@@ -152,6 +152,42 @@ export interface CliMcpServerConfig {
   resources?: CliMcpResource[];
   /** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
   bundle?: CliMcpBundleConfig;
+}
+
+/**
+ * Enables `myapp api` and the HTTP tool server (program root only).
+ * Must include `enabled: true`; omit `apiServer` entirely to disable HTTP.
+ */
+export interface CliApiServerConfig {
+  /** When `true`, enables the `api` built-in and HTTP tool server. */
+  enabled: boolean;
+  /** Listen host (default: `127.0.0.1`). */
+  host?: string;
+  /** Listen port (default: `3000`). */
+  port?: number;
+}
+
+/**
+ * Declarative HTTP response hints for a leaf (used by OpenAPI and default headers).
+ */
+export interface CliApiResponseConfig {
+  /** Default success Content-Type (default: `application/json`). */
+  contentType?: string;
+  /** Optional Content-Disposition (e.g. `attachment; filename="invoice.pdf"`). */
+  contentDisposition?: string;
+}
+
+/** Body types accepted by {@link CliContext.respond}. */
+export type CliRespondBody = string | Uint8Array | Record<string, unknown> | unknown[];
+
+/** Options for {@link CliContext.respond} and headless invoke results. */
+export interface CliRespondOptions {
+  body: CliRespondBody;
+  /** Default: `application/json` for objects/arrays, `text/plain` for strings; binary requires explicit type. */
+  contentType?: string;
+  /** HTTP status (default: 200). */
+  status?: number;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -385,9 +421,13 @@ export type CliLeaf = CliNodeBase & {
   positionals?: CliPositional[];
   /**
    * JSON Schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
-   * Exported in `docs schema`, `docs api`, and MCP `tools/list`; not validated at runtime yet.
+   * Exported in `docs cli-schema`, `docs api`, and MCP `tools/list`; not validated at runtime yet.
    */
   outputSchema?: Record<string, unknown>;
+  /** JSON Schema for MCP/HTTP tool arguments (flat object). */
+  inputSchema?: Record<string, unknown>;
+  /** Declarative HTTP response metadata (Content-Type, Content-Disposition). */
+  apiResponse?: CliApiResponseConfig;
   /** Per-tool MCP exposure and metadata. */
   mcpTool?: CliMcpToolConfig;
 };
@@ -420,6 +460,8 @@ export type CliProgram = CliNode & {
   appConfig?: CliAppConfig;
   /** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
   mcpServer?: CliMcpServerConfig;
+  /** When set with `enabled: true`, enables the `api` built-in HTTP server. */
+  apiServer?: CliApiServerConfig;
   /** Opt-out and defaults for `configure`. */
   configure?: CliConfigureConfig;
   /** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
@@ -445,9 +487,9 @@ export function leafOutputSchema(leaf: CliLeaf): Record<string, unknown> | undef
 
 /**
  * Handler closure type for leaf commands.
- * Supports both sync and async handlers.
+ * Supports sync and async handlers; non-undefined return values become implicit JSON responses for headless invocations.
  */
-export type CliHandler = (ctx: CliContext) => void | Promise<void>;
+export type CliHandler = (ctx: CliContext) => unknown | Promise<unknown>;
 
 /**
  * Error thrown when the static CLI tree violates ArgsBarg rules.

@@ -49,7 +49,12 @@ const program = {
       ],
       handler: (ctx) => {
         const name = ctx.stringOpt("name") ?? "";
-        console.log(process.env[name] ?? "");
+        const value = process.env[name] ?? "";
+        if (ctx.invocation === "cli") {
+          console.log(value);
+          return;
+        }
+        return value;
       },
     },
     {
@@ -65,7 +70,13 @@ const program = {
         },
       ],
       handler: (ctx) => {
-        console.log(`mode=${ctx.stringOpt("mode")}`);
+        const mode = ctx.stringOpt("mode") ?? "";
+        const text = `mode=${mode}`;
+        if (ctx.invocation === "cli") {
+          console.log(text);
+          return;
+        }
+        return text;
       },
     },
   ],

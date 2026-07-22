@@ -16,6 +16,11 @@ export const echoCommand = {
     },
   ],
   handler: (ctx) => {
-    console.log(ctx.stringOpt("message") ?? "");
+    const message = ctx.stringOpt("message") ?? "";
+    if (ctx.invocation === "cli") {
+      console.log(message);
+      return;
+    }
+    return message;
   },
 } satisfies CliLeaf;

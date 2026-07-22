@@ -1,13 +1,11 @@
 Logo
 
-
-
 [GitHub](https://github.com/bdombro/bun-argsbarg)
 [License: MIT](LICENSE)
 [npm version](https://www.npmjs.com/package/argsbarg)
 [Bun](https://bun.sh)
 
-Build beautiful, well-behaved CLI+MCP apps with Bun — **no third-party runtime dependencies**. 
+Build beautiful, well-behaved CLI+MCP+HTTP apps with Bun — **no third-party runtime dependencies**. 
 
 Why another CLI parser?
 
@@ -97,18 +95,26 @@ Every app gets:
 - `completion bash` **/** `completion zsh` **/** `completion fish` — print shell completion scripts to stdout (injected by `Cli.run()`).
 - `version` — print `CliProgram.version` (`myapp version`).
 - `mcp` — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
-- `docs` — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
+- `api` — when `apiServer.enabled` is `true`, run as an HTTP tool server (`myapp api`).
+- `docs` — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs cli-schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
 - `configure` — manage agent skills, MCP config, and app config (`myapp configure --sync --yes` after Homebrew install). See [docs/configure.md](docs/configure.md).
 
 Do not declare a top-level command named `completion`, `version`, or `configure` — they are reserved.
 When `mcpServer.enabled` is `true`, do not declare a top-level command named `mcp` — it is reserved for the MCP built-in.
+When `apiServer.enabled` is `true`, do not declare a top-level command named `api` — it is reserved for the HTTP API built-in.
 When `docs.enabled` is `true`, do not declare a top-level command named `docs` — it is reserved for the docs built-in.
 
 ### MCP (AI agents)
 
-Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs schema`). Handlers can read `ctx.invocation`; use `cli.invoke(argv)` for headless testing.
+Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs cli-schema`). Handlers can read `ctx.invocation`; use `cli.invoke(argv)` for headless testing.
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: run `bunx argsbarg create` or refresh with `bun scripts/merge-cli-program-rule.ts .` from the argsbarg package).
+
+### HTTP API
+
+Opt in on the program root with `apiServer: { enabled: true }`, then run `myapp api` for an HTTP tool server (default `http://127.0.0.1:3000`). Same tool exposure as MCP: `POST /tools/:name` (hyphen-joined command paths). Discover tools via `GET /openapi.json`.
+
+See **[docs/api-server.md](docs/api-server.md)** for endpoints, curl examples, and response shapes.
 
 ### Configure CLI
 
@@ -211,18 +217,18 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `version`, `install`, and `mcp` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`; `docs` when `docs.enabled` is `true`.
+`completion`, `version`, `install`, `mcp`, and `api` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `apiServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`; `api` when `apiServer.enabled` is `true`; `docs` when `docs.enabled` is `true`.
 
 ## Examples
 
 Check the `examples/` directory for full working scripts:
 
 
-| Example               | File                     | Shows                                                                                    |
-| --------------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| `ArgsBargMinimal`     | `examples/minimal.ts`    | String + presence flags, `MissingOrUnknown` fallback.                                    |
-| `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                   |
-| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `readLeafInputs()`.                                         |
+| Example               | File                     | Shows                                                                                             |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `ArgsBargMinimal`     | `examples/minimal.ts`    | String + presence flags, `MissingOrUnknown` fallback.                                             |
+| `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                            |
+| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `readLeafInputs()`.                                                  |
 | `ArgsBargFullExample` | `examples/full-example/` | **Copy template:** all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`. |
 
 
@@ -257,18 +263,20 @@ To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-progr
 
 ### What the full-example template includes
 
-| Area | Files / wiring |
-| --- | --- |
-| All builtins | `completion`, `version`, `configure`, `docs`, `mcp`, `configure get`/`set` |
-| `program.appConfig` | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts` |
-| `outputSchema` | `src/commands/status/types.ts` → `schemas/outputSchemas.ts` |
-| Schemagen | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts` |
-| Command layout | `src/commands/<name>/command.ts`; registration in `src/program.ts` |
-| MCP doc topics | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
-| Package import | `from "argsbarg"` (not relative to argsbarg `src/`) |
-| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile` |
-| Dev tooling | Biome (`just format` / `just lint`), TypeScript, colocated tests |
-| Cursor rules | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc` |
+
+| Area                  | Files / wiring                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `api`, `configure get`/`set`      |
+| `program.appConfig`   | `src/types.ts` (`AppConfig`) → `schemas/configSchemas.ts`                              |
+| `outputSchema`        | `src/commands/status/types.ts` → `schemas/outputSchemas.ts`                            |
+| Schemagen             | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts`                  |
+| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
+| MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
+| Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                    |
+| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`          |
+| Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                       |
+| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                              |
+
 
 When changing builtins or the template, run `just check-full-example` from the argsbarg repo root.
 
@@ -310,7 +318,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` | Optional format parsers for use outside handlers.                                                                                              |
 
 
-Reserved identifiers (validated at startup): root commands `completion`, `version`, `install`, `docs` (when `docs.enabled` is `true`), and `mcp` (when `mcpServer.enabled` is `true`).
+Reserved identifiers (validated at startup): root commands `completion`, `version`, `install`, `docs` (when `docs.enabled` is `true`), `mcp` (when `mcpServer.enabled` is `true`), and `api` (when `apiServer.enabled` is `true`).
 
 ---
 

@@ -75,9 +75,18 @@ test("MCP program.appConfig succeeds when env present", async () => {
     ],
     { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "sekrit" } },
   );
-  const res = responses.get(14) as { result: { isError: boolean; content: { text: string }[] } };
+  const res = responses.get(14) as {
+    result: {
+      isError: boolean;
+      structuredContent?: { content: string; contentType: string };
+      content: { text: string }[];
+    };
+  };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text.trim()).toBe("sekrit");
+  expect(res.result.structuredContent).toEqual({
+    content: "sekrit",
+    contentType: "text/plain; charset=utf-8",
+  });
 });
 
 /** MCP config file loads and exports vars for tool handlers. */
@@ -100,9 +109,18 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
       env: { HOME: dir, ARGS_TEST_SECRET: "present" },
     },
   );
-  const res = responses.get(15) as { result: { isError: boolean; content: { text: string }[] } };
+  const res = responses.get(15) as {
+    result: {
+      isError: boolean;
+      structuredContent?: { content: string; contentType: string };
+      content: { text: string }[];
+    };
+  };
   expect(res.result.isError).toBe(false);
-  expect(res.result.content[0]?.text.trim()).toBe("present");
+  expect(res.result.structuredContent).toEqual({
+    content: "present",
+    contentType: "text/plain; charset=utf-8",
+  });
   rmSync(dir, { recursive: true, force: true });
 });
 

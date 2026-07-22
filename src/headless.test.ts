@@ -12,14 +12,16 @@ import {
   wantsExplicitJson,
 } from "./headless.ts";
 
-test("wantsExplicitJson includes MCP invocation", () => {
+test("wantsExplicitJson includes MCP and API invocation", () => {
   expect(wantsExplicitJson({ invocation: "cli" }, false)).toBe(false);
   expect(wantsExplicitJson({ invocation: "mcp" }, false)).toBe(true);
+  expect(wantsExplicitJson({ invocation: "api" }, false)).toBe(true);
   expect(wantsExplicitJson({ invocation: "cli" }, true)).toBe(true);
 });
 
-test("shouldRunHeadless is true for MCP and json", () => {
+test("shouldRunHeadless is true for MCP, API, and json", () => {
   expect(shouldRunHeadless({ invocation: "mcp" }, false)).toBe(true);
+  expect(shouldRunHeadless({ invocation: "api" }, false)).toBe(true);
   expect(shouldRunHeadless({ invocation: "cli" }, true)).toBe(true);
   expect(shouldRunHeadless({ invocation: "cli" }, false, true)).toBe(true);
   expect(shouldRunHeadless({ invocation: "cli" }, false, false, false)).toBe(true);

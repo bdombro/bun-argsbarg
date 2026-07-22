@@ -36,8 +36,11 @@ export function docsTopicContentForSave(program: CliProgram, topic: string): str
 
 /** Filename for a saved docs topic. */
 export function docsSaveFilename(topic: string): string {
-  if (topic === "schema") {
-    return "schema.json";
+  if (topic === "cli-schema") {
+    return "cli-schema.json";
+  }
+  if (topic === "openapi") {
+    return "openapi.json";
   }
   return `${topic}.md`;
 }

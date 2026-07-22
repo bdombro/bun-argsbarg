@@ -7,6 +7,7 @@ import type { ParseResult } from "../parse.ts";
 import { ParseKind } from "../parse.ts";
 import type { CliNode, CliProgram, CliRouter } from "../types.ts";
 import { isCliLeaf } from "../types.ts";
+import { cliBuiltinApiCommand } from "./api.ts";
 import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
@@ -66,6 +67,20 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     }
     process.stdout.write(`${program.version}\n`);
     process.exit(0);
+  }
+
+  if (pr.path[0] === "api") {
+    if (!caps.api) {
+      process.stderr.write(capabilityDeniedMessage("api"));
+      process.exit(1);
+    }
+    const sub = pr.path[1];
+    if (pr.path.length === 1 || sub === "serve") {
+      await new Cli(program).serveApi();
+      process.exit(0);
+    }
+    process.stderr.write(`Unknown subcommand: api ${pr.path.slice(1).join(" ")}\n`);
+    process.exit(1);
   }
 
   if (pr.path[0] === "mcp") {
@@ -137,6 +152,17 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinConfigureCommand(program)],
+      },
+      isLeafCompletionIntercept: false,
+    };
+  }
+
+  if (first === "api" && caps.api) {
+    return {
+      parseRoot: {
+        key: program.key,
+        description: program.description,
+        commands: [cliBuiltinApiCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };

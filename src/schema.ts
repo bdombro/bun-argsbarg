@@ -7,7 +7,7 @@ import { cliResolveNotes } from "./help.ts";
 import { visibleOptions } from "./hidden.ts";
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
 
-const RESERVED = new Set(["completion", "configure", "docs", "mcp", "version"]);
+const RESERVED = new Set(["api", "completion", "configure", "docs", "mcp", "version"]);
 
 function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
   if (cmd.hidden) {

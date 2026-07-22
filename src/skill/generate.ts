@@ -218,7 +218,7 @@ function buildPluginSkillMd(root: CliProgram, dirName: string): string {
     "",
     `- Server id: \`${serverId}\` (configured in plugin \`.mcp.json\`)`,
     "- Tool names and argument shapes come from MCP `tools/list`",
-    `- Full schema: \`${schemaUri}\` (same as \`${root.key} docs schema\`)`,
+    `- Full schema: \`${schemaUri}\` (same as \`${root.key} docs cli-schema\`)`,
     "",
   ];
 

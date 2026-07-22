@@ -1,6 +1,9 @@
 /*
-This module builds MCP tools/call success results from captured handler output.
+This module builds MCP tools/call success results from handler respond payloads.
 */
+
+import { encodeRespondBodyBase64 } from "../respond.ts";
+import type { CliRespondOptions } from "../types.ts";
 
 /** Text content block in an MCP tool result. */
 export interface McpTextContent {
@@ -15,43 +18,45 @@ export interface McpToolCallSuccess {
   isError: false;
 }
 
-/** Parses stdout as JSON when the full trimmed string is valid JSON. */
-function parseStructuredStdout(stdout: string): unknown | undefined {
-  const trimmed = stdout.trim();
-  if (trimmed.length === 0) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch {
-    return undefined;
-  }
+/** Canonical MCP structuredContent for string respond bodies. */
+export interface McpStringRespondContent {
+  content: string;
+  contentType: string;
+}
+
+/** Canonical MCP structuredContent for binary respond bodies. */
+export interface McpBinaryRespondContent {
+  data: string;
+  contentType: string;
+  encoding: "base64";
 }
 
 /**
- * Builds a successful tools/call result from captured handler stdout/stderr.
- * stderr is a second content block when non-empty; structuredContent is set when stdout is JSON.
+ * Builds a successful tools/call result from a headless respond payload.
+ * Binary bodies are encoded as base64 in structuredContent.
  */
-export function buildToolCallSuccess(stdout: string, stderr: string): McpToolCallSuccess {
-  const content: McpTextContent[] = [];
-  if (stdout.length > 0) {
-    content.push({ type: "text", text: stdout });
-  }
-  const errText = stderr.trim();
-  if (errText.length > 0) {
-    if (content.length === 0) {
-      content.push({ type: "text", text: "" });
-    }
-    content.push({ type: "text", text: errText });
-  }
-  if (content.length === 0) {
-    content.push({ type: "text", text: "" });
+export function buildToolCallSuccessFromResponse(response: CliRespondOptions): McpToolCallSuccess {
+  const { body, contentType = "application/json; charset=utf-8" } = response;
+  let structuredContent: unknown;
+
+  if (body instanceof Uint8Array) {
+    structuredContent = {
+      data: encodeRespondBodyBase64(body),
+      contentType,
+      encoding: "base64",
+    } satisfies McpBinaryRespondContent;
+  } else if (typeof body === "string") {
+    structuredContent = {
+      content: body,
+      contentType,
+    } satisfies McpStringRespondContent;
+  } else {
+    structuredContent = body;
   }
 
-  const structuredContent = parseStructuredStdout(stdout);
-  const result: McpToolCallSuccess = { content, isError: false };
-  if (structuredContent !== undefined) {
-    result.structuredContent = structuredContent;
-  }
-  return result;
+  return {
+    content: [{ type: "text", text: "" }],
+    structuredContent,
+    isError: false,
+  };
 }
