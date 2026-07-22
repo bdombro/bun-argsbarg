@@ -63,7 +63,8 @@ describe("full-example template", () => {
 
   test("status command defines outputSchema", () => {
     const statusSource = readFileSync(join(exampleRoot, "src/commands/status/command.ts"), "utf8");
-    expect(statusSource).toContain("outputSchema:");
+    expect(statusSource).toMatch(/outputSchema[,:]/);
+    expect(statusSource).toContain('from "./__generated__/index.ts"');
   });
 
   test("resolveCapabilities matches full sink shape", () => {

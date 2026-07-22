@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.2] - 2026-07-22
+
+### Added
+
+- **`argsbarg schemagen`** — centralized JSON Schema generation from `src/**/schema.ts` into colocated `__generated__/` directories (`configSchema.json`, `inputSchema.json`, `outputSchema.json`, plus `index.ts` re-exports). Removes orphan `__generated__/` trees and stale JSON when schema roots or kinds are removed.
+- **`argsbarg/schemagen`** export — `runSchemagen`, `discoverSchemaRoots`, and naming helpers (`src/cli-tool/schemagen/`).
+
+### Changed
+
+- **Schemagen convention** — replace per-repo `scripts/schemagen*` copies and `schema-types.ts` bindings with `schema.ts` + gitignored `__generated__/`. Run via `just schemagen` (`argsbarg schemagen` with `node_modules/.bin` on `PATH`).
+
 ## [6.0.1] - 2026-07-22
 
 ### Added
@@ -15,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Schemagen discovery contract** — `examples/full-example` and docs now use `src/**/schema-types.ts` with `export type configType` / `outputType` / `inputType` instead of JSDoc markers (`Config schema`, `JSON payload`, `Tool input`) on `types.ts`.
+- **Colocated schemagen** — `*.schema.json` beside each `schema-types.ts`; exports `configSchema` / `inputSchema` / `outputSchema` (replaces central `*Schemas.ts` bridges).
 - **HTTP tool errors** — return a plain `{ "error": "..." }` JSON body without ANSI color codes or appended CLI help text.
 - **`cliErrWithHelp`** — on `api` / `mcp` invocations, throws a plain error instead of printing contextual help.
 - **`GET /openapi-browser`** — Scalar config preserves schema property order from the OpenAPI document (`orderSchemaPropertiesBy: "preserve"`).
@@ -728,7 +739,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.0.2...HEAD
+[6.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.2
 [6.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.1
 [6.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.0
 [5.1.16]: https://github.com/bdombro/bun-argsbarg/releases/tag/v5.1.16

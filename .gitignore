@@ -1,2 +1,5 @@
 node_modules
 .release-notes.tmp.md
+
+# argsbarg schemagen output (run `just schemagen` or `argsbarg schemagen`)
+**/__generated__/

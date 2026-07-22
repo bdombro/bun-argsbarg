@@ -1,5 +1,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
+
 cli_key := `bun scripts/print-identity.ts key`
 tap_org := `bun scripts/print-identity.ts tapOrg`
 tap_repo := `bun scripts/print-identity.ts tapRepo`
@@ -19,9 +21,8 @@ build:
     bun build ./src/index.ts --compile --outfile=dist/{{cli_key}}
     @rm -f .*.bun-build
 
-# Run schemagen, git diff check, typecheck, and format
+# Run schemagen, typecheck, and format
 check: schemagen format typecheck
-    git diff --exit-code schemas/
 
 # Run the CLI from source with optional args; restarts on file changes
 dev *ARGS:
@@ -84,11 +85,13 @@ run *ARGS:
 
 # Generate JSON Schema artifacts from TypeScript types
 schemagen:
-    bun run schemagen
+    argsbarg schemagen
 
 # Install bun/npm dependencies
+# Install bun/npm dependencies and generate schemas
 setup:
     bun install
+    just schemagen
 
 # Run unit tests (after check)
 test: check

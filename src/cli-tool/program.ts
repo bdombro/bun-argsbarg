@@ -5,6 +5,7 @@ Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 import pkg from "../../package.json" with { type: "json" };
 import { CliOptionKind, type CliProgram } from "../index.ts";
 import { runCreate } from "./run-create.ts";
+import { runSchemagenCli } from "./run-schemagen.ts";
 
 export const program = {
   key: "argsbarg",
@@ -90,6 +91,40 @@ export const program = {
           yes: ctx.hasFlag("yes"),
         });
         process.exit(code);
+      },
+    },
+    {
+      key: "schemagen",
+      description: "Generate JSON Schema artifacts from src/**/schema.ts into colocated __generated__/ directories.",
+      options: [
+        {
+          name: "root",
+          description: "Project root (default: current working directory).",
+          kind: CliOptionKind.String,
+        },
+        {
+          name: "src-dir",
+          description: "Source directory relative to --root (default: src).",
+          kind: CliOptionKind.String,
+        },
+        {
+          name: "tsconfig",
+          description: "Path to tsconfig relative to --root (default: tsconfig.json).",
+          kind: CliOptionKind.String,
+        },
+      ],
+      handler: (ctx) => {
+        try {
+          runSchemagenCli({
+            root: ctx.stringOpt("root"),
+            srcDir: ctx.stringOpt("src-dir"),
+            tsconfig: ctx.stringOpt("tsconfig"),
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          process.stderr.write(`${message}\n`);
+          process.exit(1);
+        }
       },
     },
   ],

@@ -3,7 +3,7 @@ Status leaf — demonstrates outputSchema and ctx.appConfig.
 */
 
 import { type CliLeaf, CliOptionKind } from "argsbarg";
-import { STATUS_JSON_OUTPUT_SCHEMA } from "../../../schemas/outputSchemas.ts";
+import { outputSchema } from "./__generated__/index.ts";
 import type { StatusJsonOutput } from "./types.ts";
 
 export const statusCommand = {
@@ -16,7 +16,7 @@ export const statusCommand = {
       kind: CliOptionKind.Presence,
     },
   ],
-  outputSchema: STATUS_JSON_OUTPUT_SCHEMA,
+  outputSchema,
   handler: (ctx) => {
     const out: StatusJsonOutput = {
       defaultRegion: ctx.appConfig.get("defaultRegion") as string | undefined,

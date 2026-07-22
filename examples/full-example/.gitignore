@@ -2,3 +2,6 @@ node_modules/
 dist/
 Formula/.staging/
 .DS_Store
+
+# argsbarg schemagen output (run `just schemagen`)
+**/__generated__/

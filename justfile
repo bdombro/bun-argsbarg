@@ -11,15 +11,8 @@ check: format typecheck
 
 consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc ~/dev/ss/pdf-gen"
 
-# Verify committed schemas match schemagen output and template drift in examples/full-example
+# Verify full-example schemagen runs and template drift
 check-full-example: full-example-schemagen
-    #!/usr/bin/env bash
-    cd examples/full-example
-    git diff --exit-code schemas/ || {
-      echo "examples/full-example/schemas/ is out of date — run: just full-example-schemagen"
-      exit 1
-    }
-    cd "{{justfile_directory()}}"
     bun ./src/cli-tool/main.ts create --check examples/full-example
 
 # Smoke-test argsbarg create into a temp directory
@@ -40,7 +33,7 @@ full-example-install:
 
 # Regenerate JSON Schema artifacts in examples/full-example
 full-example-schemagen:
-    cd examples/full-example && just schemagen
+    bun ./src/cli-tool/main.ts schemagen --root examples/full-example
 
 # Point local consumer apps at this repo (file: dep) for pre-publish development
 consumers-dev:

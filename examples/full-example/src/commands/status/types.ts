@@ -1,1 +1,1 @@
-export type { StatusJsonOutput } from "./schema-types.ts";
+export type { StatusJsonOutput } from "./schema.ts";

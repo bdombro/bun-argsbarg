@@ -41,10 +41,10 @@ export async function runPostCreate(targetDir: string, dryRun: boolean): Promise
       },
     },
     {
-      label: "bun scripts/schemagen.ts",
+      label: "argsbarg schemagen",
       run: () => {
         if (dryRun) return;
-        const proc = Bun.spawnSync(["bun", "scripts/schemagen.ts"], {
+        const proc = Bun.spawnSync(["argsbarg", "schemagen"], {
           cwd: abs,
           stdout: "inherit",
           stderr: "inherit",
@@ -103,7 +103,7 @@ export async function runPostCreate(targetDir: string, dryRun: boolean): Promise
 export function printPostCreatePlan(): void {
   process.stderr.write("Post-create steps:\n");
   process.stderr.write("  1. bun install\n");
-  process.stderr.write("  2. bun scripts/schemagen.ts\n");
+  process.stderr.write("  2. just schemagen\n");
   process.stderr.write("  3. bun test\n");
   process.stderr.write("  4. git init + Initial commit (skipped inside existing git work tree)\n");
 }

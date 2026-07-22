@@ -24,7 +24,7 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 - String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
 - Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
 - Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
-- JSON stdout: `outputSchema` on the leaf from generated constants in `outputSchemas.ts` — see `output-schema.md`; declare roots in `src/**/schema-types.ts` with `export type outputType = …`; do not hand-edit `schemas/generated/` or `outputSchemas.ts`.
-- App config: `program.appConfig.jsonSchema` from generated `configSchemas.ts` — see `config-schema.md`; `export type configType = …` in `src/config/schema-types.ts`; prefer `node_modules/argsbarg/examples/full-example/` when adding new schema roots.
+- JSON stdout: `import { outputSchema } from "./__generated__/index.ts"` (or shared module) — see `output-schema.md`; declare roots with `export type outputType = …` in `schema.ts`; do not hand-edit `__generated__/`.
+- App config: `import { configSchema } from "./config/__generated__/index.ts"` — see `config-schema.md`; `export type configType = …` in `src/config/schema.ts`.
 
 **full-example conventions:** replace this line with app-specific bullets. Keep at the bottom of this file.

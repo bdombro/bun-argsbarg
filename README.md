@@ -267,9 +267,9 @@ To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-progr
 | Area                  | Files / wiring                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `api`, `configure get`/`set`      |
-| `program.appConfig`   | `src/config/schema-types.ts` (`AppConfig`) → `schemas/configSchemas.ts`              |
-| `outputSchema`        | `src/commands/status/schema-types.ts` → `schemas/outputSchemas.ts`                   |
-| Schemagen             | `scripts/schemagen.ts` + `scripts/schemagen/discover-schema-roots.ts`                  |
+| `program.appConfig`   | `src/config/schema.ts` → `configSchema` from `__generated__/`                         |
+| `outputSchema`        | `src/commands/status/schema.ts` → `outputSchema` from `__generated__/`                  |
+| Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
 | Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
 | MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
 | Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                    |

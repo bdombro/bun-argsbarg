@@ -1,18 +1,10 @@
 /*
-Discovers schema roots in schema-types.ts files via configType / inputType / outputType exports.
-Copy per consumer repo — see docs/output-schema.md and docs/config-schema.md.
+Discovers schema roots in schema.ts files via configType / inputType / outputType exports.
 */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import {
-  configSchemaExportName,
-  inputSchemaExportName,
-  outfileForConfigType,
-  outfileForInputType,
-  outfileForOutputType,
-  outputSchemaExportName,
-} from "./naming.ts";
+import { SCHEMA_FILE } from "./names.ts";
 
 export type SchemaRootKind = "config" | "input" | "output";
 
@@ -21,13 +13,9 @@ export type SchemaRole = "configType" | "inputType" | "outputType";
 export interface SchemaRoot {
   kind: SchemaRootKind;
   typeName: string;
-  /** Path relative to project root (e.g. src/config/schema-types.ts). */
+  /** Path relative to project root (e.g. src/config/schema.ts). */
   path: string;
-  outfile: string;
-  exportName: string;
 }
-
-const SCHEMA_TYPES_FILE = "schema-types.ts";
 
 const ROLE_EXPORT_RE = /export\s+type\s+(configType|inputType|outputType)\s*=\s*(\w+)/g;
 
@@ -37,15 +25,15 @@ const ROLE_TO_KIND: Record<SchemaRole, SchemaRootKind> = {
   outputType: "output",
 };
 
-function listSchemaTypesFiles(srcDir: string, baseDir: string, out: string[]): void {
+function listSchemaFiles(srcDir: string, baseDir: string, out: string[]): void {
   for (const ent of readdirSync(srcDir)) {
     const full = join(srcDir, ent);
     const st = statSync(full);
     if (st.isDirectory()) {
-      listSchemaTypesFiles(full, baseDir, out);
+      listSchemaFiles(full, baseDir, out);
       continue;
     }
-    if (ent === SCHEMA_TYPES_FILE) {
+    if (ent === SCHEMA_FILE) {
       out.push(relative(baseDir, full));
     }
   }
@@ -60,35 +48,6 @@ function isTypeDefinedInFile(text: string, typeName: string): boolean {
     return !["configType", "inputType", "outputType"].includes(typeName);
   }
   return false;
-}
-
-function rootForRole(role: SchemaRole, typeName: string, path: string): SchemaRoot {
-  const kind = ROLE_TO_KIND[role];
-  if (kind === "config") {
-    return {
-      kind,
-      typeName,
-      path,
-      outfile: outfileForConfigType(typeName),
-      exportName: configSchemaExportName(typeName),
-    };
-  }
-  if (kind === "input") {
-    return {
-      kind,
-      typeName,
-      path,
-      outfile: outfileForInputType(typeName),
-      exportName: inputSchemaExportName(typeName),
-    };
-  }
-  return {
-    kind,
-    typeName,
-    path,
-    outfile: outfileForOutputType(typeName),
-    exportName: outputSchemaExportName(typeName),
-  };
 }
 
 function discoverFromFile(path: string, text: string): SchemaRoot[] {
@@ -108,17 +67,17 @@ function discoverFromFile(path: string, text: string): SchemaRoot[] {
     if (!isTypeDefinedInFile(text, typeName)) {
       continue;
     }
-    roots.push(rootForRole(role, typeName, path));
+    roots.push({ kind: ROLE_TO_KIND[role], typeName, path });
   }
 
   return roots;
 }
 
-/** Find all schema roots under `src/` in files named schema-types.ts. */
-export function discoverSchemaRoots(projectRoot: string): SchemaRoot[] {
-  const srcDir = join(projectRoot, "src");
+/** Find all schema roots under `srcDir` in files named `schema.ts`. */
+export function discoverSchemaRoots(projectRoot: string, srcDir = "src"): SchemaRoot[] {
+  const srcPath = join(projectRoot, srcDir);
   const files: string[] = [];
-  listSchemaTypesFiles(srcDir, projectRoot, files);
+  listSchemaFiles(srcPath, projectRoot, files);
 
   const roots: SchemaRoot[] = [];
   const typeOwners = new Map<string, string>();
@@ -128,9 +87,7 @@ export function discoverSchemaRoots(projectRoot: string): SchemaRoot[] {
     for (const root of discoverFromFile(relPath, text)) {
       const prev = typeOwners.get(root.typeName);
       if (prev) {
-        throw new Error(
-          `${relPath}: duplicate schema root type ${root.typeName} (already declared in ${prev})`,
-        );
+        throw new Error(`${relPath}: duplicate schema root type ${root.typeName} (already declared in ${prev})`);
       }
       typeOwners.set(root.typeName, relPath);
       roots.push(root);
@@ -139,9 +96,7 @@ export function discoverSchemaRoots(projectRoot: string): SchemaRoot[] {
 
   const configRoots = roots.filter((r) => r.kind === "config");
   if (configRoots.length > 1) {
-    throw new Error(
-      `multiple config schema roots: ${configRoots.map((r) => `${r.typeName} (${r.path})`).join(", ")}`,
-    );
+    throw new Error(`multiple config schema roots: ${configRoots.map((r) => `${r.typeName} (${r.path})`).join(", ")}`);
   }
 
   return roots;

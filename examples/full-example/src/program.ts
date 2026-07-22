@@ -4,12 +4,12 @@ Kitchen-sink CliProgram — every argsbarg builtin enabled; command registration
 
 import type { CliAppConfig, CliAppConfigEntry, CliProgram } from "argsbarg";
 import readmeText from "../README.md" with { type: "text" };
-import { APP_CONFIG_JSON_SCHEMA } from "../schemas/configSchemas.ts";
+import { configSchema } from "./config/__generated__/index.ts";
 import { createIdentity } from "../scripts/create-identity.ts";
 import { echoCommand } from "./commands/echo/command.ts";
 import { statusCommand } from "./commands/status/command.ts";
 
-const configSchema = {
+const configEntries = {
   apiToken: {
     description: "Create at https://example.com/settings/tokens",
     env: `${createIdentity.envPrefix}_API_TOKEN`,
@@ -34,8 +34,8 @@ export const program = {
   version: "1.0.0",
   description: createIdentity.desc,
   appConfig: {
-    jsonSchema: APP_CONFIG_JSON_SCHEMA,
-    entries: configSchema,
+    jsonSchema: configSchema,
+    entries: configEntries,
   } satisfies CliAppConfig,
   docs: {
     enabled: true,

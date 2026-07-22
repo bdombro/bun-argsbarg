@@ -136,48 +136,50 @@ Interactive `configure` does not persist values supplied only by env or `resolve
 | **Omit `jsonSchema`** | Simple apps; all values stored as strings; use `entry.default` |
 | **Codegen from TypeScript** | Typed config, nested objects, shared with JSON Schema CI |
 
-## Recommended pipeline (copy per repo)
+## Recommended pipeline (argsbarg schemagen)
 
 Mirror the [output-schema.md](output-schema.md) pattern for config:
 
 ```mermaid
 flowchart LR
-  subgraph types [schema-types.ts]
+  subgraph types [schema.ts]
     Marker["export type configType = AppConfig"]
   end
-  subgraph gen [just schemagen]
-    Script["scripts/schemagen.ts"]
+  subgraph gen [argsbarg schemagen]
+    Script["argsbarg schemagen"]
     Gen["ts-json-schema-generator"]
   end
-  subgraph artifacts [Committed]
-    Json["schemas/generated/app-config.json"]
-    Bridge["schemas/configSchemas.ts"]
+  subgraph artifacts [Gitignored __generated__]
+    Json["configSchema.json"]
+    Index["index.ts"]
   end
   subgraph runtime [Runtime]
     Program["program.appConfig.jsonSchema"]
     Validate["argsbarg runtime subset validator"]
   end
   types --> Script --> Gen --> Json
-  Script --> Bridge --> Program --> Validate
+  Gen --> Index --> Program --> Validate
 ```
 
 | Piece | Convention |
 | --- | --- |
-| Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) |
-| Discovery | `export type configType = …` in `src/config/schema-types.ts` (type defined in same file) |
-| Artifacts | Commit `app-config.json` and `configSchemas.ts` bridge exporting `APP_CONFIG_JSON_SCHEMA` |
+| Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled with argsbarg) |
+| Discovery | `export type configType = …` in `src/config/schema.ts` (type defined in same file) |
+| Artifacts | `src/config/__generated__/` — gitignored; run `just schemagen` after clone |
 | Consumer CI | Optional: `ajv` + `ajv-formats` against the same committed JSON (not an argsbarg runtime dep) |
 
 Example:
 
 ```typescript
-// src/config/schema-types.ts
+// src/config/schema.ts
 export interface AppConfig {
   apiToken: string;
 }
 
 export type configType = AppConfig;
 ```
+
+Wire on the program root: `import { configSchema } from "./config/__generated__/index.ts"`.
 
 ### Supported AppConfig shapes (argsbarg runtime validator)
 
@@ -220,7 +222,7 @@ Object/array/`$ref` properties require `--json` on `configure set` when comma-se
 
 | Example | Role |
 | --- | --- |
-| [`examples/full-example/`](../examples/full-example/) | **Copy template** — schemagen discovery, `APP_CONFIG_JSON_SCHEMA` bridge, `program.appConfig`, built-in `configure get`/`set` |
+| [`examples/full-example/`](../examples/full-example/) | **Copy template** — `argsbarg schemagen`, `program.appConfig`, built-in `configure get`/`set` |
 
 ```bash
 cd examples/full-example && just setup && just schemagen
