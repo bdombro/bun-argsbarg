@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.1] - 2026-07-23
+
+### Added
+
+- **`ctx.inputs`** — coerced, pre-validated leaf inputs (getter; preferred over `readLeafInputs()`).
+- **`ctx.inputsAs<T>()`** — `ctx.inputs` cast to a schemagen or app input type (`T` unconstrained; consumer-asserted).
+
+### Changed
+
+- **`leaf.inputSchema` validation** — runs before the leaf handler in `Cli.run()` and `Cli.invoke()` (same JSON Schema subset as `program.appConfig`). `LeafInputError` prints contextual help on CLI. `ctx.inputs` returns the cached, pre-validated result.
+- **`ctx.readLeafInputs()`** — deprecated; use `ctx.inputs` or `ctx.inputsAs()`.
+
 ## [6.1.0] - 2026-07-22
 
 ### Added
 
 - **`CliOptionKind.Json`** and **`pipable`** — JSON object options with CLI `--name '<json>'` or piped stdin when the flag is omitted (flag wins if set). MCP/API values merge from `toolArgs`.
-- **`ctx.readLeafInputsAsync()`** — resolves Json options (flag, stdin, or `toolArgs`) and validates against `leaf.inputSchema` when set.
+- **`ctx.jsonOpt(name)`** — parsed Json option from flag, preloaded stdin, or MCP/API `toolArgs`.
+- **`ctx.readLeafInputs()`** — all coerced inputs; validates against `leaf.inputSchema` when set (stdin preloaded before handler).
+- **`ctx.readLeafInputsAsync()`** — deprecated alias for sync `readLeafInputs()`.
 
 ### Changed
 
@@ -750,7 +764,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.1...HEAD
+[6.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.1
 [6.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.0
 [6.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.2
 [6.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.1

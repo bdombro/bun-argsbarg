@@ -59,9 +59,12 @@ export declare class CliContext {
 	readonly appConfig: AnyAppConfigSnapshot;
 	/** Original flat tool arguments for API/MCP invocations (when provided). */
 	readonly toolArgs?: Record<string, unknown>;
+	/** Pipable Json option values read from stdin before the handler (CLI only). */
+	readonly preloadedJson: Record<string, unknown>;
 	private response?;
+	private leafInputsCache?;
 	/** Captures the program root, routed path, positional words, and option map for a leaf handler. */
-	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, program: CliProgram, invocation?: CliInvocation, appConfig?: AnyAppConfigSnapshot, toolArgs?: Record<string, unknown>);
+	constructor(appName: string, commandPath: string[], args: string[], opts: Record<string, string>, program: CliProgram, invocation?: CliInvocation, appConfig?: AnyAppConfigSnapshot, toolArgs?: Record<string, unknown>, preloadedJson?: Record<string, unknown>);
 	/**
 	 * Sets the machine-readable response for API/MCP invocations, or writes to stdout in CLI mode.
 	 * May only be called once per invocation.
@@ -88,16 +91,30 @@ export declare class CliContext {
 	dateOpt(name: string): string | undefined;
 	/** Date-time option as normalized ISO 8601 UTC (post-parse validated). */
 	dateTimeOpt(name: string): string | undefined;
+	/**
+	 * Parsed Json option: `--name '<json>'`, preloaded piped stdin (when `pipable`), or MCP/API toolArgs.
+	 * Flag wins over stdin and toolArgs.
+	 */
+	jsonOpt(name: string): unknown | undefined;
 	/** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
 	positional(name: string): string | string[] | undefined;
-	/** Reads coerced option and positional values for the current leaf from schema metadata. */
+	/**
+	 * Coerced option and positional values for the current leaf.
+	 * When `leaf.inputSchema` is set, argsbarg validates before the handler runs; this returns the cached result.
+	 */
+	get inputs(): CliLeafInputs;
+	/**
+	 * {@link inputs} cast to a schemagen or app-defined input type (consumer-asserted; not inferred from `inputSchema`).
+	 */
+	inputsAs<T = CliLeafInputs>(): T;
+	/**
+	 * @deprecated Use {@link inputs} or {@link inputsAs}.
+	 */
 	readLeafInputs(): CliLeafInputs;
 	/**
-	 * Reads coerced leaf inputs, resolving Json options from flags, piped stdin (when `pipable`),
-	 * or MCP/API toolArgs, and validates against `leaf.inputSchema` when set.
+	 * @deprecated Use sync {@link readLeafInputs} — stdin is preloaded before the handler runs.
 	 */
 	readLeafInputsAsync(): Promise<CliLeafInputs>;
-	private _readOptionValue;
 	private _leafNode;
 	private _posMap;
 	private _positionalMap;
@@ -596,6 +613,8 @@ export declare class Cli {
 	}): Promise<CliInvokeResult>;
 	serveMcp(): Promise<never>;
 	serveApi(): Promise<never>;
+	private ensureValidatedLeafInputs;
+	private exitLeafInputError;
 	private prepareDispatch;
 	private buildAppConfigSnapshot;
 }
@@ -643,14 +662,25 @@ dryRun?: boolean,
 interactive?: boolean): void;
 /** Prefixes a success message when running in dry-run mode. */
 export declare function formatDryRunMessage(message: string, dryRun: boolean): string;
-/** Thrown when {@link CliContext.readLeafInputsAsync} cannot resolve or validate inputs. */
+/** Thrown when leaf input resolution or validation fails. */
 export declare class LeafInputError extends Error {
 	constructor(message: string);
 }
+/** Resolves a Json option from argv, preloaded stdin, or toolArgs (flag wins). */
+export declare function readJsonOptionValue(ctx: CliContext, name: string): unknown | undefined;
 /**
- * Reads coerced leaf inputs, resolving Json options from flags, piped stdin, or toolArgs,
- * and validates against `leaf.inputSchema` when set.
+ * Reads piped stdin for a pipable Json option when the flag is omitted (CLI only).
+ * Call from {@link Cli.run} before constructing the handler context.
  */
+export declare function preloadPipableJson(program: CliProgram, commandPath: string[], opts: Record<string, string>, invocation: CliInvocation): Promise<Record<string, unknown>>;
+/**
+ * Loads coerced leaf inputs and validates against `leaf.inputSchema` when set.
+ * Used by {@link CliContext.inputs}; prefer `ctx.inputs` or `ctx.inputsAs()` in handlers.
+ */
+export declare function loadLeafInputs(ctx: CliContext): CliLeafInputs;
+/** @deprecated Use {@link CliContext.inputs} or {@link loadLeafInputs} via `ctx.inputs`. */
+export declare function readLeafInputs(ctx: CliContext): CliLeafInputs;
+/** @deprecated Use sync {@link readLeafInputs} — stdin is preloaded before the handler runs. */
 export declare function readLeafInputsAsync(ctx: CliContext): Promise<CliLeafInputs>;
 /** Resolved paths for `mcp bundle`. */
 export interface McpBundlePaths {

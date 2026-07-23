@@ -207,8 +207,11 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.durationOpt("timeout")` — duration options (`format: CliValueFormat.Duration`) as milliseconds.
 - `ctx.commaListOpt("services")` — comma-list options as `string[] | undefined`.
 - `ctx.dateOpt("on")` / `ctx.dateTimeOpt("since")` — ISO date / date-time options.
-- `ctx.readLeafInputs()` — coerced option and positional values for the current leaf (schema-driven).
-- `ctx.readLeafInputsAsync()` — like `readLeafInputs()`, plus Json options (flag, piped stdin, MCP `toolArgs`) and `inputSchema` validation.
+- `ctx.inputs` — coerced option and positional values for the current leaf; when `inputSchema` is set, validated before the handler runs and cached on `ctx`.
+- `ctx.inputsAs<T>()` — `ctx.inputs` cast to a schemagen or app input type.
+- `ctx.readLeafInputs()` — deprecated; use `ctx.inputs` or `ctx.inputsAs()`.
+- `ctx.jsonOpt(name)` — parsed Json option (flag, preloaded stdin, or MCP/API `toolArgs`).
+- `ctx.readLeafInputsAsync()` — deprecated alias for `readLeafInputs()`.
 - `ctx.typedOpt<T>("custom", parseFn)` — custom parsing for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.

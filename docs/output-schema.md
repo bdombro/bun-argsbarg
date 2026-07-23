@@ -133,7 +133,7 @@ export type outputType = RenderInvoiceOutput;
 
 **Domain helpers** and **role exports** live in `types.ts`. Commands without structured JSON omit role exports. Shared shapes (e.g. `HeadlessOpResult`) are defined once in `types.ts` with a single `outputType`; other commands import `{ outputSchema }` from that module’s `__generated__/index.ts`.
 
-For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the `inputType` property) and use `await ctx.readLeafInputsAsync()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
+For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the `inputType` property) and use `ctx.jsonOpt(...)` or `ctx.readLeafInputs()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
 
 When you do **not** set `inputSchema`, argsbarg builds tool input from CLI `options` + `positionals`.
 

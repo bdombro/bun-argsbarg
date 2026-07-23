@@ -138,4 +138,4 @@ Call `generateOpenApi(program)` or `openApiJson(program)` from the package, fetc
 
 ## Complex tool inputs
 
-For nested request bodies (e.g. invoice template data), set `inputSchema` on the leaf, declare a matching `kind: Json` option (optionally `pipable: true` for CLI stdin), and read inputs with `await ctx.readLeafInputsAsync()` — it merges flag values, piped stdin, and the original flat JSON body from `POST /tools/:name`.
+For nested request bodies (e.g. invoice template data), set `inputSchema` on the leaf, declare a matching `kind: Json` option (optionally `pipable: true` for CLI stdin), and read inputs with `ctx.jsonOpt(...)` or `ctx.readLeafInputs()` — piped stdin is loaded before the handler runs.

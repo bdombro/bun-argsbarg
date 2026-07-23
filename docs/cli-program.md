@@ -203,14 +203,17 @@ handler: async (ctx) => {
 
 Read varargs with `ctx.positional("uids")` (returns `string[]`) or `ctx.args`. Do not comma-split argv tokens or use `format` on positionals.
 
-**`readLeafInputs()`** — for leaves with several flags, one schema-driven read instead of hand-rolled `hasFlag` / `stringOpt` lines:
+**`ctx.inputs`** — coerced option and positional values for the current leaf. When `leaf.inputSchema` is set, argsbarg validates **before the handler runs** and caches the result on `ctx`:
 
 ```typescript
-const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs();
-// duration → number (ms); comma-list → string[]; presence → boolean; number → number
+const { limit, "skip-readiness": skipReadiness, timeout } = ctx.inputs;
+// or, with a schemagen type:
+const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
 ```
 
-**`CliLeafInputs`** — return type of `readLeafInputs()` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
+**`readLeafInputs()`** — deprecated alias for `ctx.inputs`.
+
+**`CliLeafInputs`** — return type of `ctx.inputs` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
 
 | Schema | Value in `CliLeafInputs` |
 | --- | --- |
@@ -223,9 +226,9 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.readLeafInputs()
 | `format: date-time` | `string` (normalized UTC ISO) |
 | Single positional | `string` or `undefined` |
 | Varargs positional | `string[]` or `undefined` |
-| `kind: json` | parsed object/array or `undefined` (use `readLeafInputsAsync()` for pipable stdin and MCP merge) |
+| `kind: json` | parsed object/array or `undefined` (`ctx.jsonOpt(name)`; piped stdin preloaded before handler) |
 
-Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `readLeafInputs()` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `readLeafInputs()` for coerced values.
+Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `ctx.inputs` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `ctx.inputs` for coerced values.
 
 ### Json options and piped stdin
 
@@ -243,12 +246,12 @@ For nested tool bodies (e.g. invoice template data), declare a matching property
 
 | Surface | How `invoice` is supplied |
 | --- | --- |
-| CLI | `--invoice '<json>'` **or** omit the flag and pipe JSON to stdin |
+| CLI | `--invoice '<json>'` **or** omit the flag and pipe JSON to stdin (preloaded before the handler) |
 | MCP / HTTP | `invoice` object in the tool JSON body (`ctx.toolArgs`) |
 
 **Precedence:** if `--invoice` is set, the flag value wins and stdin is not read.
 
-Use **`await ctx.readLeafInputsAsync()`** (not sync `readLeafInputs()`) so Json options resolve from flags, piped stdin, or `toolArgs`. When `leaf.inputSchema` is set, argsbarg validates the merged inputs (same JSON Schema subset as `program.appConfig`).
+Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>()`** — all synchronous. Argsbarg reads piped stdin before calling the handler when a `pipable` Json flag is omitted. When `leaf.inputSchema` is set, argsbarg validates merged inputs **before the handler runs** (same JSON Schema subset as `program.appConfig`); `ctx.inputs` returns the cached result.
 
 At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
 

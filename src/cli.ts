@@ -18,6 +18,7 @@ import { readAppConfigFileRaw, resolveAppConfigPath } from "./config/file.ts";
 import { effectiveJsonSchema } from "./config/schema.ts";
 import { CliContext } from "./context.ts";
 import { cliHelpRender } from "./help.ts";
+import { LeafInputError, preloadPipableJson } from "./leaf-inputs.ts";
 import { bootstrapMcpEnv } from "./mcp/env.ts";
 import { mcpServeStdioLoop } from "./mcp/server.ts";
 import { ParseKind, type ParseResult, parse, postParseValidate } from "./parse.ts";
@@ -124,14 +125,41 @@ export class Cli {
       exitOnMissing: !skipRequiredConfig,
     });
 
-    const ctx = new CliContext(this.program.key, pr.path, pr.args, pr.opts, this.program, "cli", snapshot);
+    let preloadedJson: Record<string, unknown> = {};
     try {
+      preloadedJson = await preloadPipableJson(this.program, pr.path, pr.opts, "cli");
+    } catch (err) {
+      if (err instanceof LeafInputError) {
+        this.exitLeafInputError(err, pr.path);
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      const color = process.stderr.isTTY;
+      process.stderr.write(color ? `\u001B[31m${msg}\u001B[0m\n` : `${msg}\n`);
+      process.exit(1);
+    }
+
+    const ctx = new CliContext(
+      this.program.key,
+      pr.path,
+      pr.args,
+      pr.opts,
+      this.program,
+      "cli",
+      snapshot,
+      undefined,
+      preloadedJson,
+    );
+    try {
+      this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {
         ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
       }
       process.exit(0);
     } catch (err) {
+      if (err instanceof LeafInputError) {
+        this.exitLeafInputError(err, pr.path);
+      }
       if (err instanceof Error) {
         process.stderr.write(`${err.message}\n`);
       }
@@ -232,6 +260,7 @@ export class Cli {
         });
       }
 
+      this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {
         ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
@@ -259,6 +288,15 @@ export class Cli {
         }
         const msg = stderr.trim() || `Exit code ${err.code}`;
         return { kind: "error", exitCode: err.code, stdout, stderr, errorMsg: msg };
+      }
+      if (err instanceof LeafInputError) {
+        return {
+          kind: "error",
+          exitCode: 1,
+          stdout,
+          stderr: `${err.message}\n`,
+          errorMsg: err.message,
+        };
       }
       if (err instanceof Error) {
         return {
@@ -318,6 +356,21 @@ export class Cli {
       }
       process.exit(1);
     }
+  }
+
+  private ensureValidatedLeafInputs(ctx: CliContext, leaf: CliLeaf): void {
+    if (leaf.inputSchema === undefined) {
+      return;
+    }
+    ctx.inputs;
+  }
+
+  private exitLeafInputError(err: LeafInputError, helpPath: string[]): never {
+    const color = process.stderr.isTTY;
+    const msg = color ? `\u001B[31m${err.message}\u001B[0m` : err.message;
+    process.stderr.write(`${msg}\n`);
+    process.stderr.write(cliHelpRender(this.presentationRoot, helpPath, true));
+    process.exit(1);
   }
 
   private prepareDispatch(

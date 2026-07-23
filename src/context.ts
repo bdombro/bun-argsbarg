@@ -10,11 +10,10 @@ parsed values.
 import type { AnyAppConfigSnapshot } from "./config/context.ts";
 import { EmptyAppConfigSnapshot } from "./config/context.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
-import { readLeafInputsAsync as loadLeafInputsAsync } from "./leaf-inputs.ts";
-import { collectOptionDefs } from "./parse.ts";
+import { loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
-import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram, CliRespondOptions } from "./types.ts";
-import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.ts";
+import type { CliInvocation, CliLeaf, CliNode, CliProgram, CliRespondOptions } from "./types.ts";
+import { isCliLeaf, isCliRouter } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
 
 /** Coerced leaf inputs keyed by option and positional names. */
@@ -33,8 +32,11 @@ export class CliContext {
   readonly appConfig: AnyAppConfigSnapshot;
   /** Original flat tool arguments for API/MCP invocations (when provided). */
   readonly toolArgs?: Record<string, unknown>;
+  /** Pipable Json option values read from stdin before the handler (CLI only). */
+  readonly preloadedJson: Record<string, unknown>;
 
   private response?: CliRespondOptions;
+  private leafInputsCache?: CliLeafInputs;
 
   /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
   constructor(
@@ -46,6 +48,7 @@ export class CliContext {
     invocation: CliInvocation = "cli",
     appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(program),
     toolArgs?: Record<string, unknown>,
+    preloadedJson: Record<string, unknown> = {},
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
@@ -55,6 +58,7 @@ export class CliContext {
     this.invocation = invocation;
     this.appConfig = appConfig;
     this.toolArgs = toolArgs;
+    this.preloadedJson = preloadedJson;
   }
 
   /**
@@ -137,71 +141,50 @@ export class CliContext {
     return parseDateTime(s);
   }
 
+  /**
+   * Parsed Json option: `--name '<json>'`, preloaded piped stdin (when `pipable`), or MCP/API toolArgs.
+   * Flag wins over stdin and toolArgs.
+   */
+  jsonOpt(name: string): unknown | undefined {
+    return readJsonOptionValue(this, name);
+  }
+
   /** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
   positional(name: string): string | string[] | undefined {
     return this._positionalMap()[name];
   }
 
-  /** Reads coerced option and positional values for the current leaf from schema metadata. */
-  readLeafInputs(): CliLeafInputs {
-    const leaf = this._leafNode();
-    if (!leaf) return {};
-
-    const out: CliLeafInputs = {};
-    for (const opt of collectOptionDefs(this.program, this.commandPath)) {
-      out[opt.name] = this._readOptionValue(opt);
+  /**
+   * Coerced option and positional values for the current leaf.
+   * When `leaf.inputSchema` is set, argsbarg validates before the handler runs; this returns the cached result.
+   */
+  get inputs(): CliLeafInputs {
+    if (this.leafInputsCache !== undefined) {
+      return this.leafInputsCache;
     }
-    for (const p of leaf.positionals ?? []) {
-      const val = this.positional(p.name);
-      if (val === undefined) {
-        out[p.name] = undefined;
-      } else if (Array.isArray(val)) {
-        out[p.name] = val;
-      } else {
-        out[p.name] = val;
-      }
-    }
-    return out;
+    this.leafInputsCache = loadLeafInputs(this);
+    return this.leafInputsCache;
   }
 
   /**
-   * Reads coerced leaf inputs, resolving Json options from flags, piped stdin (when `pipable`),
-   * or MCP/API toolArgs, and validates against `leaf.inputSchema` when set.
+   * {@link inputs} cast to a schemagen or app-defined input type (consumer-asserted; not inferred from `inputSchema`).
    */
-  async readLeafInputsAsync(): Promise<CliLeafInputs> {
-    return loadLeafInputsAsync(this);
+  inputsAs<T = CliLeafInputs>(): T {
+    return this.inputs as T;
   }
 
-  private _readOptionValue(opt: CliOption): boolean | number | string | string[] | unknown | undefined {
-    if (opt.kind === CliOptionKind.Presence) {
-      return this.hasFlag(opt.name);
-    }
-    if (opt.kind === CliOptionKind.Number) {
-      const n = this.numberOpt(opt.name);
-      return n === null ? undefined : n;
-    }
-    if (opt.kind === CliOptionKind.Json) {
-      const raw = this.stringOpt(opt.name);
-      if (raw === undefined) return undefined;
-      try {
-        return JSON.parse(raw) as unknown;
-      } catch {
-        return undefined;
-      }
-    }
-    if (opt.format === CliValueFormat.Duration) {
-      return this.durationOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.CommaList) {
-      return this.commaListOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.Date) {
-      return this.dateOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.DateTime) {
-      return this.dateTimeOpt(opt.name);
-    }
-    return this.stringOpt(opt.name);
+  /**
+   * @deprecated Use {@link inputs} or {@link inputsAs}.
+   */
+  readLeafInputs(): CliLeafInputs {
+    return this.inputs;
+  }
+
+  /**
+   * @deprecated Use sync {@link readLeafInputs} — stdin is preloaded before the handler runs.
+   */
+  readLeafInputsAsync(): Promise<CliLeafInputs> {
+    return Promise.resolve(this.readLeafInputs());
   }
 
   private _leafNode(): CliLeaf | undefined {

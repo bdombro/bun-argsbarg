@@ -1,15 +1,15 @@
 /*
-Async leaf input reads: Json options (flag, piped stdin, or toolArgs), optional inputSchema validation.
+Leaf input reads: Json options (flag, preloaded stdin, or toolArgs), optional inputSchema validation.
 */
 
 import { validateConfigDocument } from "./config/validate.ts";
 import type { CliContext, CliLeafInputs } from "./context.ts";
 import { collectOptionDefs } from "./parse.ts";
-import type { CliLeaf, CliNode, CliOption } from "./types.ts";
+import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
 import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.ts";
 import { isInteractiveTty } from "./utils.ts";
 
-/** Thrown when {@link CliContext.readLeafInputsAsync} cannot resolve or validate inputs. */
+/** Thrown when leaf input resolution or validation fails. */
 export class LeafInputError extends Error {
   constructor(message: string) {
     super(message);
@@ -28,40 +28,8 @@ function leafNode(ctx: CliContext): CliLeaf | undefined {
   return isCliLeaf(node) ? node : undefined;
 }
 
-function readSyncOptionValue(
-  ctx: CliContext,
-  opt: CliOption,
-): boolean | number | string | string[] | unknown | undefined {
-  if (opt.kind === CliOptionKind.Presence) {
-    return ctx.hasFlag(opt.name);
-  }
-  if (opt.kind === CliOptionKind.Number) {
-    const n = ctx.numberOpt(opt.name);
-    return n === null ? undefined : n;
-  }
-  if (opt.kind === CliOptionKind.Json) {
-    const raw = ctx.stringOpt(opt.name);
-    if (raw === undefined) return undefined;
-    return parseJsonText(raw, `--${opt.name}`);
-  }
-  if (opt.format !== undefined) {
-    if (opt.format === CliValueFormat.Duration) {
-      return ctx.durationOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.CommaList) {
-      return ctx.commaListOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.Date) {
-      return ctx.dateOpt(opt.name);
-    }
-    if (opt.format === CliValueFormat.DateTime) {
-      return ctx.dateTimeOpt(opt.name);
-    }
-  }
-  return ctx.stringOpt(opt.name);
-}
-
-function parseJsonText(raw: string, label: string): unknown {
+/** Parses a JSON string from a `--name` flag value. */
+export function parseJsonText(raw: string, label: string): unknown {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     throw new LeafInputError(`${label}: JSON value is empty`);
@@ -107,46 +75,85 @@ function validateAgainstInputSchema(out: CliLeafInputs, inputSchema: Record<stri
   }
 }
 
+/** Resolves a Json option from argv, preloaded stdin, or toolArgs (flag wins). */
+export function readJsonOptionValue(ctx: CliContext, name: string): unknown | undefined {
+  const flagValue = ctx.stringOpt(name);
+  if (flagValue !== undefined) {
+    return parseJsonText(flagValue, `--${name}`);
+  }
+  if (name in ctx.preloadedJson) {
+    return ctx.preloadedJson[name];
+  }
+  if (ctx.toolArgs !== undefined && name in ctx.toolArgs) {
+    return ctx.toolArgs[name];
+  }
+  return undefined;
+}
+
 /**
- * Reads coerced leaf inputs, resolving Json options from flags, piped stdin, or toolArgs,
- * and validates against `leaf.inputSchema` when set.
+ * Reads piped stdin for a pipable Json option when the flag is omitted (CLI only).
+ * Call from {@link Cli.run} before constructing the handler context.
  */
-export async function readLeafInputsAsync(ctx: CliContext): Promise<CliLeafInputs> {
+export async function preloadPipableJson(
+  program: CliProgram,
+  commandPath: string[],
+  opts: Record<string, string>,
+  invocation: CliInvocation,
+): Promise<Record<string, unknown>> {
+  if (invocation !== "cli" || isInteractiveTty) {
+    return {};
+  }
+  for (const opt of collectOptionDefs(program, commandPath)) {
+    if (opt.kind === CliOptionKind.Json && opt.pipable && !(opt.name in opts)) {
+      return { [opt.name]: await readPipedJsonStdin() };
+    }
+  }
+  return {};
+}
+
+function readSyncOptionValue(
+  ctx: CliContext,
+  opt: CliOption,
+): boolean | number | string | string[] | unknown | undefined {
+  if (opt.kind === CliOptionKind.Presence) {
+    return ctx.hasFlag(opt.name);
+  }
+  if (opt.kind === CliOptionKind.Number) {
+    const n = ctx.numberOpt(opt.name);
+    return n === null ? undefined : n;
+  }
+  if (opt.kind === CliOptionKind.Json) {
+    return readJsonOptionValue(ctx, opt.name);
+  }
+  if (opt.format !== undefined) {
+    if (opt.format === CliValueFormat.Duration) {
+      return ctx.durationOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.CommaList) {
+      return ctx.commaListOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.Date) {
+      return ctx.dateOpt(opt.name);
+    }
+    if (opt.format === CliValueFormat.DateTime) {
+      return ctx.dateTimeOpt(opt.name);
+    }
+  }
+  return ctx.stringOpt(opt.name);
+}
+
+/**
+ * Loads coerced leaf inputs and validates against `leaf.inputSchema` when set.
+ * Used by {@link CliContext.inputs}; prefer `ctx.inputs` or `ctx.inputsAs()` in handlers.
+ */
+export function loadLeafInputs(ctx: CliContext): CliLeafInputs {
   const leaf = leafNode(ctx);
   if (!leaf) return {};
 
   const out: CliLeafInputs = {};
   const options = collectOptionDefs(ctx.program, ctx.commandPath);
-  let pipedJson: unknown | undefined;
-  let pipedJsonRead = false;
 
   for (const opt of options) {
-    if (opt.kind === CliOptionKind.Json) {
-      const flagValue = ctx.stringOpt(opt.name);
-      if (flagValue !== undefined) {
-        out[opt.name] = parseJsonText(flagValue, `--${opt.name}`);
-        continue;
-      }
-      if (ctx.toolArgs !== undefined && opt.name in ctx.toolArgs) {
-        out[opt.name] = ctx.toolArgs[opt.name];
-        continue;
-      }
-      if (opt.pipable && ctx.invocation === "cli") {
-        if (isInteractiveTty) {
-          out[opt.name] = undefined;
-          continue;
-        }
-        if (!pipedJsonRead) {
-          pipedJson = await readPipedJsonStdin();
-          pipedJsonRead = true;
-        }
-        out[opt.name] = pipedJson;
-        continue;
-      }
-      out[opt.name] = undefined;
-      continue;
-    }
-
     out[opt.name] = readSyncOptionValue(ctx, opt);
   }
 
@@ -175,4 +182,14 @@ export async function readLeafInputsAsync(ctx: CliContext): Promise<CliLeafInput
   }
 
   return omitUndefinedInputs(out);
+}
+
+/** @deprecated Use {@link CliContext.inputs} or {@link loadLeafInputs} via `ctx.inputs`. */
+export function readLeafInputs(ctx: CliContext): CliLeafInputs {
+  return ctx.inputs;
+}
+
+/** @deprecated Use sync {@link readLeafInputs} — stdin is preloaded before the handler runs. */
+export function readLeafInputsAsync(ctx: CliContext): Promise<CliLeafInputs> {
+  return Promise.resolve(readLeafInputs(ctx));
 }
