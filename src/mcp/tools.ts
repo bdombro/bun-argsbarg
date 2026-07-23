@@ -17,6 +17,7 @@ import {
   type CliProgram,
   CliValueFormat,
   isCliLeaf,
+  isJsonLeaf,
   leafOutputSchema,
 } from "../types.ts";
 
@@ -150,6 +151,10 @@ function positionalProperty(p: CliPositional): Record<string, unknown> {
 
 /** Builds inputSchema for a leaf command. */
 function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Record<string, unknown> {
+  if (isJsonLeaf(leaf) && leaf.inputSchema !== undefined) {
+    return leaf.inputSchema;
+  }
+
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
@@ -286,6 +291,10 @@ export function mcpToolCallToArgv(
   tool: McpToolDef,
   args: Record<string, unknown>,
 ): string[] | { error: string } {
+  if (isJsonLeaf(tool.leaf)) {
+    return [...tool.path];
+  }
+
   const argv = [...tool.path];
 
   for (const opt of collectOptionDefs(root, tool.path)) {

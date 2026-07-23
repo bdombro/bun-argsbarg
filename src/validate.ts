@@ -19,6 +19,7 @@ import {
   type InstallTargetSpec,
   isCliLeaf,
   isCliRouter,
+  isJsonLeaf,
 } from "./types.ts";
 
 /** Validates `docs` configuration on the program root. */
@@ -237,6 +238,17 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
   if (isCliLeaf(node)) {
     if (isRoot && node.mcpTool !== undefined) {
       throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
+    }
+    if (isJsonLeaf(node)) {
+      if (node.inputSchema === undefined) {
+        throw new CliSchemaValidationError(`kind: "json" requires inputSchema on ${node.key}`);
+      }
+      if ((node.options ?? []).length > 0) {
+        throw new CliSchemaValidationError(`kind: "json" forbids options on ${node.key}`);
+      }
+      if ((node.positionals ?? []).length > 0) {
+        throw new CliSchemaValidationError(`kind: "json" forbids positionals on ${node.key}`);
+      }
     }
     const outputSchema = node.outputSchema;
     const legacyOutputSchema = node.mcpTool?.outputSchema;

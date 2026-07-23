@@ -127,7 +127,7 @@ export class Cli {
 
     let preloadedJson: Record<string, unknown> = {};
     try {
-      preloadedJson = await preloadPipableJson(this.program, pr.path, pr.opts, "cli");
+      preloadedJson = await preloadPipableJson(this.program, pr.path, pr.opts, "cli", pr.args);
     } catch (err) {
       if (err instanceof LeafInputError) {
         this.exitLeafInputError(err, pr.path);

@@ -51,6 +51,7 @@ export type {
   CliDocsTopic,
   CliHandler,
   CliInvocation,
+  CliLeafKind,
   CliMcpBundleConfig,
   CliMcpResource,
   CliMcpServerConfig,
@@ -69,5 +70,6 @@ export {
   CliOptionKind,
   CliSchemaValidationError,
   CliValueFormat,
+  isJsonLeaf,
 } from "./types.ts";
 export { isInteractiveTty } from "./utils.ts";

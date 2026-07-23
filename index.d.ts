@@ -490,10 +490,17 @@ export interface CliNodeBase {
 	/** Global or command-level flags/options. */
 	options?: CliOption[];
 }
+/** Leaf input mode: `json` = pure JSON body (no CLI flags). */
+export type CliLeafKind = "json";
 /**
  * A leaf command node with a handler and optional positionals.
  */
 export type CliLeaf = CliNodeBase & {
+	/**
+	 * When `"json"`, the leaf accepts a single JSON document (CLI positional or piped stdin;
+	 * MCP/HTTP tool args = body). Requires `inputSchema`; forbids `options` and `positionals`.
+	 */
+	kind?: CliLeafKind;
 	/** Handler function for leaf commands. */
 	handler: CliHandler;
 	/** Positional argument definitions. */
@@ -545,6 +552,8 @@ export type CliProgram = CliNode & {
 	/** When set with `enabled: true`, enables the `docs` built-in command group. */
 	docs?: CliDocsConfig;
 };
+/** True when the leaf accepts a pure JSON body (no CLI flags). */
+export declare function isJsonLeaf(leaf: CliLeaf): boolean;
 /**
  * Handler closure type for leaf commands.
  * Supports sync and async handlers; non-undefined return values become implicit JSON responses for headless invocations.
@@ -672,7 +681,7 @@ export declare function readJsonOptionValue(ctx: CliContext, name: string): unkn
  * Reads piped stdin for a pipable Json option when the flag is omitted (CLI only).
  * Call from {@link Cli.run} before constructing the handler context.
  */
-export declare function preloadPipableJson(program: CliProgram, commandPath: string[], opts: Record<string, string>, invocation: CliInvocation): Promise<Record<string, unknown>>;
+export declare function preloadPipableJson(program: CliProgram, commandPath: string[], opts: Record<string, string>, invocation: CliInvocation, args?: string[]): Promise<Record<string, unknown>>;
 /**
  * Loads coerced leaf inputs and validates against `leaf.inputSchema` when set.
  * Used by {@link CliContext.inputs}; prefer `ctx.inputs` or `ctx.inputsAs()` in handlers.

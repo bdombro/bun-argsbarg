@@ -16,6 +16,7 @@ import {
   CliOptionKind,
   isCliLeaf,
   isCliRouter,
+  isJsonLeaf,
 } from "./types.ts";
 import { fullStringIsDouble } from "./utils.ts";
 
@@ -237,6 +238,48 @@ export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
   return defs;
 }
 
+/** Fills `args` for a json leaf from `startIdx` (0 or 1 JSON string positional). */
+function finishJsonLeaf(
+  _node: CliLeaf,
+  startIdx: number,
+  argv: string[],
+  path: string[],
+  opts: Record<string, string>,
+): ParseResult {
+  let idx = startIdx;
+  const args: string[] = [];
+
+  if (idx < argv.length) {
+    const tok = argv[idx];
+    if (isHelpTok(tok)) {
+      return helpResult(path, true);
+    }
+    if (tok === "--") {
+      return errorResult("Unexpected extra arguments", path, []);
+    }
+    if (tok.startsWith("-")) {
+      return errorResult(`JSON commands do not accept options: ${tok}`, path, []);
+    }
+    args.push(tok);
+    idx += 1;
+  }
+
+  if (idx < argv.length) {
+    return errorResult("Unexpected extra arguments", path, []);
+  }
+
+  return {
+    kind: ParseKind.Ok,
+    path,
+    opts,
+    args,
+    helpExplicit: false,
+    helpPath: [],
+    errorMsg: "",
+    errorHelpPath: [],
+  };
+}
+
 /** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
   node: CliLeaf,
@@ -412,6 +455,9 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   let node: CliNode | undefined;
 
   if (isCliLeaf(root)) {
+    if (isJsonLeaf(root)) {
+      return finishJsonLeaf(root, i, argv, path, opts);
+    }
     return finishLeaf(root, i, argv, path, opts, root.options ?? [], forcePositionals);
   }
 
@@ -473,6 +519,10 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   // Walk the command tree
   while (true) {
+    if (isCliLeaf(current) && isJsonLeaf(current)) {
+      return finishJsonLeaf(current, i, argv, path, opts);
+    }
+
     if (!forcePositionals) {
       const orep = consumeOptions(collectOptionDefs(root, path), false, argv, i, opts);
       if (orep.report.err) {

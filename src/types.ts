@@ -418,10 +418,18 @@ export interface CliNodeBase {
   options?: CliOption[];
 }
 
+/** Leaf input mode: `json` = pure JSON body (no CLI flags). */
+export type CliLeafKind = "json";
+
 /**
  * A leaf command node with a handler and optional positionals.
  */
 export type CliLeaf = CliNodeBase & {
+  /**
+   * When `"json"`, the leaf accepts a single JSON document (CLI positional or piped stdin;
+   * MCP/HTTP tool args = body). Requires `inputSchema`; forbids `options` and `positionals`.
+   */
+  kind?: CliLeafKind;
   /** Handler function for leaf commands. */
   handler: CliHandler;
   /** Positional argument definitions. */
@@ -480,6 +488,11 @@ export type CliProgram = CliNode & {
 /** True when the node is a leaf (has a handler). */
 export function isCliLeaf(node: CliNode): node is CliLeaf {
   return "handler" in node && typeof node.handler === "function";
+}
+
+/** True when the leaf accepts a pure JSON body (no CLI flags). */
+export function isJsonLeaf(leaf: CliLeaf): boolean {
+  return leaf.kind === "json";
 }
 
 /** True when the node is a router (has subcommands). */

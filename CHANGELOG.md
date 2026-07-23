@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.2] - 2026-07-23
+
+### Added
+
+- **`kind: "json"` on `CliLeaf`** — pure JSON body leaves with no CLI flags. Requires `inputSchema`; forbids `options` and `positionals`. CLI accepts one JSON positional or piped stdin; MCP/HTTP use the tool args object directly. **`isJsonLeaf()`** helper exported.
+
 ## [6.1.1] - 2026-07-23
 
 ### Added
@@ -764,7 +770,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.2...HEAD
+[6.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.2
 [6.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.1
 [6.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.0
 [6.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.0.2

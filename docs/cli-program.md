@@ -255,6 +255,30 @@ Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>(
 
 At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
 
+### Pure JSON leaves (`kind: "json"`)
+
+When the entire tool body is JSON (no CLI flags), set **`kind: "json"`** on the leaf with **`inputSchema`** and **no `options` or `positionals`**:
+
+```typescript
+{
+  key: "render-invoice",
+  description: "Render an invoice from template data",
+  kind: "json",
+  inputSchema,
+  handler: (ctx) => {
+    const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
+    // ...
+  },
+}
+```
+
+| Surface | How input is supplied |
+| --- | --- |
+| CLI | One JSON positional **or** pipe a JSON document to stdin |
+| MCP / HTTP | Full tool args object (`ctx.toolArgs` / POST body) |
+
+Example CLI: `jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice`
+
 See [output-schema.md](output-schema.md) for schemagen `inputType` and [api-server.md](api-server.md) for HTTP tool bodies.
 
 `CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.

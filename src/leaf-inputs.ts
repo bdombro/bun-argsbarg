@@ -6,7 +6,7 @@ import { validateConfigDocument } from "./config/validate.ts";
 import type { CliContext, CliLeafInputs } from "./context.ts";
 import { collectOptionDefs } from "./parse.ts";
 import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
-import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter } from "./types.ts";
+import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter, isJsonLeaf } from "./types.ts";
 import { isInteractiveTty } from "./utils.ts";
 
 /** Thrown when leaf input resolution or validation fails. */
@@ -17,15 +17,22 @@ export class LeafInputError extends Error {
   }
 }
 
-function leafNode(ctx: CliContext): CliLeaf | undefined {
-  let node: CliNode = ctx.program;
-  for (const seg of ctx.commandPath) {
+/** Internal key for piped stdin on `kind: "json"` leaves. */
+export const JSON_LEAF_BODY_KEY = "__jsonLeafBody";
+
+function resolveLeaf(program: CliProgram, commandPath: string[]): CliLeaf | undefined {
+  let node: CliNode = program;
+  for (const seg of commandPath) {
     if (!isCliRouter(node)) return undefined;
     const child = node.commands.find((c) => c.key === seg);
     if (!child) return undefined;
     node = child;
   }
   return isCliLeaf(node) ? node : undefined;
+}
+
+function leafNode(ctx: CliContext): CliLeaf | undefined {
+  return resolveLeaf(ctx.program, ctx.commandPath);
 }
 
 /** Parses a JSON string from a `--name` flag value. */
@@ -46,6 +53,23 @@ async function readPipedJsonStdin(): Promise<unknown> {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     throw new LeafInputError("stdin is empty; pass JSON via the option flag or pipe a JSON document to stdin");
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new LeafInputError("stdin is not valid JSON");
+  }
+}
+
+function jsonLeafBodyHelp(): string {
+  return "Missing JSON input: pass a JSON document as an argument or pipe to stdin";
+}
+
+async function readPipedJsonStdinForJsonLeaf(): Promise<unknown> {
+  const raw = await new Response(Bun.stdin).text();
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    throw new LeafInputError(jsonLeafBodyHelp());
   }
   try {
     return JSON.parse(trimmed);
@@ -99,10 +123,17 @@ export async function preloadPipableJson(
   commandPath: string[],
   opts: Record<string, string>,
   invocation: CliInvocation,
+  args: string[] = [],
 ): Promise<Record<string, unknown>> {
   if (invocation !== "cli" || isInteractiveTty) {
     return {};
   }
+
+  const leaf = resolveLeaf(program, commandPath);
+  if (leaf && isJsonLeaf(leaf) && args.length === 0) {
+    return { [JSON_LEAF_BODY_KEY]: await readPipedJsonStdinForJsonLeaf() };
+  }
+
   for (const opt of collectOptionDefs(program, commandPath)) {
     if (opt.kind === CliOptionKind.Json && opt.pipable && !(opt.name in opts)) {
       return { [opt.name]: await readPipedJsonStdin() };
@@ -149,6 +180,31 @@ function readSyncOptionValue(
 export function loadLeafInputs(ctx: CliContext): CliLeafInputs {
   const leaf = leafNode(ctx);
   if (!leaf) return {};
+
+  if (isJsonLeaf(leaf)) {
+    let body: unknown;
+    if (ctx.toolArgs !== undefined) {
+      body = ctx.toolArgs;
+    } else if (ctx.args.length > 0) {
+      const [arg0] = ctx.args;
+      if (arg0 === undefined) {
+        throw new LeafInputError(jsonLeafBodyHelp());
+      }
+      body = parseJsonText(arg0, "JSON argument");
+    } else if (JSON_LEAF_BODY_KEY in ctx.preloadedJson) {
+      body = ctx.preloadedJson[JSON_LEAF_BODY_KEY];
+    } else {
+      throw new LeafInputError(jsonLeafBodyHelp());
+    }
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      throw new LeafInputError("JSON input must be a JSON object");
+    }
+    const out = body as CliLeafInputs;
+    if (leaf.inputSchema !== undefined) {
+      validateAgainstInputSchema(out, leaf.inputSchema);
+    }
+    return omitUndefinedInputs(out);
+  }
 
   const out: CliLeafInputs = {};
   const options = collectOptionDefs(ctx.program, ctx.commandPath);

@@ -16,6 +16,7 @@ import {
   type CliRouter,
   isCliLeaf,
   isCliRouter,
+  isJsonLeaf,
 } from "./types.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
@@ -328,6 +329,7 @@ function usageLines(
   helpPath: string[],
   hasCommands: boolean,
   hasArgs: boolean,
+  jsonLeaf: boolean,
   color: boolean,
 ): string[] {
   let fullPath = appName;
@@ -337,6 +339,7 @@ function usageLines(
   const usageOpts = color ? style.aquaBold("[OPTIONS]") : "[OPTIONS]";
   const usageCmd = color ? style.aquaBold("COMMAND") : "COMMAND";
   const usageArgs = color ? style.aquaBold("[ARGS]...") : "[ARGS]...";
+  const usageJson = color ? style.aquaBold("[JSON]") : "[JSON]";
 
   const out: string[] = [];
   if (helpPath.length === 0) {
@@ -347,11 +350,34 @@ function usageLines(
     }
     return out;
   }
+  if (jsonLeaf) {
+    out.push(`${fullPath} ${usageJson}`);
+    return out;
+  }
   out.push(`${fullPath} ${usageOpts}${hasArgs ? ` ${usageArgs}` : ""}`);
   if (hasCommands) {
     out.push(`${fullPath} ${usageCmd} ${usageArgs}`);
   }
   return out;
+}
+
+/** Table rows for `kind: "json"` leaf input (schema properties + stdin hint). */
+function rowsForJsonInput(inputSchema: Record<string, unknown> | undefined): HelpRow[] {
+  const hint = "Pass a JSON document as an argument or pipe to stdin.";
+  const rows: HelpRow[] = [{ label: "JSON", description: hint }];
+  const props = inputSchema?.properties;
+  if (!props || typeof props !== "object" || Array.isArray(props)) {
+    return rows;
+  }
+  const required = new Set(Array.isArray(inputSchema?.required) ? inputSchema.required.map((k) => String(k)) : []);
+  for (const [name, prop] of Object.entries(props as Record<string, { description?: string }>)) {
+    const desc = prop.description ?? "";
+    rows.push({
+      label: name,
+      description: required.has(name) ? `(required) ${desc}` : desc,
+    });
+  }
+  return rows;
 }
 
 /** Table rows for named options, including synthetic built-in rows. */
@@ -407,7 +433,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
     lines.push(
       renderTextBox(
         "Usage",
-        usageLines(schema.key, helpPath, (schema.commands ?? []).length > 0, false, color),
+        usageLines(schema.key, helpPath, (schema.commands ?? []).length > 0, false, false, color),
         hw,
         color,
       ).join("\n"),
@@ -446,6 +472,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
     lines.push(color ? style.white(node.description) : node.description);
     lines.push("");
   }
+  const nodeIsJsonLeaf = isCliLeaf(node) && isJsonLeaf(node);
   lines.push(
     renderTextBox(
       "Usage",
@@ -454,6 +481,7 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
         helpPath,
         isCliRouter(node) && node.commands.length > 0,
         isCliLeaf(node) && (node.positionals ?? []).length > 0,
+        nodeIsJsonLeaf,
         color,
       ),
       hw,
@@ -461,21 +489,29 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
     ).join("\n"),
   );
 
-  const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
-  if (optBox.length > 0) {
-    lines.push("");
-    lines.push(optBox.join("\n"));
-  }
+  if (nodeIsJsonLeaf && isCliLeaf(node)) {
+    const inputBox = renderTableBox("Input", rowsForJsonInput(node.inputSchema), hw, color);
+    if (inputBox.length > 0) {
+      lines.push("");
+      lines.push(inputBox.join("\n"));
+    }
+  } else {
+    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
+    if (optBox.length > 0) {
+      lines.push("");
+      lines.push(optBox.join("\n"));
+    }
 
-  const posBox = renderTableBox(
-    "Arguments",
-    rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color),
-    hw,
-    color,
-  );
-  if (posBox.length > 0) {
-    lines.push("");
-    lines.push(posBox.join("\n"));
+    const posBox = renderTableBox(
+      "Arguments",
+      rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color),
+      hw,
+      color,
+    );
+    if (posBox.length > 0) {
+      lines.push("");
+      lines.push(posBox.join("\n"));
+    }
   }
 
   const subcmds = isCliRouter(node) ? node.commands : [];
