@@ -129,7 +129,7 @@ export async function handleApiRequest(
     return finish(jsonResponse(200, generateOpenApi(root)));
   }
 
-  if (request.method === "GET" && path === "/openapi-browser") {
+  if (request.method === "GET" && path === "/swagger") {
     return finish(
       new Response(apiDocsHtml(), {
         status: 200,

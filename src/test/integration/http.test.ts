@@ -432,17 +432,78 @@ describe("HTTP API routes", () => {
     const doc = (await res.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe("3.1.0");
     expect(doc.paths["/api/stat/owner/lookup"]).toBeDefined();
+    expect(doc.paths["/health"]).toBeDefined();
+    expect(doc.paths["/health/live"]).toBeDefined();
+    expect(doc.paths["/health/ready"]).toBeDefined();
   });
 
-  test("GET /openapi-browser returns Scalar HTML", async () => {
-    const res = await apiRequest(program, new Request("http://127.0.0.1/openapi-browser"));
+  test("GET /swagger returns Swagger UI HTML", async () => {
+    const res = await apiRequest(program, new Request("http://127.0.0.1/swagger"));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
     const html = await res.text();
-    expect(html).toContain("@scalar/api-reference");
-    expect(html).toContain('orderSchemaPropertiesBy: "preserve"');
-    expect(html).toContain("orderRequiredPropertiesFirst: false");
+    expect(html).toContain("swagger-ui-dist");
+    expect(html).toContain('url: "/openapi.json"');
+    expect(html).toContain('dom_id: "#swagger-ui"');
   });
+});
+
+test("generateOpenApi includes health probe paths", () => {
+  const program = testProgram({
+    key: "app",
+    description: "Test app",
+    httpServer: { enabled: true },
+    handler: () => ({ ok: true }),
+  });
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as {
+    tags: { name: string }[];
+    paths: Record<
+      string,
+      {
+        get: {
+          tags: string[];
+          responses: Record<string, { content: Record<string, { schema: Record<string, unknown> }> }>;
+        };
+      }
+    >;
+  };
+  expect(doc.tags.some((t) => t.name === "health")).toBe(true);
+  expect(doc.paths["/health"]?.get.tags).toContain("health");
+  expect(doc.paths["/health/live"]?.get.responses["200"]).toBeDefined();
+  expect(doc.paths["/health/ready"]?.get.responses["200"]).toBeDefined();
+  expect(doc.paths["/health/ready"]?.get.responses["503"]).toBeDefined();
+  const readySchema = doc.paths["/health/ready"]?.get.responses["200"].content["application/json; charset=utf-8"]
+    .schema as { properties?: { checks?: unknown } };
+  expect(readySchema.properties?.checks).toBeDefined();
+});
+
+test("generateOpenApi omits health paths when httpServer disabled", () => {
+  const program = testProgram({
+    key: "app",
+    description: "Test app",
+    handler: () => ({ ok: true }),
+  });
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as { paths: Record<string, unknown> };
+  expect(doc.paths["/health"]).toBeUndefined();
+});
+
+test("generateOpenApi groups routes by top-level command tag", () => {
+  const program = nestedApiFixture();
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as {
+    tags: { name: string; description?: string }[];
+    paths: Record<string, { post?: { tags: string[] }; get?: { tags: string[] } }>;
+  };
+  const tagNames = doc.tags.map((t) => t.name);
+  expect(tagNames).toContain("health");
+  expect(tagNames).toContain("stat");
+  expect(tagNames).toContain("pdf");
+  expect(doc.tags.find((t) => t.name === "stat")?.description).toBe("File metadata.");
+  expect(doc.paths["/api/stat/owner/lookup"]?.post?.tags).toEqual(["stat"]);
+  expect(doc.paths["/api/pdf"]?.post?.tags).toEqual(["pdf"]);
+  expect(doc.paths["/api/read"]?.post?.tags).toEqual(["read"]);
 });
 
 test("generateOpenApi maps binary content types", () => {
@@ -499,6 +560,52 @@ test("generateOpenApi dereferences nested inputSchema definitions", () => {
   };
   const schema = doc.paths["/api/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
   expect(schema.properties.invoice).toEqual({
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+  });
+});
+
+test("generateOpenApi generates requestBody for kind: json leaves", () => {
+  const program = testProgram({
+    key: "app",
+    description: "Test app",
+    httpServer: { enabled: true },
+    commands: [
+      {
+        key: "render-invoice",
+        description: "Render an invoice.",
+        kind: "json",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+          },
+          required: ["id"],
+        },
+        handler: () => ({ ok: true }),
+      },
+    ],
+  });
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as {
+    paths: Record<
+      string,
+      {
+        post: {
+          requestBody: {
+            required: boolean;
+            content: Record<string, { schema: Record<string, unknown> }>;
+          };
+        };
+      }
+    >;
+  };
+  const op = doc.paths["/api/render-invoice"]?.post;
+  expect(op).toBeDefined();
+  expect(op.requestBody).toBeDefined();
+  expect(op.requestBody.required).toBe(true);
+  expect(op.requestBody.content["application/json; charset=utf-8"].schema).toEqual({
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],

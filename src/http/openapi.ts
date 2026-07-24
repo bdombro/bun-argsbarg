@@ -3,8 +3,8 @@ Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
 import { collectOptionDefs } from "~/core/parse.ts";
-import type { CliHttpMethod, CliProgram } from "~/core/types.ts";
-import { CliOptionKind, isJsonLeaf } from "~/core/types.ts";
+import type { CliHttpMethod, CliNode, CliProgram } from "~/core/types.ts";
+import { CliOptionKind, isCliLeaf, isJsonLeaf } from "~/core/types.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 
@@ -106,15 +106,120 @@ function methodLower(method: CliHttpMethod): string {
   return method.toLowerCase();
 }
 
+const HEALTH_TAG = "health";
+
+const livenessResponseSchema = {
+  type: "object",
+  properties: { ok: { type: "boolean", const: true } },
+  required: ["ok"],
+} as const;
+
+const readinessCheckSchema = {
+  type: "object",
+  properties: {
+    ok: { type: "boolean" },
+    error: { type: "string" },
+    missing: { type: "array", items: { type: "string" } },
+  },
+  required: ["ok"],
+} as const;
+
+const readinessResponseSchema = {
+  type: "object",
+  properties: {
+    ok: { type: "boolean" },
+    checks: {
+      type: "object",
+      properties: {
+        config_file: readinessCheckSchema,
+        config_required: readinessCheckSchema,
+        custom: readinessCheckSchema,
+      },
+      required: ["config_file", "config_required", "custom"],
+    },
+  },
+  required: ["ok", "checks"],
+} as const;
+
+function jsonResponseEntry(description: string, schema: Record<string, unknown>): Record<string, unknown> {
+  return {
+    description,
+    content: {
+      [JSON_CONTENT_TYPE]: { schema },
+    },
+  };
+}
+
+function livenessGetOp(operationId: string, summary: string): Record<string, unknown> {
+  return {
+    tags: [HEALTH_TAG],
+    operationId,
+    summary,
+    responses: {
+      "200": jsonResponseEntry("Server is listening", livenessResponseSchema),
+    },
+  };
+}
+
+/** Framework health probe paths served alongside `/api/*` routes. */
+function buildHealthPaths(): Record<string, unknown> {
+  return {
+    "/health": {
+      get: livenessGetOp("health", "Liveness probe (alias of /health/live)"),
+    },
+    "/health/live": {
+      get: livenessGetOp("health_live", "Liveness probe"),
+    },
+    "/health/ready": {
+      get: {
+        tags: [HEALTH_TAG],
+        operationId: "health_ready",
+        summary: "Readiness probe",
+        description: "Config file, required app config, and optional program.readiness checks.",
+        responses: {
+          "200": jsonResponseEntry("Ready to serve traffic", readinessResponseSchema),
+          "503": jsonResponseEntry("Not ready", readinessResponseSchema),
+        },
+      },
+    },
+  };
+}
+
+type HttpRoute = ReturnType<typeof collectHttpRoutes>[number];
+
+/** Top-level command key for OpenAPI grouping (first non-`:param` segment). */
+function topLevelCommandKey(route: HttpRoute, program: CliProgram): string {
+  const key = route.commandPath.find((k) => !k.startsWith(":"));
+  return key ?? program.key;
+}
+
+function findTopLevelCommand(program: CliProgram, key: string): CliNode | undefined {
+  if (isCliLeaf(program)) {
+    return program.key === key ? program : undefined;
+  }
+  return program.commands.find((c) => c.key === key);
+}
+
+/** OpenAPI tags for user `/api/*` routes, one per top-level command. */
+function collectCommandTags(program: CliProgram, routes: HttpRoute[]): { name: string; description?: string }[] {
+  const names = [...new Set(routes.map((route) => topLevelCommandKey(route, program)))].sort();
+  return names.map((name) => {
+    const node = findTopLevelCommand(program, name);
+    return node?.description ? { name, description: node.description } : { name };
+  });
+}
+
 /** Generates an OpenAPI 3.1 document for the program's HTTP routes. */
 export function generateOpenApi(program: CliProgram): Record<string, unknown> {
   const routes = collectHttpRoutes(program);
-  const paths: Record<string, unknown> = {};
+  const paths: Record<string, unknown> = program.httpServer?.enabled ? buildHealthPaths() : {};
+  const commandTags = collectCommandTags(program, routes);
 
   for (const route of routes) {
     const pathKey = route.openApiPath;
     const existing = (paths[pathKey] as Record<string, unknown> | undefined) ?? {};
     const op: Record<string, unknown> = {
+      tags: [topLevelCommandKey(route, program)],
       operationId: route.openApiPath.replace(/\//g, "_").replace(/[{}]/g, ""),
       summary: route.leaf.description ?? route.leaf.key,
       responses: {
@@ -150,9 +255,9 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
           description: opt.description,
         })),
       ];
-    } else if (!isJsonLeaf(route.leaf)) {
+    } else {
       op.requestBody = {
-        required: false,
+        required: isJsonLeaf(route.leaf),
         content: {
           [JSON_CONTENT_TYPE]: {
             schema: dereferenceJsonSchema(buildInputSchema(program, route)),
@@ -172,6 +277,9 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
       version: program.version,
       description: program.description,
     },
+    ...(program.httpServer?.enabled
+      ? { tags: [{ name: HEALTH_TAG, description: "Server health probes" }, ...commandTags] }
+      : {}),
     paths,
   };
 }

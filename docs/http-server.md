@@ -73,8 +73,8 @@ Per-surface exposure: `http.enabled: false` removes a leaf from the route table;
 | --- | --- | --- |
 | `GET` | `/health` or `/health/live` | Liveness — 200 when server is listening |
 | `GET` | `/health/ready` | Readiness — config + optional `program.readiness` |
-| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |
-| `GET` | `/openapi-browser` | Interactive Scalar API reference (CDN) |
+| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and `/api/*`) |
+| `GET` | `/swagger` | Interactive Swagger UI API reference (CDN) |
 | `*` | `/api/...` | Invoke user commands (method per route) |
 | `OPTIONS` | `*` | CORS preflight (`GET, POST, PUT, PATCH, DELETE`) |
 
@@ -86,7 +86,7 @@ Per-surface exposure: `http.enabled: false` removes a leaf from the route table;
 curl -s http://127.0.0.1:3000/health
 curl -s http://127.0.0.1:3000/health/ready
 curl -s http://127.0.0.1:3000/openapi.json
-open http://127.0.0.1:3000/openapi-browser
+open http://127.0.0.1:3000/swagger
 curl -s http://127.0.0.1:3000/api/workspaces
 curl -s -X POST http://127.0.0.1:3000/api/workspaces \
   -H 'content-type: application/json' \

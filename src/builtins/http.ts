@@ -37,7 +37,7 @@ export function cliBuiltinHttpCommand(program: CliProgram): CliRouter {
   const lines = [
     `HTTP tool server on http://${hostname}:${port}.`,
     "",
-    "Endpoints: GET /health, GET /health/ready, GET /openapi.json, GET /openapi-browser, /api/*",
+    "Endpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*",
     "",
   ];
   if (caps.configure) {

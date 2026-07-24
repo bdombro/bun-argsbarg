@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.4] - 2026-07-24
+
+### Changed
+
+- **`GET /swagger`** — Swagger UI API reference (replaces `GET /openapi-browser` and Scalar).
+- **`GET /openapi.json`** — documents `/health`, `/health/live`, and `/health/ready` probe endpoints under a **Health** tag.
+- **OpenAPI tags** — user `/api/*` routes are grouped by top-level command key (router `description` becomes the tag description).
+
 ## [6.1.3] - 2026-07-24
 
 ### Added
@@ -833,7 +841,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.4...HEAD
+[6.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.4
 [6.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.3
 [6.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.2
 [6.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.1

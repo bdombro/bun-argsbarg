@@ -98,7 +98,7 @@ export function apiErrorResponse(status: number, body: ApiToolCallErrorBody): Re
   });
 }
 
-/** Scalar API reference HTML served at GET /openapi-browser. */
+/** Swagger UI HTML served at GET /swagger. */
 export function apiDocsHtml(): string {
   return `<!doctype html>
 <html lang="en">
@@ -106,15 +106,15 @@ export function apiDocsHtml(): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>API Reference</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
 </head>
 <body>
-  <div id="api-reference"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
   <script>
-    Scalar.createApiReference("#api-reference", {
+    SwaggerUIBundle({
       url: "/openapi.json",
-      orderSchemaPropertiesBy: "preserve",
-      orderRequiredPropertiesFirst: false,
+      dom_id: "#swagger-ui",
     });
   </script>
 </body>

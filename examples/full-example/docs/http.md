@@ -19,7 +19,7 @@ Bind is localhost-only in v0 — use a reverse proxy for remote access.
 | `GET` | `/health` or `/health/live` | Liveness check |
 | `GET` | `/health/ready` | Readiness (config + `program.readiness`) |
 | `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |
-| `GET` | `/openapi-browser` | Interactive Scalar API reference |
+| `GET` | `/swagger` | Interactive Swagger UI API reference |
 | `*` | `/api/...` | Invoke user commands (method per route) |
 | `OPTIONS` | `*` | CORS preflight |
 
@@ -61,7 +61,7 @@ Errors use `{ "error": "..." }` with `400`, `404`, `503`, or `500`.
 
 POST/PUT/PATCH bodies are a flat JSON object keyed by long option and positional names (hyphenated option names are valid keys).
 
-For HTTP clients, use **`GET /openapi.json`** (or **`GET /openapi-browser`**) for per-route request shapes.
+For HTTP clients, use **`GET /openapi.json`** (or **`GET /swagger`**) for per-route request shapes.
 
 Varargs positionals accept a JSON array of strings (not a comma-separated string).
 Options with `format: comma-list` accept a comma-separated string or JSON array.
@@ -73,7 +73,7 @@ Shell invocation reference: `full-example docs cli`. Full CLI tree JSON: `full-e
 
 The HTTP API is described in OpenAPI 3.1.
 
-- **Browse** — [http://127.0.0.1:3000/openapi-browser](http://127.0.0.1:3000/openapi-browser) (Scalar UI; loads `/openapi.json`)
+- **Browse** — [http://127.0.0.1:3000/swagger](http://127.0.0.1:3000/swagger) (Swagger UI; loads `/openapi.json`)
 - **Fetch** — `curl -s http://127.0.0.1:3000/openapi.json`
 - **Save offline** — `full-example docs openapi --save` → `./docs/openapi.json` (or `just docgen` in app repos)
 
