@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.3] - 2026-07-24
+
+### Added
+
+- **HTTP REST API** — nested `/api/...` routes from the command tree; `:param` routers; query/body binding; verb inference (`get`/`post`/…); default success statuses (POST **201**, DELETE **204**).
+- **Per-surface exposure** — `cli`, `http`, and `mcpTool` blocks replace global `hidden` (`enabled` / `hidden` per surface; `cli.enabled` cascades).
+- **Invoke hooks and error pipeline** — `program.hooks` (`beforeInvoke`, `afterInvoke`, `formatError`, `onError`), `failureKind` on `CliInvokeResult`, and HTTP/MCP status mapping (`validation`/`help` → 400, `unexpected` → 500, `missing_config`/`not_ready` → 503).
+- **Server runtime and observability** — `ServerRuntime`, ECS logging (`program.log`), `serveHttp(overrides?)` / `serveMcp(overrides?)`, `GET /health/live` and `GET /health/ready`, soft config validation at server start, HTTP/MCP wire hooks, CLI flags on `http` / `mcp serve`.
+- **`pathParams`** on parse results and `ctx.inputs`; `:param` shell completion fallback.
+- **Schema export** — `outputContentType` on leaves without `outputSchema`; program `errorSchema` from server error config.
+- **Export subpaths** — `argsbarg/cli`, `argsbarg/http`, `argsbarg/mcp`, `argsbarg/headless` (root barrel unchanged). See [docs/developing.md](docs/developing.md#advanced-imports).
+- **`docs/json-schema-subset.md`** — documents the custom JSON Schema validator used for `appConfig` and `inputSchema`.
+- **`src/help.test.ts`** — label unit tests and help render regressions (migrated from `parse.test.ts`).
+- **Compact skill `reference.md`** — `generateCliGuideBody({ compact: true })` omits inline `outputSchema` JSON; pointers to `docs cli-schema` / OpenAPI.
+- **`examples/full-example` `render-json` command** — `kind: "json"` leaf with schemagen `inputSchema`, `ctx.inputsAs`, and HTTP invoke test.
+- **`examples/full-example` `workspaces` command** — REST CRUD demo with `:id` router, hooks, readiness, layered in-memory SQLite (`db/`, `store/workspaces`), and versioned migrations.
+- **`scripts/merge-code-rule.ts`** — merge full-example `code.mdc` into consumer repos (preserves app convention footer).
+- **`just consumers-schemagen`** — run schemagen across local `consumer_apps` paths.
+
+### Changed
+
+- **Breaking: `@sg` schemagen** — role exports (`configType` / `inputType` / `outputType`) removed. Mark types with `/** @sg */` immediately above `export interface` / `export type`; import `{TypeName}Schema` from colocated `__generated__/`.
+- **Breaking: `McpToolDef.apiName` / `apiToolName()` removed** — HTTP uses REST `/api/...` routes only.
+- **Breaking: `loadLeafInputs` and `CliHttpResponseConfig` unexported** from the root barrel (use `ctx.inputs` / `ctx.inputsAs`; leaf `http.successContentType`).
+- **Framework-owned `ctx.locals.requestId`** — seeded before `beforeInvoke` on every invocation (wire HTTP/MCP id when present, else `randomUUID()`).
+- **`examples/full-example` simplified** — no default `appConfig`; commands use `@sg` named schemas; minimal `program.ts`.
+- **Internal refactor** — needless single-use extractions inlined across `src/` per `.cursor/rules/code.mdc`.
+- **Internal: `src/` layout** — `src/core/`, `src/runtime/`, `src/headless/routing.ts`, shared/integration tests → `src/test/`; cross-module imports use `~/` (`tsconfig` `paths`). Public exports unchanged.
+- **Internal: import paths** — directory barrels omit `/index.ts` (`~/configure`, `./__generated__`, `~/index` for the package root).
+- **Breaking: removed `POST /tools/*`** — use `/api/*` REST routes; OpenAPI paths updated.
+- **Breaking: `leaf.apiResponse` removed** — use `http.successContentType` / `http.contentDisposition`.
+- **Breaking: global `hidden` removed** — use per-surface `cli.hidden`, `http.hidden`, `mcpTool.hidden`.
+- **Breaking: HTTP rename (`api` → `http`)** — `apiServer` → `httpServer`, `Cli.serveApi()` → `serveHttp()`, builtin `myapp api` → `myapp http`, `ctx.invocation: "http"`, `capabilities.http`, `src/api/` → `src/http/`, reserved command `http`. OpenAPI generator names unchanged (`generateOpenApi`).
+- **Breaking: docs topic `api` → `cli`** — `docs api` → `docs cli`, saved `docs/cli.md`, `src/docs/cli-guide.ts`. Reserved docs topic key `cli`.
+- **Breaking: removed deprecated input reads** — `readLeafInputs`, `readLeafInputsAsync`, `ctx.readLeafInputs()`, `ctx.readLeafInputsAsync()`. Use `ctx.inputs` / `ctx.inputsAs<T>()`.
+- **Breaking: removed `mcpTool.outputSchema`** — use leaf `outputSchema` only.
+- **Breaking: `src/install/` → `src/configure/artifacts/`** — configure artifact modules colocated under configure; deprecated install stubs removed.
+- **`docs` built-in default-on** — built-in subcommands (`cli-schema`, `cli`, `skill`, conditional `mcp`/`http`/`openapi`) work with no `docs` config block.
+- **`docs.topics` optional** — add `topics` only when bundling consumer markdown.
+- **Experimental callouts** — blockquotes in `docs/mcp.md`, `docs/ai-skills.md`, `docs/configure.md`; `@experimental` JSDoc on MCP/configure bundle types.
+
+### Removed
+
+- **Breaking: bare `myapp docs` auto-print** — shows router help; `defaultTopic` removed.
+- **Breaking: user `docs` command** — reserved by default; opt out with `docs: { enabled: false }`.
+
+### Migration (6.1.2)
+
+| Before | After |
+| --- | --- |
+| `POST /tools/:name` | `/api/...` REST (see `openapi.json`) |
+| `hidden: true` on node | `cli.hidden`, `http.hidden`, or `mcpTool.hidden` |
+| `apiResponse.contentType` | `http.successContentType` |
+| `apiServer` | `httpServer` |
+| `myapp api` | `myapp http` |
+| `invocation: "api"` | `invocation: "http"` |
+| `docs api` / `docs/api.md` | `docs cli` / `docs/cli.md` |
+| `ctx.readLeafInputs()` | `ctx.inputs` or `ctx.inputsAs<T>()` |
+| `mcpTool.outputSchema` | `outputSchema` on the leaf |
+| `from "argsbarg/install/..."` | `from "argsbarg/configure/artifacts/..."` (internal) |
+
+Regenerate saved docs (`just docgen`) and run `argsbarg schemagen` after upgrading.
+
 ## [6.1.2] - 2026-07-23
 
 ### Added
@@ -770,7 +833,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.3...HEAD
+[6.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.3
 [6.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.2
 [6.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.1
 [6.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.0

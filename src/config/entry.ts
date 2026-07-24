@@ -2,7 +2,7 @@
 Shared helpers for program.appConfig schema entries.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../types.ts";
+import type { CliAppConfigEntry, CliProgram } from "~/core/types.ts";
 
 /** Default title when `CliAppConfigEntry.title` is omitted. */
 export function defaultConfigEntryTitle(key: string): string {

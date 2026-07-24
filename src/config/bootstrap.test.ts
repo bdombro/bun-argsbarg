@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CliAppConfigEntry } from "../types.ts";
+import type { CliAppConfigEntry } from "~/core/types.ts";
 import { shouldWizardPromptConfigKey } from "./bootstrap.ts";
 
 const requiredEntry: CliAppConfigEntry = {

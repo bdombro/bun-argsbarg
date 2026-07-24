@@ -1,6 +1,6 @@
 /** Interactive prompts for `argsbarg create`. */
 
-import { readPromptLine as readStdinLine } from "../prompt.ts";
+import { readPromptLine as readStdinLine } from "~/prompt.ts";
 
 export function readPromptLine(prompt: string): string {
   process.stderr.write(prompt);

@@ -1,5 +1,7 @@
 # MCP server
 
+> This feature is experimental.
+
 ArgsBarg can expose your CLI to AI agents through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Each **leaf command** becomes an MCP tool; the full command tree is available as a schema resource. The server speaks JSON-RPC over stdio — one JSON object per line on stdin and stdout.
 
 MCP is **opt-in**. Apps that do not set `mcpServer` on the program root behave exactly as before.
@@ -246,7 +248,7 @@ The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nest
 
 ### Auto docs topic resources
 
-When both **`docs.enabled`** and **`mcpServer.enabled`** are true, each user key in **`docs.topics`** is also exposed as an MCP resource:
+When docs is enabled (default) and **`mcpServer.enabled`** is true, each user key in **`docs.topics`** is also exposed as an MCP resource:
 
 | Property | Value |
 | --- | --- |
@@ -419,7 +421,7 @@ Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` 
 
 ## Hidden commands and options
 
-Set **`hidden: true`** on a command or option to omit it from help listings, `docs cli-schema` / `docs api`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
+Set **`hidden: true`** on a command or option to omit it from help listings, `docs cli-schema` / `docs cli`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
 
 ## Reserved names
 

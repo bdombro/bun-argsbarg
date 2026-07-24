@@ -2,8 +2,8 @@
 Auto MCP resources for user docs.topics when docs and MCP are both enabled.
 */
 
-import type { CliProgram } from "../types.ts";
-import { docsEnabled, docsTopicDescription, docsTopicText, docsUserTopicKeys } from "./resolve.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { docsEnabled, docsTopicDescription, docsTopicText, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 
 /** Default URI pattern for a docs topic MCP resource (`<mcpId>://docs/<topicKey>`). */
 export function defaultDocsTopicResourceUri(mcpId: string, topicKey: string): string {
@@ -31,12 +31,10 @@ export function docsMcpResources(program: CliProgram): {
   if (!docsEnabled(program) || program.mcpServer?.enabled !== true) {
     return [];
   }
-  const docs = program.docs;
-  if (!docs) {
-    return [];
-  }
+  const docs = resolveDocsConfig(program);
+  const topics = docs.topics ?? {};
   return docsUserTopicKeys(docs).map((key) => {
-    const topic = docs.topics[key];
+    const topic = topics[key];
     if (!topic) {
       throw new Error(`docs topic missing: ${key}`);
     }
@@ -58,9 +56,6 @@ export function reservedDocsTopicResourceUris(program: CliProgram): string[] {
   if (!docsEnabled(program) || program.mcpServer?.enabled !== true) {
     return [];
   }
-  const docs = program.docs;
-  if (!docs) {
-    return [];
-  }
+  const docs = resolveDocsConfig(program);
   return docsUserTopicKeys(docs).map((key) => resolveDocsTopicResourceUri(program, key));
 }

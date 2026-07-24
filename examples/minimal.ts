@@ -8,18 +8,12 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliOptionKind, type CliProgram } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram } from "../src/index";
 
 const program = {
   key: "minimal.ts",
   version: pkg.version,
   description: "Tiny demo.",
-  docs: {
-    enabled: true,
-    topics: {
-      readme: { text: "# minimal.ts\n\nTiny demo.\n" },
-    },
-  },
   positionals: [
     {
       name: "name",

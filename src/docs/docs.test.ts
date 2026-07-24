@@ -6,14 +6,15 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { completionBashScript } from "../builtins/index.ts";
-import { cliPresentationRoot } from "../builtins/presentation.ts";
-import { resolveCapabilities, skipsRequiredAppConfigExit } from "../capabilities.ts";
-import { Cli } from "../index.ts";
-import type { CliProgram } from "../types.ts";
-import { cliValidateProgram } from "../validate.ts";
+import { completionBashScript } from "~/builtins";
+import { cliPresentationRoot } from "~/builtins/presentation.ts";
+import { ParseKind, parse } from "~/core/parse.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { cliValidateProgram } from "~/core/validate.ts";
+import { cliHelpRender } from "~/help.ts";
+import { Cli } from "~/index";
+import { resolveCapabilities, skipsRequiredAppConfigExit } from "~/runtime/capabilities.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
-import { docsEffectiveDefaultTopic } from "./resolve.ts";
 import { saveDocsTopic } from "./save.ts";
 
 let workDir: string;
@@ -37,7 +38,6 @@ function docsFixture(mcp = true): CliProgram {
     description: "Demo app.",
     mcpServer: mcp ? { enabled: true } : undefined,
     docs: {
-      enabled: true,
       topics: {
         readme: { text: "# Hello README\n" },
         arch: { text: "# Architecture\n", description: "Contributor notes." },
@@ -72,16 +72,16 @@ test("docs reserved when enabled", () => {
 test("docs rejects reserved topic keys", () => {
   const root = docsFixture();
   const docs = root.docs;
-  if (!docs) throw new Error("expected docs fixture");
+  if (!docs?.topics) throw new Error("expected docs fixture");
   docs.topics["cli-schema"] = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
   delete docs.topics["cli-schema"];
   docs.topics.skill = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
   delete docs.topics.skill;
-  docs.topics.api = { text: "nope" };
+  docs.topics.cli = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
-  delete docs.topics.api;
+  delete docs.topics.cli;
   docs.topics.openapi = { text: "nope" };
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
   delete docs.topics.openapi;
@@ -89,14 +89,57 @@ test("docs rejects reserved topic keys", () => {
   expect(() => cliValidateProgram(root)).toThrow(/reserved/);
 });
 
-test("docsEffectiveDefaultTopic uses first topic key", () => {
-  expect(docsEffectiveDefaultTopic(docsFixture().docs!)).toBe("readme");
+test("docs enabled by default without docs block", () => {
+  const root: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo.",
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  };
+  expect(resolveCapabilities(root).docs).toBe(true);
+  cliValidateProgram(root);
 });
 
-test("bare docs prints first topic via Cli.invoke", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs"]);
-  expect(result.exitCode).toBe(0);
-  expect(result.stdout).toContain("Hello README");
+test("docs opt-out allows user command named docs", () => {
+  const root: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo.",
+    docs: { enabled: false },
+    commands: [
+      {
+        key: "docs",
+        description: "Custom docs.",
+        handler: () => {},
+      },
+    ],
+  };
+  expect(resolveCapabilities(root).docs).toBe(false);
+  cliValidateProgram(root);
+});
+
+test("built-in docs work without topics", async () => {
+  const root: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo.",
+    commands: [{ key: "run", description: "Run.", handler: () => {} }],
+  };
+  const cliRef = await new Cli(root).invoke(["docs", "cli"]);
+  expect(cliRef.exitCode).toBe(0);
+  expect(cliRef.stdout).toContain("CLI API reference");
+  const skill = await new Cli(root).invoke(["docs", "skill"]);
+  expect(skill.exitCode).toBe(0);
+  expect(skill.stdout).toContain("name: myapp");
+});
+
+test("bare docs shows router help", () => {
+  const root = cliPresentationRoot(docsFixture());
+  const pr = parse(root, ["docs"]);
+  expect(pr.kind).toBe(ParseKind.Help);
+  const help = cliHelpRender(root, pr.helpPath, false);
+  expect(help).toContain("cli");
+  expect(help).not.toContain("Hello README");
 });
 
 test("docs readme prints bundled text", async () => {
@@ -104,14 +147,6 @@ test("docs readme prints bundled text", async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Hello README");
 });
-
-test("docs defaultTopic override", async () => {
-  const root = docsFixture();
-  root.docs!.defaultTopic = "arch";
-  const result = await new Cli(root).invoke(["docs"]);
-  expect(result.stdout).toContain("Architecture");
-});
-
 test("docs mcp when MCP enabled", async () => {
   const result = await new Cli(docsFixture(true)).invoke(["docs", "mcp"]);
   expect(result.exitCode).toBe(0);
@@ -140,7 +175,7 @@ test("docs mcp absent from router when MCP disabled", async () => {
 
 test("docs http when API enabled", async () => {
   const root = docsFixture(true);
-  root.apiServer = { enabled: true };
+  root.httpServer = { enabled: true };
   cliValidateProgram(root);
   const result = await new Cli(root).invoke(["docs", "http"]);
   expect(result.exitCode).toBe(0);
@@ -163,7 +198,7 @@ test("docs http absent from router when API disabled", async () => {
 
 test("docs openapi when API enabled", async () => {
   const root = docsFixture(true);
-  root.apiServer = { enabled: true };
+  root.httpServer = { enabled: true };
   cliValidateProgram(root);
   const result = await new Cli(root).invoke(["docs", "openapi"]);
   expect(result.exitCode).toBe(0);
@@ -193,8 +228,8 @@ test("docs cli-schema prints JSON", async () => {
   expect(schema.commands.some((c: { key: string }) => c.key === "run")).toBe(true);
 });
 
-test("docs api prints markdown reference", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "api"]);
+test("docs cli prints markdown reference", async () => {
+  const result = await new Cli(docsFixture()).invoke(["docs", "cli"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("# myapp — CLI API reference");
   expect(result.stdout).toContain("## `myapp run`");
@@ -210,7 +245,7 @@ test("skipsRequiredAppConfigExit includes docs and config builtins", () => {
     },
   };
   const caps = resolveCapabilities(program);
-  expect(skipsRequiredAppConfigExit(["docs", "api"], caps)).toBe(true);
+  expect(skipsRequiredAppConfigExit(["docs", "cli"], caps)).toBe(true);
   expect(skipsRequiredAppConfigExit(["configure", "get"], caps)).toBe(true);
   expect(skipsRequiredAppConfigExit(["run"], caps)).toBe(false);
 });
@@ -247,7 +282,7 @@ test("presentation includes docs cli-schema and skill", () => {
   expect(docsNode && "commands" in docsNode).toBe(true);
   if (docsNode && "commands" in docsNode) {
     expect(docsNode.commands.some((c) => c.key === "cli-schema")).toBe(true);
-    expect(docsNode.commands.some((c) => c.key === "api")).toBe(true);
+    expect(docsNode.commands.some((c) => c.key === "cli")).toBe(true);
     expect(docsNode.commands.some((c) => c.key === "skill")).toBe(true);
   }
 });
@@ -257,7 +292,7 @@ test("completions offer docs subcommands", () => {
   expect(bash).toContain("docs) echo");
   expect(bash).toContain("readme) echo");
   expect(bash).toContain("cli-schema) echo");
-  expect(bash).toContain("api) echo");
+  expect(bash).toContain("cli) echo");
   expect(bash).toContain("skill) echo");
 });
 
@@ -283,11 +318,11 @@ test("docs --save writes topic file", async () => {
   expect(text).not.toContain("Generated by");
 });
 
-test("docs api --save prepends generated hint", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "api", "--save"]);
+test("docs cli --save prepends generated hint", async () => {
+  const result = await new Cli(docsFixture()).invoke(["docs", "cli", "--save"]);
   expect(result.exitCode).toBe(0);
-  const text = readFileSync(join(workDir, "docs/api.md"), "utf8");
-  expect(text.startsWith("<!-- Generated by myapp docs api --save; do not edit. -->\n\n")).toBe(true);
+  const text = readFileSync(join(workDir, "docs/cli.md"), "utf8");
+  expect(text.startsWith("<!-- Generated by myapp docs cli --save; do not edit. -->\n\n")).toBe(true);
   expect(text).toContain("CLI API reference");
 });
 
@@ -313,7 +348,7 @@ test("docs cli-schema --save writes JSON file", async () => {
 
 test("docs openapi --save writes JSON file", async () => {
   const root = docsFixture(true);
-  root.apiServer = { enabled: true };
+  root.httpServer = { enabled: true };
   const result = await new Cli(root).invoke(["docs", "openapi", "--save"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout.trim()).toBe("docs/openapi.json");
@@ -324,9 +359,9 @@ test("docs openapi --save writes JSON file", async () => {
 });
 
 test("saveDocsTopic returns relative path", () => {
-  const path = saveDocsTopic(docsFixture(), "api");
-  expect(path).toBe("docs/api.md");
-  const text = readFileSync(join(workDir, "docs/api.md"), "utf8");
-  expect(text).toContain("<!-- Generated by myapp docs api --save; do not edit. -->");
+  const path = saveDocsTopic(docsFixture(), "cli");
+  expect(path).toBe("docs/cli.md");
+  const text = readFileSync(join(workDir, "docs/cli.md"), "utf8");
+  expect(text).toContain("<!-- Generated by myapp docs cli --save; do not edit. -->");
   expect(text).toContain("CLI API reference");
 });

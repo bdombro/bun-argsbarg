@@ -1,15 +1,15 @@
-import { resolveApiListenAddress } from "../api/server.ts";
-import { defaultConfigEntryTitle } from "../config/entry.ts";
-import { displayAppConfigPath } from "../config/file.ts";
-import { collectMcpTools, type McpToolDef } from "../mcp/tools.ts";
-import { collectOptionDefs } from "../parse.ts";
-import { CliOptionKind, type CliProgram } from "../types.ts";
+import { defaultConfigEntryTitle } from "~/config/entry.ts";
+import { displayAppConfigPath } from "~/config/file.ts";
+import { collectOptionDefs } from "~/core/parse.ts";
+import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { collectHttpRoutes } from "~/http/routes.ts";
+import { resolveHttpListenAddress } from "~/http/server.ts";
 
-/** Formats one exposed tool for the auto-generated HTTP guide. */
-function formatToolLine(root: CliProgram, tool: McpToolDef): string {
-  const cliPath = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
-  let line = `- \`${tool.apiName}\` (MCP: \`${tool.name}\`, CLI: \`${cliPath}\`) — ${tool.description}`;
-  const opts = collectOptionDefs(root, tool.path);
+/** Formats one HTTP route for the auto-generated HTTP guide. */
+function formatRouteLine(root: CliProgram, route: ReturnType<typeof collectHttpRoutes>[number]): string {
+  const cliPath = route.commandPath.join(" ");
+  let line = `- \`${route.method} ${route.openApiPath}\` (CLI: \`${root.key} ${cliPath}\`) — ${route.leaf.description}`;
+  const opts = collectOptionDefs(root, route.commandPath);
   const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;
@@ -19,27 +19,27 @@ function formatToolLine(root: CliProgram, tool: McpToolDef): string {
 
 /** Generates the auto `docs http` markdown guide from schema and API config. */
 export function generateHttpGuide(root: CliProgram): string {
-  const api = root.apiServer;
+  const api = root.httpServer;
   if (!api) {
     throw new Error("HTTP API server not enabled");
   }
 
-  const tools = collectMcpTools(root);
-  const { hostname, port } = resolveApiListenAddress(root);
+  const routes = collectHttpRoutes(root);
+  const { hostname, port } = resolveHttpListenAddress(root);
   const baseUrl = `http://${hostname}:${port}`;
 
   const lines: string[] = [
     `# HTTP API (${root.key})`,
     "",
-    `${root.key} exposes the same callable tools over HTTP as MCP.`,
+    `${root.key} exposes user commands over HTTP REST routes derived from the CLI tree.`,
     "",
     "## Running",
     "",
     "```bash",
-    `${root.key} api`,
+    `${root.key} http`,
     "```",
     "",
-    `Listens on **${baseUrl}** by default (\`apiServer.host\` / \`apiServer.port\`).`,
+    `Listens on **${baseUrl}** by default (\`httpServer.host\` / \`httpServer.port\`).`,
     "",
     "Bind is localhost-only in v0 — use a reverse proxy for remote access.",
     "",
@@ -47,27 +47,30 @@ export function generateHttpGuide(root: CliProgram): string {
     "",
     "| Method | Path | Purpose |",
     "| --- | --- | --- |",
-    "| `GET` | `/health` | Liveness check |",
-    "| `GET` | `/openapi.json` | OpenAPI 3.1 document (tool paths and request shapes) |",
+    "| `GET` | `/health` or `/health/live` | Liveness check |",
+    "| `GET` | `/health/ready` | Readiness (config + `program.readiness`) |",
+    "| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |",
     "| `GET` | `/openapi-browser` | Interactive Scalar API reference |",
-    "| `POST` | `/tools/:name` | Invoke with flat JSON args object in the body |",
+    "| `*` | `/api/...` | Invoke user commands (method per route) |",
     "| `OPTIONS` | `*` | CORS preflight |",
     "",
-    "Replace `{tool-key}` below with a path segment from `openapi.json` (`paths` keys are `/tools/{tool-key}`). Match body keys to that tool's `requestBody` schema in the spec.",
+    "Discover paths from `openapi.json` (`/api/...`). Query binds options; POST/PUT/PATCH body binds options and `inputSchema` fields.",
     "",
     "## Examples",
     "",
     "```bash",
     `curl -s ${baseUrl}/health`,
+    `curl -s ${baseUrl}/health/ready`,
     `curl -s ${baseUrl}/openapi.json`,
-    `curl -s -X POST ${baseUrl}/tools/{tool-key} \\`,
+    `curl -s ${baseUrl}/api/workspaces`,
+    `curl -s -X POST ${baseUrl}/api/workspaces \\`,
     '  -H "content-type: application/json" \\',
-    "  -d '{...}'",
+    `  -d '{"name":"qa2"}'`,
     "```",
     "",
     "## Responses",
     "",
-    "Success (`200`): raw response body (JSON object, string, or binary). No `{ ok, stdout }` envelope.",
+    "Success: status from handler → `http.successStatus` → method default (GET 200, POST 201, DELETE 204).",
     "",
     "Handlers must use `ctx.respond()` or return a value for API/MCP tool calls.",
     "",
@@ -92,29 +95,29 @@ export function generateHttpGuide(root: CliProgram): string {
     lines.push("");
   }
 
-  lines.push("## Exposed tools", "");
+  lines.push("## REST routes", "");
 
-  if (tools.length === 0) {
-    lines.push("(No tools exposed.)", "");
+  if (routes.length === 0) {
+    lines.push("(No routes exposed.)", "");
   } else {
-    for (const tool of tools) {
-      lines.push(formatToolLine(root, tool));
+    for (const route of routes) {
+      lines.push(formatRouteLine(root, route));
     }
     lines.push("");
   }
 
   lines.push(
-    "## Tool arguments",
+    "## Request bodies",
     "",
-    "POST bodies are a flat JSON object keyed by long option and positional names (hyphenated option names are valid keys).",
+    "POST/PUT/PATCH bodies are a flat JSON object keyed by long option and positional names (hyphenated option names are valid keys).",
     "",
-    `For HTTP clients, use **\`GET /openapi.json\`** (or **\`GET /openapi-browser\`**) for per-tool request shapes — each \`POST /tools/{name}\` path has a \`requestBody\` schema.`,
+    `For HTTP clients, use **\`GET /openapi.json\`** (or **\`GET /openapi-browser\`**) for per-route request shapes.`,
     "",
     "Varargs positionals accept a JSON array of strings (not a comma-separated string).",
     "Options with `format: comma-list` accept a comma-separated string or JSON array.",
     "Options with a schema `default` are applied when omitted.",
     "",
-    `Shell invocation reference: \`${root.key} docs api\`. Full CLI tree JSON: \`${root.key} docs cli-schema\`.`,
+    `Shell invocation reference: \`${root.key} docs cli\`. Full CLI tree JSON: \`${root.key} docs cli-schema\`.`,
     "",
     "## OpenAPI",
     "",
@@ -124,7 +127,7 @@ export function generateHttpGuide(root: CliProgram): string {
     `- **Fetch** — \`curl -s ${baseUrl}/openapi.json\``,
     `- **Save offline** — \`${root.key} docs openapi --save\` → \`./docs/openapi.json\` (or \`just docgen\` in app repos)`,
     "",
-    "Use the spec to discover tool names (`paths`) and request/response shapes before calling `POST /tools/:name`.",
+    "Use the spec to discover REST paths and request/response shapes before calling `/api/...`.",
     "",
   );
 

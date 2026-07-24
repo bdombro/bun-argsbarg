@@ -5,8 +5,8 @@ Tests for cli-tool/full-example-capabilities module behavior.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveCapabilities } from "../capabilities.ts";
-import { CliOptionKind, type CliProgram } from "../types.ts";
+import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
 
 const exampleRoot = join(import.meta.dir, "../../examples/full-example");
 const programSource = readFileSync(join(exampleRoot, "src/program.ts"), "utf8");
@@ -16,17 +16,11 @@ const sinkProgram = {
   key: "full-example",
   version: "1.0.0",
   description: "Full example reference.",
-  appConfig: {
-    entries: {
-      apiToken: { description: "Token.", env: "FULL_EXAMPLE_API_TOKEN" },
-    },
-  },
   docs: {
-    enabled: true,
     topics: { readme: { text: "# readme\n" } },
   },
   mcpServer: { enabled: true },
-  apiServer: { enabled: true },
+  httpServer: { enabled: true },
   configure: {},
   commands: [
     {
@@ -55,26 +49,27 @@ describe("full-example template", () => {
   /** Tests that program source enables every builtin flag. */
   test("program source enables every builtin flag", () => {
     expect(programSource).toContain("mcpServer: {");
-    expect(programSource).toContain("apiServer: {");
-    expect(programSource).toContain("enabled: true");
+    expect(programSource).toContain("httpServer: {");
     expect(programSource).toContain("docs:");
-    expect(programSource).toContain("appConfig:");
+    expect(programSource).not.toMatch(/docs:\s*\{[^}]*enabled:\s*true/s);
+    expect(programSource).not.toContain("appConfig:");
   });
 
   test("status command defines outputSchema", () => {
     const statusSource = readFileSync(join(exampleRoot, "src/commands/status/command.ts"), "utf8");
     expect(statusSource).toMatch(/outputSchema[,:]/);
-    expect(statusSource).toContain('from "./__generated__/index.ts"');
+    expect(statusSource).toContain("StatusJsonOutputSchema");
+    expect(statusSource).toContain('from "./__generated__"');
   });
 
   test("resolveCapabilities matches full sink shape", () => {
     expect(resolveCapabilities(sinkProgram)).toEqual({
-      api: true,
+      http: true,
       completion: true,
       mcp: true,
       configure: true,
       docs: true,
-      configCommands: true,
+      configCommands: false,
     });
   });
 });

@@ -1,0 +1,232 @@
+/*
+Tests for hidden-mcpb module behavior.
+*/
+
+import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { exportPresentationBuiltins } from "~/builtins/export.ts";
+import { cliParseRoot, cliPresentationRoot } from "~/builtins/presentation.ts";
+import { cliSchemaExport } from "~/core/schema.ts";
+import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { cliHelpRender } from "~/help.ts";
+import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle, runMcpBundle } from "./bundle.ts";
+import { collectMcpTools } from "./tools.ts";
+
+const hiddenFixture: CliProgram = {
+  key: "myapp",
+  version: "1.0.0",
+  description: "Hidden demo.",
+  mcpServer: { enabled: true, mcpd: true, claudePlugin: true },
+  commands: [
+    {
+      key: "public",
+      description: "Visible command.",
+      handler: () => {},
+    },
+    {
+      key: "secret",
+      cli: { hidden: true },
+      mcpTool: { hidden: true },
+      description: "Hidden command.",
+      handler: () => {},
+    },
+    {
+      key: "flags",
+      description: "Command with hidden option.",
+      options: [
+        {
+          name: "visible",
+          description: "Shown in help.",
+          kind: CliOptionKind.Presence,
+        },
+        {
+          name: "secret-flag",
+          cli: { hidden: true },
+          description: "Hidden option.",
+          kind: CliOptionKind.Presence,
+        },
+      ],
+      handler: () => {},
+    },
+  ],
+};
+
+/** Tests for hidden commands and options. */
+describe("hidden commands and options", () => {
+  test("parse root includes hidden commands", () => {
+    const parse = cliParseRoot(hiddenFixture);
+    expect(parse.commands?.map((c) => c.key)).toContain("secret");
+  });
+
+  test("presentation root omits hidden commands", () => {
+    const presentation = cliPresentationRoot(hiddenFixture);
+    const keys = presentation.commands?.map((c) => c.key) ?? [];
+    expect(keys).toContain("public");
+    expect(keys).not.toContain("secret");
+  });
+
+  test("root help omits hidden commands", () => {
+    const help = cliHelpRender(cliParseRoot(hiddenFixture), [], false);
+    expect(help).toContain("public");
+    expect(help).not.toContain("secret");
+  });
+
+  test("hidden command -h still works", () => {
+    const help = cliHelpRender(cliParseRoot(hiddenFixture), ["secret"], false);
+    expect(help).toContain("Hidden command.");
+  });
+
+  test("help omits hidden options", () => {
+    const help = cliHelpRender(cliParseRoot(hiddenFixture), ["flags"], false);
+    expect(help).toContain("--visible");
+    expect(help).not.toContain("secret-flag");
+  });
+
+  test("schema export omits hidden nodes and options", () => {
+    const schema = cliSchemaExport(hiddenFixture);
+    const keys = schema.commands?.map((c) => c.key) ?? [];
+    expect(keys).toContain("public");
+    expect(keys).not.toContain("secret");
+    const flags = schema.commands?.find((c) => c.key === "flags");
+    expect(flags?.options?.map((o) => o.name)).toEqual(["visible"]);
+  });
+
+  test("MCP tools omit hidden commands", () => {
+    const tools = collectMcpTools(hiddenFixture);
+    expect(tools.map((t) => t.name)).toEqual(["public", "flags"]);
+  });
+});
+
+/** Tests for mcp router. */
+describe("mcp router", () => {
+  test("presentation exposes mcp bundle but not hidden serve", () => {
+    const builtins = exportPresentationBuiltins(hiddenFixture);
+    const mcp = builtins.find((b) => b.key === "mcp");
+    expect(mcp).toBeDefined();
+    expect(mcp?.commands?.map((c) => c.key)).toEqual(["bundle"]);
+    expect(mcp?.fallbackCommand).toBe("serve");
+  });
+
+  test("mcp help lists bundle", () => {
+    const help = cliHelpRender(cliParseRoot(hiddenFixture), ["mcp"], false);
+    expect(help).toContain("bundle");
+    expect(help).not.toMatch(/│ serve\s/);
+  });
+});
+
+/** Tests for mcp bundle. */
+describe("mcp bundle", () => {
+  test("generateMcpManifest uses mcpServerId and binary entry", () => {
+    const manifest = generateMcpManifest(hiddenFixture, "myapp");
+    expect(manifest.name).toBe("myapp");
+    expect(manifest.manifest_version).toBe("0.3");
+    expect((manifest.server as { type: string }).type).toBe("binary");
+    expect((manifest.server as { entry_point: string }).entry_point).toBe("myapp");
+    const mcpConfig = (manifest.server as { mcp_config: { command: string; args: string[] } }).mcp_config;
+    expect(mcpConfig.command).toBe("${__dirname}/myapp");
+    expect(mcpConfig.args).toEqual(["mcp"]);
+    expect((manifest.compatibility as { platforms: string[] }).platforms).toEqual(["darwin"]);
+  });
+
+  test("defaultMcpBundlePaths", () => {
+    const cwd = "/tmp/work";
+    const paths = defaultMcpBundlePaths(hiddenFixture, cwd);
+    expect(paths.binaryPath).toBe(join(cwd, "dist", "myapp"));
+    expect(paths.outPath).toBe(join(cwd, "dist", "myapp.mcpb"));
+  });
+
+  /** Tests that packMcpBundle writes zip with manifest and binary. */
+  test("packMcpBundle writes zip with manifest and binary", () => {
+    const work = mkdtempSync(join(tmpdir(), "mcpb-test-"));
+    try {
+      const dist = join(work, "dist");
+      mkdirSync(dist, { recursive: true });
+      const binaryPath = join(dist, "myapp");
+      writeFileSync(binaryPath, "#!/bin/sh\necho hi\n", { mode: 0o755 });
+
+      const outPath = packMcpBundle(hiddenFixture, { cwd: work });
+      expect(outPath).toBe(join(dist, "myapp.mcpb"));
+
+      const zip = readFileSync(outPath);
+      expect(zip.length).toBeGreaterThan(0);
+      expect(zip.indexOf(Buffer.from("manifest.json"))).toBeGreaterThanOrEqual(0);
+      expect(zip.indexOf(Buffer.from("myapp"))).toBeGreaterThanOrEqual(0);
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  /** RunMcpBundle prints mcpb and plugin paths. */
+  test("runMcpBundle prints mcpb and plugin paths", () => {
+    const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
+    const stdout: string[] = [];
+    const orig = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      const dist = join(work, "dist");
+      mkdirSync(dist, { recursive: true });
+      writeFileSync(join(dist, "myapp"), "#!/bin/sh\n", { mode: 0o755 });
+      const prevCwd = process.cwd();
+      process.chdir(work);
+      try {
+        runMcpBundle(hiddenFixture);
+      } finally {
+        process.chdir(prevCwd);
+      }
+      const lines = stdout.join("").trim().split("\n");
+      const norm = (p: string) => realpathSync.native(p);
+      expect(lines.map(norm)).toEqual([norm(join(dist, "myapp.mcpb")), norm(join(dist, "claude-plugin", "myapp.zip"))]);
+      const zip = readFileSync(join(dist, "claude-plugin", "myapp.zip"));
+      expect(zip.indexOf(Buffer.from(".mcp.json"))).toBeGreaterThanOrEqual(0);
+    } finally {
+      process.stdout.write = orig;
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  /** RunMcpBundle with claudePlugin only prints plugin path. */
+  test("runMcpBundle with claudePlugin only prints plugin path", () => {
+    const work = mkdtempSync(join(tmpdir(), "mcpb-run-"));
+    const stdout: string[] = [];
+    const orig = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+      return true;
+    }) as typeof process.stdout.write;
+    const fixture: CliProgram = {
+      ...hiddenFixture,
+      mcpServer: { enabled: true, claudePlugin: true },
+    };
+    try {
+      const dist = join(work, "dist");
+      mkdirSync(dist, { recursive: true });
+      writeFileSync(join(dist, "myapp"), "#!/bin/sh\n", { mode: 0o755 });
+      const prevCwd = process.cwd();
+      process.chdir(work);
+      try {
+        runMcpBundle(fixture);
+      } finally {
+        process.chdir(prevCwd);
+      }
+      const lines = stdout.join("").trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toContain("claude-plugin");
+    } finally {
+      process.stdout.write = orig;
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  test("runMcpBundle errors when no bundle flags enabled", () => {
+    const fixture: CliProgram = {
+      ...hiddenFixture,
+      mcpServer: { enabled: true },
+    };
+    expect(() => runMcpBundle(fixture)).toThrow(/mcpd/);
+  });
+});

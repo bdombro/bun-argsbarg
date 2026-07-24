@@ -1,14 +1,14 @@
 /*
-Status leaf — demonstrates outputSchema and ctx.appConfig.
+Status leaf — demonstrates outputSchema.
 */
 
 import { type CliLeaf, CliOptionKind } from "argsbarg";
-import { outputSchema } from "./__generated__/index.ts";
+import { StatusJsonOutputSchema } from "./__generated__";
 import type { StatusJsonOutput } from "./types.ts";
 
 export const statusCommand = {
   key: "status",
-  description: "Show resolved config and app version.",
+  description: "Show app version.",
   options: [
     {
       name: "json",
@@ -16,21 +16,13 @@ export const statusCommand = {
       kind: CliOptionKind.Presence,
     },
   ],
-  outputSchema,
+  outputSchema: StatusJsonOutputSchema,
   handler: (ctx) => {
-    const out: StatusJsonOutput = {
-      defaultRegion: ctx.appConfig.get("defaultRegion") as string | undefined,
-      maxRetries: ctx.appConfig.get("maxRetries") as number | undefined,
-      apiTokenSet: ctx.appConfig.get("apiToken") !== undefined,
-      version: ctx.program.version,
-    };
+    const out: StatusJsonOutput = { version: ctx.program.version };
     if (ctx.hasFlag("json")) {
       console.log(JSON.stringify(out, null, 2));
     } else {
       console.log(`version=${out.version}`);
-      console.log(`region=${out.defaultRegion ?? "(not set)"}`);
-      console.log(`maxRetries=${out.maxRetries ?? "(not set)"}`);
-      console.log(`apiToken=${out.apiTokenSet ? "set" : "missing"}`);
     }
   },
 } satisfies CliLeaf;

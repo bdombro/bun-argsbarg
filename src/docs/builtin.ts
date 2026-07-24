@@ -1,16 +1,8 @@
-import { docsSkillTopicDescription } from "../builtins/configure-copy.ts";
-import { resolveCapabilities } from "../capabilities.ts";
-import {
-  CliFallbackMode,
-  type CliLeaf,
-  type CliOption,
-  CliOptionKind,
-  type CliProgram,
-  type CliRouter,
-} from "../types.ts";
+import { docsSkillTopicDescription } from "~/builtins/configure-copy.ts";
+import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "~/core/types.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
-  docsEffectiveDefaultTopic,
   docsEnabled,
   docsIncludesHttpTopic,
   docsIncludesMcpTopic,
@@ -18,6 +10,7 @@ import {
   docsTopicDescription,
   docsUserTopicKeys,
   printDocsTopic,
+  resolveDocsConfig,
 } from "./resolve.ts";
 import { saveDocsTopic } from "./save.ts";
 
@@ -54,14 +47,12 @@ function docsRouterNotes(): string {
 
 /** Built-in `docs` router with bundled topic subcommands. */
 export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
-  const docs = program.docs;
-  if (!docs) {
-    throw new Error("docs not enabled");
-  }
+  const docs = resolveDocsConfig(program);
+  const topics = docs.topics ?? {};
   const leaves: CliLeaf[] = [];
 
   for (const key of docsUserTopicKeys(docs)) {
-    const topic = docs.topics[key];
+    const topic = topics[key];
     if (!topic) {
       throw new Error(`docs topic missing: ${key}`);
     }
@@ -82,7 +73,7 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
 
   leaves.push(
     docsLeaf(program, "cli-schema", "Print the full CLI command tree as JSON."),
-    docsLeaf(program, "api", "Print the full command reference as markdown."),
+    docsLeaf(program, "cli", "Print the full command reference as markdown."),
     docsLeaf(program, "skill", docsSkillTopicDescription(program, resolveCapabilities(program))),
   );
 
@@ -91,8 +82,6 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
     description: docs.description ?? DOCS_ROUTER_DESCRIPTION,
     notes: docsRouterNotes(),
     options: [DOCS_SAVE_OPTION],
-    fallbackCommand: docsEffectiveDefaultTopic(docs),
-    fallbackMode: CliFallbackMode.MissingOnly,
     commands: leaves,
   };
 }

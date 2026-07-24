@@ -1,4 +1,4 @@
-import { CliOptionKind, type CliRouter } from "../types.ts";
+import { CliOptionKind, type CliRouter } from "~/core/types.ts";
 import { collectScopes } from "./scopes.ts";
 import { escFishSingleQuoted, identToken } from "./shell-helpers.ts";
 

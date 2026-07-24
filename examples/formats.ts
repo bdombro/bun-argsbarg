@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /*
- * Value formats demo: duration, comma-list, date, default, and readLeafInputs().
+ * Value formats demo: duration, comma-list, date, default, and ctx.inputs.
  * Run: bun ./examples/formats.ts run --tags alpha,beta --on 2026-06-22
  * MCP: pass comma-list as string or array; varargs N/A on this leaf.
  */
@@ -12,19 +12,19 @@ import {
   CliOptionKind,
   type CliProgram,
   CliValueFormat,
-} from "../src/index.ts";
+} from "../src/index";
 
 const program = {
   key: "formats.ts",
   version: pkg.version,
-  description: "Value formats and readLeafInputs demo.",
+  description: "Value formats and ctx.inputs demo.",
   fallbackCommand: "run",
   fallbackMode: CliFallbackMode.MissingOnly,
   mcpServer: { enabled: true },
   commands: [
     {
       key: "run",
-      description: "Print coerced option values from readLeafInputs().",
+      description: "Print coerced option values from ctx.inputs.",
       options: [
         {
           name: "timeout",
@@ -53,9 +53,9 @@ const program = {
         },
       ],
       handler: (ctx) => {
-        const inputs = ctx.readLeafInputs();
+        const inputs = ctx.inputs;
         const out = {
-          readLeafInputs: inputs,
+          inputs,
           durationMs: ctx.durationOpt("timeout"),
           tags: ctx.commaListOpt("tags"),
           on: ctx.dateOpt("on"),

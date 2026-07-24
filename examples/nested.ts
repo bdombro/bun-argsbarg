@@ -8,7 +8,7 @@ It demonstrates how the schema scales beyond one command.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../src/index.ts";
+import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../src/index";
 
 const program = {
   key: "nested.ts",
@@ -16,7 +16,6 @@ const program = {
   description: "Nested groups demo.",
   mcpServer: { enabled: true },
   docs: {
-    enabled: true,
     topics: {
       readme: { text: "# nested.ts\n\nNested groups demo.\n" },
     },

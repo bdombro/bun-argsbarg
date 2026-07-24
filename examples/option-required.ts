@@ -8,7 +8,7 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliOptionKind, type CliProgram, isInteractiveTty } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram, isInteractiveTty } from "../src/index";
 
 const program = {
   key: "option-required.ts",

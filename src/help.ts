@@ -7,7 +7,6 @@ It keeps help formatting shared across help and error paths so users see one con
 style no matter how help is reached.
 */
 
-import { visibleOptions, visibleSubcommands } from "./hidden.ts";
 import {
   type CliNode,
   type CliOption,
@@ -17,7 +16,8 @@ import {
   isCliLeaf,
   isCliRouter,
   isJsonLeaf,
-} from "./types.ts";
+} from "./core/types.ts";
+import { visibleOptions, visibleSubcommands } from "./runtime/exposure.ts";
 
 // ── ANSI Style Helpers ────────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ export function cliOptionLabel(o: CliOption, color: boolean): string {
   return `${style.aquaBold(left)} ${style.greenBright(right)}`;
 }
 
-/** Placeholder in `notes` for the root program key (resolved in help, schema, and docs api). */
+/** Placeholder in `notes` for the root program key (resolved in help, schema, and docs cli). */
 export const CLI_NOTES_PROGRAM = "{argsbarg:program}";
 
 /** Replaces `{argsbarg:program}` in notes/help text with the program key. */

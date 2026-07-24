@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { userHome } from "../paths/host.ts";
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { userHome } from "~/paths/host.ts";
 import { generateSkillBundle, type SkillTarget } from "./generate.ts";
 import { applySkillInstallHints } from "./hint.ts";
 

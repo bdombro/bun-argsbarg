@@ -3,11 +3,8 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for Cli.invoke.
 */
 
-import { docsMcpResources } from "../docs/mcp-resources.ts";
-import { cliResolveNotes } from "../help.ts";
-import { visibleOptions } from "../hidden.ts";
-import { collectOptionDefs } from "../parse.ts";
-import { cliSchemaJson } from "../schema.ts";
+import { collectOptionDefs } from "~/core/parse.ts";
+import { cliSchemaJson } from "~/core/schema.ts";
 import {
   type CliLeaf,
   type CliNode,
@@ -19,7 +16,10 @@ import {
   isCliLeaf,
   isJsonLeaf,
   leafOutputSchema,
-} from "../types.ts";
+} from "~/core/types.ts";
+import { docsMcpResources } from "~/docs/mcp-resources.ts";
+import { cliResolveNotes } from "~/help.ts";
+import { isMcpHidden, visibleOptions } from "~/runtime/exposure.ts";
 
 const DURATION_PATTERN = "^\\d+[hdms]?$";
 
@@ -28,7 +28,7 @@ export function defaultMcpSchemaUri(mcpId: string): string {
   return `${mcpId}://schema`;
 }
 
-export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
+export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "~/docs/mcp-resources.ts";
 
 /** Sanitizes a command key segment for MCP tool names and server identity. */
 export function sanitizeToolSegment(key: string): string {
@@ -44,8 +44,6 @@ export function mcpServerId(root: CliProgram): string {
 export interface McpToolDef {
   /** MCP tool name (underscore-separated, sanitized segments). */
   name: string;
-  /** HTTP API tool name (hyphen-separated path; preserves command key spelling). */
-  apiName: string;
   /** Tool description from the leaf command. */
   description: string;
   /** Command path segments from the program root. */
@@ -70,14 +68,6 @@ export function mcpToolName(root: CliProgram, path: string[]): string {
     return sanitizeToolSegment(root.key);
   }
   return path.map(sanitizeToolSegment).join("_");
-}
-
-/** Builds the HTTP API tool name for a leaf at the given path (hyphen-joined, unsanitized). */
-export function apiToolName(root: CliProgram, path: string[]): string {
-  if (path.length === 0) {
-    return root.key;
-  }
-  return path.join("-");
 }
 
 /** JSON Schema property for one option. */
@@ -122,7 +112,7 @@ function optionProperty(opt: CliOption): Record<string, unknown> {
   }
 }
 
-function formatMcpOptionValue(opt: CliOption, val: unknown): string | { error: string } {
+export function formatMcpOptionValue(opt: CliOption, val: unknown): string | { error: string } {
   if (opt.format === CliValueFormat.CommaList) {
     if (Array.isArray(val)) {
       const items = val.map(String).filter(Boolean);
@@ -238,13 +228,12 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
       if (cmd.key === "completion" || cmd.key === "configure" || cmd.key === "mcp" || cmd.key === "version") {
         return;
       }
-      if (cmd.hidden || cmd.mcpTool?.enabled === false) {
+      if (isMcpHidden(cmd)) {
         return;
       }
       const outputSchema = leafOutputSchema(cmd);
       out.push({
         name: mcpToolName(root, path),
-        apiName: apiToolName(root, path),
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,

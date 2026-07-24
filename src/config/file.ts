@@ -4,9 +4,9 @@ JSON app config file path helpers and strict read/write.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { sanitizeToolSegment } from "../mcp/tools.ts";
-import { appConfigLibHome, displayHomePath } from "../paths/host.ts";
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { sanitizeToolSegment } from "~/mcp/tools.ts";
+import { appConfigLibHome, displayHomePath } from "~/paths/host.ts";
 import { isFrameworkConfigKey, validateBindingsShape } from "./bindings.ts";
 import { effectiveJsonSchema } from "./schema.ts";
 import { validateConfigDocument, validateConfigDocumentPartial } from "./validate.ts";

@@ -1,7 +1,7 @@
-import { resolveCapabilities } from "../capabilities.ts";
-import { visibleOptions } from "../hidden.ts";
-import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "../types.ts";
-import { isCliRouter } from "../types.ts";
+import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "~/core/types.ts";
+import { isCliRouter } from "~/core/types.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { isCliSchemaHidden, visibleOptions } from "~/runtime/exposure.ts";
 import { resolveBuiltins } from "./registry.ts";
 
 /** JSON-safe command node (no handlers). */
@@ -11,6 +11,8 @@ export interface CliSchemaExport {
   notes?: string;
   /** JSON Schema for structured stdout when set on the leaf. */
   outputSchema?: Record<string, unknown>;
+  /** Default success Content-Type when `outputSchema` is omitted but `http.successContentType` is set. */
+  outputContentType?: string;
   options?: CliOption[];
   fallbackCommand?: string;
   fallbackMode?: CliFallbackMode;
@@ -19,7 +21,7 @@ export interface CliSchemaExport {
 }
 
 function exportBuiltinNode(cmd: CliNode): CliSchemaExport | null {
-  if (cmd.hidden) {
+  if (isCliSchemaHidden(cmd)) {
     return null;
   }
 

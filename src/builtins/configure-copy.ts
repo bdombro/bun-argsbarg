@@ -1,7 +1,7 @@
 /** Capability-aware labels for configure builtin and docs copy. */
 
-import type { CliCapabilities } from "../capabilities.ts";
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
+import type { CliCapabilities } from "~/runtime/capabilities.ts";
 
 type Kind = "skills" | "mcp" | "config";
 

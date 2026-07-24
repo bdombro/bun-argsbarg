@@ -17,10 +17,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
-import { buildPluginMcpEnvMapping, buildProgramUserConfig } from "../config/manifest.ts";
-import { generatePluginSkillBundle } from "../skill/generate.ts";
-import { applyPluginSkillHint } from "../skill/hint.ts";
-import type { CliMcpBundleConfig, CliProgram } from "../types.ts";
+import { buildPluginMcpEnvMapping, buildProgramUserConfig } from "~/config/manifest.ts";
+import type { CliMcpBundleConfig, CliProgram } from "~/core/types.ts";
+import { generatePluginSkillBundle } from "~/skill/generate.ts";
+import { applyPluginSkillHint } from "~/skill/hint.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
 import { mcpServerId } from "./tools.ts";
 import { type ZipFileEntry, zipStore } from "./zip.ts";

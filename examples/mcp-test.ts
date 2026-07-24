@@ -3,7 +3,7 @@
 MCP test fixture for subprocess integration tests only.
 */
 
-import { Cli, CliOptionKind, type CliProgram } from "../src/index.ts";
+import { Cli, CliOptionKind, type CliProgram } from "../src/index";
 
 const program = {
   key: "mcp-test",
@@ -30,7 +30,6 @@ const program = {
     ],
   },
   docs: {
-    enabled: true,
     topics: {
       readme: { text: "# MCP test readme\n" },
     },

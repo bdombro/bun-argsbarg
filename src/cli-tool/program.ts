@@ -2,8 +2,8 @@
 Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 */
 
+import { CliOptionKind, type CliProgram } from "~/index";
 import pkg from "../../package.json" with { type: "json" };
-import { CliOptionKind, type CliProgram } from "../index.ts";
 import { runCreate } from "./run-create.ts";
 import { runSchemagenCli } from "./run-schemagen.ts";
 
@@ -13,6 +13,7 @@ export const program = {
   description: "Argsbarg developer tools — bootstrap CLIs from the full-example template.",
   completion: { enabled: false },
   configure: { enabled: false },
+  docs: { enabled: false },
   commands: [
     {
       key: "create",
@@ -96,7 +97,7 @@ export const program = {
     {
       key: "schemagen",
       description:
-        "Generate JSON Schema artifacts from src/**/types.ts role exports into colocated __generated__/ directories.",
+        "Generate JSON Schema artifacts from @sg markers in src/**/*.ts into colocated __generated__/ directories.",
       options: [
         {
           name: "root",

@@ -1,13 +1,13 @@
-import { openApiJson } from "../api/openapi.ts";
-import { cliSchemaJson } from "../schema.ts";
-import { generateSkillBundle } from "../skill/generate.ts";
-import type { CliDocsConfig, CliProgram } from "../types.ts";
-import { generateApiGuide } from "./api-guide.ts";
+import { cliSchemaJson } from "~/core/schema.ts";
+import type { CliDocsConfig, CliProgram } from "~/core/types.ts";
+import { openApiJson } from "~/http/openapi.ts";
+import { generateSkillBundle } from "~/skill/generate.ts";
+import { generateCliGuide } from "./cli-guide.ts";
 import { generateHttpGuide } from "./http-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 
 /** Built-in docs subcommand keys not allowed in `docs.topics`. */
-export const DOCS_BUILTIN_TOPIC_KEYS = ["http", "mcp", "all", "cli-schema", "api", "skill", "openapi"] as const;
+export const DOCS_BUILTIN_TOPIC_KEYS = ["http", "mcp", "all", "cli-schema", "cli", "skill", "openapi"] as const;
 
 export type DocsBuiltinTopicKey = (typeof DOCS_BUILTIN_TOPIC_KEYS)[number];
 
@@ -16,28 +16,20 @@ export const DOCS_ROUTER_DESCRIPTION = "Print bundled CLI documentation.";
 
 /** Returns whether bundled docs are enabled on the program root. */
 export function docsEnabled(program: CliProgram): boolean {
-  return program.docs?.enabled === true;
+  return program.docs?.enabled !== false;
+}
+
+/** Normalized docs config with defaults applied. */
+export function resolveDocsConfig(program: CliProgram): CliDocsConfig {
+  return {
+    description: program.docs?.description,
+    topics: program.docs?.topics ?? {},
+  };
 }
 
 /** User topic keys in declaration order. */
 export function docsUserTopicKeys(docs: CliDocsConfig): string[] {
-  return Object.keys(docs.topics);
-}
-
-/** Subcommand used when argv is bare `myapp docs`. */
-export function docsEffectiveDefaultTopic(docs: CliDocsConfig): string {
-  if (docs.defaultTopic !== undefined) {
-    return docs.defaultTopic;
-  }
-  const keys = docsUserTopicKeys(docs);
-  if (keys.length === 0) {
-    throw new Error("docs.topics must be non-empty");
-  }
-  const first = keys[0];
-  if (first === undefined) {
-    throw new Error("docs.topics must be non-empty");
-  }
-  return first;
+  return Object.keys(docs.topics ?? {});
 }
 
 /** Whether MCP auto-guide topic is included. */
@@ -47,7 +39,7 @@ export function docsIncludesMcpTopic(program: CliProgram): boolean {
 
 /** Whether HTTP auto-guide topic is included. */
 export function docsIncludesHttpTopic(program: CliProgram): boolean {
-  return docsEnabled(program) && program.apiServer?.enabled === true;
+  return docsEnabled(program) && program.httpServer?.enabled === true;
 }
 
 /** Whether OpenAPI export topic is included. */
@@ -69,8 +61,7 @@ export function docsTopicDescription(key: string, custom?: string): string {
 
 /** Markdown body for one docs topic key. */
 export function docsTopicText(program: CliProgram, topic: string): string {
-  const docs = program.docs;
-  if (!docs) {
+  if (!docsEnabled(program)) {
     throw new Error("docs not enabled");
   }
   if (topic === "mcp") {
@@ -85,7 +76,8 @@ export function docsTopicText(program: CliProgram, topic: string): string {
     }
     return generateHttpGuide(program);
   }
-  const entry = docs.topics[topic];
+  const topics = program.docs?.topics ?? {};
+  const entry = topics[topic];
   if (!entry) {
     throw new Error(`Unknown docs topic '${topic}'.`);
   }
@@ -103,8 +95,8 @@ export function docsTopicContent(program: CliProgram, topic: string): string {
     }
     return openApiJson(program);
   }
-  if (topic === "api") {
-    return generateApiGuide(program);
+  if (topic === "cli") {
+    return generateCliGuide(program);
   }
   if (topic === "skill") {
     return `${generateSkillBundle(program, "cursor").skillMd}\n`;

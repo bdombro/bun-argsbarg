@@ -3,9 +3,9 @@ Remove stale __generated__/ directories and files after schemagen runs.
 */
 
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { join, relative } from "node:path";
 import type { SchemaRoot } from "./discover-schema-roots.ts";
-import { GENERATED_DIR, schemaJsonBasename, TYPES_FILE } from "./names.ts";
+import { GENERATED_DIR, schemaJsonBasename } from "./names.ts";
 
 function listGeneratedDirs(srcDir: string, projectRoot: string, out: string[]): void {
   for (const ent of readdirSync(srcDir)) {
@@ -22,11 +22,11 @@ function listGeneratedDirs(srcDir: string, projectRoot: string, out: string[]): 
   }
 }
 
-/** Drop orphan `__generated__/` trees and JSON files for removed schema kinds. */
+/** Drop orphan `__generated__/` trees and JSON files for removed schema roots. */
 export function cleanStaleGenerated(
   projectRoot: string,
   srcDir: string,
-  activeBySchemaFile: Map<string, SchemaRoot[]>,
+  activeByGeneratedDir: Map<string, SchemaRoot[]>,
 ): void {
   const srcPath = join(projectRoot, srcDir);
   if (!existsSync(srcPath)) {
@@ -38,8 +38,7 @@ export function cleanStaleGenerated(
 
   for (const relGeneratedDir of generatedDirs) {
     const generatedDir = join(projectRoot, relGeneratedDir);
-    const relTypesPath = relative(projectRoot, join(dirname(generatedDir), TYPES_FILE));
-    const roots = existsSync(join(projectRoot, relTypesPath)) ? (activeBySchemaFile.get(relTypesPath) ?? []) : [];
+    const roots = activeByGeneratedDir.get(generatedDir) ?? [];
 
     if (roots.length === 0) {
       rmSync(generatedDir, { recursive: true, force: true });
@@ -47,7 +46,7 @@ export function cleanStaleGenerated(
       continue;
     }
 
-    const keep = new Set(["index.ts", ...roots.map((root) => schemaJsonBasename(root.kind))]);
+    const keep = new Set(["index.ts", ...roots.map((root) => schemaJsonBasename(root.typeName))]);
     for (const ent of readdirSync(generatedDir)) {
       if (keep.has(ent)) {
         continue;

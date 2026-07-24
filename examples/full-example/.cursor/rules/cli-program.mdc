@@ -13,7 +13,7 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 5. `configure`, `configure.targets`, Homebrew distribution → `node_modules/argsbarg/docs/configure.md` and `distribution-homebrew.md`.
 6. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
 7. **Examples** (shipped under `node_modules/argsbarg/examples/`):
-   - **Copy template** (all builtins, schemagen, Homebrew justfile, `outputSchema`) → `examples/full-example/`
+   - **Copy template** (all builtins, `@sg` schemagen, Homebrew justfile, `outputSchema`) → `examples/full-example/`
 
 **Hard rules** (details and examples are in the docs above — do not contradict them):
 
@@ -24,7 +24,7 @@ When adding or changing argsbarg schema, leaf handlers, or MCP exposure:
 - String options: `format` / `default` / `pattern` per `cli-program.md`; `readLeafInputs()` for multi-flag leaves.
 - Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
 - Multi-surface leaves (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
-- JSON stdout: `import { outputSchema } from "./__generated__/index.ts"` — declare `export type outputType = …` in `types.ts`; handlers import types from the same module.
-- App config: `import { configSchema } from "./config/__generated__/index.ts"` — `export type configType = …` in `src/config/types.ts`.
+- JSON stdout: `import { StatusJsonOutputSchema } from "./__generated__"` — declare `/** @sg */` on the type in `types.ts`; handlers import types from the same module.
+- App config (optional): `import { AppConfigSchema } from "./config/__generated__"` — `/** @sg */` on `AppConfig` in `src/config/types.ts`.
 
 **full-example conventions:** replace this line with app-specific bullets. Keep at the bottom of this file.

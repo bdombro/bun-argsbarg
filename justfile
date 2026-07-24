@@ -35,6 +35,21 @@ full-example-install:
 full-example-schemagen:
     bun ./src/cli-tool/main.ts schemagen --root examples/full-example
 
+# Run schemagen in each local consumer app (paths must exist)
+consumers-schemagen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="$(cd "{{justfile_directory()}}" && pwd)"
+    for path in {{consumer_apps}}; do
+      dir="${path/#\~/$HOME}"
+      if [[ ! -d "$dir" ]]; then
+        echo "missing consumer: $dir" >&2
+        exit 1
+      fi
+      echo "==> schemagen $(basename "$dir")"
+      (cd "$dir" && bun "$root/src/cli-tool/main.ts" schemagen)
+    done
+
 # Point local consumer apps at this repo (file: dep) for pre-publish development
 consumers-dev:
     #!/usr/bin/env bash
@@ -46,7 +61,7 @@ consumers-dev:
       dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
       echo "==> $(basename "$dir") ($dir) → file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
+      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
     done
 
 # Pin consumers to ^<this repo version>, install, merge Cursor rule, build, docgen
@@ -59,7 +74,7 @@ consumers-sync:
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       echo "==> $(basename "$dir") ($dir)"
-      (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir")
+      (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
     done
 
 # Run the minimal example once

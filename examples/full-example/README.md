@@ -1,6 +1,16 @@
 # full-example
 
-Argsbarg full example reference app
+Argsbarg copy template / reference app (not a kitchen-sink product).
+
+## What's in this app
+
+- **Builtins enabled:** CLI, shell completion, `docs`, MCP, HTTP API, `configure` (wizard available; no default `appConfig` in the template)
+- **Commands:**
+  - `echo` — simple flags/positionals
+  - `render-json` — `kind: "json"` leaf, schemagen `inputSchema`, `ctx.inputsAs`
+  - `status` — schemagen `outputSchema`, `--json`
+  - `workspaces` — REST CRUD, `:id` param routers, verb leaves, schemagen input schemas
+- **Tooling:** `@sg` schemagen, `just docgen`, Homebrew/just dev workflow
 
 ## Quick start
 
@@ -9,12 +19,10 @@ From a git checkout at this directory (requires [Homebrew](https://brew.sh), [ju
 ```bash
 brew install just bun
 just setup
-just schemagen   # after changing src/**/types.ts
+just schemagen   # after changing @sg types in src/
 just run status --json
 just run docs readme
 ```
-
-Run `full-example configure` when the app needs secrets or other app config (interactive wizard).
 
 ## Install
 
@@ -34,7 +42,6 @@ Install:
 ```bash
 brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
 brew install bdombro/bun-argsbarg/full-example
-full-example configure
 ```
 
 Upgrade:
@@ -58,17 +65,17 @@ just install-production   # remote tap install (requires gh auth login)
 just test-release
 ```
 
-Undo a local dev install: `just uninstall` (formula + agent artifacts; app config removed by formula `uninstall`), `just uninstall-config` (app config only, without uninstalling the formula).
+Undo a local dev install: `just uninstall` (formula + agent artifacts), `just uninstall-config` (app config only, without uninstalling the formula).
 
-## Schemagen roots
+## Schemagen (`@sg`)
 
-| Export in `types.ts` | Generated artifact | Import on leaf / program |
+Mark schema-facing types with `/** @sg */` immediately above the declaration (no blank line). Run `argsbarg schemagen` (via `just schemagen` or `just setup`).
+
+| Type | Generated artifact | Import |
 | --- | --- | --- |
-| `export type configType = …` | `config/__generated__/configSchema.json` | `{ configSchema }` from `config/__generated__/index.ts` |
-| `export type outputType = …` | `__generated__/outputSchema.json` | `{ outputSchema }` from `__generated__/index.ts` |
-| `export type inputType = …` | `__generated__/inputSchema.json` | `{ inputSchema }` from `__generated__/index.ts` |
-
-Type definitions and schemagen role exports live in `types.ts`. Run `argsbarg schemagen` (via `just schemagen` or `just setup`).
+| `RenderJsonInput` | `RenderJsonInputSchema.json` | `RenderJsonInputSchema` from `./__generated__` |
+| `StatusJsonOutput` | `StatusJsonOutputSchema.json` | `StatusJsonOutputSchema` from `./__generated__` |
+| `WorkspaceNameInput` | `WorkspaceNameInputSchema.json` | `WorkspaceNameInputSchema` from `./__generated__` |
 
 ## Consumer docs
 
@@ -77,11 +84,3 @@ Regenerate committed reference docs under `docs/` (see [docs/README.md](docs/REA
 ```bash
 just docgen
 ```
-
-## Environment
-
-Optional overrides for `program.appConfig` (the configure wizard is the usual path):
-
-| Variable | Purpose |
-| --- | --- |
-| `FULL_EXAMPLE_API_TOKEN` | Overrides `apiToken` when set in the shell |

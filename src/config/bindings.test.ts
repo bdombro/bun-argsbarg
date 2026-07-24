@@ -3,7 +3,7 @@ Tests for config/bindings module.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliAppConfigEntry } from "../types.ts";
+import type { CliAppConfigEntry } from "~/core/types.ts";
 import {
   bindingForKey,
   CONFIG_BINDINGS_KEY,

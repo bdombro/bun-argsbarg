@@ -2,7 +2,7 @@
 MCP bundle / plugin manifest builders for program.appConfig env-mapped entries.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../types.ts";
+import type { CliAppConfigEntry, CliProgram } from "~/core/types.ts";
 import {
   configEntryRequired,
   configEntrySensitive,

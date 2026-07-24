@@ -1,12 +1,12 @@
-import { resolveCapabilities } from "../capabilities.ts";
-import { defaultConfigEntryTitle } from "../config/entry.ts";
-import { displayAppConfigPath } from "../config/file.ts";
-import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../install/mcp-opencode.ts";
-import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
-import { collectOptionDefs } from "../parse.ts";
-import { CliOptionKind, type CliProgram } from "../types.ts";
+import { defaultConfigEntryTitle } from "~/config/entry.ts";
+import { displayAppConfigPath } from "~/config/file.ts";
+import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "~/configure/artifacts/mcp-opencode.ts";
+import { collectOptionDefs } from "~/core/parse.ts";
+import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "~/mcp/tools.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
-import { docsEnabled, docsUserTopicKeys } from "./resolve.ts";
+import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 
 /** Extra host notes for generated `docs mcp` (manual fallbacks and ChatGPT Connectors). */
 function appendManualHostSetup(lines: string[], root: CliProgram, serverId: string): void {
@@ -205,12 +205,10 @@ export function generateMcpGuide(root: CliProgram): string {
     `| Schema resource | \`${schemaUri}\` — same JSON as \`${root.key} docs cli-schema\` |`,
   );
   if (docsEnabled(root)) {
-    const docs = root.docs;
-    if (docs) {
-      for (const key of docsUserTopicKeys(docs)) {
-        const uri = resolveDocsTopicResourceUri(root, key);
-        lines.push(`| Docs topic \`${key}\` | \`${uri}\` — same markdown as \`${root.key} docs ${key}\` |`);
-      }
+    const docs = resolveDocsConfig(root);
+    for (const key of docsUserTopicKeys(docs)) {
+      const uri = resolveDocsTopicResourceUri(root, key);
+      lines.push(`| Docs topic \`${key}\` | \`${uri}\` — same markdown as \`${root.key} docs ${key}\` |`);
     }
   }
   lines.push("", "## Exposed tools", "");

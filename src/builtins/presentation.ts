@@ -1,8 +1,8 @@
-import type { CliCapabilities } from "../capabilities.ts";
-import { resolveCapabilities } from "../capabilities.ts";
-import { presentationNode, visibleOptions } from "../hidden.ts";
-import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../types.ts";
-import { isCliLeaf } from "../types.ts";
+import type { CliLeaf, CliNode, CliProgram, CliRouter } from "~/core/types.ts";
+import { isCliLeaf } from "~/core/types.ts";
+import type { CliCapabilities } from "~/runtime/capabilities.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { isCliHidden, presentationNode, visibleOptions } from "~/runtime/exposure.ts";
 import { resolveBuiltins } from "./registry.ts";
 
 /** All built-in command nodes for argv parsing (includes hidden builtins). */
@@ -12,7 +12,7 @@ export function parseBuiltins(program: CliProgram, caps: CliCapabilities): CliNo
 
 /** Built-in subtrees visible in help, schema, and completions (hidden builtins omitted). */
 export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
-  return parseBuiltins(program, caps).filter((b) => !b.hidden);
+  return parseBuiltins(program, caps).filter((b) => !isCliHidden(b));
 }
 
 /**

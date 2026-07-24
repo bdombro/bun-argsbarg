@@ -21,6 +21,16 @@ build:
     bun build ./src/index.ts --compile --outfile=dist/{{cli_key}}
     @rm -f .*.bun-build
 
+# Apply SQL migrations in src/db/migrations/ to a SQLite database file
+migrate DB="./workspaces.db":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "$(dirname '{{DB}}')"
+    for f in $(ls src/db/migrations/*.sql | sort); do
+      echo "==> $f"
+      sqlite3 '{{DB}}' < "$f"
+    done
+
 # Run schemagen, typecheck, and format
 check: schemagen format typecheck
 
@@ -31,7 +41,7 @@ dev *ARGS:
 # Regenerate consumer docs under ./docs/
 docgen: schemagen
     @just run docs cli-schema --save
-    @just run docs api --save
+    @just run docs cli --save
     @just run docs skill --save
     @just run docs mcp --save
     @just run docs http --save

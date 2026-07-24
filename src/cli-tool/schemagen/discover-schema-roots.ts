@@ -1,160 +1,111 @@
 /*
-Discovers schema roots in types.ts files via configType / inputType / outputType exports.
+Discovers schema roots via @sg JSDoc markers on export interface/type declarations.
 */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { TYPES_FILE } from "./names.ts";
+import { join, relative } from "node:path";
 
-export type SchemaRootKind = "config" | "input" | "output";
+/** Directories to scan relative to project root. */
+const SEARCH_DIRS = ["src"] as const;
 
-export type SchemaRole = "configType" | "inputType" | "outputType";
+/** Directory names skipped during walk (any depth). */
+const EXCLUDE_DIRS = ["node_modules", "__generated__"] as const;
+
+/** File basename patterns skipped (basename match only). */
+const EXCLUDE_FILE_PATTERNS = [/\.test\.ts$/];
+
+const SG_JSDOC_RE = /\/\*\*[\s\S]*?@sg[\s\S]*?\*\//g;
+const EXPORT_DECL_RE = /^export\s+(interface|type)\s+(\w+)/;
 
 export interface SchemaRoot {
-  kind: SchemaRootKind;
   typeName: string;
-  /** Path to types.ts relative to project root (anchors __generated__/ output). */
+  /** Path to the file containing `@sg`, relative to project root (anchors `__generated__/`). */
   path: string;
-  /** Path to the file that defines `typeName` (defaults to `path`). */
+  /** Path to the file that defines `typeName` (same as `path` for `@sg`). */
   sourcePath: string;
 }
 
-const ROLE_EXPORT_RE = /export\s+type\s+(configType|inputType|outputType)\s*=\s*(\w+)/g;
-const HAS_ROLE_EXPORT_RE = /export\s+type\s+(configType|inputType|outputType)\s*=/;
-const IMPORT_RE = /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+["']([^"']+)["']/g;
+function shouldIncludeFile(basename: string): boolean {
+  if (!basename.endsWith(".ts") || basename.endsWith(".d.ts")) {
+    return false;
+  }
+  return !EXCLUDE_FILE_PATTERNS.some((pattern) => pattern.test(basename));
+}
 
-const ROLE_TO_KIND: Record<SchemaRole, SchemaRootKind> = {
-  configType: "config",
-  inputType: "input",
-  outputType: "output",
-};
-
-function listTypesManifestFiles(srcDir: string, baseDir: string, out: string[]): void {
-  for (const ent of readdirSync(srcDir)) {
-    const full = join(srcDir, ent);
+function walkDir(dir: string, baseDir: string, out: string[]): void {
+  for (const ent of readdirSync(dir)) {
+    if ((EXCLUDE_DIRS as readonly string[]).includes(ent)) {
+      continue;
+    }
+    const full = join(dir, ent);
     const st = statSync(full);
     if (st.isDirectory()) {
-      listTypesManifestFiles(full, baseDir, out);
+      walkDir(full, baseDir, out);
       continue;
     }
-    if (ent !== TYPES_FILE) {
+    if (!shouldIncludeFile(ent)) {
       continue;
     }
-    const text = readFileSync(full, "utf8");
-    if (HAS_ROLE_EXPORT_RE.test(text)) {
-      out.push(relative(baseDir, full));
-    }
+    out.push(relative(baseDir, full));
   }
 }
 
-/** True when `typeName` is declared in this file (not a schemagen role alias). */
-function isTypeDefinedInFile(text: string, typeName: string): boolean {
-  if (new RegExp(`export\\s+interface\\s+${typeName}\\b`).test(text)) {
-    return true;
-  }
-  if (new RegExp(`export\\s+type\\s+${typeName}\\s*=`).test(text)) {
-    return !["configType", "inputType", "outputType"].includes(typeName);
-  }
-  return false;
-}
-
-function parseLocalTypeImports(text: string): Map<string, string> {
-  const imports = new Map<string, string>();
-  for (const match of text.matchAll(IMPORT_RE)) {
-    const names = match[1];
-    const from = match[2];
-    if (!names || !from?.startsWith(".")) {
+function listScannableFiles(projectRoot: string): string[] {
+  const files: string[] = [];
+  for (const searchDir of SEARCH_DIRS) {
+    const abs = join(projectRoot, searchDir);
+    if (!existsSync(abs)) {
       continue;
     }
-    for (const part of names.split(",")) {
-      const trimmed = part.trim();
-      const nameMatch = trimmed.match(/^(?:type\s+)?(\w+)(?:\s+as\s+(\w+))?$/);
-      if (!nameMatch?.[1]) {
-        continue;
-      }
-      const localName = nameMatch[2] ?? nameMatch[1];
-      imports.set(localName, from);
+    walkDir(abs, projectRoot, files);
+  }
+  return files.sort();
+}
+
+function parseTypeNameAfterSgBlock(text: string, blockEndIndex: number, relPath: string): string {
+  const rest = text.slice(blockEndIndex);
+  const sameLine = rest.match(/^([^\n]*)/)?.[1] ?? "";
+  if (sameLine.trim().length > 0) {
+    throw new Error(
+      `${relPath}: @sg JSDoc must be immediately followed by export interface/type (same-line export not supported)`,
+    );
+  }
+
+  const lines = rest.split("\n").slice(1);
+  for (const line of lines) {
+    if (line.trim() === "") {
+      throw new Error(`${relPath}: @sg JSDoc must be immediately followed by export interface/type`);
     }
-  }
-  return imports;
-}
-
-function resolveModuleFile(manifestFile: string, specifier: string): string | null {
-  const base = join(dirname(manifestFile), specifier);
-  const candidates = [base, `${base}.ts`, join(base, "index.ts")];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate;
+    const match = line.match(EXPORT_DECL_RE);
+    if (match?.[2]) {
+      return match[2];
     }
+    throw new Error(`${relPath}: @sg JSDoc must be immediately followed by export interface/type`);
   }
-  return null;
+
+  throw new Error(`${relPath}: @sg JSDoc must be immediately followed by export interface/type`);
 }
 
-/** Resolve a role alias to the module that defines `typeName`, when imported from a relative path. */
-function resolveAliasedTypeSource(
-  projectRoot: string,
-  manifestRelPath: string,
-  manifestText: string,
-  typeName: string,
-): string | null {
-  const manifestFile = join(projectRoot, manifestRelPath);
-  const specifier = parseLocalTypeImports(manifestText).get(typeName);
-  if (!specifier) {
-    return null;
-  }
-  const moduleFile = resolveModuleFile(manifestFile, specifier);
-  if (!moduleFile) {
-    return null;
-  }
-  const moduleText = readFileSync(moduleFile, "utf8");
-  if (!isTypeDefinedInFile(moduleText, typeName)) {
-    return null;
-  }
-  return relative(projectRoot, moduleFile);
-}
-
-function discoverFromFile(projectRoot: string, path: string, text: string): SchemaRoot[] {
-  const rolesSeen = new Set<SchemaRole>();
+function discoverFromFile(relPath: string, text: string): SchemaRoot[] {
   const roots: SchemaRoot[] = [];
-
-  for (const match of text.matchAll(ROLE_EXPORT_RE)) {
-    const role = match[1] as SchemaRole | undefined;
-    const typeName = match[2];
-    if (!role || !typeName) {
-      continue;
-    }
-    if (rolesSeen.has(role)) {
-      throw new Error(`${path}: duplicate export type ${role}`);
-    }
-    rolesSeen.add(role);
-
-    let sourcePath = path;
-    if (!isTypeDefinedInFile(text, typeName)) {
-      const resolved = resolveAliasedTypeSource(projectRoot, path, text, typeName);
-      if (!resolved) {
-        continue;
-      }
-      sourcePath = resolved;
-    }
-
-    roots.push({ kind: ROLE_TO_KIND[role], typeName, path, sourcePath });
+  for (const match of text.matchAll(SG_JSDOC_RE)) {
+    const index = match.index ?? 0;
+    const blockEnd = index + match[0].length;
+    const typeName = parseTypeNameAfterSgBlock(text, blockEnd, relPath);
+    roots.push({ typeName, path: relPath, sourcePath: relPath });
   }
-
   return roots;
 }
 
-/** Find all schema roots under `srcDir` in `types.ts` files with role exports. */
-export function discoverSchemaRoots(projectRoot: string, srcDir = "src"): SchemaRoot[] {
-  const srcPath = join(projectRoot, srcDir);
-  const files: string[] = [];
-  listTypesManifestFiles(srcPath, projectRoot, files);
-
+/** Find all `@sg` schema roots under `SEARCH_DIRS`. */
+export function discoverSchemaRoots(projectRoot: string, _srcDir = "src"): SchemaRoot[] {
+  const files = listScannableFiles(projectRoot);
   const roots: SchemaRoot[] = [];
   const typeOwners = new Map<string, string>();
 
-  for (const relPath of files.sort()) {
+  for (const relPath of files) {
     const text = readFileSync(join(projectRoot, relPath), "utf8");
-    for (const root of discoverFromFile(projectRoot, relPath, text)) {
+    for (const root of discoverFromFile(relPath, text)) {
       const prev = typeOwners.get(root.typeName);
       if (prev) {
         throw new Error(`${relPath}: duplicate schema root type ${root.typeName} (already declared in ${prev})`);
@@ -162,11 +113,6 @@ export function discoverSchemaRoots(projectRoot: string, srcDir = "src"): Schema
       typeOwners.set(root.typeName, relPath);
       roots.push(root);
     }
-  }
-
-  const configRoots = roots.filter((r) => r.kind === "config");
-  if (configRoots.length > 1) {
-    throw new Error(`multiple config schema roots: ${configRoots.map((r) => `${r.typeName} (${r.path})`).join(", ")}`);
   }
 
   return roots;

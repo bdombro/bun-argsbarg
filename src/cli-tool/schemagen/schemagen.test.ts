@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverSchemaRoots } from "./discover-schema-roots.ts";
@@ -39,105 +39,195 @@ function makeTempProject(): string {
   return root;
 }
 
-function writeTypes(root: string, relDir: string, body: string): void {
-  const dir = join(root, "src", relDir);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "types.ts"), body);
+function writeSrcFile(root: string, relPath: string, body: string): void {
+  const full = join(root, relPath);
+  mkdirSync(join(full, ".."), { recursive: true });
+  writeFileSync(full, body);
 }
 
 describe("schemagen", () => {
-  test("discovers AppConfig and StatusJsonOutput in full-example", () => {
+  test("discovers @sg types in full-example", () => {
     const roots = discoverSchemaRoots(exampleRoot);
-    expect(roots.map((r) => `${r.kind}:${r.typeName}`).sort()).toEqual(["config:AppConfig", "output:StatusJsonOutput"]);
+    expect(roots.map((r) => r.typeName).sort()).toEqual(["RenderJsonInput", "StatusJsonOutput", "WorkspaceNameInput"]);
   });
 
-  test("maps schema kinds to __generated__ filenames and export names", () => {
-    expect(schemaJsonBasename("output")).toBe("outputSchema.json");
-    expect(schemaJsonBasename("config")).toBe("configSchema.json");
-    expect(schemaExportName("output")).toBe("outputSchema");
+  test("maps type names to __generated__ filenames and export names", () => {
+    expect(schemaJsonBasename("StatusJsonOutput")).toBe("StatusJsonOutputSchema.json");
+    expect(schemaExportName("RenderJsonInput")).toBe("RenderJsonInputSchema");
   });
 
   test("runSchemagen writes __generated__ artifacts in full-example", () => {
     const counts = runSchemagen({ projectRoot: exampleRoot });
-    expect(counts).toEqual({ configRoots: 1, inputRoots: 0, outputRoots: 1 });
+    expect(counts).toEqual({ schemas: 3 });
   });
 
-  test("discovers roots from types.ts with interface and role export", () => {
+  test("discovers @sg roots and writes named schema artifacts", () => {
     const root = makeTempProject();
     const dir = join(root, "src/commands/demo");
-    writeTypes(
+    writeSrcFile(
       root,
-      "commands/demo",
-      `export interface DemoOutput { ok: boolean; }
-
-/** Schemagen root for leaf outputSchema. */
-export type outputType = DemoOutput;
+      "src/commands/demo/types.ts",
+      `/** @sg */
+export interface DemoOutput {
+  ok: boolean;
+}
 `,
     );
 
     const roots = discoverSchemaRoots(root);
     expect(roots).toEqual([
       {
-        kind: "output",
         typeName: "DemoOutput",
         path: "src/commands/demo/types.ts",
         sourcePath: "src/commands/demo/types.ts",
       },
     ]);
     runSchemagen({ projectRoot: root });
-    expect(existsSync(join(dir, "__generated__/outputSchema.json"))).toBe(true);
+    expect(existsSync(join(dir, "__generated__/DemoOutputSchema.json"))).toBe(true);
+    expect(existsSync(join(dir, "__generated__/index.ts"))).toBe(true);
   });
 
-  test("removes stale JSON files when a schema kind is dropped", () => {
+  test("errors on blank line between @sg JSDoc and export", () => {
     const root = makeTempProject();
-    writeTypes(
+    writeSrcFile(
       root,
-      "commands/demo",
-      `export interface DemoInput { id: string; }
-export interface DemoOutput { ok: boolean; }
-export type inputType = DemoInput;
-export type outputType = DemoOutput;
+      "src/commands/demo/types.ts",
+      `/** @sg */
+
+export interface DemoOutput {
+  ok: boolean;
+}
+`,
+    );
+
+    expect(() => discoverSchemaRoots(root)).toThrow(
+      "src/commands/demo/types.ts: @sg JSDoc must be immediately followed by export interface/type",
+    );
+  });
+
+  test("two @sg types in same directory share one index.ts", () => {
+    const root = makeTempProject();
+    writeSrcFile(
+      root,
+      "src/commands/demo/types.ts",
+      `/** @sg */
+export interface DemoInput {
+  id: string;
+}
+`,
+    );
+    writeSrcFile(
+      root,
+      "src/commands/demo/command.ts",
+      `/** @sg */
+export interface DemoOutput {
+  ok: boolean;
+}
 `,
     );
 
     runSchemagen({ projectRoot: root });
     const generatedDir = join(root, "src/commands/demo/__generated__");
-    expect(existsSync(join(generatedDir, "inputSchema.json"))).toBe(true);
-    expect(existsSync(join(generatedDir, "outputSchema.json"))).toBe(true);
+    const text = readFileSync(join(generatedDir, "index.ts"), "utf8");
+    expect(text).toContain("DemoInputSchema");
+    expect(text).toContain("DemoOutputSchema");
+    expect(existsSync(join(generatedDir, "DemoInputSchema.json"))).toBe(true);
+    expect(existsSync(join(generatedDir, "DemoOutputSchema.json"))).toBe(true);
+  });
 
-    writeTypes(
+  test("skips *.test.ts and __generated__ during walk", () => {
+    const root = makeTempProject();
+    writeSrcFile(
       root,
-      "commands/demo",
-      `export interface DemoOutput { ok: boolean; }
-export type outputType = DemoOutput;
+      "src/commands/demo/types.test.ts",
+      `/** @sg */
+export interface ShouldNotDiscover {
+  x: string;
+}
+`,
+    );
+    writeSrcFile(
+      root,
+      "src/commands/demo/__generated__/orphan.ts",
+      `/** @sg */
+export interface AlsoSkipped {
+  x: string;
+}
+`,
+    );
+
+    expect(discoverSchemaRoots(root)).toEqual([]);
+  });
+
+  test("removes stale JSON files when a schema root is dropped", () => {
+    const root = makeTempProject();
+    writeSrcFile(
+      root,
+      "src/commands/demo/types.ts",
+      `/** @sg */
+export interface DemoInput {
+  id: string;
+}
+/** @sg */
+export interface DemoOutput {
+  ok: boolean;
+}
 `,
     );
 
     runSchemagen({ projectRoot: root });
-    expect(existsSync(join(generatedDir, "inputSchema.json"))).toBe(false);
-    expect(existsSync(join(generatedDir, "outputSchema.json"))).toBe(true);
+    const generatedDir = join(root, "src/commands/demo/__generated__");
+    expect(existsSync(join(generatedDir, "DemoInputSchema.json"))).toBe(true);
+    expect(existsSync(join(generatedDir, "DemoOutputSchema.json"))).toBe(true);
+
+    writeSrcFile(
+      root,
+      "src/commands/demo/types.ts",
+      `/** @sg */
+export interface DemoOutput {
+  ok: boolean;
+}
+`,
+    );
+
+    runSchemagen({ projectRoot: root });
+    expect(existsSync(join(generatedDir, "DemoInputSchema.json"))).toBe(false);
+    expect(existsSync(join(generatedDir, "DemoOutputSchema.json"))).toBe(true);
     expect(existsSync(join(generatedDir, "index.ts"))).toBe(true);
   });
 
-  test("removes orphan __generated__ when types.ts manifest is gone", () => {
+  test("removes orphan __generated__ when no roots remain in directory", () => {
     const root = makeTempProject();
     const generatedDir = join(root, "src/orphan/__generated__");
     mkdirSync(generatedDir, { recursive: true });
-    writeFileSync(join(generatedDir, "outputSchema.json"), "{}\n");
-    writeFileSync(join(generatedDir, "index.ts"), "export const outputSchema = {};\n");
+    writeFileSync(join(generatedDir, "DemoOutputSchema.json"), "{}\n");
+    writeFileSync(join(generatedDir, "index.ts"), "export const DemoOutputSchema = {};\n");
 
     runSchemagen({ projectRoot: root });
     expect(existsSync(generatedDir)).toBe(false);
   });
 
-  test("removes __generated__ when types.ts has no discoverable roots", () => {
+  test("errors on duplicate typeName across files", () => {
     const root = makeTempProject();
-    writeTypes(root, "commands/empty", `export type outputType = never;\n`);
-    const generatedDir = join(root, "src/commands/empty/__generated__");
-    mkdirSync(generatedDir, { recursive: true });
-    writeFileSync(join(generatedDir, "outputSchema.json"), "{}\n");
+    writeSrcFile(
+      root,
+      "src/a/types.ts",
+      `/** @sg */
+export interface DupType {
+  a: string;
+}
+`,
+    );
+    writeSrcFile(
+      root,
+      "src/b/types.ts",
+      `/** @sg */
+export interface DupType {
+  b: string;
+}
+`,
+    );
 
-    runSchemagen({ projectRoot: root });
-    expect(existsSync(generatedDir)).toBe(false);
+    expect(() => discoverSchemaRoots(root)).toThrow("duplicate schema root type DupType");
   });
 });

@@ -2,7 +2,7 @@
 Handler-facing resolved app config snapshot (ctx.appConfig).
 */
 
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
 import { isFrameworkConfigKey, setBinding } from "./bindings.ts";
 import {
   readAppConfigFileRaw,

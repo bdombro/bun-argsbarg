@@ -1,9 +1,9 @@
-import type { CliCapabilities } from "../capabilities.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import type { CliNode, CliProgram } from "../types.ts";
-import { cliBuiltinApiCommand } from "./api.ts";
+import type { CliNode, CliProgram } from "~/core/types.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "~/docs/builtin.ts";
+import type { CliCapabilities } from "~/runtime/capabilities.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinConfigureCommand } from "./configure.ts";
+import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
@@ -33,8 +33,8 @@ export function resolveBuiltins(program: CliProgram, caps: CliCapabilities): Cli
   if (caps.mcp) {
     pushBuiltin(builtins, program, (p) => cliBuiltinMcpCommand(p));
   }
-  if (caps.api) {
-    pushBuiltin(builtins, program, (p) => cliBuiltinApiCommand(p));
+  if (caps.http) {
+    pushBuiltin(builtins, program, (p) => cliBuiltinHttpCommand(p));
   }
   return builtins;
 }

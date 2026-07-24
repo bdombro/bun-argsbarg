@@ -48,7 +48,7 @@ await cli.run();
 
 **`_bindings`** — reserved top-level metadata: `{ "_bindings": { "apiToken": "env" } }`. Set via wizard (Enter to use env), `configure set --from-env`, or `ctx.appConfig.set` (marks `file`). Optional keys can be bound to `skip`.
 
-**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema. Partial writes (bindings only, single-key updates) skip required-property checks.
+**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema ([supported subset](json-schema-subset.md)). Partial writes (bindings only, single-key updates) skip required-property checks.
 
 See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and `configure get`/`set`.
 
@@ -142,44 +142,43 @@ Mirror the [output-schema.md](output-schema.md) pattern for config:
 
 ```mermaid
 flowchart LR
-  subgraph types [types.ts]
-    Marker["export type configType = AppConfig"]
+  subgraph src [src/config/types.ts]
+    Marker["/** @sg */ export interface AppConfig"]
   end
   subgraph gen [argsbarg schemagen]
     Script["argsbarg schemagen"]
     Gen["ts-json-schema-generator"]
   end
   subgraph artifacts [Gitignored __generated__]
-    Json["configSchema.json"]
+    Json["AppConfigSchema.json"]
     Index["index.ts"]
   end
   subgraph runtime [Runtime]
     Program["program.appConfig.jsonSchema"]
     Validate["argsbarg runtime subset validator"]
   end
-  types --> Script --> Gen --> Json
+  src --> Script --> Gen --> Json
   Gen --> Index --> Program --> Validate
 ```
 
 | Piece | Convention |
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled with argsbarg) |
-| Discovery | `export type configType = …` in `src/config/types.ts` |
-| Artifacts | `src/config/__generated__/` — gitignored; run `just schemagen` after clone |
+| Discovery | `/** @sg */` on `AppConfig` in `src/config/types.ts` (or any scanned `src/**/*.ts`) |
+| Artifacts | `src/config/__generated__/AppConfigSchema.json` — gitignored; run `just schemagen` after clone |
 | Consumer CI | Optional: `ajv` + `ajv-formats` against the same committed JSON (not an argsbarg runtime dep) |
 
 Example:
 
 ```typescript
 // src/config/types.ts
+/** @sg */
 export interface AppConfig {
   apiToken: string;
 }
-
-export type configType = AppConfig;
 ```
 
-Wire on the program root: `import { configSchema } from "./config/__generated__/index.ts"`.
+Wire on the program root: `import { AppConfigSchema } from "./config/__generated__"`.
 
 ### Supported AppConfig shapes (argsbarg runtime validator)
 
@@ -222,7 +221,7 @@ Object/array/`$ref` properties require `--json` on `configure set` when comma-se
 
 | Example | Role |
 | --- | --- |
-| [`examples/full-example/`](../examples/full-example/) | **Copy template** — `argsbarg schemagen`, `program.appConfig`, built-in `configure get`/`set` |
+| [`examples/full-example/`](../examples/full-example/) | **Copy template** — `@sg` schemagen, builtins; optional `program.appConfig` |
 
 ```bash
 cd examples/full-example && just setup && just schemagen

@@ -4,8 +4,9 @@ settings are present before the CLI or MCP server handles a request.
 */
 
 import { readSync } from "node:fs";
-import { readPromptLine as readStdinLine } from "../prompt.ts";
-import type { CliAppConfigEntry, CliProgram } from "../types.ts";
+import type { CliAppConfigEntry, CliProgram, ServerRuntime } from "~/core/types.ts";
+import type { LogEmitter } from "~/log/emitter.ts";
+import { readPromptLine as readStdinLine } from "~/prompt.ts";
 import { bindingForKey, clearFileValue, isKeyAddressed, readBindings, setBinding } from "./bindings.ts";
 import { configEntryRequired, configEntrySensitive, defaultConfigEntryTitle, jsonSchemaRequiredKeys } from "./entry.ts";
 import {
@@ -48,9 +49,40 @@ export interface ConfigBootstrapResult {
   resolved: ResolvedConfig;
 }
 
+/** Options for {@link bootstrapAppConfig}. */
+export interface BootstrapAppConfigOpts {
+  /** `true` = strict validate; `false` = raw read; `"soft"` = validate, log, store error in runtime.state. */
+  validateFile: boolean | "soft";
+  runtime?: ServerRuntime;
+  emitter?: LogEmitter;
+}
+
 /** Read the config file, merge env overrides, and export mapped values into `process.env`. */
-export function bootstrapAppConfig(program: CliProgram, opts: { validateFile: boolean }): ConfigBootstrapResult {
-  const fileData = opts.validateFile ? readAppConfigFile(program) : readAppConfigFileRaw(resolveAppConfigPath(program));
+export function bootstrapAppConfig(program: CliProgram, opts: BootstrapAppConfigOpts): ConfigBootstrapResult {
+  let fileData: Record<string, unknown>;
+  if (opts.validateFile === true) {
+    fileData = readAppConfigFile(program);
+  } else if (opts.validateFile === "soft") {
+    try {
+      fileData = readAppConfigFile(program);
+      if (opts.runtime) {
+        delete opts.runtime.state.configFileError;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      fileData = readAppConfigFileRaw(resolveAppConfigPath(program));
+      if (opts.runtime) {
+        opts.runtime.state.configFileError = message;
+      }
+      opts.emitter?.emit({
+        level: "warn",
+        message,
+        action: "config.invalid",
+      });
+    }
+  } else {
+    fileData = readAppConfigFileRaw(resolveAppConfigPath(program));
+  }
   const hostEnv = captureMappedHostEnv(program);
   const resolved = resolveAppConfig(program, fileData, hostEnv);
   exportConfigToEnv(program, resolved, hostEnv);

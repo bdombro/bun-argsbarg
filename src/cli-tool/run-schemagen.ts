@@ -17,7 +17,5 @@ export function runSchemagenCli(options: RunSchemagenCliOptions = {}): void {
     srcDir: options.srcDir,
     tsconfig: options.tsconfig,
   });
-  console.log(
-    `config roots: ${counts.configRoots}, input roots: ${counts.inputRoots}, output roots: ${counts.outputRoots}`,
-  );
+  console.log(`schemas: ${counts.schemas}`);
 }

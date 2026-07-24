@@ -7,12 +7,12 @@ How to describe JSON stdout on leaf commands — and the **argsbarg schemagen** 
 On **leaf commands**, set `outputSchema` to a JSON Schema object when the handler emits JSON (typically with `--json`, always for JSON-only commands, or on the MCP headless path).
 
 ```typescript
-import { outputSchema } from "./__generated__/index.ts";
+import { StatusJsonOutputSchema } from "./__generated__";
 
 export const status = {
   key: "status",
   description: "Show environment status.",
-  outputSchema,
+  outputSchema: StatusJsonOutputSchema,
   handler: async (ctx) => { /* writes JSON to stdout */ },
 } satisfies CliLeaf;
 ```
@@ -20,14 +20,14 @@ export const status = {
 | Where argsbarg uses it | Purpose |
 | --- | --- |
 | `myapp docs cli-schema` | Full command tree JSON export |
-| `myapp docs api` | Markdown per-command **Output** section |
+| `myapp docs cli` | Markdown per-command **Output** section |
 | `myapp docs skill` | `reference.md` for agent skills |
 | MCP `tools/list` | Optional `outputSchema` on each tool |
 | HTTP `GET /openapi.json` | Response schema per tool |
 
 **Not validated at runtime** — argsbarg does not parse or reject handler stdout against the schema today. The schema is documentation and MCP/HTTP metadata.
 
-**Set on the leaf only** — not under `mcpTool` (legacy `mcpTool.outputSchema` still resolves but is deprecated).
+**Set on the leaf only** — not under `mcpTool`.
 
 **Draft version** — argsbarg accepts any JSON Schema object (`type`, `properties`, `definitions`, etc.). Generators may emit draft-07 or draft 2020-12; docgen embeds the object as-is.
 
@@ -38,7 +38,7 @@ See [cli-program.md — Structured stdout](cli-program.md#structured-stdout) for
 | Approach | When |
 | --- | --- |
 | **Inline object** on the leaf | One-off commands, spikes, very small shapes |
-| **Codegen from TypeScript** | Multiple commands share a shape, nested objects, or you want rich `description` fields in `docs api` / skills |
+| **Codegen from TypeScript** | Multiple commands share a shape, nested objects, or you want rich `description` fields in `docs cli` / skills |
 
 Production CLIs with several JSON commands tend to use **codegen** so types, handlers, and schemas stay aligned.
 
@@ -50,137 +50,129 @@ Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-
 
 ```mermaid
 flowchart LR
-  subgraph types [types.ts]
-    Config["export type configType = AppConfig"]
-    Output["export type outputType = StatusJsonOutput"]
-    Input["export type inputType = ToolInput (optional)"]
+  subgraph src [src/**/*.ts]
+    Sg["/** @sg */ export interface TypeName"]
   end
   subgraph gen [argsbarg schemagen]
-    Discover["discover types.ts roots"]
+    Walk["walk src/ minus tests and __generated__"]
     Gen["ts-json-schema-generator"]
   end
   subgraph artifacts [Gitignored __generated__]
-    Json["configSchema.json / inputSchema.json / outputSchema.json"]
+    Json["TypeNameSchema.json"]
     Index["index.ts re-exports"]
   end
   subgraph runtime [Runtime]
-    Leaves["import { outputSchema } from ./__generated__/index.ts"]
+    Leaves["import { TypeNameSchema } from ./__generated__"]
     Docgen["just docgen"]
   end
-  types --> Discover --> Gen --> Json
+  src --> Walk --> Gen --> Json
   Gen --> Index --> Leaves --> Docgen
 ```
 
 | Piece | Convention |
 | --- | --- |
 | Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled as an argsbarg dependency) |
-| Discovery | Walk `src/**/types.ts` for `export type outputType` / `inputType` / `configType`; generate from the aliased type in the same file |
-| Artifacts | `src/**/__generated__/` — gitignored; run schemagen after clone or when `types.ts` changes |
+| Discovery | Walk `src/**/*.ts` (exclude `*.test.ts`, `__generated__/`); find `/** @sg */` JSDoc immediately followed by `export interface` or `export type` |
+| Artifacts | One `__generated__/` per source directory; `{TypeName}Schema.json` + `export const {TypeName}Schema` in `index.ts` |
 | Invocation | `just schemagen` — justfile exports `node_modules/.bin` on `PATH` for local `argsbarg` |
 | tsconfig | `"resolveJsonModule": true` |
 | CI | `just check`: `schemagen` → typecheck (no git diff on generated files) |
-| Cleanup | Schemagen removes orphan `__generated__/` dirs and stale JSON when roots or kinds are removed |
-| Docgen | `docgen` depends on `schemagen` so saved `./docs/api.md` and `./docs/cli-schema.json` are fresh |
+| Cleanup | Schemagen removes orphan `__generated__/` dirs and stale JSON when roots are removed |
+| Docgen | `docgen` depends on `schemagen` so saved `./docs/cli.md` and `./docs/cli-schema.json` are fresh |
 
 ### Declaring a schema root
 
-Put schema-facing interfaces and role exports in **`types.ts`** (or `core/types.ts` for shared shapes):
+Mark any exported interface or type with `/** @sg */` on the line immediately above the declaration (no blank line):
 
 ```typescript
 // src/commands/status/types.ts
-/** JSON stdout for `myapp status --json`. */
+/** @sg */
 export interface StatusJsonOutput {
-  workspaces: WorkspaceStatus[];
+  version: string;
 }
-
-/** Schemagen root for leaf outputSchema. */
-export type outputType = StatusJsonOutput;
 ```
 
-Handlers and other modules import from the same **`types.ts`** module.
+Handlers import types from the same module; leaves import schemas from `./__generated__`:
 
 ```typescript
-// src/ui/runHeadless/types.ts — shared by many mutating commands
+import { StatusJsonOutputSchema } from "./__generated__";
+```
+
+Shared shapes in one directory share one `__generated__/index.ts`:
+
+```typescript
+// src/ui/runHeadless/types.ts
+/** @sg */
 export interface HeadlessOpResult {
   command: string;
   exitCode: number;
   tasks: HeadlessTaskResult[];
 }
-
-export type outputType = HeadlessOpResult;
 ```
 
 ```typescript
-// src/commands/render-invoice/types.ts — custom HTTP/MCP body (pdf-gen)
+// src/commands/render-invoice/types.ts
+/** @sg */
 export interface RenderInvoiceInput {
   format: "pdf" | "html";
   invoice: InvoiceData;
 }
 
+/** @sg */
 export interface RenderInvoiceOutput {
   bytes: number;
 }
-
-export type inputType = RenderInvoiceInput;
-export type outputType = RenderInvoiceOutput;
 ```
 
-| Export | Role |
+Wire on the leaf or `program.appConfig`:
+
+| Generated export | Typical use |
 | --- | --- |
-| `export type configType = AppConfig` | `program.appConfig.jsonSchema` (one per repo, typically `src/config/types.ts`) |
-| `export type outputType = …` | `leaf.outputSchema` |
-| `export type inputType = …` | `leaf.inputSchema` (only when the tool body is not flat CLI flags) |
+| `AppConfigSchema` | `program.appConfig.jsonSchema` (optional — `src/config/types.ts`) |
+| `StatusJsonOutputSchema` | `leaf.outputSchema` |
+| `RenderInvoiceInputSchema` | `leaf.inputSchema` |
 
-**Domain helpers** and **role exports** live in `types.ts`. Commands without structured JSON omit role exports. Shared shapes (e.g. `HeadlessOpResult`) are defined once in `types.ts` with a single `outputType`; other commands import `{ outputSchema }` from that module’s `__generated__/index.ts`.
-
-For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the `inputType` property) and use `ctx.jsonOpt(...)` or `ctx.readLeafInputs()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
+For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the schema property) and use `ctx.jsonOpt(...)`, `ctx.inputs`, or `ctx.inputsAs<T>()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
 
 When you do **not** set `inputSchema`, argsbarg builds tool input from CLI `options` + `positionals`.
 
 ### Generated artifacts
 
-Schemagen writes under `__generated__/` beside each `types.ts` with role exports:
+Schemagen writes under `__generated__/` beside the `@sg` source files in each directory:
 
-| Kind | Generated file | Exported const (from `__generated__/index.ts`) |
+| Type name | Generated file | Exported const |
 | --- | --- | --- |
-| config | `configSchema.json` | `configSchema` |
-| output | `outputSchema.json` | `outputSchema` |
-| input | `inputSchema.json` | `inputSchema` |
+| `StatusJsonOutput` | `StatusJsonOutputSchema.json` | `StatusJsonOutputSchema` |
+| `RenderInvoiceInput` | `RenderInvoiceInputSchema.json` | `RenderInvoiceInputSchema` |
 
 Wire on the leaf:
 
 ```typescript
-import { outputSchema } from "./__generated__/index.ts";
+import { StatusJsonOutputSchema } from "./__generated__";
 
 export const statusCommand = {
-  outputSchema,
+  outputSchema: StatusJsonOutputSchema,
   // …
 } satisfies CliLeaf;
 ```
 
-Shared mutators:
+App config (when used):
 
 ```typescript
-import { outputSchema } from "../../../ui/runHeadless/__generated__/index.ts";
-```
+import { AppConfigSchema } from "./config/__generated__";
 
-App config:
-
-```typescript
-import { configSchema } from "./config/__generated__/index.ts";
-
-appConfig: { jsonSchema: configSchema, entries: { … } },
+appConfig: { jsonSchema: AppConfigSchema, entries: { … } },
 ```
 
 ## Schema-facing types
 
-**Goal:** generated schemas match what handlers actually print, with descriptions agents can read in `docs api`.
+**Goal:** generated schemas match what handlers actually print, with descriptions agents can read in `docs cli`.
 
-1. **Schema roots** — `export interface` in `types.ts`, with `export type outputType = …` (or `inputType` / `configType`).
+1. **Schema roots** — `/** @sg */` immediately above `export interface` or `export type`, with per-field JSDoc.
 2. **Per property** — `/** … */` on every field that should appear in JSON Schema `properties` (including nested named types).
 3. **Unions / enums** — document the alias; generator emits `enum` / `anyOf` with type-level description.
 4. **Formats** — property JSDoc can include `@format date-time` for ISO timestamps; add a smoke test that the generated property has `format: "date-time"`.
-5. **Do not hand-edit** `__generated__/` — change types/JSDoc in `types.ts`, run `just schemagen`.
+5. **Do not hand-edit** `__generated__/` — change types/JSDoc in source files, run `just schemagen`.
 
 ### Narrowing when runtime ≠ stdout
 
@@ -193,7 +185,8 @@ export interface TranslationReadinessResult {
   evaluatedAt: string;
 }
 
-export type outputType = TranslationReadinessResult;
+/** @sg */
+export interface TranslationReadinessResult {
 ```
 
 Patterns:
@@ -213,15 +206,15 @@ Per consumer repo (optional):
 
 ## Contributor workflow
 
-1. Add or edit schema roots in `src/**/types.ts` with `outputType` / `inputType` / `configType` and per-field JSDoc.
+1. Add or edit `/** @sg */` roots in `src/**/*.ts` with per-field JSDoc.
 2. `just schemagen` — refresh `src/**/__generated__/`.
-3. Import `{ outputSchema }` / `{ inputSchema }` / `{ configSchema }` from the relevant `__generated__/index.ts`.
-4. `just docgen` / `myapp docs api --save` — refresh consumer docs.
+3. Import `{ TypeNameSchema }` from the relevant `./__generated__` barrel.
+4. `just docgen` / `myapp docs cli --save` — refresh consumer docs.
 5. Document which commands use which roots in **your** `docs/architecture.md` (argsbarg does not maintain per-app tables).
 
 Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md`.
 
-**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo — `types.ts` roots, `__generated__/`, and `status` leaf with `outputSchema`.
+**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo — `@sg` on command types, `__generated__/`, and `status` leaf with `StatusJsonOutputSchema`.
 
 ## Out of scope
 
@@ -233,5 +226,5 @@ Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/c
 - [config-schema.md](config-schema.md) — `configType` / `program.appConfig`
 - [cli-program.md](cli-program.md) — structured stdout, headless JSON, `read*Flags`
 - [mcp.md](mcp.md) — `tools/list`, `structuredContent`
-- [bundled-docs.md](bundled-docs.md) — `docs api` / `docs cli-schema` docgen
+- [bundled-docs.md](bundled-docs.md) — `docs cli` / `docs cli-schema` docgen
 - [docs/README.md](README.md) — documentation map

@@ -7,40 +7,21 @@ It gives consumers one stable import path without forcing them to know the inter
 module layout.
 */
 
-export { generateOpenApi, openApiJson } from "./api/openapi.ts";
-export { Cli, type CliInvokeKind, type CliInvokeResult } from "./cli.ts";
-export { cliErrWithHelp } from "./cli-errors.ts";
 export { displayAppConfigPath, resolveAppConfigPath } from "./config/file.ts";
-export type { CliLeafInputs } from "./context.ts";
-export { CliContext } from "./context.ts";
+export type { CliLeafInputs } from "./core/context.ts";
+export { CliContext } from "./core/context.ts";
 export {
   parseCommaList,
   parseDate,
   parseDateTime,
   parseDurationMs,
-} from "./formats.ts";
-export type { HeadlessContext } from "./headless.ts";
-export {
-  formatDryRunMessage,
-  requireYesInNonTty,
-  shouldRunHeadless,
-  shouldRunHeadlessWithPositionals,
-  shouldRunHeadlessWithYes,
-  wantsExplicitJson,
-} from "./headless.ts";
+} from "./core/formats.ts";
 export {
   LeafInputError,
-  loadLeafInputs,
   preloadPipableJson,
   readJsonOptionValue,
-  readLeafInputs,
-  readLeafInputsAsync,
-} from "./leaf-inputs.ts";
-export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
-export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+} from "./core/leaf-inputs.ts";
 export type {
-  CliApiResponseConfig,
-  CliApiServerConfig,
   CliAppConfig,
   CliAppConfigEntry,
   CliAppConfigResolveContext,
@@ -49,27 +30,57 @@ export type {
   CliConfigureTargets,
   CliDocsConfig,
   CliDocsTopic,
+  ClientErrorOverride,
   CliHandler,
+  CliHttpServerConfig,
+  CliHttpWireContext,
+  CliHttpWireHooks,
   CliInvocation,
+  CliInvokeHookResult,
   CliLeafKind,
+  CliLocals,
+  CliLogConfig,
   CliMcpBundleConfig,
   CliMcpResource,
   CliMcpServerConfig,
   CliMcpToolConfig,
+  CliMcpWireContext,
+  CliMcpWireHooks,
   CliOption,
   CliPositional,
   CliProgram,
+  CliProgramHooks,
   CliRespondBody,
   CliRespondOptions,
+  ErrorHookContext,
   InstallAgentIntegration,
   InstallTargetSpec,
+  InvokeFailureKind,
+  InvokeHookContext,
+  ReadinessContext,
   ResolvedInstallTarget,
-} from "./types.ts";
+  ServerRuntime,
+  ServerState,
+} from "./core/types.ts";
 export {
   CliFallbackMode,
   CliOptionKind,
   CliSchemaValidationError,
   CliValueFormat,
   isJsonLeaf,
-} from "./types.ts";
+} from "./core/types.ts";
+export type { HeadlessContext } from "./headless/routing.ts";
+export {
+  formatDryRunMessage,
+  requireYesInNonTty,
+  shouldRunHeadless,
+  shouldRunHeadlessWithPositionals,
+  shouldRunHeadlessWithYes,
+  wantsExplicitJson,
+} from "./headless/routing.ts";
+export { generateOpenApi, openApiJson } from "./http/openapi.ts";
+export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
+export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+export { Cli, type CliInvokeKind, type CliInvokeResult } from "./runtime/cli.ts";
+export { cliErrWithHelp } from "./runtime/cli-errors.ts";
 export { isInteractiveTty } from "./utils.ts";

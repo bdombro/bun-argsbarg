@@ -32,14 +32,28 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` from template (keeps app-specific suffix) |
-| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **argsbarg Cursor rule**, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` and `code.mdc` from template (keeps app-specific suffix) |
+| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **cli-program** + **code** Cursor rules, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
+| `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rule** — `scripts/merge-cli-program-rule.ts` copies `examples/full-example/.cursor/rules/cli-program.mdc` into each consumer’s `.cursor/rules/cli-program.mdc`, preserving any existing `**… conventions:**` footer block.
+**Argsbarg authoring rules** — `scripts/merge-cli-program-rule.ts` and `scripts/merge-code-rule.ts` copy templates from `examples/full-example/.cursor/rules/` into each consumer, preserving any existing `**… conventions:**` footer block.
 
-**Recommended in each consumer:** replace the template placeholder with `**<app> conventions:**` bullets (paths to `read*Flags`, shared flags, Ink vs JSON-only). Commit that file; merges refresh the shared top, not your footer.
+**Recommended in each consumer:** replace template placeholders with `**<app> conventions:**` bullets. Commit those files; merges refresh the shared top, not your footer.
+
+## Upgrading consumer apps to 7.0
+
+Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unreleased]`.
+
+1. **Schemagen:** replace `export type configType|inputType|outputType` with `/** @sg */` immediately above `export interface` / `export type` (no blank line).
+2. **Imports:** `configSchema` → `{AppConfig}Schema` (type name + `Schema`); same for leaf `inputSchema` / `outputSchema` imports (`StatusJsonOutputSchema`, etc.).
+3. **Run** `argsbarg schemagen` (or `just schemagen`) after every type change.
+4. **HTTP:** use `/api/...` REST routes only (`POST /tools/*` removed).
+5. **Hooks:** remove manual `ctx.locals.requestId` in `beforeInvoke` — framework seeds it.
+6. **Exports:** stop importing `loadLeafInputs` / `CliHttpResponseConfig` from `argsbarg` (use `ctx.inputs`, leaf `http.successContentType`).
+7. **Cursor rules:** `just consumers-dev` merges `cli-program.mdc` + `code.mdc` (includes **Abstractions** needless-extraction rule).
+8. **Verify:** `just test` and `just docgen` in each consumer repo.
 
 **Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
 
@@ -60,7 +74,31 @@ just full-example-schemagen
 just test
 ```
 
-See [`.cursor/rules/examples.mdc`](../.cursor/rules/examples.mdc) for maintainer guidance.
+See [docs/README.md](README.md) for the full documentation map.
+
+## Advanced imports
+
+Subpath exports (root barrel still re-exports everything):
+
+```typescript
+import { Cli, type CliProgram } from "argsbarg/cli";
+import { generateOpenApi, httpServeHttp } from "argsbarg/http";
+import { packMcpBundle } from "argsbarg/mcp"; // @experimental
+import { shouldRunHeadless } from "argsbarg/headless";
+import { runSchemagen } from "argsbarg/schemagen";
+```
+
+## Module boundaries
+
+| Layer | Role |
+| --- | --- |
+| `schema.ts`, `parse.ts`, `context.ts` | Transport-agnostic CLI core |
+| `http/` | HTTP tool server (`httpServer` capability) |
+| `mcp/` | MCP stdio server and bundle (`mcpServer` capability) |
+| `configure/artifacts/` | Agent artifact sync (`configure` capability) |
+| `docs/` | Built-in documentation generators |
+
+Capabilities are declared on `CliProgram`; builtins wire them in [`src/builtins/`](../src/builtins/).
 
 ## Docs
 

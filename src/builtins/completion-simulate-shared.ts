@@ -98,9 +98,18 @@ export function emitMatchChild(ident: string, scopes: ScopeRec[], pathIndex: Rec
     o += `    ${sid})\n`;
     o += "      case $w in\n";
     for (const ch of sc.kids) {
+      if (ch.key.startsWith(":")) {
+        continue;
+      }
       const childPath = sc.path === "" ? ch.key : `${sc.path}/${ch.key}`;
       const cid = pathIndex[childPath] ?? 0;
       o += `        ${ch.key}) echo ${cid}; return 0 ;;\n`;
+    }
+    const paramChild = sc.kids.find((ch) => ch.key.startsWith(":"));
+    if (paramChild) {
+      const childPath = sc.path === "" ? paramChild.key : `${sc.path}/${paramChild.key}`;
+      const cid = pathIndex[childPath] ?? 0;
+      o += `        *) echo ${cid}; return 0 ;;\n`;
     }
     o += "      esac\n";
     o += "      ;;\n";

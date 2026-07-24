@@ -95,14 +95,14 @@ Every app gets:
 - `completion bash` **/** `completion zsh` **/** `completion fish` — print shell completion scripts to stdout (injected by `Cli.run()`).
 - `version` — print `CliProgram.version` (`myapp version`).
 - `mcp` — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
-- `api` — when `apiServer.enabled` is `true`, run as an HTTP tool server (`myapp api`).
-- `docs` — when `docs.enabled` is `true`, print bundled markdown topics, schema JSON, API markdown, and generated skill content (`myapp docs`, `myapp docs readme`, `myapp docs cli-schema`, `myapp docs api`, `myapp docs skill`, …). See [docs/bundled-docs.md](docs/bundled-docs.md).
+- `http` — when `httpServer.enabled` is `true`, run as an HTTP tool server (`myapp http`).
+- `docs` — print bundled markdown topics, schema JSON, CLI markdown, and generated skill content (`myapp docs cli`, `myapp docs cli-schema`, `myapp docs skill`, …). Enabled by default; opt out with `docs: { enabled: false }`. See [docs/bundled-docs.md](docs/bundled-docs.md).
 - `configure` — manage agent skills, MCP config, and app config (`myapp configure --sync --yes` after Homebrew install). See [docs/configure.md](docs/configure.md).
 
 Do not declare a top-level command named `completion`, `version`, or `configure` — they are reserved.
 When `mcpServer.enabled` is `true`, do not declare a top-level command named `mcp` — it is reserved for the MCP built-in.
-When `apiServer.enabled` is `true`, do not declare a top-level command named `api` — it is reserved for the HTTP API built-in.
-When `docs.enabled` is `true`, do not declare a top-level command named `docs` — it is reserved for the docs built-in.
+When `httpServer.enabled` is `true`, do not declare a top-level command named `http` — it is reserved for the HTTP built-in.
+When docs is enabled (default), do not declare a top-level command named `docs` — it is reserved for the docs built-in. Opt out with `docs: { enabled: false }` if needed.
 
 ### MCP (AI agents)
 
@@ -110,11 +110,11 @@ Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp 
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: run `bunx argsbarg create` or refresh with `bun scripts/merge-cli-program-rule.ts .` from the argsbarg package).
 
-### HTTP API
+### HTTP tool server
 
-Opt in on the program root with `apiServer: { enabled: true }`, then run `myapp api` for an HTTP tool server (default `http://127.0.0.1:3000`). Same tool exposure as MCP: `POST /tools/:name` (hyphen-joined command paths). Discover tools via `GET /openapi.json`.
+Opt in on the program root with `httpServer: { enabled: true }`, then run `myapp http` for an HTTP REST server (default `http://127.0.0.1:3000`). Nested CLI paths map to `/api/...` with inferred HTTP verbs. Discover routes via `GET /openapi.json`.
 
-See **[docs/api-server.md](docs/api-server.md)** for endpoints, curl examples, and response shapes.
+See **[docs/http-server.md](docs/http-server.md)** for endpoints, curl examples, and response shapes.
 
 ### Configure CLI
 
@@ -209,9 +209,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 - `ctx.dateOpt("on")` / `ctx.dateTimeOpt("since")` — ISO date / date-time options.
 - `ctx.inputs` — coerced option and positional values for the current leaf; when `inputSchema` is set, validated before the handler runs and cached on `ctx`.
 - `ctx.inputsAs<T>()` — `ctx.inputs` cast to a schemagen or app input type.
-- `ctx.readLeafInputs()` — deprecated; use `ctx.inputs` or `ctx.inputsAs()`.
-- `ctx.jsonOpt(name)` — parsed Json option (flag, preloaded stdin, or MCP/API `toolArgs`).
-- `ctx.readLeafInputsAsync()` — deprecated alias for `readLeafInputs()`.
+- `ctx.jsonOpt(name)` — parsed Json option (flag, preloaded stdin, or MCP/HTTP `toolArgs`).
 - `ctx.typedOpt<T>("custom", parseFn)` — custom parsing for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
@@ -221,7 +219,7 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 ### Capabilities (built-ins)
 
-`completion`, `version`, `install`, `mcp`, and `api` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `apiServer`, `install`, `docs`). Reserved command names: `completion` and `version` always; `install` unless `install.enabled: false`; `mcp` when `mcpServer.enabled` is `true`; `api` when `apiServer.enabled` is `true`; `docs` when `docs.enabled` is `true`.
+`completion`, `version`, `configure`, `mcp`, and `http` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `httpServer`, `configure`, `docs`). Reserved command names: `completion` and `version` always; `configure` unless `configure.enabled: false`; `docs` unless `docs.enabled: false` (default on); `mcp` when `mcpServer.enabled` is `true`; `http` when `httpServer.enabled` is `true`.
 
 ## Examples
 
@@ -232,7 +230,7 @@ Check the `examples/` directory for full working scripts:
 | --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
 | `ArgsBargMinimal`     | `examples/minimal.ts`    | String + presence flags, `MissingOrUnknown` fallback.                                             |
 | `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                            |
-| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `readLeafInputs()`.                                                  |
+| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `ctx.inputs`.                                                  |
 | `ArgsBargFullExample` | `examples/full-example/` | **Copy template:** all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`. |
 
 
@@ -263,16 +261,16 @@ Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `progra
 
 Verify an existing tree: `bunx argsbarg create --check .`
 
-To refresh the Cursor rule in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
+To refresh Cursor rules in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` and `bun scripts/merge-code-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
 
 ### What the full-example template includes
 
 
 | Area                  | Files / wiring                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------- |
-| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `api`, `configure get`/`set`      |
-| `program.appConfig`   | `src/config/types.ts` → `configSchema` from `__generated__/`                         |
-| `outputSchema`        | `src/commands/status/types.ts` → `outputSchema` from `__generated__/`                  |
+| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`      |
+| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`         |
+| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`         |
 | Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
 | Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
 | MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
@@ -313,8 +311,8 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `CliProgram`, `CliOption`, `CliPositional`, `CliHandler`          | Schema and handler types.                                                                                                                      |
 | `CliOptionKind`, `CliValueFormat`, `CliFallbackMode`              | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior.                                       |
 | `CliSchemaValidationError`                                        | Thrown when the static command tree violates schema rules.                                                                                     |
-| `CliContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.readLeafInputs`, `ctx.invocation`, …).                                |
-| `CliLeafInputs`                                                   | Record type returned by `readLeafInputs()` — coerced option/positional values keyed by schema name.                                            |
+| `CliContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.inputs`, `ctx.invocation`, …).                                |
+| `CliLeafInputs`                                                   | Record type returned by `ctx.inputs` — coerced option/positional values keyed by schema name.                                            |
 | `Cli`                                                             | Runtime: validate + freeze program, `run()`, `invoke()`, `serveMcp()`, `appConfig` getter, `exportCommandSchema()`, `exportAppConfigSchema()`. |
 | `CliInvokeResult`, `CliInvokeKind`                                | Result types from `cli.invoke()`.                                                                                                              |
 | `CliAppConfig`, `CliAppConfigEntry`                               | App config block on the program root (`entries` metadata overlay + optional `jsonSchema`).                                                     |
@@ -322,7 +320,7 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` | Optional format parsers for use outside handlers.                                                                                              |
 
 
-Reserved identifiers (validated at startup): root commands `completion`, `version`, `install`, `docs` (when `docs.enabled` is `true`), `mcp` (when `mcpServer.enabled` is `true`), and `api` (when `apiServer.enabled` is `true`).
+Reserved identifiers (validated at startup): root commands `completion`, `version`, `configure`, `docs` (unless `docs.enabled: false`), `mcp` (when `mcpServer.enabled` is `true`), and `http` (when `httpServer.enabled` is `true`).
 
 ---
 

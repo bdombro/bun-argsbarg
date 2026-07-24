@@ -6,9 +6,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { readBindings } from "../config/bindings.ts";
-import { resolveAppConfigPath, writeAppConfigFile } from "../config/file.ts";
-import { Cli, type CliProgram } from "../index.ts";
+import { readBindings } from "~/config/bindings.ts";
+import { resolveAppConfigPath, writeAppConfigFile } from "~/config/file.ts";
+import { Cli, type CliProgram } from "~/index";
 
 function configFixture(): CliProgram {
   return {

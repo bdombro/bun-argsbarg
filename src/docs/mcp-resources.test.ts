@@ -3,7 +3,7 @@ Tests for docs/mcp-resources module behavior.
 */
 
 import { expect, test } from "bun:test";
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
 import {
   defaultDocsTopicResourceUri,
   docsMcpResources,
@@ -21,14 +21,13 @@ function fixture(opts?: { docs?: boolean; mcp?: boolean }): CliProgram {
     ...(docs
       ? {
           docs: {
-            enabled: true,
             topics: {
               readme: { text: "# Readme\n", description: "User guide." },
               arch: { text: "# Arch\n" },
             },
           },
         }
-      : {}),
+      : { docs: { enabled: false } }),
     ...(mcp ? { mcpServer: { enabled: true } } : {}),
     handler: () => {},
   };

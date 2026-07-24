@@ -1,4 +1,4 @@
-import type { CliProgram } from "../types.ts";
+import type { CliProgram } from "~/core/types.ts";
 
 /** YAML frontmatter block at the start of SKILL.md. */
 export const MARKDOWN_FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;

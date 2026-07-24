@@ -1,5 +1,7 @@
 # Configure command
 
+> This feature is experimental.
+
 The `configure` built-in manages **agent artifacts** (skills, MCP config, app config). The **binary and shell completions** ship via Homebrew — see [distribution-homebrew.md](distribution-homebrew.md).
 
 Opt out with `configure: { enabled: false }` on the program root.

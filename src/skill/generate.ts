@@ -2,17 +2,17 @@
 This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
 */
 
-import { defaultConfigEntryTitle } from "../config/entry.ts";
-import { generateApiGuide } from "../docs/api-guide.ts";
+import { defaultConfigEntryTitle } from "~/config/entry.ts";
+import { collectOptionDefs } from "~/core/parse.ts";
+import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { generateCliGuide } from "~/docs/cli-guide.ts";
 import {
   collectMcpTools,
   type McpToolDef,
   mcpServerId,
   resolveMcpSchemaUri,
   sanitizeToolSegment,
-} from "../mcp/tools.ts";
-import { collectOptionDefs } from "../parse.ts";
-import { CliOptionKind, type CliProgram } from "../types.ts";
+} from "~/mcp/tools.ts";
 import type { SkillTarget } from "./naming.ts";
 import { skillDirNameForTarget, skillFrontmatterName } from "./naming.ts";
 
@@ -149,7 +149,7 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     "## Reference",
     "",
-    `For full detail, open \`reference.md\` in this skill directory (same as \`${root.key} docs api\`).`,
+    `For full detail, open \`reference.md\` in this skill directory (same as \`${root.key} docs cli\`).`,
     "",
   );
 
@@ -190,9 +190,9 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
   return lines.join("\n");
 }
 
-/** Builds reference.md with the full `docs api` markdown guide. */
+/** Builds reference.md with the compact `docs cli` markdown guide. */
 function buildReferenceMd(root: CliProgram): string {
-  return generateApiGuide(root);
+  return generateCliGuide(root, { compact: true });
 }
 
 /** Builds MCP routing SKILL.md for Claude Code plugin zips. */

@@ -8,7 +8,7 @@ Reference template for argsbarg consumer docgen. Every builtin is enabled in `sr
 | **Authoring argsbarg schema** | `node_modules/argsbarg/docs/cli-program.md` — see `.cursor/rules/cli-program.mdc` |
 | **HTTP API / curl** | [http.md](http.md) — generated; or run `full-example docs http` |
 | **MCP tools** | [mcp.md](mcp.md) — generated; or run `full-example docs mcp` |
-| **Full command tree (markdown)** | [api.md](api.md) — generated |
+| **Full command tree (markdown)** | [cli.md](cli.md) — generated |
 | **Full command tree (JSON)** | [cli-schema.json](cli-schema.json) — generated |
 | **OpenAPI 3.1** | [openapi.json](openapi.json) — generated |
 | **Agent skill index** | [skill.md](skill.md) — generated |

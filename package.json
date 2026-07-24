@@ -1,6 +1,6 @@
 {
   "name": "argsbarg",
-  "version": "6.1.2",
+  "version": "6.1.3",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "dependencies": {
@@ -17,18 +17,35 @@
       "types": "./index.d.ts",
       "default": "./src/index.ts"
     },
+    "./cli": {
+      "types": "./src/exports/cli.ts",
+      "default": "./src/exports/cli.ts"
+    },
+    "./headless": {
+      "types": "./src/exports/headless.ts",
+      "default": "./src/exports/headless.ts"
+    },
+    "./http": {
+      "types": "./src/exports/http.ts",
+      "default": "./src/exports/http.ts"
+    },
+    "./mcp": {
+      "types": "./src/exports/mcp.ts",
+      "default": "./src/exports/mcp.ts"
+    },
     "./schemagen": {
       "types": "./src/cli-tool/schemagen/index.ts",
       "default": "./src/cli-tool/schemagen/index.ts"
     }
   },
   "bin": {
-    "argsbarg": "src/cli-tool/main.ts"
+    "argsbarg": "bin/argsbarg"
   },
   "engines": {
     "bun": ">=1.3"
   },
   "files": [
+    "bin",
     "src",
     "index.d.ts",
     "docs",

@@ -2,20 +2,20 @@
 Built-in `configure get` / `configure set` subcommands.
 */
 
-import { clearFileValue, setBinding } from "../config/bindings.ts";
-import { bootstrapAppConfig } from "../config/bootstrap.ts";
+import { clearFileValue, setBinding } from "~/config/bindings.ts";
+import { bootstrapAppConfig } from "~/config/bootstrap.ts";
 import {
   configCommandsEnabled,
   configEntrySensitive,
   configMcpSetEnabled,
   defaultConfigEntryTitle,
-} from "../config/entry.ts";
-import { writeAppConfigFile } from "../config/file.ts";
-import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "../config/resolve.ts";
-import { configPropertySchema, effectiveJsonSchema } from "../config/schema.ts";
-import { parseConfigSetValue } from "../config/validate.ts";
-import type { CliLeaf, CliOption, CliProgram } from "../types.ts";
-import { CliOptionKind } from "../types.ts";
+} from "~/config/entry.ts";
+import { writeAppConfigFile } from "~/config/file.ts";
+import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "~/config/resolve.ts";
+import { configPropertySchema, effectiveJsonSchema } from "~/config/schema.ts";
+import { parseConfigSetValue } from "~/config/validate.ts";
+import type { CliLeaf, CliOption, CliProgram } from "~/core/types.ts";
+import { CliOptionKind } from "~/core/types.ts";
 
 const JSON_OPTION: CliOption = {
   name: "json",

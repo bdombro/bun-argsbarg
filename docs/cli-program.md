@@ -34,12 +34,12 @@ const cli = {
   key: "myapp",
   version: "1.0.0",
   description: "One-line summary of what the CLI does.",
-  apiServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
+  httpServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
   commands: [/* ... */],
 } satisfies CliProgram;
 ```
 
-`apiServer` and `mcpServer` are independent. Tool exposure uses the same rules (`mcpTool.enabled: false` hides from MCP and HTTP). See [api-server.md](api-server.md).
+`httpServer` and `mcpServer` are independent. Tool exposure uses the same rules (`mcpTool.enabled: false` hides from MCP and HTTP). See [http-server.md](http-server.md).
 
 ## Inline schema by default
 
@@ -101,6 +101,18 @@ Option and positional `description` strings appear in `-h`, MCP `inputSchema`, a
 
 Use root **`notes`** for cross-cutting hints shown in help (install commands, docs topics, VPN requirements).
 
+## Agent-friendly schema
+
+Descriptions and schemas are copied into MCP tools, HTTP OpenAPI, and generated skills — optimize for smaller, clearer agent payloads:
+
+- Prefer **`kind: "json"`** leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
+- Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
+- Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
+- For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
+- Skill **`reference.md`** uses a compact CLI guide (no inline `outputSchema` JSON) — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
+
+Validation keywords: [json-schema-subset.md](json-schema-subset.md).
+
 ## Well-known option names
 
 Prefer **`yes`**, **`dry-run`**, and **`json`** when semantics match. They appear in `-h`, MCP `inputSchema`, and generated skills — write clear option `description` strings (e.g. "Skip confirmation; use for non-interactive runs.").
@@ -145,7 +157,7 @@ On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when
 }
 ```
 
-Exported in `docs cli-schema`, `docs api`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
+Exported in `docs cli-schema`, `docs cli`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
 
 For a **outputSchema codegen guidelines** (TypeScript types → JSON Schema → `outputSchema` constants), see [output-schema.md](output-schema.md).
 
@@ -211,8 +223,6 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.inputs;
 const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
 ```
 
-**`readLeafInputs()`** — deprecated alias for `ctx.inputs`.
-
 **`CliLeafInputs`** — return type of `ctx.inputs` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
 
 | Schema | Value in `CliLeafInputs` |
@@ -229,6 +239,38 @@ const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
 | `kind: json` | parsed object/array or `undefined` (`ctx.jsonOpt(name)`; piped stdin preloaded before handler) |
 
 Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `ctx.inputs` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `ctx.inputs` for coerced values.
+
+### Typed `locals` and server `state`
+
+**`ctx.locals`** — per-invocation bag populated in `program.hooks.beforeInvoke` (framework seeds `requestId` before hooks run). **`ctx.runtime.state`** — shared HTTP/MCP server bag (DB pools, readiness cache, etc.).
+
+Argsbarg exports empty **`CliLocals`** and **`ServerState`** interfaces. Augment them once in your app so handlers see typed fields.
+
+Create a `src/types/argsbarg.d.ts` file (or any name under your `tsconfig.json`'s `include` path) and ensure it contains at least one top-level `import` or `export` statement so TypeScript treats it as a module (module augmentation). Because it is matched by the `include` paths in `tsconfig.json`, TypeScript automatically loads it globally—no runtime or build-time imports are needed in your entry points!
+
+```typescript
+// src/types/argsbarg.d.ts
+import type { AppDb } from "../db";
+
+declare module "argsbarg" {
+  interface CliLocals {
+    db: AppDb;
+  }
+  interface ServerState {
+    db?: AppDb;
+  }
+}
+```
+
+```typescript
+// program.ts
+hooks: { beforeInvoke: AppDb.attach },
+
+// handler
+handler: (ctx) => ctx.locals.db.workspaces.list(),
+```
+
+Use **`CliLocals`** for handler-facing per-request state (`ctx.locals.db`). Use **`ServerState`** for cross-request server resources (`ctx.runtime.state.db`). Populate both in `beforeInvoke` when needed.
 
 ### Json options and piped stdin
 
@@ -279,7 +321,7 @@ When the entire tool body is JSON (no CLI flags), set **`kind: "json"`** on the 
 
 Example CLI: `jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice`
 
-See [output-schema.md](output-schema.md) for schemagen `inputType` and [api-server.md](api-server.md) for HTTP tool bodies.
+See [output-schema.md](output-schema.md) for schemagen `inputType`, [http-server.md](http-server.md) for HTTP tool bodies, and [json-schema-subset.md](json-schema-subset.md) for supported schema keywords.
 
 `CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.
 
@@ -293,7 +335,7 @@ For apps with **Ink + headless + MCP** (multiple surfaces per leaf), avoid scatt
 
 | Layer | Responsibility |
 | --- | --- |
-| **`read*Flags(ctx)`** | Read coerced values from `ctx` (`readLeafInputs()`, `durationOpt`, `commaListOpt`, shared mutator flags) into one typed struct |
+| **`read*Flags(ctx)`** | Read coerced values from `ctx` (`ctx.inputs`, `durationOpt`, `commaListOpt`, shared mutator flags) into one typed struct |
 | **`resolve*Input(flags)`** | Cross-field validation and defaults; returns `{ ok, input }` or `{ ok: false, error }` |
 
 The handler calls **`read*Flags` once**, passes the struct to **`resolve*Input`**, then branches to Ink, headless, or MCP with the same resolved input.
@@ -338,7 +380,7 @@ handler: async (ctx) => {
 };
 ```
 
-**JSON-only CLIs** — a single `readCommandOptions(ctx)` wrapping `readLeafInputs()` per shared option set is usually enough; full `resolve*` layering is optional.
+**JSON-only CLIs** — a single `readCommandOptions(ctx)` wrapping `ctx.inputs` per shared option set is usually enough; full `resolve*` layering is optional.
 
 ## Upgrading to 3.6+
 
@@ -358,7 +400,7 @@ CLI argv is unchanged: space-separated words. Use `format: comma-list` on an **o
 
 ### Value formats (optional)
 
-Add `format`, `default`, or `pattern` on string **options**; read with `ctx.durationOpt`, `ctx.commaListOpt`, `ctx.readLeafInputs()`, etc. Replace hand-rolled `split(",")` / `parseDurationMs` try/catch where the schema can declare the shape.
+Add `format`, `default`, or `pattern` on string **options**; read with `ctx.durationOpt`, `ctx.commaListOpt`, `ctx.inputs`, etc. Replace hand-rolled `split(",")` / `parseDurationMs` try/catch where the schema can declare the shape.
 
 ### Handler layering (optional)
 
@@ -369,7 +411,7 @@ Ink + headless + MCP apps benefit from `read*Flags(ctx)` + `resolve*Input(flags)
 Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
 
 - **MCP** (`ctx.invocation === "mcp"` — always non-interactive)
-- **HTTP API** (`ctx.invocation === "api"` — same headless rules as MCP)
+- **HTTP API** (`ctx.invocation === "http"` — same headless rules as MCP)
 - **Non-TTY CLI** (pipes, CI, `myapp cmd --yes` in a script)
 - **Explicit flags** (`--json`, `--dry-run`)
 

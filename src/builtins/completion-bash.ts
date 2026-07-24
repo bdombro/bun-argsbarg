@@ -1,4 +1,4 @@
-import { CliOptionKind, type CliRouter } from "../types.ts";
+import { CliOptionKind, type CliRouter } from "~/core/types.ts";
 import { emitConsumeLong, emitConsumeShort, emitMatchChild } from "./completion-simulate-shared.ts";
 import { collectScopes, type ScopeRec } from "./scopes.ts";
 import { escShellSingleQuoted, identToken, kHelpLong, kHelpShort, mainName } from "./shell-helpers.ts";

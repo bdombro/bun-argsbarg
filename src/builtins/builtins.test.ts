@@ -3,14 +3,14 @@ Tests for builtins/builtins module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import { resolveCapabilities } from "../capabilities.ts";
-import { cliBuiltinDocsGroup } from "../docs/builtin.ts";
-import { ParseKind, parse, postParseValidate } from "../parse.ts";
-import type { CliProgram } from "../types.ts";
+import { ParseKind, parse, postParseValidate } from "~/core/parse.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { cliBuiltinDocsGroup } from "~/docs/builtin.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { completionBashScript, completionFishScript, completionZshScript } from ".";
 import { cliBuiltinConfigureCommand, configureBuiltinOptions } from "./configure.ts";
 import { configureCommandDescription, configureSyncOptionDescription } from "./configure-copy.ts";
 import { exportPresentationBuiltins } from "./export.ts";
-import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
 
@@ -88,7 +88,7 @@ describe("builtins help copy", () => {
   test("mcp builtin description is user-facing", () => {
     const withDocs: CliProgram = {
       ...fixture,
-      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
+      docs: { topics: { readme: { text: "# r\n" } } },
     };
     const mcp = cliBuiltinMcpCommand(withDocs);
     expect(mcp.description).toContain("MCP server");
@@ -185,7 +185,7 @@ describe("docs skill topic copy", () => {
   test("mentions configure when configure is enabled", () => {
     const withDocs: CliProgram = {
       ...noMcp,
-      docs: { enabled: true, topics: { readme: { text: "# r\n" } } },
+      docs: { topics: { readme: { text: "# r\n" } } },
     };
     const skill = cliBuiltinDocsGroup(withDocs).commands.find((c) => c.key === "skill");
     expect(skill?.description).toContain("configure");

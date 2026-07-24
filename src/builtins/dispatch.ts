@@ -1,18 +1,19 @@
-import { capabilityDeniedMessage, resolveCapabilities } from "../capabilities.ts";
-import { Cli } from "../cli.ts";
-import { cliConfigure } from "../configure/index.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import { runMcpBundle } from "../mcp/bundle.ts";
-import type { ParseResult } from "../parse.ts";
-import { ParseKind } from "../parse.ts";
-import type { CliNode, CliProgram, CliRouter } from "../types.ts";
-import { isCliLeaf } from "../types.ts";
-import { cliBuiltinApiCommand } from "./api.ts";
+import { cliConfigure } from "~/configure";
+import type { ParseResult } from "~/core/parse.ts";
+import { ParseKind } from "~/core/parse.ts";
+import type { CliNode, CliProgram, CliRouter } from "~/core/types.ts";
+import { isCliLeaf } from "~/core/types.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "~/docs/builtin.ts";
+import { runMcpBundle } from "~/mcp/bundle.ts";
+import { capabilityDeniedMessage, resolveCapabilities } from "~/runtime/capabilities.ts";
+import { Cli } from "~/runtime/cli.ts";
+import { serveOverridesFromOpts } from "~/server/overrides.ts";
 import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
 import { CONFIGURE_RUN_KEY, cliBuiltinConfigureCommand, isConfigureConfigPath } from "./configure.ts";
+import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
@@ -69,17 +70,17 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     process.exit(0);
   }
 
-  if (pr.path[0] === "api") {
-    if (!caps.api) {
-      process.stderr.write(capabilityDeniedMessage("api"));
+  if (pr.path[0] === "http") {
+    if (!caps.http) {
+      process.stderr.write(capabilityDeniedMessage("http"));
       process.exit(1);
     }
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
-      await new Cli(program).serveApi();
+      await new Cli(program).serveHttp(serveOverridesFromOpts(pr.opts, "http"));
       process.exit(0);
     }
-    process.stderr.write(`Unknown subcommand: api ${pr.path.slice(1).join(" ")}\n`);
+    process.stderr.write(`Unknown subcommand: http ${pr.path.slice(1).join(" ")}\n`);
     process.exit(1);
   }
 
@@ -90,7 +91,7 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     }
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
-      await new Cli(program).serveMcp();
+      await new Cli(program).serveMcp(serveOverridesFromOpts(pr.opts, "mcp"));
       process.exit(0);
     }
     if (pr.path.length === 2 && sub === "bundle") {
@@ -157,12 +158,12 @@ export function builtinInterceptRoot(
     };
   }
 
-  if (first === "api" && caps.api) {
+  if (first === "http" && caps.http) {
     return {
       parseRoot: {
         key: program.key,
         description: program.description,
-        commands: [cliBuiltinApiCommand(program)],
+        commands: [cliBuiltinHttpCommand(program)],
       },
       isLeafCompletionIntercept: false,
     };

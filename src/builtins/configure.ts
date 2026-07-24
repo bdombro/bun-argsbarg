@@ -1,5 +1,4 @@
-import { resolveCapabilities } from "../capabilities.ts";
-import { configCommandsEnabled, configMcpSetEnabled } from "../config/entry.ts";
+import { configCommandsEnabled, configMcpSetEnabled } from "~/config/entry.ts";
 import {
   CliFallbackMode,
   type CliLeaf,
@@ -7,7 +6,8 @@ import {
   CliOptionKind,
   type CliProgram,
   type CliRouter,
-} from "../types.ts";
+} from "~/core/types.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
 import { configureConfigSubcommands } from "./config.ts";
 import {
   configureCommandDescription,
@@ -79,7 +79,7 @@ export function cliBuiltinConfigureCommand(root: CliProgram): CliRouter {
   const caps = resolveCapabilities(root);
   const run: CliLeaf = {
     key: CONFIGURE_RUN_KEY,
-    hidden: true,
+    cli: { hidden: true },
     description: "Interactive or flag-driven configure (skills, MCP, app config).",
     handler: () => {},
   };

@@ -14,20 +14,21 @@ Use names that describe the domain role, not generic placeholders like `data` or
 
 ## Structure
 
-After imports, put **exported** symbols first (alphabetical within each kind), then **module-private** helpers at the bottom. Use `.ts` extension in relative imports (`from "./parse.ts"`).
+After imports, put **exported** symbols first (alphabetical within each kind), then **module-private** helpers at the bottom. Use `~/…` only where you would otherwise use `../` (or deeper) to reach another module under `src/`. Same-directory (`./`) and child (`./foo/…`) imports stay relative. Use `.ts` extensions.
 
 ## Module boundaries
 
 | Path | Owns | Must not |
 | --- | --- | --- |
 | `src/index.ts` | Thin entry: `new Cli(program).run()` | Inline leaf handlers, business logic |
-| `src/program.ts` | `CliProgram` assembly: `docs`, `install`, `appConfig`, `commands: […]` | Inline leaf handlers, business logic |
-| `src/commands/<name>/` | One user-facing command: `command.ts`, `types.ts` (with role exports when needed) | Shared helpers used by multiple commands (lift to `commands/` or `core/`) |
-| `src/config/` | App config types (`types.ts` with `configType` for schemagen) | Command handlers |
+| `src/types/` | Global type declarations and module augmentations (e.g. `argsbarg.d.ts`, `md.d.ts`) | Runtime logic, imports from outside `types/` |
+| `src/program.ts` | `CliProgram` assembly: `docs`, `commands: […]` | Inline leaf handlers, business logic |
+| `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrate.ts`, `migrations/*.sql` | Command handlers |
+| `src/commands/<name>/` | One user-facing command: `command.ts`, optional `types.ts` with `/** @sg */` | Shared helpers (lift to `src/db/`) |
 | `src/**/__generated__/` | Generated JSON Schema + `index.ts` re-exports | Hand-edited generated files |
 | `scripts/` | Dev tooling (formula helpers) | Production command paths |
 
-When adding commands: `src/commands/<name>/command.ts` + `types.ts` (add `outputType` / `inputType` when needed); register in `program.ts` **alphabetically by command key**.
+When adding commands: `src/commands/<name>/command.ts` + `types.ts` when schemas are needed; register in `program.ts` **alphabetically by command key**.
 
 **Argsbarg schema:** `.cursor/rules/cli-program.mdc`.
 
@@ -35,6 +36,12 @@ When adding commands: `src/commands/<name>/command.ts` + `types.ts` (add `output
 
 - **Runtime:** Bun (`just test`, `just dev`).
 - **Tests:** colocate `*.test.ts` next to the module.
-- **Schemagen:** after changing `src/**/types.ts`, run `just schemagen` (`__generated__/` is gitignored).
+- **Schemagen:** after changing `/** @sg */` types in `src/`, run `just schemagen` (`__generated__/` is gitignored).
 
 **full-example conventions:** replace with domain-specific layout notes (JSON-only vs Ink, shared flags, etc.).
+
+## Abstractions
+
+Avoid needless extraction: keep single-use helpers in the calling file by default. Split only when reused elsewhere, the caller is large or hard to follow, or extraction clarifies a substantial unit. Do not create tiny one-off helpers.
+- ❌ `utils/formatX.ts` — 60-line helper used by one command
+- ✅ inline helper in that command file

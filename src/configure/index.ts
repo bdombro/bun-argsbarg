@@ -2,22 +2,24 @@
 Interactive and automated `configure` command orchestration (agent artifacts and app config).
 */
 
-import { resolveCapabilities } from "../capabilities.ts";
-import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
-import { ensureAppConfigFile } from "../config/file.ts";
-import { resolveInstallPaths } from "../install/paths.ts";
-import { buildInstallPlan, buildUpdatePlan } from "../install/plan.ts";
+import { displayAppConfigPath, runConfigure } from "~/config/bootstrap.ts";
+import { ensureAppConfigFile } from "~/config/file.ts";
+import type { CliProgram } from "~/core/types.ts";
+import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { cliSkillInstall, skillTargetFromActionKind } from "~/skill/install.ts";
+import { resolveInstallPaths } from "./artifacts/paths.ts";
+import { buildInstallPlan, buildUpdatePlan } from "./artifacts/plan.ts";
 import {
   installErr,
   installInfo,
   installOut,
   printInstallStatus,
   writeInteractiveInstallIntro,
-} from "../install/status.ts";
-import { resolveEffectiveInstallTargets } from "../install/target-effective.ts";
-import { runTargetPreflight } from "../install/target-plan-build.ts";
-import { INSTALL_TARGETS, installTargetForKey } from "../install/target-registry.ts";
-import { buildDetectedSnapshot, buildTargetPlanContext } from "../install/target-scope.ts";
+} from "./artifacts/status.ts";
+import { resolveEffectiveInstallTargets } from "./artifacts/target-effective.ts";
+import { runTargetPreflight } from "./artifacts/target-plan-build.ts";
+import { INSTALL_TARGETS, installTargetForKey } from "./artifacts/target-registry.ts";
+import { buildDetectedSnapshot, buildTargetPlanContext } from "./artifacts/target-scope.ts";
 import type {
   CliInstallArtifactKey,
   InstallAction,
@@ -25,10 +27,8 @@ import type {
   InstallOpts,
   TargetPlanContext,
   UninstallAction,
-} from "../install/target-types.ts";
-import { buildUninstallPlan, skillDirFromUninstallSummary, uninstallSkillDir } from "../install/uninstall.ts";
-import { cliSkillInstall, skillTargetFromActionKind } from "../skill/install.ts";
-import type { CliProgram } from "../types.ts";
+} from "./artifacts/target-types.ts";
+import { buildUninstallPlan, skillDirFromUninstallSummary, uninstallSkillDir } from "./artifacts/uninstall.ts";
 import { artifactPromptLabel, promptTargetAction } from "./prompt.ts";
 
 /** True when interactive `configure` should auto-run the app config wizard. */
