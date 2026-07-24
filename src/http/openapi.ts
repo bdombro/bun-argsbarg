@@ -161,19 +161,19 @@ function livenessGetOp(operationId: string, summary: string): Record<string, unk
   };
 }
 
-/** Framework health probe paths served alongside `/api/*` routes. */
+/** Framework health probe paths served alongside user command routes. */
 function buildHealthPaths(): Record<string, unknown> {
   return {
     "/health": {
-      get: livenessGetOp("health", "Liveness probe (alias of /health/live)"),
+      get: livenessGetOp("health", "Liveness probe (alias of /health/liveness)"),
     },
-    "/health/live": {
-      get: livenessGetOp("health_live", "Liveness probe"),
+    "/health/liveness": {
+      get: livenessGetOp("health_liveness", "Liveness probe"),
     },
-    "/health/ready": {
+    "/health/readiness": {
       get: {
         tags: [HEALTH_TAG],
-        operationId: "health_ready",
+        operationId: "health_readiness",
         summary: "Readiness probe",
         description: "Config file, required app config, and optional program.readiness checks.",
         responses: {
@@ -200,7 +200,7 @@ function findTopLevelCommand(program: CliProgram, key: string): CliNode | undefi
   return program.commands.find((c) => c.key === key);
 }
 
-/** OpenAPI tags for user `/api/*` routes, one per top-level command. */
+/** OpenAPI tags for user command routes, one per top-level command. */
 function collectCommandTags(program: CliProgram, routes: HttpRoute[]): { name: string; description?: string }[] {
   const names = [...new Set(routes.map((route) => topLevelCommandKey(route, program)))].sort();
   return names.map((name) => {

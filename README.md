@@ -112,7 +112,7 @@ See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom 
 
 ### HTTP tool server
 
-Opt in on the program root with `httpServer: { enabled: true }`, then run `myapp http` for an HTTP REST server (default `http://127.0.0.1:3000`). Nested CLI paths map to `/api/...` with inferred HTTP verbs. Discover routes via `GET /openapi.json`.
+Opt in on the program root with `httpServer: { enabled: true }`, then run `myapp http` for an HTTP REST server (default `http://127.0.0.1:3000`). Nested CLI paths map to REST routes at the server root by default (e.g. `/workspaces`); set `httpServer.pathPrefix: "/api"` to prefix all user routes. Discover routes via `GET /openapi.json`.
 
 See **[docs/http-server.md](docs/http-server.md)** for endpoints, curl examples, and response shapes.
 

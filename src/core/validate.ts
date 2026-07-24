@@ -5,6 +5,7 @@ This module validates CLI schemas before execution.
 import { AGENT_PAIRS, MCP_KEYS, mcpServerRequiredForArtifact } from "~/configure/artifacts/target-registry.ts";
 import { reservedDocsTopicResourceUris } from "~/docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "~/docs/resolve.ts";
+import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "~/http/paths.ts";
 import { resolveMcpSchemaUri } from "~/mcp/tools.ts";
 import { reservedCommandNames, resolveCapabilities } from "~/runtime/capabilities.ts";
 import { validateFormatValue } from "./formats.ts";
@@ -180,6 +181,8 @@ export function cliValidateProgram(program: CliProgram): void {
     throw new CliSchemaValidationError("httpServer requires enabled: true; omit httpServer to disable HTTP API");
   }
 
+  validateHttpPathPrefix(program);
+
   if (docsEnabled(program) && program.docs?.topics !== undefined) {
     validateDocsConfig(program.docs);
   }
@@ -210,6 +213,46 @@ const PARAM_ROUTER_KEY = /^:[a-zA-Z][a-zA-Z0-9_]*$/;
 
 function isParamRouterKey(key: string): boolean {
   return key.startsWith(":");
+}
+
+/** Validates `httpServer.pathPrefix` and reserved top-level command keys. */
+function validateHttpPathPrefix(program: CliProgram): void {
+  if (!program.httpServer?.enabled) {
+    return;
+  }
+  const raw = program.httpServer.pathPrefix;
+  if (raw !== undefined && raw !== "") {
+    if (!raw.startsWith("/")) {
+      throw new CliSchemaValidationError(`httpServer.pathPrefix must start with / (got ${JSON.stringify(raw)})`);
+    }
+    if (raw.length > 1 && raw.endsWith("/")) {
+      throw new CliSchemaValidationError(`httpServer.pathPrefix must not end with / (got ${JSON.stringify(raw)})`);
+    }
+    if (raw.includes("//")) {
+      throw new CliSchemaValidationError("httpServer.pathPrefix must not contain //");
+    }
+    if (raw === "/health" || raw === "/swagger" || raw === "/openapi.json" || raw === "/tools") {
+      throw new CliSchemaValidationError(
+        `httpServer.pathPrefix must not be a framework path (got ${JSON.stringify(raw)})`,
+      );
+    }
+    return;
+  }
+  if (!isCliRouter(program)) {
+    if (isCliLeaf(program) && HTTP_RESERVED_TOP_LEVEL_SEGMENTS.has(program.key)) {
+      throw new CliSchemaValidationError(
+        `Reserved HTTP program key when httpServer.pathPrefix is empty: ${program.key}`,
+      );
+    }
+    return;
+  }
+  for (const child of program.commands) {
+    if (HTTP_RESERVED_TOP_LEVEL_SEGMENTS.has(child.key)) {
+      throw new CliSchemaValidationError(
+        `Reserved HTTP command name when httpServer.pathPrefix is empty: ${child.key} (set httpServer.pathPrefix or rename)`,
+      );
+    }
+  }
 }
 
 function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {

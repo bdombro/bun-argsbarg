@@ -7,6 +7,7 @@ import {
   type CliRouter,
 } from "~/core/types.ts";
 import { docsEnabled } from "~/docs/resolve.ts";
+import { httpUserPathGlob, resolveHttpPathPrefix } from "~/http/paths.ts";
 import { resolveHttpListenAddress } from "~/http/server.ts";
 import { resolveCapabilities } from "~/runtime/capabilities.ts";
 
@@ -34,10 +35,11 @@ const HTTP_SERVE_OPTIONS: CliOption[] = [
 export function cliBuiltinHttpCommand(program: CliProgram): CliRouter {
   const caps = resolveCapabilities(program);
   const { hostname, port } = resolveHttpListenAddress(program);
+  const userGlob = httpUserPathGlob(resolveHttpPathPrefix(program));
   const lines = [
     `HTTP tool server on http://${hostname}:${port}.`,
     "",
-    "Endpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*",
+    `Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, ${userGlob}`,
     "",
   ];
   if (caps.configure) {

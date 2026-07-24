@@ -2,6 +2,7 @@ import { defaultConfigEntryTitle } from "~/config/entry.ts";
 import { displayAppConfigPath } from "~/config/file.ts";
 import { collectOptionDefs } from "~/core/parse.ts";
 import { CliOptionKind, type CliProgram } from "~/core/types.ts";
+import { httpUserPathGlob, resolveHttpPathPrefix } from "~/http/paths.ts";
 import { collectHttpRoutes } from "~/http/routes.ts";
 import { resolveHttpListenAddress } from "~/http/server.ts";
 
@@ -27,6 +28,9 @@ export function generateHttpGuide(root: CliProgram): string {
   const routes = collectHttpRoutes(root);
   const { hostname, port } = resolveHttpListenAddress(root);
   const baseUrl = `http://${hostname}:${port}`;
+  const pathPrefix = resolveHttpPathPrefix(root);
+  const userGlob = httpUserPathGlob(pathPrefix);
+  const sampleWorkspaces = `${pathPrefix}/workspaces`;
 
   const lines: string[] = [
     `# HTTP API (${root.key})`,
@@ -47,23 +51,23 @@ export function generateHttpGuide(root: CliProgram): string {
     "",
     "| Method | Path | Purpose |",
     "| --- | --- | --- |",
-    "| `GET` | `/health` or `/health/live` | Liveness check |",
-    "| `GET` | `/health/ready` | Readiness (config + `program.readiness`) |",
+    "| `GET` | `/health` or `/health/liveness` | Liveness check |",
+    "| `GET` | `/health/readiness` | Readiness (config + `program.readiness`) |",
     "| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |",
     "| `GET` | `/swagger` | Interactive Swagger UI API reference |",
-    "| `*` | `/api/...` | Invoke user commands (method per route) |",
+    `| * | \`${userGlob}\` | Invoke user commands (method per route) |`,
     "| `OPTIONS` | `*` | CORS preflight |",
     "",
-    "Discover paths from `openapi.json` (`/api/...`). Query binds options; POST/PUT/PATCH body binds options and `inputSchema` fields.",
+    `Discover paths from \`openapi.json\` (\`${userGlob}\`). Query binds options; POST/PUT/PATCH body binds options and \`inputSchema\` fields.`,
     "",
     "## Examples",
     "",
     "```bash",
     `curl -s ${baseUrl}/health`,
-    `curl -s ${baseUrl}/health/ready`,
+    `curl -s ${baseUrl}/health/readiness`,
     `curl -s ${baseUrl}/openapi.json`,
-    `curl -s ${baseUrl}/api/workspaces`,
-    `curl -s -X POST ${baseUrl}/api/workspaces \\`,
+    `curl -s ${baseUrl}${sampleWorkspaces}`,
+    `curl -s -X POST ${baseUrl}${sampleWorkspaces} \\`,
     '  -H "content-type: application/json" \\',
     `  -d '{"name":"qa2"}'`,
     "```",
@@ -127,7 +131,7 @@ export function generateHttpGuide(root: CliProgram): string {
     `- **Fetch** — \`curl -s ${baseUrl}/openapi.json\``,
     `- **Save offline** — \`${root.key} docs openapi --save\` → \`./docs/openapi.json\` (or \`just docgen\` in app repos)`,
     "",
-    "Use the spec to discover REST paths and request/response shapes before calling `/api/...`.",
+    `Use the spec to discover REST paths and request/response shapes before calling \`${userGlob}\`.`,
     "",
   );
 

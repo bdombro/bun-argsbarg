@@ -191,7 +191,7 @@
         {
           "key": "http",
           "description": "HTTP API server for tools.",
-          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
           "options": [
             {
               "name": "host",
@@ -424,7 +424,7 @@
         {
           "key": "http",
           "description": "HTTP API server for tools.",
-          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
           "options": [
             {
               "name": "host",
@@ -679,7 +679,7 @@
         {
           "key": "http",
           "description": "HTTP API server for tools.",
-          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+          "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
           "options": [
             {
               "name": "host",
@@ -916,7 +916,7 @@
             {
               "key": "http",
               "description": "HTTP API server for tools.",
-              "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+              "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
               "options": [
                 {
                   "name": "host",
@@ -1149,7 +1149,7 @@
             {
               "key": "http",
               "description": "HTTP API server for tools.",
-              "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+              "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
               "options": [
                 {
                   "name": "host",
@@ -1386,7 +1386,7 @@
                 {
                   "key": "http",
                   "description": "HTTP API server for tools.",
-                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
                   "options": [
                     {
                       "name": "host",
@@ -1619,7 +1619,7 @@
                 {
                   "key": "http",
                   "description": "HTTP API server for tools.",
-                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
                   "options": [
                     {
                       "name": "host",
@@ -1852,7 +1852,7 @@
                 {
                   "key": "http",
                   "description": "HTTP API server for tools.",
-                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
                   "options": [
                     {
                       "name": "host",
@@ -2085,7 +2085,7 @@
                 {
                   "key": "http",
                   "description": "HTTP API server for tools.",
-                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/ready, GET /openapi.json, GET /swagger, /api/*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
+                  "notes": "HTTP tool server on http://127.0.0.1:3000.\n\nEndpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*\n\nConfigure app settings:\n\n  full-example configure\n\nFull setup guide: full-example docs http",
                   "options": [
                     {
                       "name": "host",

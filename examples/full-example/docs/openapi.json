@@ -5,10 +5,285 @@
     "version": "1.0.0",
     "description": "Argsbarg full example reference app"
   },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Server health probes"
+    },
+    {
+      "name": "echo",
+      "description": "Echo a message (MCP-friendly leaf)."
+    },
+    {
+      "name": "render-json",
+      "description": "Echo a JSON message (schema-first JSON leaf demo)."
+    },
+    {
+      "name": "status",
+      "description": "Show app version."
+    },
+    {
+      "name": "workspaces",
+      "description": "Workspace collection and CRUD."
+    }
+  ],
   "paths": {
-    "/api/echo": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "health",
+        "summary": "Liveness probe (alias of /health/liveness)",
+        "responses": {
+          "200": {
+            "description": "Server is listening",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/liveness": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "health_liveness",
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "Server is listening",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/readiness": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "health_readiness",
+        "summary": "Readiness probe",
+        "description": "Config file, required app config, and optional program.readiness checks.",
+        "responses": {
+          "200": {
+            "description": "Ready to serve traffic",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "properties": {
+                        "config_file": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        },
+                        "config_required": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        },
+                        "custom": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "config_file",
+                        "config_required",
+                        "custom"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "checks"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "properties": {
+                        "config_file": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        },
+                        "config_required": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        },
+                        "custom": {
+                          "type": "object",
+                          "properties": {
+                            "ok": {
+                              "type": "boolean"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "ok"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "config_file",
+                        "config_required",
+                        "custom"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "checks"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/echo": {
       "post": {
-        "operationId": "_api_echo",
+        "tags": [
+          "echo"
+        ],
+        "operationId": "_echo",
         "summary": "Echo a message (MCP-friendly leaf).",
         "responses": {
           "201": {
@@ -115,9 +390,12 @@
         }
       }
     },
-    "/api/render-json": {
+    "/render-json": {
       "post": {
-        "operationId": "_api_render-json",
+        "tags": [
+          "render-json"
+        ],
+        "operationId": "_render-json",
         "summary": "Echo a JSON message (schema-first JSON leaf demo).",
         "responses": {
           "201": {
@@ -226,9 +504,12 @@
         }
       }
     },
-    "/api/status": {
+    "/status": {
       "post": {
-        "operationId": "_api_status",
+        "tags": [
+          "status"
+        ],
+        "operationId": "_status",
         "summary": "Show app version.",
         "responses": {
           "201": {
@@ -343,9 +624,12 @@
         }
       }
     },
-    "/api/workspaces": {
+    "/workspaces": {
       "get": {
-        "operationId": "_api_workspaces",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces",
         "summary": "List workspaces.",
         "responses": {
           "200": {
@@ -434,7 +718,10 @@
         "parameters": []
       },
       "post": {
-        "operationId": "_api_workspaces",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces",
         "summary": "Create a workspace.",
         "responses": {
           "201": {
@@ -543,9 +830,12 @@
         }
       }
     },
-    "/api/workspaces/{id}": {
+    "/workspaces/{id}": {
       "get": {
-        "operationId": "_api_workspaces_id",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces_id",
         "summary": "Get one workspace.",
         "responses": {
           "200": {
@@ -643,7 +933,10 @@
         ]
       },
       "put": {
-        "operationId": "_api_workspaces_id",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces_id",
         "summary": "Replace a workspace.",
         "responses": {
           "200": {
@@ -762,7 +1055,10 @@
         }
       },
       "patch": {
-        "operationId": "_api_workspaces_id",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces_id",
         "summary": "Patch a workspace name.",
         "responses": {
           "200": {
@@ -881,7 +1177,10 @@
         }
       },
       "delete": {
-        "operationId": "_api_workspaces_id",
+        "tags": [
+          "workspaces"
+        ],
+        "operationId": "_workspaces_id",
         "summary": "Delete a workspace.",
         "responses": {
           "204": {

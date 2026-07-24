@@ -246,6 +246,11 @@ export interface CliHttpServerConfig {
   host?: string;
   /** Listen port (default: `3000`). */
   port?: number;
+  /**
+   * URL prefix for user command routes (default: `""` — routes at server root, e.g. `/workspaces`).
+   * Set to `"/api"` for `/api/workspaces`-style paths.
+   */
+  pathPrefix?: string;
   /** Honor `X-Forwarded-For` for client IP in hooks and logs. */
   trustProxy?: boolean;
   /** HTTP error response defaults. */
@@ -669,7 +674,7 @@ export type CliProgram = CliNode & {
   docs?: CliDocsConfig;
   /** Invoke and error hooks for user commands on CLI, HTTP, and MCP. */
   hooks?: CliProgramHooks;
-  /** Optional readiness probe for HTTP/MCP `GET /health/ready` only. */
+  /** Optional readiness probe for HTTP/MCP `GET /health/readiness` only. */
   readiness?: (ctx: ReadinessContext) => boolean | Promise<boolean>;
   /** Framework logging (stderr + optional file). */
   log?: CliLogConfig;

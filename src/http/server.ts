@@ -112,11 +112,11 @@ export async function handleApiRequest(
   const root = cli.program;
   const path = url.pathname;
 
-  if (request.method === "GET" && (path === "/health" || path === "/health/live")) {
+  if (request.method === "GET" && (path === "/health" || path === "/health/liveness")) {
     return finish(jsonResponse(200, { ok: true }));
   }
 
-  if (request.method === "GET" && path === "/health/ready") {
+  if (request.method === "GET" && path === "/health/readiness") {
     const runtime = cli.server?.runtime;
     if (!runtime) {
       return finish(jsonResponse(200, { ok: true }));
@@ -141,12 +141,12 @@ export async function handleApiRequest(
     );
   }
 
-  if (path.startsWith("/api")) {
-    const match = matchHttpRoute(root, request.method, path);
-    if (!match.ok) {
-      return finish(apiErrorResponse(404, { error: "Not found" }));
-    }
+  if (path.startsWith("/tools")) {
+    return finish(apiErrorResponse(404, { error: "Not found" }));
+  }
 
+  const match = matchHttpRoute(root, request.method, path);
+  if (match.ok) {
     let body: Record<string, unknown> = {};
     if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
       const rawBody = await request.text();
@@ -179,10 +179,6 @@ export async function handleApiRequest(
     }
     const obscure = httpConfig?.obscureUnexpected ?? false;
     return finish(headlessFailureToHttpResponse(result, obscure), result.invokeResult?.failureKind, result.message);
-  }
-
-  if (path.startsWith("/tools")) {
-    return finish(apiErrorResponse(404, { error: "Not found" }));
   }
 
   return finish(apiErrorResponse(404, { error: "Not found" }));

@@ -14,13 +14,14 @@ import {
 } from "~/core/types.ts";
 import { formatMcpOptionValue } from "~/mcp/tools.ts";
 import { isHttpDisabled, isHttpHidden } from "~/runtime/exposure.ts";
+import { buildHttpUserPath, httpUserPathRegexPrefix, resolveHttpPathPrefix } from "./paths.ts";
 
 const VERB_KEYS = new Set(["get", "post", "put", "patch", "delete"]);
 
 /** One HTTP route derived from a user leaf command. */
 export interface HttpRouteDef {
   method: CliHttpMethod;
-  /** OpenAPI-style path e.g. `/api/workspaces/{id}`. */
+  /** OpenAPI-style path e.g. `/workspaces/{id}` or `/api/workspaces/{id}`. */
   openApiPath: string;
   /** Regex matching pathname (no query). */
   pathPattern: RegExp;
@@ -67,7 +68,7 @@ type WalkState = {
   paramNames: string[];
 };
 
-function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState): void {
+function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState, pathPrefix: string): void {
   const urlSegments = [...state.urlSegments];
   const commandPath = [...state.commandPath];
   if (!isVerbLeaf(leaf)) {
@@ -79,9 +80,11 @@ function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState): voi
       commandPath.push(leaf.key);
     }
   }
-  const openApiPath = `/api/${urlSegments.map((s) => (s.startsWith(":") ? `{${s.slice(1)}}` : s)).join("/")}`;
+  const openApiPath = buildHttpUserPath(pathPrefix, urlSegments);
   const patternParts = urlSegments.map((s) => (s.startsWith(":") ? "([^/]+)" : escapeRegex(s)));
-  const pathPattern = new RegExp(`^/api/${patternParts.join("/")}/?$`);
+  const regexPrefix = httpUserPathRegexPrefix(pathPrefix);
+  const tail = patternParts.length > 0 ? `/${patternParts.join("/")}` : "";
+  const pathPattern = new RegExp(`^${regexPrefix}${tail}/?$`);
   routes.push({
     method: inferHttpMethod(leaf),
     openApiPath,
@@ -92,14 +95,14 @@ function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState): voi
   });
 }
 
-function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[]): void {
+function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[], pathPrefix: string): void {
   if (isHttpDisabled(node) || isHttpHidden(node)) {
     return;
   }
 
   if (isCliLeaf(node)) {
     if (leafHttpExposed(node)) {
-      pushRoute(routes, node, state);
+      pushRoute(routes, node, state, pathPrefix);
     }
     return;
   }
@@ -115,6 +118,7 @@ function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[]): void {
           paramNames: [...state.paramNames, paramName],
         },
         routes,
+        pathPrefix,
       );
       continue;
     }
@@ -127,6 +131,7 @@ function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[]): void {
           paramNames: state.paramNames,
         },
         routes,
+        pathPrefix,
       );
       continue;
     }
@@ -139,6 +144,7 @@ function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[]): void {
         paramNames: state.paramNames,
       },
       routes,
+      pathPrefix,
     );
   }
 }
@@ -154,8 +160,10 @@ export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
     return routes;
   }
 
+  const pathPrefix = resolveHttpPathPrefix(program);
+
   if (isCliLeaf(program)) {
-    walk(program, { urlSegments: [], commandPath: [], paramNames: [] }, routes);
+    walk(program, { urlSegments: [], commandPath: [], paramNames: [] }, routes, pathPrefix);
     return routes;
   }
 
@@ -171,9 +179,14 @@ export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
       continue;
     }
     if (isCliLeaf(child)) {
-      walk(child, { urlSegments: [], commandPath: [child.key], paramNames: [] }, routes);
+      walk(child, { urlSegments: [], commandPath: [child.key], paramNames: [] }, routes, pathPrefix);
     } else {
-      walk(child, { urlSegments: [segmentForNode(child)], commandPath: [child.key], paramNames: [] }, routes);
+      walk(
+        child,
+        { urlSegments: [segmentForNode(child)], commandPath: [child.key], paramNames: [] },
+        routes,
+        pathPrefix,
+      );
     }
   }
 

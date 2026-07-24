@@ -1,6 +1,6 @@
 # HTTP API server
 
-ArgsBarg can expose your CLI as an HTTP REST server. Each **leaf command** becomes a route under `/api/...` — nested command paths, HTTP verbs, and `:param` routers are reflected in the URL. The server uses Bun's built-in HTTP stack and binds to **localhost by default**.
+ArgsBarg can expose your CLI as an HTTP REST server. Each **leaf command** becomes a route — nested command paths, HTTP verbs, and `:param` routers are reflected in the URL. By default routes sit at the server root (e.g. `GET /workspaces`). The server uses Bun's built-in HTTP stack and binds to **localhost by default**.
 
 The HTTP API is **opt-in**. Apps that do not set `httpServer` on the program root behave exactly as before.
 
@@ -41,6 +41,7 @@ Set `httpServer` on the **program root only**. Validation rejects `httpServer` o
 | `enabled` | *(required)* | Must be `true` when `httpServer` is set |
 | `host` | `127.0.0.1` | Listen address |
 | `port` | `3000` | Listen port |
+| `pathPrefix` | `""` | URL prefix for user routes (e.g. `"/api"` → `/api/workspaces`; empty → `/workspaces`) |
 | `trustProxy` | `false` | Honor `X-Forwarded-For` in hooks and access logs |
 | `errors.errorSchema` | `{ error: string }` | OpenAPI + default error body shape |
 | `errors.obscureUnexpected` | `false` | Client sees generic message on 500; ECS logs real stack |
@@ -56,10 +57,14 @@ Routes are derived from the command tree:
 
 | CLI path | HTTP | Notes |
 | --- | --- | --- |
-| `workspaces get` | `GET /api/workspaces` | Verb leaf (`get`) omitted from URL |
-| `workspaces post` | `POST /api/workspaces` | Default POST success **201** |
-| `workspaces :id get` | `GET /api/workspaces/{id}` | `:id` param router |
-| `stat owner lookup` | `POST /api/stat/owner/lookup` | Default method POST when key is not a verb |
+| `workspaces get` | `GET /workspaces` | Verb leaf (`get`) omitted from URL |
+| `workspaces post` | `POST /workspaces` | Default POST success **201** |
+| `workspaces :id get` | `GET /workspaces/{id}` | `:id` param router |
+| `stat owner lookup` | `POST /stat/owner/lookup` | Default method POST when key is not a verb |
+
+With `httpServer.pathPrefix: "/api"`, the same routes are prefixed (e.g. `GET /api/workspaces`).
+
+When `pathPrefix` is empty, top-level command keys must not collide with framework paths (`health`, `swagger`, `openapi.json`, `tools`).
 
 Method precedence: `leaf.http.method` → verb key (`get`/`post`/…) → **POST**.
 
@@ -71,27 +76,27 @@ Per-surface exposure: `http.enabled: false` removes a leaf from the route table;
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` or `/health/live` | Liveness — 200 when server is listening |
-| `GET` | `/health/ready` | Readiness — config + optional `program.readiness` |
-| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and `/api/*`) |
+| `GET` | `/health` or `/health/liveness` | Liveness — 200 when server is listening |
+| `GET` | `/health/readiness` | Readiness — config + optional `program.readiness` |
+| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and user routes) |
 | `GET` | `/swagger` | Interactive Swagger UI API reference (CDN) |
-| `*` | `/api/...` | Invoke user commands (method per route) |
+| `*` | `/{command}/...` | Invoke user commands (method per route; optional `pathPrefix`) |
 | `OPTIONS` | `*` | CORS preflight (`GET, POST, PUT, PATCH, DELETE`) |
 
-`POST /tools/*` was removed in 7.0 — use `/api/*` only.
+`POST /tools/*` was removed in 7.0.
 
 ## Examples
 
 ```bash
 curl -s http://127.0.0.1:3000/health
-curl -s http://127.0.0.1:3000/health/ready
+curl -s http://127.0.0.1:3000/health/readiness
 curl -s http://127.0.0.1:3000/openapi.json
 open http://127.0.0.1:3000/swagger
-curl -s http://127.0.0.1:3000/api/workspaces
-curl -s -X POST http://127.0.0.1:3000/api/workspaces \
+curl -s http://127.0.0.1:3000/workspaces
+curl -s -X POST http://127.0.0.1:3000/workspaces \
   -H 'content-type: application/json' \
   -d '{"name":"qa2"}'
-curl -s http://127.0.0.1:3000/api/workspaces/{id}
+curl -s http://127.0.0.1:3000/workspaces/{id}
 ```
 
 Discover paths and request shapes from `openapi.json` or `myapp docs openapi`.
@@ -146,7 +151,7 @@ http?: {
 | Thrown handler / missing `ctx.respond()` | 500 |
 | Missing required config | 503 |
 
-Tool invocations are **not** gated on `/health/ready`; readiness is for orchestrators only.
+Tool invocations are **not** gated on `/health/readiness`; readiness is for orchestrators only.
 
 ## Hooks and runtime
 

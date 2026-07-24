@@ -4,10 +4,10 @@ This example shows the smallest end-to-end CLI+MCP+API setup.
 It includes one command, a couple of options, and a direct call to the runtime so
 readers can copy the pattern into their own scripts quickly.
 
-Demonstrates: `servers.ts hello`, MCP tool `hello`, and `POST /api/hello`.
+Demonstrates: `servers.ts hello`, MCP tool `hello`, and `POST /hello`.
 
 Ex API Call:
-curl -s -X POST http://127.0.0.1:3000/api/hello \
+curl -s -X POST http://127.0.0.1:3000/hello \
   -H 'content-type: application/json' \
   -d '{"name":"alice"}'
 Ex API Response:

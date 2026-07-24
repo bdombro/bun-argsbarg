@@ -178,20 +178,40 @@ describe("httpServer validation", () => {
     } as unknown as import("~/core/types.ts").CliProgram;
     expect(() => cliValidateProgram(root)).toThrow(/httpServer is only supported on the program root/);
   });
+
+  test("rejects reserved top-level command when pathPrefix is empty", () => {
+    const root = testProgram({
+      key: "app",
+      description: "",
+      httpServer: { enabled: true },
+      commands: [{ key: "health", description: "user", handler: () => {} }],
+    });
+    expect(() => cliValidateProgram(root)).toThrow(/Reserved HTTP command name/);
+  });
+
+  test("rejects invalid pathPrefix", () => {
+    const root = testProgram({
+      key: "app",
+      description: "",
+      httpServer: { enabled: true, pathPrefix: "api" },
+      handler: () => {},
+    });
+    expect(() => cliValidateProgram(root)).toThrow(/pathPrefix must start with \//);
+  });
 });
 
 describe("HTTP API routes", () => {
   const program = nestedApiFixture();
   cliValidateProgram(program);
 
-  test("GET /health/live returns ok", async () => {
-    const res = await apiRequest(program, new Request("http://127.0.0.1/health/live"));
+  test("GET /health/liveness returns ok", async () => {
+    const res = await apiRequest(program, new Request("http://127.0.0.1/health/liveness"));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
 
-  test("GET /health/ready returns ok when healthy", async () => {
-    const res = await apiRequest(program, new Request("http://127.0.0.1/health/ready"), { withServer: true });
+  test("GET /health/readiness returns ok when healthy", async () => {
+    const res = await apiRequest(program, new Request("http://127.0.0.1/health/readiness"), { withServer: true });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean; checks: Record<string, { ok: boolean }> };
     expect(body.ok).toBe(true);
@@ -199,7 +219,7 @@ describe("HTTP API routes", () => {
     expect(body.checks.config_required.ok).toBe(true);
   });
 
-  test("GET /health/ready returns 503 when custom readiness fails", async () => {
+  test("GET /health/readiness returns 503 when custom readiness fails", async () => {
     const failProgram = testProgram({
       key: "app",
       description: "Test",
@@ -209,7 +229,7 @@ describe("HTTP API routes", () => {
       handler: () => ({ ok: true }),
     });
     cliValidateProgram(failProgram);
-    const res = await apiRequest(failProgram, new Request("http://127.0.0.1/health/ready"), { withServer: true });
+    const res = await apiRequest(failProgram, new Request("http://127.0.0.1/health/readiness"), { withServer: true });
     expect(res.status).toBe(503);
     const body = (await res.json()) as { ok: boolean; checks: { custom: { ok: boolean } } };
     expect(body.ok).toBe(false);
@@ -232,10 +252,7 @@ describe("HTTP API routes", () => {
       ],
     });
     cliValidateProgram(throwProgram);
-    const res = await apiRequest(
-      throwProgram,
-      new Request("http://127.0.0.1/api/boom", { method: "POST", body: "{}" }),
-    );
+    const res = await apiRequest(throwProgram, new Request("http://127.0.0.1/boom", { method: "POST", body: "{}" }));
     expect(res.status).toBe(500);
   });
 
@@ -264,7 +281,7 @@ describe("HTTP API routes", () => {
     };
     const res = await handleApiRequest(
       cli,
-      new Request("http://127.0.0.1/api/boom", { method: "POST", body: "{}" }),
+      new Request("http://127.0.0.1/boom", { method: "POST", body: "{}" }),
       resolved,
     );
     expect(res.status).toBe(500);
@@ -280,7 +297,7 @@ describe("HTTP API routes", () => {
   });
 
   test("OPTIONS returns 204 with CORS headers", async () => {
-    const res = await apiRequest(program, new Request("http://127.0.0.1/api/stat/owner/lookup", { method: "OPTIONS" }));
+    const res = await apiRequest(program, new Request("http://127.0.0.1/stat/owner/lookup", { method: "OPTIONS" }));
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect(res.headers.get("access-control-allow-methods")).toContain("POST");
@@ -290,7 +307,7 @@ describe("HTTP API routes", () => {
     const readme = join(import.meta.dir, "..", "..", "..", "README.md");
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/stat/owner/lookup", {
+      new Request("http://127.0.0.1/stat/owner/lookup", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ "user-name": "alice", path: readme, json: true }),
@@ -305,7 +322,7 @@ describe("HTTP API routes", () => {
     const readme = join(import.meta.dir, "..", "..", "..", "README.md");
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/stat/owner/lookup", {
+      new Request("http://127.0.0.1/stat/owner/lookup", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ "user-name": "alice", path: readme }),
@@ -331,7 +348,7 @@ describe("HTTP API routes", () => {
   test("POST /api/pdf returns PDF bytes with 201", async () => {
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/pdf", {
+      new Request("http://127.0.0.1/pdf", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{}",
@@ -346,7 +363,7 @@ describe("HTTP API routes", () => {
   test("POST /api/html returns HTML with 201", async () => {
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/html", {
+      new Request("http://127.0.0.1/html", {
         method: "POST",
         body: "{}",
       }),
@@ -359,7 +376,7 @@ describe("HTTP API routes", () => {
   test("POST /api/silent returns 500 when handler has no response", async () => {
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/silent", {
+      new Request("http://127.0.0.1/silent", {
         method: "POST",
         body: "{}",
       }),
@@ -372,7 +389,7 @@ describe("HTTP API routes", () => {
   test("POST /api returns 404 for unknown route", async () => {
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/missing_tool", {
+      new Request("http://127.0.0.1/missing_tool", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{}",
@@ -384,7 +401,7 @@ describe("HTTP API routes", () => {
   test("POST /api returns 400 for bad args", async () => {
     const res = await apiRequest(
       program,
-      new Request("http://127.0.0.1/api/stat/owner/lookup", {
+      new Request("http://127.0.0.1/stat/owner/lookup", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ "user-name": "alice" }),
@@ -415,7 +432,7 @@ describe("HTTP API routes", () => {
     cliValidateProgram(failProgram);
     const res = await apiRequest(
       failProgram,
-      new Request("http://127.0.0.1/api/fail", {
+      new Request("http://127.0.0.1/fail", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{}",
@@ -431,10 +448,10 @@ describe("HTTP API routes", () => {
     expect(res.status).toBe(200);
     const doc = (await res.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe("3.1.0");
-    expect(doc.paths["/api/stat/owner/lookup"]).toBeDefined();
+    expect(doc.paths["/stat/owner/lookup"]).toBeDefined();
     expect(doc.paths["/health"]).toBeDefined();
-    expect(doc.paths["/health/live"]).toBeDefined();
-    expect(doc.paths["/health/ready"]).toBeDefined();
+    expect(doc.paths["/health/liveness"]).toBeDefined();
+    expect(doc.paths["/health/readiness"]).toBeDefined();
   });
 
   test("GET /swagger returns Swagger UI HTML", async () => {
@@ -470,10 +487,10 @@ test("generateOpenApi includes health probe paths", () => {
   };
   expect(doc.tags.some((t) => t.name === "health")).toBe(true);
   expect(doc.paths["/health"]?.get.tags).toContain("health");
-  expect(doc.paths["/health/live"]?.get.responses["200"]).toBeDefined();
-  expect(doc.paths["/health/ready"]?.get.responses["200"]).toBeDefined();
-  expect(doc.paths["/health/ready"]?.get.responses["503"]).toBeDefined();
-  const readySchema = doc.paths["/health/ready"]?.get.responses["200"].content["application/json; charset=utf-8"]
+  expect(doc.paths["/health/liveness"]?.get.responses["200"]).toBeDefined();
+  expect(doc.paths["/health/readiness"]?.get.responses["200"]).toBeDefined();
+  expect(doc.paths["/health/readiness"]?.get.responses["503"]).toBeDefined();
+  const readySchema = doc.paths["/health/readiness"]?.get.responses["200"].content["application/json; charset=utf-8"]
     .schema as { properties?: { checks?: unknown } };
   expect(readySchema.properties?.checks).toBeDefined();
 });
@@ -501,9 +518,22 @@ test("generateOpenApi groups routes by top-level command tag", () => {
   expect(tagNames).toContain("stat");
   expect(tagNames).toContain("pdf");
   expect(doc.tags.find((t) => t.name === "stat")?.description).toBe("File metadata.");
-  expect(doc.paths["/api/stat/owner/lookup"]?.post?.tags).toEqual(["stat"]);
-  expect(doc.paths["/api/pdf"]?.post?.tags).toEqual(["pdf"]);
-  expect(doc.paths["/api/read"]?.post?.tags).toEqual(["read"]);
+  expect(doc.paths["/stat/owner/lookup"]?.post?.tags).toEqual(["stat"]);
+  expect(doc.paths["/pdf"]?.post?.tags).toEqual(["pdf"]);
+  expect(doc.paths["/read"]?.post?.tags).toEqual(["read"]);
+});
+
+test("generateOpenApi honors httpServer.pathPrefix", () => {
+  const program = testProgram({
+    key: "app",
+    description: "Test app",
+    httpServer: { enabled: true, pathPrefix: "/api" },
+    commands: [{ key: "echo", description: "Echo.", handler: () => ({ ok: true }) }],
+  });
+  cliValidateProgram(program);
+  const doc = generateOpenApi(program) as { paths: Record<string, unknown> };
+  expect(doc.paths["/api/echo"]).toBeDefined();
+  expect(doc.paths["/echo"]).toBeUndefined();
 });
 
 test("generateOpenApi maps binary content types", () => {
@@ -511,7 +541,7 @@ test("generateOpenApi maps binary content types", () => {
   const doc = generateOpenApi(program) as {
     paths: Record<string, { post: { responses: { "201": { content: Record<string, unknown> } } } }>;
   };
-  const pdf = doc.paths["/api/pdf"]?.post.responses["201"].content["application/pdf"] as {
+  const pdf = doc.paths["/pdf"]?.post.responses["201"].content["application/pdf"] as {
     schema: { format: string };
   };
   expect(pdf.schema.format).toBe("binary");
@@ -558,7 +588,7 @@ test("generateOpenApi dereferences nested inputSchema definitions", () => {
       }
     >;
   };
-  const schema = doc.paths["/api/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
+  const schema = doc.paths["/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
   expect(schema.properties.invoice).toEqual({
     type: "object",
     properties: { id: { type: "string" } },
@@ -601,7 +631,7 @@ test("generateOpenApi generates requestBody for kind: json leaves", () => {
       }
     >;
   };
-  const op = doc.paths["/api/render-invoice"]?.post;
+  const op = doc.paths["/render-invoice"]?.post;
   expect(op).toBeDefined();
   expect(op.requestBody).toBeDefined();
   expect(op.requestBody.required).toBe(true);

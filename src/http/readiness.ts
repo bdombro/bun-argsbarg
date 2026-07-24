@@ -1,5 +1,5 @@
 /*
-HTTP/MCP readiness checks for GET /health/ready (orchestrator probes only).
+HTTP/MCP readiness checks for GET /health/readiness (orchestrator probes only).
 */
 
 import type { AnyAppConfigSnapshot } from "~/config/context.ts";
