@@ -2,7 +2,7 @@
 Headless routing helpers (`argsbarg/headless`).
 */
 
-export type { HeadlessContext } from "~/headless/routing.ts";
+export type { HeadlessContext } from "../headless/routing.ts";
 export {
   formatDryRunMessage,
   requireYesInNonTty,
@@ -10,4 +10,4 @@ export {
   shouldRunHeadlessWithPositionals,
   shouldRunHeadlessWithYes,
   wantsExplicitJson,
-} from "~/headless/routing.ts";
+} from "../headless/routing.ts";

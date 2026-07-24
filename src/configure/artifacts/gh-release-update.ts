@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { CliUpdateGetLatest } from "~/core/types.ts";
+import type { CliUpdateGetLatest } from "../../core/types.ts";
 
 /** Config for {@link ghReleaseUpdateGetLatest}. */
 export interface GhReleaseUpdateConfig {

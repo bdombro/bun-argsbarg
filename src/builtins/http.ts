@@ -5,11 +5,11 @@ import {
   CliOptionKind,
   type CliProgram,
   type CliRouter,
-} from "~/core/types.ts";
-import { docsEnabled } from "~/docs/resolve.ts";
-import { httpUserPathGlob, resolveHttpPathPrefix } from "~/http/paths.ts";
-import { resolveHttpListenAddress } from "~/http/server.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+} from "../core/types.ts";
+import { docsEnabled } from "../docs/resolve.ts";
+import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
+import { resolveHttpListenAddress } from "../http/server.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 
 const HTTP_SERVE_OPTIONS: CliOption[] = [
   { name: "host", description: "Listen host.", kind: CliOptionKind.String },

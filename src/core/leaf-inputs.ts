@@ -2,8 +2,8 @@
 Leaf input reads: Json options (flag, preloaded stdin, or toolArgs), optional inputSchema validation.
 */
 
-import { validateConfigDocument } from "~/config/validate.ts";
-import { isInteractiveTty } from "~/utils.ts";
+import { validateConfigDocument } from "../config/validate.ts";
+import { isInteractiveTty } from "../utils.ts";
 import type { CliContext, CliLeafInputs } from "./context.ts";
 import { collectOptionDefs } from "./parse.ts";
 import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";

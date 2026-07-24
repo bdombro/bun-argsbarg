@@ -1,4 +1,4 @@
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import { checkCodexMcpConflict, codexMcpHasServer, mergeCodexMcpConfig, removeCodexMcpConfig } from "./mcp-codex.ts";
 import { expectedMcpEntry } from "./mcp-config.ts";
 import {

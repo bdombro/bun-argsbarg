@@ -3,8 +3,8 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for Cli.invoke.
 */
 
-import { collectOptionDefs } from "~/core/parse.ts";
-import { cliSchemaJson } from "~/core/schema.ts";
+import { collectOptionDefs } from "../core/parse.ts";
+import { cliSchemaJson } from "../core/schema.ts";
 import {
   type CliLeaf,
   type CliNode,
@@ -16,10 +16,10 @@ import {
   isCliLeaf,
   isJsonLeaf,
   leafOutputSchema,
-} from "~/core/types.ts";
-import { docsMcpResources } from "~/docs/mcp-resources.ts";
-import { cliResolveNotes } from "~/help.ts";
-import { isMcpHidden, visibleOptions } from "~/runtime/exposure.ts";
+} from "../core/types.ts";
+import { docsMcpResources } from "../docs/mcp-resources.ts";
+import { cliResolveNotes } from "../help.ts";
+import { isMcpHidden, visibleOptions } from "../runtime/exposure.ts";
 
 const DURATION_PATTERN = "^\\d+[hdms]?$";
 
@@ -28,7 +28,7 @@ export function defaultMcpSchemaUri(mcpId: string): string {
   return `${mcpId}://schema`;
 }
 
-export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "~/docs/mcp-resources.ts";
+export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
 
 /** Sanitizes a command key segment for MCP tool names and server identity. */
 export function sanitizeToolSegment(key: string): string {

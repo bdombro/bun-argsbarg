@@ -4,7 +4,7 @@ It is the shared declarative model that parsing, validation, help, and completio
 read from, so the package has one source of truth.
 */
 
-import type { AnyAppConfigSnapshot } from "~/config/context.ts";
+import type { AnyAppConfigSnapshot } from "../config/context.ts";
 import type { CliContext } from "./context.ts";
 
 /**

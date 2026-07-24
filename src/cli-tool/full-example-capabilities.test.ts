@@ -5,8 +5,8 @@ Tests for cli-tool/full-example-capabilities module behavior.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CliOptionKind, type CliProgram } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 
 const exampleRoot = join(import.meta.dir, "../../examples/full-example");
 const programSource = readFileSync(join(exampleRoot, "src/program.ts"), "utf8");

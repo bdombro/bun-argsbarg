@@ -1,5 +1,5 @@
-import { claudeDesktopPresent, userHome } from "~/configure/artifacts/paths.ts";
-import { McpJsonInstallTarget } from "~/configure/artifacts/target-mcp-json.ts";
+import { claudeDesktopPresent, userHome } from "../paths.ts";
+import { McpJsonInstallTarget } from "../target-mcp-json.ts";
 
 export const claudeDesktopMcpTarget = new McpJsonInstallTarget({
   key: "claudeDesktopMcp",

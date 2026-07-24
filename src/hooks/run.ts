@@ -2,17 +2,17 @@
 Safe async hook runner, failure classification, and invoke error pipeline.
 */
 
-import type { CliContext } from "~/core/context.ts";
-import { LeafInputError } from "~/core/leaf-inputs.ts";
+import type { CliContext } from "../core/context.ts";
+import { LeafInputError } from "../core/leaf-inputs.ts";
 import type {
   ClientErrorOverride,
   ErrorHookContext,
   InvokeFailureKind,
   InvokeHookContext,
   ServerRuntime,
-} from "~/core/types.ts";
-import { firstErrorLine } from "~/http/result.ts";
-import { type LogEmitter, obscureUnexpectedClientMessage } from "~/log/emitter.ts";
+} from "../core/types.ts";
+import { firstErrorLine } from "../http/result.ts";
+import { type LogEmitter, obscureUnexpectedClientMessage } from "../log/emitter.ts";
 
 /** Runs a hook without letting hook throws escape uncaught. */
 export async function runHook<T>(hook: (() => T | Promise<T>) | undefined, label: string): Promise<T | undefined> {
@@ -106,7 +106,7 @@ export async function runErrorPipeline(
   hookCtx: InvokeHookContext,
   err: unknown,
   failureKind: InvokeFailureKind,
-  hooks: import("~/core/types.ts").CliProgramHooks | undefined,
+  hooks: import("../core/types.ts").CliProgramHooks | undefined,
   emitter: LogEmitter | undefined,
   obscureUnexpected: boolean,
 ): Promise<ErrorPipelineResult> {

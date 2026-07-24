@@ -7,21 +7,21 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { completionBashScript, completionZshScript } from "~/builtins";
-import { cliPresentationRoot } from "~/builtins/presentation.ts";
-import { cliHelpRender } from "~/help.ts";
-import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "~/index";
-import { applyShellEnv } from "~/mcp/env.ts";
-import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpSchemaUri } from "~/mcp/tools.ts";
-import { generatePluginSkillBundle, generateSkillBundle } from "~/skill/generate.ts";
-import { cliSkillInstall } from "~/skill/install.ts";
+import { completionBashScript, completionZshScript } from "../builtins/index.ts";
+import { cliPresentationRoot } from "../builtins/presentation.ts";
+import { cliHelpRender } from "../help.ts";
+import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../index.ts";
+import { applyShellEnv } from "../mcp/env.ts";
+import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { generatePluginSkillBundle, generateSkillBundle } from "../skill/generate.ts";
+import { cliSkillInstall } from "../skill/install.ts";
 import {
   enumMcpFixture,
   nestedDocsFallbackFixture,
   nestedMcpFixture,
   testProgram,
   varargsReadFixture,
-} from "~/test/fixtures.ts";
+} from "../test/fixtures.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
 import { cliSchemaJson } from "./schema.ts";
 import { cliValidateProgram } from "./validate.ts";

@@ -1,6 +1,6 @@
-import type { CliNode, CliProgram } from "~/core/types.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "~/docs/builtin.ts";
-import type { CliCapabilities } from "~/runtime/capabilities.ts";
+import type { CliNode, CliProgram } from "../core/types.ts";
+import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
+import type { CliCapabilities } from "../runtime/capabilities.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinConfigureCommand } from "./configure.ts";
 import { cliBuiltinHttpCommand } from "./http.ts";

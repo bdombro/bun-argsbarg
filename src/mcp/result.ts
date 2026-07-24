@@ -2,8 +2,8 @@
 This module builds MCP tools/call success results from handler respond payloads.
 */
 
-import { encodeRespondBodyBase64 } from "~/core/respond.ts";
-import type { CliRespondOptions } from "~/core/types.ts";
+import { encodeRespondBodyBase64 } from "../core/respond.ts";
+import type { CliRespondOptions } from "../core/types.ts";
 
 /** Text content block in an MCP tool result. */
 export interface McpTextContent {

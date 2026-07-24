@@ -1,4 +1,4 @@
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import { buildInstallPlanFromTargets } from "./target-plan-build.ts";
 import type { InstallAction, InstallOpts } from "./target-types.ts";

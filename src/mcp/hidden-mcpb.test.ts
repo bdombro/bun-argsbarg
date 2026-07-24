@@ -6,11 +6,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { exportPresentationBuiltins } from "~/builtins/export.ts";
-import { cliParseRoot, cliPresentationRoot } from "~/builtins/presentation.ts";
-import { cliSchemaExport } from "~/core/schema.ts";
-import { CliOptionKind, type CliProgram } from "~/core/types.ts";
-import { cliHelpRender } from "~/help.ts";
+import { exportPresentationBuiltins } from "../builtins/export.ts";
+import { cliParseRoot, cliPresentationRoot } from "../builtins/presentation.ts";
+import { cliSchemaExport } from "../core/schema.ts";
+import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { cliHelpRender } from "../help.ts";
 import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle, runMcpBundle } from "./bundle.ts";
 import { collectMcpTools } from "./tools.ts";
 

@@ -1,4 +1,4 @@
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import { INSTALL_TARGETS } from "./target-registry.ts";
 import type { InstalledArtifacts, InstallStatus } from "./target-types.ts";

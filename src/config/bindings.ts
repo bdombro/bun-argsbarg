@@ -2,7 +2,7 @@
 Per-key config binding metadata (`_bindings`) — records how each schema key is satisfied.
 */
 
-import type { CliAppConfigEntry } from "~/core/types.ts";
+import type { CliAppConfigEntry } from "../core/types.ts";
 
 /** Reserved top-level config file key for per-entry binding metadata. */
 export const CONFIG_BINDINGS_KEY = "_bindings";

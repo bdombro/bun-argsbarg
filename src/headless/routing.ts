@@ -1,5 +1,5 @@
-import type { CliContext } from "~/core/context.ts";
-import { isInteractiveTty } from "~/utils.ts";
+import type { CliContext } from "../core/context.ts";
+import { isInteractiveTty } from "../utils.ts";
 
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;

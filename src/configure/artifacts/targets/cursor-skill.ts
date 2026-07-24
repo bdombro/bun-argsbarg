@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { userHome } from "~/configure/artifacts/paths.ts";
-import { SkillInstallTarget } from "~/configure/artifacts/target-skill.ts";
+import { userHome } from "../paths.ts";
+import { SkillInstallTarget } from "../target-skill.ts";
 
 export const cursorSkillTarget = new SkillInstallTarget({
   key: "cursorSkill",

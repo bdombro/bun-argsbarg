@@ -2,7 +2,7 @@
 Maps headless respond payloads to native HTTP Response objects.
 */
 
-import type { CliHttpResponseConfig, CliRespondOptions } from "~/core/types.ts";
+import type { CliHttpResponseConfig, CliRespondOptions } from "../core/types.ts";
 
 /** JSON body for a failed HTTP tool invocation. */
 export interface ApiToolCallErrorBody {

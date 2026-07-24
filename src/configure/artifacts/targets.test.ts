@@ -3,7 +3,7 @@ Tests for install/targets module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
 import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
 import { resolveAgentIntegration, resolveEffectiveInstallTargets } from "./target-effective.ts";

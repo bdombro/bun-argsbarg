@@ -4,7 +4,7 @@ Framework log emitter: ECS json or human text to stderr with optional file tee.
 
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import { type EcsLogEvent, type EcsLogLevel, formatEcsLine } from "./ecs.ts";
 
 /** Resolved logging options for a server or invoke session. */

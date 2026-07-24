@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { printInstallStatus } from "./status.ts";
 import { resolveInstallTargetPreview } from "./target-scope.ts";

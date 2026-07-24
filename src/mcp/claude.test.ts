@@ -7,7 +7,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import {
   defaultClaudePluginPaths,
   generatePluginManifest,

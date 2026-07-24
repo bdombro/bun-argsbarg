@@ -2,7 +2,7 @@
 HTTP REST route collection and request matching from the CLI command tree.
 */
 
-import { collectOptionDefs } from "~/core/parse.ts";
+import { collectOptionDefs } from "../core/parse.ts";
 import {
   type CliHttpMethod,
   type CliLeaf,
@@ -11,9 +11,9 @@ import {
   isCliLeaf,
   isJsonLeaf,
   CliOptionKind as OptKind,
-} from "~/core/types.ts";
-import { formatMcpOptionValue } from "~/mcp/tools.ts";
-import { isHttpDisabled, isHttpHidden } from "~/runtime/exposure.ts";
+} from "../core/types.ts";
+import { formatMcpOptionValue } from "../mcp/tools.ts";
+import { isHttpDisabled, isHttpHidden } from "../runtime/exposure.ts";
 import { buildHttpUserPath, httpUserPathRegexPrefix, resolveHttpPathPrefix } from "./paths.ts";
 
 const VERB_KEYS = new Set(["get", "post", "put", "patch", "delete"]);

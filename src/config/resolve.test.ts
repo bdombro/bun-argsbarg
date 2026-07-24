@@ -3,7 +3,7 @@ Tests for config/resolve module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
 const program: CliProgram = {

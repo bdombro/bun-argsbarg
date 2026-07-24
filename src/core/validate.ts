@@ -2,12 +2,12 @@
 This module validates CLI schemas before execution.
 */
 
-import { AGENT_PAIRS, MCP_KEYS, mcpServerRequiredForArtifact } from "~/configure/artifacts/target-registry.ts";
-import { reservedDocsTopicResourceUris } from "~/docs/mcp-resources.ts";
-import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "~/docs/resolve.ts";
-import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "~/http/paths.ts";
-import { resolveMcpSchemaUri } from "~/mcp/tools.ts";
-import { reservedCommandNames, resolveCapabilities } from "~/runtime/capabilities.ts";
+import { AGENT_PAIRS, MCP_KEYS, mcpServerRequiredForArtifact } from "../configure/artifacts/target-registry.ts";
+import { reservedDocsTopicResourceUris } from "../docs/mcp-resources.ts";
+import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "../docs/resolve.ts";
+import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "../http/paths.ts";
+import { resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { reservedCommandNames, resolveCapabilities } from "../runtime/capabilities.ts";
 import { validateFormatValue } from "./formats.ts";
 import {
   type CliLeaf,

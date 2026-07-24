@@ -4,8 +4,8 @@ import type {
   CliProgram,
   InstallAgentIntegration,
   InstallTargetSpec,
-} from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+} from "../../core/types.ts";
+import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import {
   AGENT_PAIRS,
   INSTALL_ARTIFACT_KEYS,
@@ -14,7 +14,7 @@ import {
 } from "./target-registry.ts";
 import type { CliInstallArtifactKey, InstallPlanMode } from "./target-types.ts";
 
-export type { InstallTargetSpec, ResolvedInstallTarget } from "~/core/types.ts";
+export type { InstallTargetSpec, ResolvedInstallTarget } from "../../core/types.ts";
 
 export type { InstallPlanMode, InstallScope } from "./target-types.ts";
 

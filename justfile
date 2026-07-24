@@ -9,7 +9,7 @@ _:
 # Typecheck and format the codebase
 check: format typecheck
 
-consumer_apps := "~/dev/ss/pdf-gen ~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
+consumer_apps := "~/sqsp-workspaces/workspaces/pdfs/invoicing-document-service ~/dev/ss/pdf-gen ~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
 
 # Verify full-example schemagen runs and template drift
 check-full-example: full-example-schemagen

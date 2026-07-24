@@ -3,8 +3,8 @@ Internal capability resolver — decides which platform builtins are active for 
 Not exported from the public package barrel.
 */
 
-import { configCommandsEnabled } from "~/config/entry.ts";
-import type { CliProgram } from "~/core/types.ts";
+import { configCommandsEnabled } from "../config/entry.ts";
+import type { CliProgram } from "../core/types.ts";
 
 /** Platform builtins derived from program config and runtime. */
 export interface CliCapabilities {

@@ -1,7 +1,7 @@
 /** Agent skill install targets. */
 export type SkillTarget = "cursor" | "claude" | "codex" | "opencode" | "openclaw";
 
-import { sanitizeToolSegment } from "~/mcp/tools.ts";
+import { sanitizeToolSegment } from "../mcp/tools.ts";
 
 /** Kebab-case skill folder + frontmatter name for agents that require hyphen slugs. */
 export function skillSlug(programKey: string): string {

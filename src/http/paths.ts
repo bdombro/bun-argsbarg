@@ -2,7 +2,7 @@
 HTTP path prefix helpers and framework route guards.
 */
 
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 
 /** Top-level segments reserved for framework routes when `pathPrefix` is empty. */
 export const HTTP_RESERVED_TOP_LEVEL_SEGMENTS = new Set(["health", "openapi.json", "swagger", "tools"]);

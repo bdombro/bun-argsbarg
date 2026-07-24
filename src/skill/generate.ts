@@ -2,17 +2,17 @@
 This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
 */
 
-import { defaultConfigEntryTitle } from "~/config/entry.ts";
-import { collectOptionDefs } from "~/core/parse.ts";
-import { CliOptionKind, type CliProgram } from "~/core/types.ts";
-import { generateCliGuide } from "~/docs/cli-guide.ts";
+import { defaultConfigEntryTitle } from "../config/entry.ts";
+import { collectOptionDefs } from "../core/parse.ts";
+import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { generateCliGuide } from "../docs/cli-guide.ts";
 import {
   collectMcpTools,
   type McpToolDef,
   mcpServerId,
   resolveMcpSchemaUri,
   sanitizeToolSegment,
-} from "~/mcp/tools.ts";
+} from "../mcp/tools.ts";
 import type { SkillTarget } from "./naming.ts";
 import { skillDirNameForTarget, skillFrontmatterName } from "./naming.ts";
 

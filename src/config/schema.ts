@@ -2,7 +2,7 @@
 Effective JSON Schema for program.appConfig (block schema or all-string synthesis).
 */
 
-import type { CliAppConfigEntry, CliProgram } from "~/core/types.ts";
+import type { CliAppConfigEntry, CliProgram } from "../core/types.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 
 /** Synthesize a draft-07 object schema with string properties from metadata entries. */

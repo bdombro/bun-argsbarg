@@ -1,6 +1,6 @@
-import { opencodePresent } from "~/configure/artifacts/mcp-opencode.ts";
-import { userHome } from "~/configure/artifacts/paths.ts";
-import { SkillInstallTarget } from "~/configure/artifacts/target-skill.ts";
+import { opencodePresent } from "../mcp-opencode.ts";
+import { userHome } from "../paths.ts";
+import { SkillInstallTarget } from "../target-skill.ts";
 
 export const opencodeSkillTarget = new SkillInstallTarget({
   key: "opencodeSkill",

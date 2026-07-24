@@ -1,11 +1,11 @@
-import { codexOnPath } from "~/configure/artifacts/mcp-codex.ts";
+import { codexOnPath } from "../mcp-codex.ts";
 import {
   checkCodexMcpConflict,
   codexMcpHasServer,
   McpCliInstallTarget,
   mergeCodexMcpConfig,
   removeCodexMcpConfig,
-} from "~/configure/artifacts/target-mcp-cli.ts";
+} from "../target-mcp-cli.ts";
 
 export const codexMcpTarget = new McpCliInstallTarget({
   key: "codexMcp",

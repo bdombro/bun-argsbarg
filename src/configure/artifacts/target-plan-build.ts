@@ -1,5 +1,5 @@
-import type { CliProgram } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import type { CliProgram } from "../../core/types.ts";
+import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import type { InstallPaths } from "./paths.ts";
 import { mcpCategoryEnabled } from "./target-effective.ts";
 import { INSTALL_TARGETS, installTargetForKey } from "./target-registry.ts";

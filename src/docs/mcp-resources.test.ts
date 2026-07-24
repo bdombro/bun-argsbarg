@@ -3,7 +3,7 @@ Tests for docs/mcp-resources module behavior.
 */
 
 import { expect, test } from "bun:test";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import {
   defaultDocsTopicResourceUri,
   docsMcpResources,

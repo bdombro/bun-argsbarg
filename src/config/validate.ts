@@ -3,7 +3,7 @@ Draft-07 JSON Schema subset validator for program.appConfig files.
 Aligned with common ts-json-schema-generator output (local $ref, objects, scalars).
 */
 
-import { parseCommaList, parseDate, parseDateTime } from "~/core/formats.ts";
+import { parseCommaList, parseDate, parseDateTime } from "../core/formats.ts";
 import { isFrameworkConfigKey } from "./bindings.ts";
 
 type JsonSchema = Record<string, unknown>;

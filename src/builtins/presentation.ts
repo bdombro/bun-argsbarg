@@ -1,8 +1,8 @@
-import type { CliLeaf, CliNode, CliProgram, CliRouter } from "~/core/types.ts";
-import { isCliLeaf } from "~/core/types.ts";
-import type { CliCapabilities } from "~/runtime/capabilities.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
-import { isCliHidden, presentationNode, visibleOptions } from "~/runtime/exposure.ts";
+import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../core/types.ts";
+import { isCliLeaf } from "../core/types.ts";
+import type { CliCapabilities } from "../runtime/capabilities.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
+import { isCliHidden, presentationNode, visibleOptions } from "../runtime/exposure.ts";
 import { resolveBuiltins } from "./registry.ts";
 
 /** All built-in command nodes for argv parsing (includes hidden builtins). */

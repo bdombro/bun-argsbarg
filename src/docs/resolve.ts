@@ -1,7 +1,7 @@
-import { cliSchemaJson } from "~/core/schema.ts";
-import type { CliDocsConfig, CliProgram } from "~/core/types.ts";
-import { openApiJson } from "~/http/openapi.ts";
-import { generateSkillBundle } from "~/skill/generate.ts";
+import { cliSchemaJson } from "../core/schema.ts";
+import type { CliDocsConfig, CliProgram } from "../core/types.ts";
+import { openApiJson } from "../http/openapi.ts";
+import { generateSkillBundle } from "../skill/generate.ts";
 import { generateCliGuide } from "./cli-guide.ts";
 import { generateHttpGuide } from "./http-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";

@@ -1,6 +1,7 @@
-import { isExternallyManagedBinary } from "~/configure/artifacts/binary-placement.ts";
-import type { InstallPaths } from "~/configure/artifacts/paths.ts";
-import { InstallTarget } from "~/configure/artifacts/target-base.ts";
+import type { CliProgram } from "../../../core/types.ts";
+import { isExternallyManagedBinary } from "../binary-placement.ts";
+import type { InstallPaths } from "../paths.ts";
+import { InstallTarget } from "../target-base.ts";
 import type {
   DetectedSnapshot,
   InstallAction,
@@ -8,8 +9,7 @@ import type {
   InstallStatus,
   TargetPlanContext,
   UninstallAction,
-} from "~/configure/artifacts/target-types.ts";
-import type { CliProgram } from "~/core/types.ts";
+} from "../target-types.ts";
 
 /** Reports app install location (Homebrew PATH or legacy ~/.local/bin). No self-install actions. */
 class AppInstallTarget extends InstallTarget {

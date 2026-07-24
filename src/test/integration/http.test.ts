@@ -5,15 +5,15 @@ HTTP API integration tests: routes, tool invocation, CORS, OpenAPI, and validati
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
-import { cliValidateProgram } from "~/core/validate.ts";
-import { generateOpenApi } from "~/http/openapi.ts";
-import { API_CORS_HEADERS } from "~/http/result.ts";
-import { handleApiRequest } from "~/http/server.ts";
-import { Cli, CliContext, type CliContext as CliContextType, CliOptionKind, cliErrWithHelp } from "~/index";
-import { LogEmitter } from "~/log/emitter.ts";
-import { createServerRuntime } from "~/server/context.ts";
-import { resolveHttpServeConfig } from "~/server/overrides.ts";
-import { nestedMcpFixture, testProgram } from "~/test/fixtures.ts";
+import { cliValidateProgram } from "../../core/validate.ts";
+import { generateOpenApi } from "../../http/openapi.ts";
+import { API_CORS_HEADERS } from "../../http/result.ts";
+import { handleApiRequest } from "../../http/server.ts";
+import { Cli, CliContext, type CliContext as CliContextType, CliOptionKind, cliErrWithHelp } from "../../index.ts";
+import { LogEmitter } from "../../log/emitter.ts";
+import { createServerRuntime } from "../../server/context.ts";
+import { resolveHttpServeConfig } from "../../server/overrides.ts";
+import { nestedMcpFixture, testProgram } from "../fixtures.ts";
 
 /** Program with HTTP API enabled and handlers that return values. */
 function nestedApiFixture() {
@@ -175,7 +175,7 @@ describe("httpServer validation", () => {
           handler: () => {},
         },
       ],
-    } as unknown as import("~/core/types.ts").CliProgram;
+    } as unknown as import("../../core/types.ts").CliProgram;
     expect(() => cliValidateProgram(root)).toThrow(/httpServer is only supported on the program root/);
   });
 

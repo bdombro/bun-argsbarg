@@ -5,18 +5,18 @@ Domain-specific regression tests (split from index.test.ts).
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
-import { cliSchemaExport } from "~/core/schema.ts";
-import { cliValidateProgram } from "~/core/validate.ts";
-import type { CliProgram } from "~/index";
-import { buildToolCallSuccessFromResponse } from "~/mcp/result.ts";
+import { cliSchemaExport } from "../../core/schema.ts";
+import { cliValidateProgram } from "../../core/validate.ts";
+import type { CliProgram } from "../../index.ts";
+import { buildToolCallSuccessFromResponse } from "../../mcp/result.ts";
 import {
   collectMcpTools,
   mcpToolCallToArgv,
   mcpToolDescription,
   mcpToolName,
   sanitizeToolSegment,
-} from "~/mcp/tools.ts";
-import { mcpRequest, nestedMcpFixture, testProgram } from "~/test/fixtures.ts";
+} from "../../mcp/tools.ts";
+import { mcpRequest, nestedMcpFixture, testProgram } from "../fixtures.ts";
 
 test("sanitizeToolSegment normalizes dotted app keys", () => {
   expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");

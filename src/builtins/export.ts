@@ -1,7 +1,7 @@
-import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "~/core/types.ts";
-import { isCliRouter } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
-import { isCliSchemaHidden, visibleOptions } from "~/runtime/exposure.ts";
+import type { CliFallbackMode, CliNode, CliOption, CliPositional, CliProgram } from "../core/types.ts";
+import { isCliRouter } from "../core/types.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
+import { isCliSchemaHidden, visibleOptions } from "../runtime/exposure.ts";
 import { resolveBuiltins } from "./registry.ts";
 
 /** JSON-safe command node (no handlers). */

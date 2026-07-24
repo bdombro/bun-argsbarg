@@ -1,7 +1,7 @@
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 
-export type { InstallTargetSpec, ResolvedInstallTarget } from "~/core/types.ts";
+export type { InstallTargetSpec, ResolvedInstallTarget } from "../../core/types.ts";
 
 export type InstallPlanMode = "install-all" | "install-scoped" | "uninstall-all" | "uninstall-scoped" | "refresh";
 

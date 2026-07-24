@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { openclawOnPath } from "~/configure/artifacts/mcp-openclaw.ts";
-import { userHome } from "~/configure/artifacts/paths.ts";
-import { SkillInstallTarget } from "~/configure/artifacts/target-skill.ts";
+import { openclawOnPath } from "../mcp-openclaw.ts";
+import { userHome } from "../paths.ts";
+import { SkillInstallTarget } from "../target-skill.ts";
 
 export const openclawSkillTarget = new SkillInstallTarget({
   key: "openclawSkill",

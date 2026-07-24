@@ -2,7 +2,7 @@
 TTY prompts for per-target install, skip, or uninstall during interactive `configure`.
 */
 
-import { readPromptLine } from "~/prompt.ts";
+import { readPromptLine } from "../prompt.ts";
 import type { CliInstallArtifactKey } from "./artifacts/target-types.ts";
 
 /** Human-readable labels for each install artifact key in interactive prompts. */

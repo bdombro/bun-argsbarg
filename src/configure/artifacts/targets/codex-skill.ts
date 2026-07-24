@@ -1,5 +1,5 @@
-import { codexOnPath } from "~/configure/artifacts/mcp-codex.ts";
-import { SkillInstallTarget } from "~/configure/artifacts/target-skill.ts";
+import { codexOnPath } from "../mcp-codex.ts";
+import { SkillInstallTarget } from "../target-skill.ts";
 
 export const codexSkillTarget = new SkillInstallTarget({
   key: "codexSkill",

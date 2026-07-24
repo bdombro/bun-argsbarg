@@ -5,12 +5,12 @@ Domain-specific regression tests (split from index.test.ts).
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
-import { ParseKind, parse, postParseValidate } from "~/core/parse.ts";
-import type { CliLeaf } from "~/core/types.ts";
-import { isCliRouter } from "~/core/types.ts";
-import { cliValidateProgram } from "~/core/validate.ts";
-import { Cli, type CliContext, CliOptionKind } from "~/index";
-import { testProgram, varargsReadFixture } from "~/test/fixtures.ts";
+import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
+import type { CliLeaf } from "../core/types.ts";
+import { isCliRouter } from "../core/types.ts";
+import { cliValidateProgram } from "../core/validate.ts";
+import { Cli, type CliContext, CliOptionKind } from "../index.ts";
+import { testProgram, varargsReadFixture } from "../test/fixtures.ts";
 
 /** Tests that ctx.invocation is cli via Cli.run. */
 test("ctx.invocation is cli via Cli.run", async () => {

@@ -1,6 +1,6 @@
-import { docsSkillTopicDescription } from "~/builtins/configure-copy.ts";
-import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { docsSkillTopicDescription } from "../builtins/configure-copy.ts";
+import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "../core/types.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
   docsEnabled,

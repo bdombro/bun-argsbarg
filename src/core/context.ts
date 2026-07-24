@@ -7,9 +7,9 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
-import type { AnyAppConfigSnapshot } from "~/config/context.ts";
-import { EmptyAppConfigSnapshot } from "~/config/context.ts";
-import { strictParseDouble } from "~/utils.ts";
+import type { AnyAppConfigSnapshot } from "../config/context.ts";
+import { EmptyAppConfigSnapshot } from "../config/context.ts";
+import { strictParseDouble } from "../utils.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
 import { loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";

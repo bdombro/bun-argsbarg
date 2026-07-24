@@ -1,3 +1,4 @@
+import type { CliProgram } from "../../../core/types.ts";
 import {
   checkOpenCodeMcpConflict,
   detectOpenCodeMcpConfigPath,
@@ -5,9 +6,9 @@ import {
   mergeOpenCodeMcpConfig,
   opencodePresent,
   removeOpenCodeMcpConfig,
-} from "~/configure/artifacts/mcp-opencode.ts";
-import { displayInstallPath, type InstallPaths, userHome } from "~/configure/artifacts/paths.ts";
-import { InstallTarget } from "~/configure/artifacts/target-base.ts";
+} from "../mcp-opencode.ts";
+import { displayInstallPath, type InstallPaths, userHome } from "../paths.ts";
+import { InstallTarget } from "../target-base.ts";
 import type {
   DetectedSnapshot,
   InstallAction,
@@ -15,8 +16,7 @@ import type {
   InstallStatus,
   TargetPlanContext,
   UninstallAction,
-} from "~/configure/artifacts/target-types.ts";
-import type { CliProgram } from "~/core/types.ts";
+} from "../target-types.ts";
 
 function resolveConfigPath(paths: InstallPaths, home: string): string {
   return detectOpenCodeMcpConfigPath(home, paths.mcpName) ?? paths.opencodeMcpPath;

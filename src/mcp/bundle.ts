@@ -6,8 +6,8 @@ Expects `dist/<program.key>` as the compiled binary input.
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { buildProgramUserConfig } from "~/config/manifest.ts";
-import type { CliMcpBundleConfig, CliProgram } from "~/core/types.ts";
+import { buildProgramUserConfig } from "../config/manifest.ts";
+import type { CliMcpBundleConfig, CliProgram } from "../core/types.ts";
 import { packClaudePlugin } from "./claude.ts";
 import { collectMcpTools, mcpServerId } from "./tools.ts";
 import { zipStore } from "./zip.ts";

@@ -3,8 +3,8 @@ Per-surface exposure helpers (cli, http, mcpTool).
 Parsing uses the full tree; presentation/schema/MCP/HTTP discovery use these filters.
 */
 
-import type { CliLeaf, CliNode, CliNodeBase, CliOption } from "~/core/types.ts";
-import { isCliRouter } from "~/core/types.ts";
+import type { CliLeaf, CliNode, CliNodeBase, CliOption } from "../core/types.ts";
+import { isCliRouter } from "../core/types.ts";
 
 /** True when the node is omitted from CLI help, schema, and completions (still invocable). */
 export function isCliHidden(node: CliNodeBase): boolean {

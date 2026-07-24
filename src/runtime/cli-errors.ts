@@ -2,9 +2,9 @@
 Handler error helper with contextual help.
 */
 
-import { cliPresentationRoot } from "~/builtins/presentation.ts";
-import type { CliContext } from "~/core/context.ts";
-import { cliHelpRender } from "~/help.ts";
+import { cliPresentationRoot } from "../builtins/presentation.ts";
+import type { CliContext } from "../core/context.ts";
+import { cliHelpRender } from "../help.ts";
 
 export function cliErrWithHelp(ctx: CliContext, msg: string): never {
   if (ctx.invocation === "http" || ctx.invocation === "mcp") {

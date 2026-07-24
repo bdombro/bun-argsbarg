@@ -3,10 +3,10 @@ Tests for builtins/builtins module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import { ParseKind, parse, postParseValidate } from "~/core/parse.ts";
-import type { CliProgram } from "~/core/types.ts";
-import { cliBuiltinDocsGroup } from "~/docs/builtin.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
+import type { CliProgram } from "../core/types.ts";
+import { cliBuiltinDocsGroup } from "../docs/builtin.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from ".";
 import { cliBuiltinConfigureCommand, configureBuiltinOptions } from "./configure.ts";
 import { configureCommandDescription, configureSyncOptionDescription } from "./configure-copy.ts";

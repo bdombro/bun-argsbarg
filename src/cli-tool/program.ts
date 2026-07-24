@@ -2,8 +2,8 @@
 Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 */
 
-import { CliOptionKind, type CliProgram } from "~/index";
 import pkg from "../../package.json" with { type: "json" };
+import { CliOptionKind, type CliProgram } from "../index.ts";
 import { runCreate } from "./run-create.ts";
 import { runSchemagenCli } from "./run-schemagen.ts";
 

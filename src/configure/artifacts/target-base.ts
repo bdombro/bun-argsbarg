@@ -1,4 +1,4 @@
-import type { CliProgram, InstallAgentIntegration } from "~/core/types.ts";
+import type { CliProgram, InstallAgentIntegration } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import type {
   CliInstallArtifactKey,

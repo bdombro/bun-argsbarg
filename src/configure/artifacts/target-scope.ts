@@ -1,6 +1,6 @@
-import { appConfigFileExists } from "~/config/file.ts";
-import type { CliConfigureTargets, CliProgram } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { appConfigFileExists } from "../../config/file.ts";
+import type { CliConfigureTargets, CliProgram } from "../../core/types.ts";
+import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import type { InstallPaths } from "./paths.ts";
 import {
   type InstallPlanMode,

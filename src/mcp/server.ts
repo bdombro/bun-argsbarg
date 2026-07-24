@@ -4,8 +4,8 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import { randomUUID } from "node:crypto";
-import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "~/headless/tool-call.ts";
-import type { Cli } from "~/runtime/cli.ts";
+import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "../headless/tool-call.ts";
+import type { Cli } from "../runtime/cli.ts";
 import { allMcpResources, collectMcpTools, resolveMcpServerInfo } from "./tools.ts";
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
@@ -64,7 +64,7 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
     if (failureKind && error !== undefined) {
       await hooks?.onError?.({
         ...wireCtx,
-        failureKind: failureKind as import("~/core/types.ts").InvokeFailureKind,
+        failureKind: failureKind as import("../core/types.ts").InvokeFailureKind,
         error,
       });
     } else {

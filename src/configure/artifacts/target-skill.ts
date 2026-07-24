@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import { displayInstallPath, type InstallPaths } from "./paths.ts";
 import { InstallTarget } from "./target-base.ts";
 import type {

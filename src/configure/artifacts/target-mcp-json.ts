@@ -1,4 +1,4 @@
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import {
   checkMcpConflict,
   expectedMcpEntry,

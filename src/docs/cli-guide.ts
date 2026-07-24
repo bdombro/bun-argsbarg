@@ -1,8 +1,8 @@
-import type { CliSchemaExport } from "~/builtins/export.ts";
-import { cliSchemaExport } from "~/core/schema.ts";
-import type { CliOption, CliPositional, CliProgram } from "~/core/types.ts";
-import { CliFallbackMode, CliOptionKind } from "~/core/types.ts";
-import { cliPositionalLabel, cliResolveNotes } from "~/help.ts";
+import type { CliSchemaExport } from "../builtins/export.ts";
+import { cliSchemaExport } from "../core/schema.ts";
+import type { CliOption, CliPositional, CliProgram } from "../core/types.ts";
+import { CliFallbackMode, CliOptionKind } from "../core/types.ts";
+import { cliPositionalLabel, cliResolveNotes } from "../help.ts";
 
 /** Options for {@link generateCliGuideBody} and {@link generateCliGuide}. */
 export interface CliGuideBodyOptions {

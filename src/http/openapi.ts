@@ -2,9 +2,9 @@
 Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
-import { collectOptionDefs } from "~/core/parse.ts";
-import type { CliHttpMethod, CliNode, CliProgram } from "~/core/types.ts";
-import { CliOptionKind, isCliLeaf, isJsonLeaf } from "~/core/types.ts";
+import { collectOptionDefs } from "../core/parse.ts";
+import type { CliHttpMethod, CliNode, CliProgram } from "../core/types.ts";
+import { CliOptionKind, isCliLeaf, isJsonLeaf } from "../core/types.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 

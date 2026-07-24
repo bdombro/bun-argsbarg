@@ -1,4 +1,4 @@
-import type { InstallTarget } from "~/configure/artifacts/target-base.ts";
+import type { InstallTarget } from "../target-base.ts";
 import { appTarget } from "./app.ts";
 import { chatgptMcpTarget } from "./chatgpt-mcp.ts";
 import { claudeCodeMcpTarget } from "./claude-code-mcp.ts";

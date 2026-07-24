@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { userHome } from "~/configure/artifacts/paths.ts";
-import { McpJsonInstallTarget } from "~/configure/artifacts/target-mcp-json.ts";
+import { userHome } from "../paths.ts";
+import { McpJsonInstallTarget } from "../target-mcp-json.ts";
 
 export const claudeCodeMcpTarget = new McpJsonInstallTarget({
   key: "claudeCodeMcp",

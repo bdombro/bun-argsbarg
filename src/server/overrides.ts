@@ -3,9 +3,9 @@ CLI flag and programmatic overrides merged into HTTP/MCP server runtime config.
 */
 
 import { join } from "node:path";
-import { resolveAppConfigDir } from "~/config/file.ts";
-import type { CliProgram } from "~/core/types.ts";
-import type { ResolvedLogConfig } from "~/log/emitter.ts";
+import { resolveAppConfigDir } from "../config/file.ts";
+import type { CliProgram } from "../core/types.ts";
+import type { ResolvedLogConfig } from "../log/emitter.ts";
 
 /** Overrides from `myapp http` / `serveHttp()` flags and embedders. */
 export interface ServeOverrides {

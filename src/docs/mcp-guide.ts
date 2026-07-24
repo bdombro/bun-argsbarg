@@ -1,10 +1,10 @@
-import { defaultConfigEntryTitle } from "~/config/entry.ts";
-import { displayAppConfigPath } from "~/config/file.ts";
-import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "~/configure/artifacts/mcp-opencode.ts";
-import { collectOptionDefs } from "~/core/parse.ts";
-import { CliOptionKind, type CliProgram } from "~/core/types.ts";
-import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "~/mcp/tools.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+import { defaultConfigEntryTitle } from "../config/entry.ts";
+import { displayAppConfigPath } from "../config/file.ts";
+import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../configure/artifacts/mcp-opencode.ts";
+import { collectOptionDefs } from "../core/parse.ts";
+import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
 import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 

@@ -3,9 +3,9 @@ Tests for docs/cli-guide module behavior.
 */
 
 import { expect, test } from "bun:test";
-import { cliSchemaExport } from "~/core/schema.ts";
-import type { CliProgram } from "~/core/types.ts";
-import { CliOptionKind } from "~/core/types.ts";
+import { cliSchemaExport } from "../core/schema.ts";
+import type { CliProgram } from "../core/types.ts";
+import { CliOptionKind } from "../core/types.ts";
 import { generateCliGuide, generateCliGuideBody } from "./cli-guide.ts";
 
 const nestedFixture: CliProgram = {

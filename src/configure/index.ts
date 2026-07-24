@@ -2,11 +2,11 @@
 Interactive and automated `configure` command orchestration (agent artifacts and app config).
 */
 
-import { displayAppConfigPath, runConfigure } from "~/config/bootstrap.ts";
-import { ensureAppConfigFile } from "~/config/file.ts";
-import type { CliProgram } from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
-import { cliSkillInstall, skillTargetFromActionKind } from "~/skill/install.ts";
+import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
+import { ensureAppConfigFile } from "../config/file.ts";
+import type { CliProgram } from "../core/types.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
+import { cliSkillInstall, skillTargetFromActionKind } from "../skill/install.ts";
 import { resolveInstallPaths } from "./artifacts/paths.ts";
 import { buildInstallPlan, buildUpdatePlan } from "./artifacts/plan.ts";
 import {

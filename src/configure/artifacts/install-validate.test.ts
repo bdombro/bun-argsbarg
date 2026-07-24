@@ -3,9 +3,9 @@ Tests for install/install-validate module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "~/core/types.ts";
-import { CliSchemaValidationError } from "~/core/types.ts";
-import { cliValidateProgram } from "~/core/validate.ts";
+import type { CliProgram } from "../../core/types.ts";
+import { CliSchemaValidationError } from "../../core/types.ts";
+import { cliValidateProgram } from "../../core/validate.ts";
 
 const base: CliProgram = {
   key: "app",

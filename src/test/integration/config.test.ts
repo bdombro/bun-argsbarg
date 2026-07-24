@@ -6,9 +6,9 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { bootstrapAppConfig } from "~/config/bootstrap.ts";
-import { resolveAppConfigPath } from "~/config/file.ts";
-import { mcpRequest, testProgram } from "~/test/fixtures.ts";
+import { bootstrapAppConfig } from "../../config/bootstrap.ts";
+import { resolveAppConfigPath } from "../../config/file.ts";
+import { mcpRequest, testProgram } from "../fixtures.ts";
 
 /** Tests that bootstrapAppConfig prefers host env over config file. */
 test("bootstrapAppConfig prefers host env over config file", () => {

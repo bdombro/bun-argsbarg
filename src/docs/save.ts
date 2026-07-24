@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
-import { generatedFileHtmlComment, insertGeneratedHint } from "~/skill/hint.ts";
+import type { CliProgram } from "../core/types.ts";
+import { generatedFileHtmlComment, insertGeneratedHint } from "../skill/hint.ts";
 import { docsTopicContent } from "./resolve.ts";
 
 /** Relative output directory for `docs --save`. */

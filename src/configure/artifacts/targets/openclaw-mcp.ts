@@ -1,11 +1,11 @@
-import { openclawOnPath } from "~/configure/artifacts/mcp-openclaw.ts";
+import { openclawOnPath } from "../mcp-openclaw.ts";
 import {
   checkOpenclawMcpConflict,
   McpCliInstallTarget,
   mergeOpenclawMcpConfig,
   openclawMcpHasServer,
   removeOpenclawMcpConfig,
-} from "~/configure/artifacts/target-mcp-cli.ts";
+} from "../target-mcp-cli.ts";
 
 export const openclawMcpTarget = new McpCliInstallTarget({
   key: "openclawMcp",

@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
-import { mcpServerId, sanitizeToolSegment } from "~/mcp/tools.ts";
-import { displayHomePath, userHome, xdgConfigHome } from "~/paths/host.ts";
-import { skillDirNameForTarget } from "~/skill/install.ts";
+import type { CliProgram } from "../../core/types.ts";
+import { mcpServerId, sanitizeToolSegment } from "../../mcp/tools.ts";
+import { displayHomePath, userHome, xdgConfigHome } from "../../paths/host.ts";
+import { skillDirNameForTarget } from "../../skill/install.ts";
 import { resolveOpenclawConfigPath } from "./mcp-openclaw.ts";
 import { resolveOpenCodeConfigPathForInstall } from "./mcp-opencode.ts";
 
@@ -24,7 +24,7 @@ export interface InstallPaths {
   skillDirName: string;
 }
 
-export { userHome } from "~/paths/host.ts";
+export { userHome } from "../../paths/host.ts";
 
 /** Format an absolute path for user-facing install output. */
 export function displayInstallPath(path: string): string {

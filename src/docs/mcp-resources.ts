@@ -2,7 +2,7 @@
 Auto MCP resources for user docs.topics when docs and MCP are both enabled.
 */
 
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import { docsEnabled, docsTopicDescription, docsTopicText, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 
 /** Default URI pattern for a docs topic MCP resource (`<mcpId>://docs/<topicKey>`). */

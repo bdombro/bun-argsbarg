@@ -2,16 +2,16 @@
 Shared headless tool dispatch for MCP and HTTP: config bootstrap, argv conversion, and invoke.
 */
 
-import { bootstrapAppConfig } from "~/config/bootstrap.ts";
-import { formatMcpMissingConfigMessage, missingRequiredConfig } from "~/config/resolve.ts";
-import type { CliInvocation, CliProgram, InvokeFailureKind } from "~/core/types.ts";
-import { failureKindHttpStatus } from "~/hooks/run.ts";
-import { apiErrorResponse, apiSuccessResponse, firstErrorLine } from "~/http/result.ts";
-import { type HttpRouteDef, httpRequestToArgv } from "~/http/routes.ts";
-import { obscureUnexpectedClientMessage } from "~/log/emitter.ts";
-import { buildToolCallSuccessFromResponse } from "~/mcp/result.ts";
-import { collectMcpTools, type McpToolDef, mcpToolCallToArgv } from "~/mcp/tools.ts";
-import type { Cli, CliInvokeResult } from "~/runtime/cli.ts";
+import { bootstrapAppConfig } from "../config/bootstrap.ts";
+import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
+import type { CliInvocation, CliProgram, InvokeFailureKind } from "../core/types.ts";
+import { failureKindHttpStatus } from "../hooks/run.ts";
+import { apiErrorResponse, apiSuccessResponse, firstErrorLine } from "../http/result.ts";
+import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
+import { obscureUnexpectedClientMessage } from "../log/emitter.ts";
+import { buildToolCallSuccessFromResponse } from "../mcp/result.ts";
+import { collectMcpTools, type McpToolDef, mcpToolCallToArgv } from "../mcp/tools.ts";
+import type { Cli, CliInvokeResult } from "../runtime/cli.ts";
 
 /** Outcome of resolving a tool name against the program schema. */
 export type ToolLookupResult =
@@ -179,7 +179,7 @@ export async function executeHttpRouteCall(
 /** Maps a headless success result to an HTTP Response. */
 export function headlessSuccessToHttpResponse(
   result: HeadlessToolCallSuccess,
-  leafApiResponse?: import("~/core/types.ts").CliHttpResponseConfig,
+  leafApiResponse?: import("../core/types.ts").CliHttpResponseConfig,
   defaultStatus?: number,
 ): Response {
   return apiSuccessResponse(result.response, leafApiResponse, defaultStatus);

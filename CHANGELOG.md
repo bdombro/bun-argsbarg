@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.7] - 2026-07-24
+
+### Changed
+
+- **Internal imports** — argsbarg `src/` uses relative paths instead of the `~/` tsconfig alias, so the published package resolves correctly from `node_modules` without a consumer-side tsconfig workaround.
+
 ## [6.1.6] - 2026-07-24
 
 
@@ -853,7 +859,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.6...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.7...HEAD
+[6.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.7
 [6.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.6
 [6.1.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.5
 [6.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.4

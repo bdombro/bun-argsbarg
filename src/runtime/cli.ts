@@ -4,16 +4,16 @@ Runtime entry point: validate program, cache derived state, run / invoke / MCP s
 
 import { randomUUID } from "node:crypto";
 import { format } from "node:util";
-import { builtinInterceptRoot, dispatchBuiltin } from "~/builtins/dispatch.ts";
-import { cliParseRoot, cliPresentationRoot } from "~/builtins/presentation.ts";
-import { bootstrapAppConfig, type EnsureAppConfigOpts, ensureAppConfig } from "~/config/bootstrap.ts";
-import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "~/config/context.ts";
-import { readAppConfigFileRaw, resolveAppConfigPath } from "~/config/file.ts";
-import { effectiveJsonSchema } from "~/config/schema.ts";
-import { CliContext } from "~/core/context.ts";
-import { LeafInputError, preloadPipableJson } from "~/core/leaf-inputs.ts";
-import { ParseKind, type ParseResult, parse, postParseValidate } from "~/core/parse.ts";
-import { type CliSchemaRootExport, cliSchemaExport } from "~/core/schema.ts";
+import { builtinInterceptRoot, dispatchBuiltin } from "../builtins/dispatch.ts";
+import { cliParseRoot, cliPresentationRoot } from "../builtins/presentation.ts";
+import { bootstrapAppConfig, type EnsureAppConfigOpts, ensureAppConfig } from "../config/bootstrap.ts";
+import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "../config/context.ts";
+import { readAppConfigFileRaw, resolveAppConfigPath } from "../config/file.ts";
+import { effectiveJsonSchema } from "../config/schema.ts";
+import { CliContext } from "../core/context.ts";
+import { LeafInputError, preloadPipableJson } from "../core/leaf-inputs.ts";
+import { ParseKind, type ParseResult, parse, postParseValidate } from "../core/parse.ts";
+import { type CliSchemaRootExport, cliSchemaExport } from "../core/schema.ts";
 import type {
   CliHandler,
   CliInvocation,
@@ -24,18 +24,18 @@ import type {
   CliRespondOptions,
   CliRouter,
   InvokeFailureKind,
-} from "~/core/types.ts";
-import { isCliLeaf, isCliRouter } from "~/core/types.ts";
-import { cliValidateProgram } from "~/core/validate.ts";
-import { cliHelpRender } from "~/help.ts";
-import { isBuiltinInvokePath } from "~/hooks/builtin.ts";
-import { buildInvokeHookContext, classifyFailureKind, runErrorPipeline, runHook } from "~/hooks/run.ts";
-import { httpServeHttp } from "~/http/server.ts";
-import { LogEmitter } from "~/log/emitter.ts";
-import { bootstrapMcpEnv } from "~/mcp/env.ts";
-import { mcpServeStdioLoop } from "~/mcp/server.ts";
-import { createServerRuntime, type ServerHandleContext } from "~/server/context.ts";
-import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "~/server/overrides.ts";
+} from "../core/types.ts";
+import { isCliLeaf, isCliRouter } from "../core/types.ts";
+import { cliValidateProgram } from "../core/validate.ts";
+import { cliHelpRender } from "../help.ts";
+import { isBuiltinInvokePath } from "../hooks/builtin.ts";
+import { buildInvokeHookContext, classifyFailureKind, runErrorPipeline, runHook } from "../hooks/run.ts";
+import { httpServeHttp } from "../http/server.ts";
+import { LogEmitter } from "../log/emitter.ts";
+import { bootstrapMcpEnv } from "../mcp/env.ts";
+import { mcpServeStdioLoop } from "../mcp/server.ts";
+import { createServerRuntime, type ServerHandleContext } from "../server/context.ts";
+import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
 import {
   assertBuiltinAllowed,
   type CliCapabilities,

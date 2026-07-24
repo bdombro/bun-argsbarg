@@ -1,5 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import { buildUninstallPlanFromTargets } from "./target-plan-build.ts";
 import { skillTargetForUninstallSummary } from "./target-registry.ts";

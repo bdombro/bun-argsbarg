@@ -7,8 +7,8 @@ It keeps handler dispatch and help on one parser so the CLI behavior stays consi
 across every entry path.
 */
 
-import { isCliCallable } from "~/runtime/exposure.ts";
-import { fullStringIsDouble } from "~/utils.ts";
+import { isCliCallable } from "../runtime/exposure.ts";
+import { fullStringIsDouble } from "../utils.ts";
 import { formatValidationError, validateFormatValue } from "./formats.ts";
 import {
   CliFallbackMode,

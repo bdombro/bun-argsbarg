@@ -2,12 +2,12 @@
 Shared completion scope walk used by bash, zsh, and fish emitters.
 */
 
-import { type CliNode, type CliRouter, isCliLeaf, isCliRouter } from "~/core/types.ts";
+import { type CliNode, type CliRouter, isCliLeaf, isCliRouter } from "../core/types.ts";
 
 /** One tab-completion scope: child commands, options, and path key for the schema walk. */
 export interface ScopeRec {
   kids: CliNode[];
-  opts: import("~/core/types.ts").CliOption[];
+  opts: import("../core/types.ts").CliOption[];
   path: string;
   wantsFiles: boolean;
 }

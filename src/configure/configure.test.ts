@@ -6,15 +6,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { appConfigFileExists } from "~/config/file.ts";
-import {
-  appConfigHasEntries,
-  formatConfigureMutationSummary,
-  parseConfigureOpts,
-  validateConfigureOpts,
-} from "~/configure";
-import type { CliProgram } from "~/core/types.ts";
-import { Cli } from "~/index";
+import { appConfigFileExists } from "../config/file.ts";
+import type { CliProgram } from "../core/types.ts";
+import { Cli } from "../index.ts";
 import { detectInstalledArtifacts } from "./artifacts/detect-installed.ts";
 import { parseInstallOpts } from "./artifacts/opts.ts";
 import { resolveClaudeDesktopMcpPath, resolveInstallPaths } from "./artifacts/paths.ts";
@@ -22,6 +16,12 @@ import { buildInstallPlan, buildUpdatePlan } from "./artifacts/plan.ts";
 import { installTargetForKey } from "./artifacts/target-registry.ts";
 import { buildDetectedSnapshot, buildTargetPlanContext } from "./artifacts/target-scope.ts";
 import { buildUninstallPlan } from "./artifacts/uninstall.ts";
+import {
+  appConfigHasEntries,
+  formatConfigureMutationSummary,
+  parseConfigureOpts,
+  validateConfigureOpts,
+} from "./index.ts";
 
 const fixture: CliProgram = {
   key: "testapp",

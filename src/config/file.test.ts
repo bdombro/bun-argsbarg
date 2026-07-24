@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "~/core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import { CONFIG_BINDINGS_KEY } from "./bindings.ts";
 import { bootstrapAppConfig } from "./bootstrap.ts";
 import {

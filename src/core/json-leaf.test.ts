@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Cli } from "~/index";
+import { Cli } from "../index.ts";
 import { ParseKind, parse } from "./parse.ts";
 import { CliOptionKind, type CliProgram, CliSchemaValidationError } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";

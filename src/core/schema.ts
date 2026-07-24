@@ -2,9 +2,9 @@
 This module serializes the CLI schema tree to JSON for machine-readable introspection.
 */
 
-import { type CliSchemaExport, exportPresentationBuiltins } from "~/builtins/export.ts";
-import { cliResolveNotes } from "~/help.ts";
-import { isCliSchemaHidden, visibleOptions } from "~/runtime/exposure.ts";
+import { type CliSchemaExport, exportPresentationBuiltins } from "../builtins/export.ts";
+import { cliResolveNotes } from "../help.ts";
+import { isCliSchemaHidden, visibleOptions } from "../runtime/exposure.ts";
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
 
 const RESERVED = new Set(["http", "completion", "configure", "docs", "mcp", "version"]);

@@ -4,9 +4,9 @@ settings are present before the CLI or MCP server handles a request.
 */
 
 import { readSync } from "node:fs";
-import type { CliAppConfigEntry, CliProgram, ServerRuntime } from "~/core/types.ts";
-import type { LogEmitter } from "~/log/emitter.ts";
-import { readPromptLine as readStdinLine } from "~/prompt.ts";
+import type { CliAppConfigEntry, CliProgram, ServerRuntime } from "../core/types.ts";
+import type { LogEmitter } from "../log/emitter.ts";
+import { readPromptLine as readStdinLine } from "../prompt.ts";
 import { bindingForKey, clearFileValue, isKeyAddressed, readBindings, setBinding } from "./bindings.ts";
 import { configEntryRequired, configEntrySensitive, defaultConfigEntryTitle, jsonSchemaRequiredKeys } from "./entry.ts";
 import {

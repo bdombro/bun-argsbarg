@@ -2,9 +2,9 @@
 HTTP/MCP readiness checks for GET /health/readiness (orchestrator probes only).
 */
 
-import type { AnyAppConfigSnapshot } from "~/config/context.ts";
-import { missingRequiredConfig } from "~/config/resolve.ts";
-import type { CliProgram, ReadinessContext, ServerRuntime } from "~/core/types.ts";
+import type { AnyAppConfigSnapshot } from "../config/context.ts";
+import { missingRequiredConfig } from "../config/resolve.ts";
+import type { CliProgram, ReadinessContext, ServerRuntime } from "../core/types.ts";
 
 const READINESS_CACHE_MS = 3000;
 

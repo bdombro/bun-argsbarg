@@ -2,7 +2,7 @@
 Resolve program.appConfig values: defaults, file, env override, export to process.env.
 */
 
-import type { CliAppConfigEntry, CliAppConfigResolveContext, CliProgram } from "~/core/types.ts";
+import type { CliAppConfigEntry, CliAppConfigResolveContext, CliProgram } from "../core/types.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 import type { AppConfigFileData } from "./file.ts";
 import { displayAppConfigPath } from "./file.ts";

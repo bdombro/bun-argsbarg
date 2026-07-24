@@ -1,5 +1,5 @@
-import { appConfigStatus } from "~/config/bootstrap.ts";
-import type { CliProgram } from "~/core/types.ts";
+import { appConfigStatus } from "../../config/bootstrap.ts";
+import type { CliProgram } from "../../core/types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { resolveInstallTargetPreview } from "./target-scope.ts";

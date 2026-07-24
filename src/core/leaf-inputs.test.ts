@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Cli, CliContext, CliOptionKind } from "~/index";
+import { Cli, CliContext, CliOptionKind } from "../index.ts";
 import { LeafInputError, loadLeafInputs } from "./leaf-inputs.ts";
 import type { CliProgram } from "./types.ts";
 

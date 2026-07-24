@@ -5,9 +5,9 @@ import {
   CliOptionKind,
   type CliProgram,
   type CliRouter,
-} from "~/core/types.ts";
-import { docsEnabled } from "~/docs/resolve.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+} from "../core/types.ts";
+import { docsEnabled } from "../docs/resolve.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 
 const MCP_SERVE_OPTIONS: CliOption[] = [
   { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: CliOptionKind.Presence },

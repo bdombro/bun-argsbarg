@@ -1,10 +1,10 @@
-import { defaultConfigEntryTitle } from "~/config/entry.ts";
-import { displayAppConfigPath } from "~/config/file.ts";
-import { collectOptionDefs } from "~/core/parse.ts";
-import { CliOptionKind, type CliProgram } from "~/core/types.ts";
-import { httpUserPathGlob, resolveHttpPathPrefix } from "~/http/paths.ts";
-import { collectHttpRoutes } from "~/http/routes.ts";
-import { resolveHttpListenAddress } from "~/http/server.ts";
+import { defaultConfigEntryTitle } from "../config/entry.ts";
+import { displayAppConfigPath } from "../config/file.ts";
+import { collectOptionDefs } from "../core/parse.ts";
+import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
+import { collectHttpRoutes } from "../http/routes.ts";
+import { resolveHttpListenAddress } from "../http/server.ts";
 
 /** Formats one HTTP route for the auto-generated HTTP guide. */
 function formatRouteLine(root: CliProgram, route: ReturnType<typeof collectHttpRoutes>[number]): string {

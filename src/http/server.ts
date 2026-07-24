@@ -3,15 +3,15 @@ HTTP tool server for ArgsBarg programs: health, OpenAPI, and REST API invocation
 */
 
 import { randomUUID } from "node:crypto";
-import type { CliHttpWireContext, CliProgram } from "~/core/types.ts";
+import type { CliHttpWireContext, CliProgram } from "../core/types.ts";
 import {
   executeHttpRouteCall,
   headlessFailureToHttpResponse,
   headlessSuccessToHttpResponse,
-} from "~/headless/tool-call.ts";
-import type { Cli } from "~/runtime/cli.ts";
-import { leafHttpResponseDefaults } from "~/runtime/exposure.ts";
-import type { ResolvedHttpServeConfig } from "~/server/overrides.ts";
+} from "../headless/tool-call.ts";
+import type { Cli } from "../runtime/cli.ts";
+import { leafHttpResponseDefaults } from "../runtime/exposure.ts";
+import type { ResolvedHttpServeConfig } from "../server/overrides.ts";
 import { generateOpenApi } from "./openapi.ts";
 import { evaluateReadiness } from "./readiness.ts";
 import { API_CORS_HEADERS, apiDocsHtml, apiErrorResponse, apiOptionsResponse } from "./result.ts";
@@ -86,7 +86,7 @@ export async function handleApiRequest(
     if (failureKind && error !== undefined) {
       await hooks?.onError?.({
         ...wireCtx,
-        failureKind: failureKind as import("~/core/types.ts").InvokeFailureKind,
+        failureKind: failureKind as import("../core/types.ts").InvokeFailureKind,
         error,
       });
     } else {

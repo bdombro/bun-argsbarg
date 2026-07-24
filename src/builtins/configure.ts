@@ -1,4 +1,4 @@
-import { configCommandsEnabled, configMcpSetEnabled } from "~/config/entry.ts";
+import { configCommandsEnabled, configMcpSetEnabled } from "../config/entry.ts";
 import {
   CliFallbackMode,
   type CliLeaf,
@@ -6,8 +6,8 @@ import {
   CliOptionKind,
   type CliProgram,
   type CliRouter,
-} from "~/core/types.ts";
-import { resolveCapabilities } from "~/runtime/capabilities.ts";
+} from "../core/types.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { configureConfigSubcommands } from "./config.ts";
 import {
   configureCommandDescription,
