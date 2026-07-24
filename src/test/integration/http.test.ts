@@ -289,8 +289,8 @@ describe("HTTP API routes", () => {
     expect(body.error).toBe("An unexpected error occurred.");
   });
 
-  test("GET /health includes CORS headers", async () => {
-    const res = await apiRequest(program, new Request("http://127.0.0.1/health"));
+  test("GET /health/liveness includes CORS headers", async () => {
+    const res = await apiRequest(program, new Request("http://127.0.0.1/health/liveness"));
     expect(res.status).toBe(200);
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect(await res.json()).toEqual({ ok: true });
@@ -449,9 +449,9 @@ describe("HTTP API routes", () => {
     const doc = (await res.json()) as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe("3.1.0");
     expect(doc.paths["/stat/owner/lookup"]).toBeDefined();
-    expect(doc.paths["/health"]).toBeDefined();
     expect(doc.paths["/health/liveness"]).toBeDefined();
     expect(doc.paths["/health/readiness"]).toBeDefined();
+    expect(doc.paths["/health"]).toBeUndefined();
   });
 
   test("GET /swagger returns Swagger UI HTML", async () => {
@@ -480,13 +480,17 @@ test("generateOpenApi includes health probe paths", () => {
       {
         get: {
           tags: string[];
+          summary: string;
           responses: Record<string, { content: Record<string, { schema: Record<string, unknown> }> }>;
         };
       }
     >;
   };
   expect(doc.tags.some((t) => t.name === "health")).toBe(true);
-  expect(doc.paths["/health"]?.get.tags).toContain("health");
+  expect(doc.paths["/health"]).toBeUndefined();
+  expect(doc.paths["/health/liveness"]?.get.tags).toContain("health");
+  expect(doc.paths["/health/liveness"]?.get.summary).toBe("Liveness probe");
+  expect(doc.paths["/health/readiness"]?.get.summary).toBe("Readiness probe");
   expect(doc.paths["/health/liveness"]?.get.responses["200"]).toBeDefined();
   expect(doc.paths["/health/readiness"]?.get.responses["200"]).toBeDefined();
   expect(doc.paths["/health/readiness"]?.get.responses["503"]).toBeDefined();

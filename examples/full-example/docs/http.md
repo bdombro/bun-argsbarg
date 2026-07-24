@@ -16,8 +16,8 @@ Bind is localhost-only in v0 — use a reverse proxy for remote access.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` or `/health/liveness` | Liveness check |
-| `GET` | `/health/readiness` | Readiness (config + `program.readiness`) |
+| `GET` | `/health/liveness` | Liveness — server is online and accepting requests |
+| `GET` | `/health/readiness` | Readiness — online plus config and `program.readiness` checks passed |
 | `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |
 | `GET` | `/swagger` | Interactive Swagger UI API reference |
 | * | `/*` | Invoke user commands (method per route) |
@@ -28,7 +28,7 @@ Discover paths from `openapi.json` (`/*`). Query binds options; POST/PUT/PATCH b
 ## Examples
 
 ```bash
-curl -s http://127.0.0.1:3000/health
+curl -s http://127.0.0.1:3000/health/liveness
 curl -s http://127.0.0.1:3000/health/readiness
 curl -s http://127.0.0.1:3000/openapi.json
 curl -s http://127.0.0.1:3000/workspaces

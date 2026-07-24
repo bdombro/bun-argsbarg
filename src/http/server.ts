@@ -112,7 +112,7 @@ export async function handleApiRequest(
   const root = cli.program;
   const path = url.pathname;
 
-  if (request.method === "GET" && (path === "/health" || path === "/health/liveness")) {
+  if (request.method === "GET" && path === "/health/liveness") {
     return finish(jsonResponse(200, { ok: true }));
   }
 

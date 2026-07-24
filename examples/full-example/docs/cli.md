@@ -213,7 +213,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -426,7 +426,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -667,7 +667,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -890,7 +890,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -1103,7 +1103,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -1327,7 +1327,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -1540,7 +1540,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -1753,7 +1753,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 
@@ -1966,7 +1966,7 @@ HTTP API server for tools.
 
 > HTTP tool server on http://127.0.0.1:3000.
 > 
-> Endpoints: GET /health, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
 > 
 > Configure app settings:
 > 

@@ -8,7 +8,7 @@
   "tags": [
     {
       "name": "health",
-      "description": "Server health probes"
+      "description": "Orchestrator health probes — liveness (online) vs readiness (online + checks passed)."
     },
     {
       "name": "echo",
@@ -28,36 +28,6 @@
     }
   ],
   "paths": {
-    "/health": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "operationId": "health",
-        "summary": "Liveness probe (alias of /health/liveness)",
-        "responses": {
-          "200": {
-            "description": "Server is listening",
-            "content": {
-              "application/json; charset=utf-8": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "const": true
-                    }
-                  },
-                  "required": [
-                    "ok"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/health/liveness": {
       "get": {
         "tags": [
@@ -65,9 +35,10 @@
         ],
         "operationId": "health_liveness",
         "summary": "Liveness probe",
+        "description": "Returns 200 when the HTTP server is online and accepting requests. Does not run config or readiness checks — use for orchestrator liveness probes only.",
         "responses": {
           "200": {
-            "description": "Server is listening",
+            "description": "Server is online",
             "content": {
               "application/json; charset=utf-8": {
                 "schema": {
@@ -95,10 +66,10 @@
         ],
         "operationId": "health_readiness",
         "summary": "Readiness probe",
-        "description": "Config file, required app config, and optional program.readiness checks.",
+        "description": "Returns 200 when the server is online and all readiness checks pass (config file, required app config, and optional program.readiness). Returns 503 when any check fails — use for orchestrator readiness probes before routing traffic.",
         "responses": {
           "200": {
-            "description": "Ready to serve traffic",
+            "description": "Online and ready to serve traffic",
             "content": {
               "application/json; charset=utf-8": {
                 "schema": {
@@ -187,7 +158,7 @@
             }
           },
           "503": {
-            "description": "Not ready",
+            "description": "Online but not ready (one or more checks failed)",
             "content": {
               "application/json; charset=utf-8": {
                 "schema": {

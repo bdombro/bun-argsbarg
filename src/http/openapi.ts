@@ -150,13 +150,15 @@ function jsonResponseEntry(description: string, schema: Record<string, unknown>)
   };
 }
 
-function livenessGetOp(operationId: string, summary: string): Record<string, unknown> {
+function livenessGetOp(): Record<string, unknown> {
   return {
     tags: [HEALTH_TAG],
-    operationId,
-    summary,
+    operationId: "health_liveness",
+    summary: "Liveness probe",
+    description:
+      "Returns 200 when the HTTP server is online and accepting requests. Does not run config or readiness checks — use for orchestrator liveness probes only.",
     responses: {
-      "200": jsonResponseEntry("Server is listening", livenessResponseSchema),
+      "200": jsonResponseEntry("Server is online", livenessResponseSchema),
     },
   };
 }
@@ -164,21 +166,19 @@ function livenessGetOp(operationId: string, summary: string): Record<string, unk
 /** Framework health probe paths served alongside user command routes. */
 function buildHealthPaths(): Record<string, unknown> {
   return {
-    "/health": {
-      get: livenessGetOp("health", "Liveness probe (alias of /health/liveness)"),
-    },
     "/health/liveness": {
-      get: livenessGetOp("health_liveness", "Liveness probe"),
+      get: livenessGetOp(),
     },
     "/health/readiness": {
       get: {
         tags: [HEALTH_TAG],
         operationId: "health_readiness",
         summary: "Readiness probe",
-        description: "Config file, required app config, and optional program.readiness checks.",
+        description:
+          "Returns 200 when the server is online and all readiness checks pass (config file, required app config, and optional program.readiness). Returns 503 when any check fails — use for orchestrator readiness probes before routing traffic.",
         responses: {
-          "200": jsonResponseEntry("Ready to serve traffic", readinessResponseSchema),
-          "503": jsonResponseEntry("Not ready", readinessResponseSchema),
+          "200": jsonResponseEntry("Online and ready to serve traffic", readinessResponseSchema),
+          "503": jsonResponseEntry("Online but not ready (one or more checks failed)", readinessResponseSchema),
         },
       },
     },
@@ -278,7 +278,15 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
       description: program.description,
     },
     ...(program.httpServer?.enabled
-      ? { tags: [{ name: HEALTH_TAG, description: "Server health probes" }, ...commandTags] }
+      ? {
+          tags: [
+            {
+              name: HEALTH_TAG,
+              description: "Orchestrator health probes — liveness (online) vs readiness (online + checks passed).",
+            },
+            ...commandTags,
+          ],
+        }
       : {}),
     paths,
   };

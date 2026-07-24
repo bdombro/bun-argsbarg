@@ -76,8 +76,8 @@ Per-surface exposure: `http.enabled: false` removes a leaf from the route table;
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` or `/health/liveness` | Liveness — 200 when server is listening |
-| `GET` | `/health/readiness` | Readiness — config + optional `program.readiness` |
+| `GET` | `/health/liveness` | Liveness — server is online and accepting requests |
+| `GET` | `/health/readiness` | Readiness — online plus config and optional `program.readiness` checks passed |
 | `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and user routes) |
 | `GET` | `/swagger` | Interactive Swagger UI API reference (CDN) |
 | `*` | `/{command}/...` | Invoke user commands (method per route; optional `pathPrefix`) |
@@ -88,7 +88,7 @@ Per-surface exposure: `http.enabled: false` removes a leaf from the route table;
 ## Examples
 
 ```bash
-curl -s http://127.0.0.1:3000/health
+curl -s http://127.0.0.1:3000/health/liveness
 curl -s http://127.0.0.1:3000/health/readiness
 curl -s http://127.0.0.1:3000/openapi.json
 open http://127.0.0.1:3000/swagger

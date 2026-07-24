@@ -7,20 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.6] - 2026-07-24
+
+
 ## [6.1.5] - 2026-07-24
 
 ### Changed
 
 - **`httpServer.pathPrefix`** — configurable URL prefix for user routes (default `""`; routes at server root, e.g. `/workspaces`). Set `"/api"` for prefixed paths.
+- **Health probes** — removed `GET /health` liveness alias; use `GET /health/liveness`. OpenAPI descriptions clarify liveness (online) vs readiness (online + checks passed).
 
 ## [6.1.4] - 2026-07-24
 
 ### Changed
 
 - **`GET /swagger`** — Swagger UI API reference (replaces `GET /openapi-browser` and Scalar).
-- **`GET /openapi.json`** — documents `/health`, `/health/liveness`, and `/health/readiness` probe endpoints under a **Health** tag.
+- **`GET /openapi.json`** — documents `/health/liveness` and `/health/readiness` probe endpoints under a **Health** tag.
 - **OpenAPI tags** — user `/api/*` routes are grouped by top-level command key (router `description` becomes the tag description).
-- **Health probe paths** — `GET /health/liveness` and `GET /health/readiness` replace `/health/live` and `/health/ready` (`GET /health` remains a liveness alias).
+- **Health probe paths** — `GET /health/liveness` and `GET /health/readiness` replace `/health/live` and `/health/ready`.
 - **`httpServer.pathPrefix`** — configurable URL prefix for user routes (default `""`; routes at server root, e.g. `/workspaces`). Set `"/api"` for prefixed paths.
 
 ## [6.1.3] - 2026-07-24
@@ -849,7 +853,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.5...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.6...HEAD
+[6.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.6
 [6.1.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.5
 [6.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.4
 [6.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.3
