@@ -79,6 +79,8 @@ export {
   wantsExplicitJson,
 } from "./headless/routing.ts";
 export { generateOpenApi, openApiJson } from "./http/openapi.ts";
+export type { EcsLogEvent, LogEnrichContext } from "./log/ecs.ts";
+export { ECS_VERSION, formatEcsLine } from "./log/ecs.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "./runtime/cli.ts";

@@ -38,3 +38,22 @@ Yes Zod implements some features we do custom for JSON-SCHEMA, but is opinionate
 4. Our TS->json-schema approach is actually easier and better in many cases
   - Just write plain typescript, done.
   - Better intellisense -- substantially less abstraction/inference, much better control
+
+## Structured logging (ECS Logging)
+
+Decision: **ECS Logging–compatible NDJSON to stderr** (default), with optional `enrich` / `serialize` hooks
+
+### Context
+
+- HTTP/MCP servers need access logs, error logs, and trace correlation in production log pipelines
+- Consumers may need custom fields (team labels, vendor-specific shapes) without baking proprietary formats into argsbarg core
+- OpenTelemetry log export is out of scope for the framework runtime (no third-party observability SDK dependency)
+
+### Rationale
+
+1. **ECS Logging** is an open standard (NDJSON, `ecs.version`, canonical field names) — works with Elasticsearch, Datadog, GCP log agents, etc.
+2. **stderr + JSONL** keeps stdout free for CLI output and matches twelve-factor log collection
+3. **W3C Trace Context** (`traceparent`) enables cross-service correlation without vendor-specific field layouts
+4. **`program.log.enrich`** — additive hook for consumer-specific fields; cannot override the ECS baseline
+5. **`program.log.serialize`** — escape hatch for full custom lines in consumer repos (argsbarg does not endorse that output as ECS)
+6. **No Tyson / OTel SDK in core** — proprietary or heavy observability stacks belong in consumer config or infra (Fluent Bit remapping), not in the open-source framework

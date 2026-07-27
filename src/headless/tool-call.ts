@@ -139,7 +139,7 @@ export async function executeHttpRouteCall(
   pathParams: Record<string, string>,
   query: Record<string, string>,
   body: Record<string, unknown>,
-  http?: { request: Request; clientIp: string; requestId: string },
+  http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string },
 ): Promise<HeadlessToolCallResult> {
   const argvResult = httpRequestToArgv(cli.program, route, pathParams, query, body);
   if ("error" in argvResult) {

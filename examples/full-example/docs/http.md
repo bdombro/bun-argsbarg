@@ -45,6 +45,16 @@ Handlers must use `ctx.respond()` or return a value for API/MCP tool calls.
 
 Errors use `{ "error": "..." }` with `400`, `404`, `503`, or `500`.
 
+## Logging
+
+Server logs go to **stderr** (one JSON object per line by default).
+
+- Configure with `program.log` on the program root
+- **`enrich`** — add custom JSON fields on top of the default line
+- **`serialize`** — replace the formatter and emit your own line shape
+
+See the argsbarg [logging guide](https://github.com/bdombro/bun-argsbarg/blob/main/docs/logging.md) for examples and the full `LogEnrichContext` shape.
+
 ## REST routes
 
 - `POST /echo` (CLI: `full-example echo`) — Echo a message (MCP-friendly leaf).

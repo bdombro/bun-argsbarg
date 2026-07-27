@@ -41,6 +41,8 @@ const cli = {
 
 `httpServer` and `mcpServer` are independent. Tool exposure uses the same rules (`mcpTool.enabled: false` hides from MCP and HTTP). See [http-server.md](http-server.md).
 
+**Logging** — HTTP and MCP server logs go to stderr (JSON by default). Configure `program.log` on the program root; use **`enrich`** to add fields or **`serialize`** for a fully custom line. See **[logging.md](logging.md)**.
+
 ## Inline schema by default
 
 ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliProgram` and leaf fields inline** (`key`, `description`, `options`, `positionals`, `handler`) so a reader sees the full command contract in one place.

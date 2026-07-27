@@ -219,6 +219,10 @@ export interface CliHttpWireContext {
   clientIp: string;
   path: string;
   method: string;
+  /** W3C trace id when `traceparent` is present on the request. */
+  traceId?: string;
+  /** Span id for this server hop when `traceparent` is present. */
+  spanId?: string;
 }
 
 /** Wire-level MCP hooks on JSON-RPC messages (observe-only). */
@@ -596,7 +600,7 @@ export interface InvokeHookContext {
   locals: CliLocals;
   runtime?: ServerRuntime;
   appConfig: AnyAppConfigSnapshot;
-  http?: { request: Request; clientIp: string; requestId: string };
+  http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
   mcp?: { rpcMethod: string; toolName?: string; requestId: string };
 }
 
@@ -641,9 +645,9 @@ export interface ReadinessContext {
   runtime: ServerRuntime;
 }
 
-/** Framework logging defaults (ECS json or human text on stderr). */
+/** Framework logging defaults (ECS Logging json or human text on stderr). */
 export interface CliLogConfig {
-  /** `json` = ECS lines; `text` = human stderr lines. Default: `json`. */
+  /** `json` = ECS Logging lines; `text` = human stderr lines. Default: `json`. */
   format?: "json" | "text";
   /** Tee stderr + append; relative paths resolve under the app config dir. */
   file?: string;
@@ -651,6 +655,16 @@ export interface CliLogConfig {
   access?: boolean;
   /** Emit error events after the hook pipeline. Default: true. */
   errors?: boolean;
+  /**
+   * Add non-standard fields to each JSON log line after the ECS baseline.
+   * Cannot override `@timestamp`, `log.level`, `message`, `ecs.version`, or service fields.
+   */
+  enrich?: (ctx: import("../log/ecs.ts").LogEnrichContext) => Record<string, unknown>;
+  /**
+   * Full control over JSON log line serialization. When set, bypasses the built-in ECS formatter.
+   * The consumer owns the entire line (including newline omission).
+   */
+  serialize?: (ctx: import("../log/ecs.ts").LogEnrichContext) => string;
 }
 
 /**

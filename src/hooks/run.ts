@@ -134,8 +134,13 @@ export async function runErrorPipeline(
     failureKind === "unexpected" && obscureUnexpected ? obscureUnexpectedClientMessage() : clientError.message;
 
   emitter?.emitInvokeError(failureKind, err, displayMessage, {
-    invocation: hookCtx.invocation,
-    path: hookCtx.path.join(" "),
+    labels: {
+      invocation: hookCtx.invocation,
+      path: hookCtx.path.join(" "),
+    },
+    requestId: hookCtx.locals.requestId,
+    traceId: hookCtx.http?.traceId,
+    spanId: hookCtx.http?.spanId,
   });
 
   return { failureKind, clientError, errorMsg: displayMessage };

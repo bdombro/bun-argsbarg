@@ -161,7 +161,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -215,7 +215,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -394,7 +394,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -448,7 +448,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -649,7 +649,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -703,7 +703,7 @@
             },
             {
               "name": "log-format",
-              "description": "Log format: json (ECS) or text.",
+              "description": "Log format: json (ECS Logging) or text.",
               "kind": "enum",
               "choices": [
                 "json",
@@ -886,7 +886,7 @@
                 },
                 {
                   "name": "log-format",
-                  "description": "Log format: json (ECS) or text.",
+                  "description": "Log format: json (ECS Logging) or text.",
                   "kind": "enum",
                   "choices": [
                     "json",
@@ -940,7 +940,7 @@
                 },
                 {
                   "name": "log-format",
-                  "description": "Log format: json (ECS) or text.",
+                  "description": "Log format: json (ECS Logging) or text.",
                   "kind": "enum",
                   "choices": [
                     "json",
@@ -1119,7 +1119,7 @@
                 },
                 {
                   "name": "log-format",
-                  "description": "Log format: json (ECS) or text.",
+                  "description": "Log format: json (ECS Logging) or text.",
                   "kind": "enum",
                   "choices": [
                     "json",
@@ -1173,7 +1173,7 @@
                 },
                 {
                   "name": "log-format",
-                  "description": "Log format: json (ECS) or text.",
+                  "description": "Log format: json (ECS Logging) or text.",
                   "kind": "enum",
                   "choices": [
                     "json",
@@ -1356,7 +1356,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -1410,7 +1410,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -1589,7 +1589,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -1643,7 +1643,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -1822,7 +1822,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -1876,7 +1876,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -2055,7 +2055,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",
@@ -2109,7 +2109,7 @@
                     },
                     {
                       "name": "log-format",
-                      "description": "Log format: json (ECS) or text.",
+                      "description": "Log format: json (ECS Logging) or text.",
                       "kind": "enum",
                       "choices": [
                         "json",

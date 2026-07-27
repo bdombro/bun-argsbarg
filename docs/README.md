@@ -11,6 +11,7 @@ Start here to pick the right guide.
 | **JSON Schema validation** | [json-schema-subset.md](json-schema-subset.md) — Draft-07 / 2019-09 / 2020-12 (`$schema` on each schema; default Draft-07) |
 | **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `configure --sync` |
 | **HTTP tool server** | [http-server.md](http-server.md) — `myapp http`, endpoints, curl examples |
+| **Server logging** (`program.log`, `enrich`, `serialize`) | [logging.md](logging.md) — ECS JSON lines, trace headers, custom formats |
 | **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure --sync` |
 | **Homebrew tap-from-repo distribution** | [distribution-homebrew.md](distribution-homebrew.md) — formula pattern, `argsbarg create` |
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |

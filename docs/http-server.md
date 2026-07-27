@@ -49,7 +49,9 @@ Set `httpServer` on the **program root only**. Validation rejects `httpServer` o
 
 `httpServer` and `mcpServer` are independent — enable either or both.
 
-Program-level `program.log` controls ECS JSON vs human text on stderr (and optional file tee). See [docs/decisions.md](decisions.md).
+## Logging
+
+Server logs (access lines, errors, startup) go to **stderr** as JSON by default. See **[logging.md](logging.md)** for `program.log`, **`enrich`**, **`serialize`**, trace headers, and examples.
 
 ## REST routes
 

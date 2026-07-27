@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.9] - 2026-07-27
+
+### Added
+
+- **ECS Logging–compatible JSON logs** — default JSON output includes `ecs.version`, nested `labels`, canonical HTTP fields (`http.request.method`, `url.path`, `http.response.status_code`, `event.duration` in nanoseconds), and W3C `trace.id` / `span.id` when `traceparent` is present on HTTP requests.
+- **`program.log.enrich`** — additive hook for custom JSON fields (cannot override ECS baseline keys).
+- **`program.log.serialize`** — optional full-line JSON formatter that bypasses the built-in ECS formatter.
+
+### Changed
+
+- **HTTP trace propagation** — parses incoming `traceparent`, logs trace/span ids, and echoes an updated `traceparent` on responses.
+- **CLI log-format help** — describes JSON as ECS Logging, not generic ECS.
+- **Docs** — new [logging.md](logging.md) (`program.log`, `enrich`, `serialize`, examples); `http-server.md` links there.
+
 ## [6.1.8] - 2026-07-27
 
 ### Changed
@@ -865,7 +879,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.8...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.9...HEAD
+[6.1.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.9
 [6.1.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.8
 [6.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.7
 [6.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.6

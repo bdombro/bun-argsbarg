@@ -80,6 +80,16 @@ export function generateHttpGuide(root: CliProgram): string {
     "",
     'Errors use `{ "error": "..." }` with `400`, `404`, `503`, or `500`.',
     "",
+    "## Logging",
+    "",
+    "Server logs go to **stderr** (one JSON object per line by default).",
+    "",
+    "- Configure with `program.log` on the program root",
+    "- **`enrich`** — add custom JSON fields on top of the default line",
+    "- **`serialize`** — replace the formatter and emit your own line shape",
+    "",
+    "See the argsbarg [logging guide](https://github.com/bdombro/bun-argsbarg/blob/main/docs/logging.md) for examples and the full `LogEnrichContext` shape.",
+    "",
   ];
 
   if (root.appConfig?.entries && Object.keys(root.appConfig.entries).length > 0) {

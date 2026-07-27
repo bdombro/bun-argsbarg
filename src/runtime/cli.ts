@@ -195,7 +195,7 @@ export class Cli {
       invocation?: CliInvocation;
       toolArgs?: Record<string, unknown>;
       requestId?: string;
-      http?: { request: Request; clientIp: string; requestId: string };
+      http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
       mcp?: { rpcMethod: string; toolName?: string; requestId: string };
     },
   ): Promise<CliInvokeResult> {

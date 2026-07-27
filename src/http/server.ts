@@ -9,6 +9,7 @@ import {
   headlessFailureToHttpResponse,
   headlessSuccessToHttpResponse,
 } from "../headless/tool-call.ts";
+import { extractTraceContext, formatTraceparent } from "../log/trace.ts";
 import type { Cli } from "../runtime/cli.ts";
 import { leafHttpResponseDefaults } from "../runtime/exposure.ts";
 import type { ResolvedHttpServeConfig } from "../server/overrides.ts";
@@ -70,12 +71,14 @@ export async function handleApiRequest(
   const requestId = randomUUID();
   const url = new URL(request.url);
   const clientIp = resolveClientIp(request, trustProxy);
+  const trace = extractTraceContext(request);
   const wireCtx: CliHttpWireContext = {
     request,
     requestId,
     clientIp,
     path: url.pathname,
     method: request.method,
+    ...(trace ? { traceId: trace.traceId, spanId: trace.spanId } : {}),
   };
   const hooks = cli.server?.httpHooks ?? cli.program.httpServer?.hooks;
   const emitter = cli.server?.emitter;
@@ -99,8 +102,22 @@ export async function handleApiRequest(
       durationMs,
       requestId,
       clientIp,
+      traceId: trace?.traceId,
+      spanId: trace?.spanId,
     });
-    return response;
+    if (!trace) {
+      return response;
+    }
+    const headers = new Headers(response.headers);
+    headers.set(
+      "traceparent",
+      formatTraceparent({ traceId: trace.traceId, spanId: trace.spanId, sampled: trace.sampled }),
+    );
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   };
 
   await hooks?.onRequest?.(wireCtx);
@@ -168,6 +185,7 @@ export async function handleApiRequest(
       request,
       clientIp,
       requestId,
+      ...(trace ? { traceId: trace.traceId, spanId: trace.spanId } : {}),
     });
     if (result.ok) {
       const leafHttp = leafHttpResponseDefaults(match.route.leaf);

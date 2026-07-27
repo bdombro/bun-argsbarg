@@ -113,6 +113,59 @@ export declare class CliContext {
 	private _posMap;
 	private _positionalMap;
 }
+/** ECS version string written to every JSON log line. */
+export declare const ECS_VERSION = "8.11.0";
+/** Severity label for ECS `log.level`. */
+export type EcsLogLevel = "debug" | "info" | "warn" | "error";
+/** Fields merged into every ECS log line. */
+export interface EcsServiceFields {
+	name: string;
+	version: string;
+}
+/** Context for {@link CliLogConfig.enrich} and {@link CliLogConfig.serialize}. */
+export interface LogEnrichContext {
+	level: EcsLogLevel;
+	message: string;
+	action?: string;
+	requestId?: string;
+	traceId?: string;
+	spanId?: string;
+	labels?: Record<string, string | number | boolean>;
+	error?: unknown;
+	service: EcsServiceFields;
+	http?: {
+		method: string;
+		path: string;
+		status: number;
+		durationMs: number;
+		clientIp?: string;
+	};
+}
+/** Input for one ECS log event. */
+export interface EcsLogEvent {
+	level: EcsLogLevel;
+	message: string;
+	action?: string;
+	labels?: Record<string, string | number | boolean>;
+	error?: unknown;
+	fields?: Record<string, unknown>;
+	requestId?: string;
+	traceId?: string;
+	spanId?: string;
+	/** Populated on HTTP/MCP access log events for {@link CliLogConfig.enrich}. */
+	http?: LogEnrichContext["http"];
+}
+/** Options for {@link formatEcsLine}. */
+export interface FormatEcsLineOpts {
+	service: EcsServiceFields;
+	event: EcsLogEvent;
+	/** Additive fields merged after the ECS baseline (cannot override protected keys). */
+	enrich?: (ctx: LogEnrichContext) => Record<string, unknown>;
+}
+/** Formats one ECS Logging–compatible JSON log line (newline omitted). */
+export declare function formatEcsLine(opts: FormatEcsLineOpts): string;
+/** @deprecated Pass {@link FormatEcsLineOpts} instead. */
+export declare function formatEcsLine(service: EcsServiceFields, event: EcsLogEvent): string;
 /**
  * How a leaf handler was dispatched.
  */
@@ -324,6 +377,10 @@ export interface CliHttpWireContext {
 	clientIp: string;
 	path: string;
 	method: string;
+	/** W3C trace id when `traceparent` is present on the request. */
+	traceId?: string;
+	/** Span id for this server hop when `traceparent` is present. */
+	spanId?: string;
 }
 /** Wire-level MCP hooks on JSON-RPC messages (observe-only). */
 export interface CliMcpWireHooks {
@@ -672,6 +729,8 @@ export interface InvokeHookContext {
 		request: Request;
 		clientIp: string;
 		requestId: string;
+		traceId?: string;
+		spanId?: string;
 	};
 	mcp?: {
 		rpcMethod: string;
@@ -717,9 +776,9 @@ export interface ReadinessContext {
 	appConfig: AnyAppConfigSnapshot;
 	runtime: ServerRuntime;
 }
-/** Framework logging defaults (ECS json or human text on stderr). */
+/** Framework logging defaults (ECS Logging json or human text on stderr). */
 export interface CliLogConfig {
-	/** `json` = ECS lines; `text` = human stderr lines. Default: `json`. */
+	/** `json` = ECS Logging lines; `text` = human stderr lines. Default: `json`. */
 	format?: "json" | "text";
 	/** Tee stderr + append; relative paths resolve under the app config dir. */
 	file?: string;
@@ -727,6 +786,16 @@ export interface CliLogConfig {
 	access?: boolean;
 	/** Emit error events after the hook pipeline. Default: true. */
 	errors?: boolean;
+	/**
+	 * Add non-standard fields to each JSON log line after the ECS baseline.
+	 * Cannot override `@timestamp`, `log.level`, `message`, `ecs.version`, or service fields.
+	 */
+	enrich?: (ctx: LogEnrichContext) => Record<string, unknown>;
+	/**
+	 * Full control over JSON log line serialization. When set, bypasses the built-in ECS formatter.
+	 * The consumer owns the entire line (including newline omission).
+	 */
+	serialize?: (ctx: LogEnrichContext) => string;
 }
 /**
  * Program root passed to {@link Cli}.
@@ -870,17 +939,6 @@ export interface CliSchemaRootExport extends CliSchemaExport {
 	/** Program-level error JSON Schema when configured on `httpServer.errors` or `mcpServer.errors`. */
 	errorSchema?: Record<string, unknown>;
 }
-/** Severity label for ECS `log.level`. */
-export type EcsLogLevel = "debug" | "info" | "warn" | "error";
-/** Input for one ECS log event. */
-export interface EcsLogEvent {
-	level: EcsLogLevel;
-	message: string;
-	action?: string;
-	labels?: Record<string, string | number | boolean>;
-	error?: unknown;
-	fields?: Record<string, unknown>;
-}
 /** Resolved logging options for a server or invoke session. */
 export interface ResolvedLogConfig {
 	format: "json" | "text";
@@ -888,6 +946,8 @@ export interface ResolvedLogConfig {
 	access: boolean;
 	errors: boolean;
 	dev: boolean;
+	enrich?: CliLogConfig["enrich"];
+	serialize?: CliLogConfig["serialize"];
 }
 /** Options for {@link LogEmitter}. */
 export interface LogEmitterOpts {
@@ -911,10 +971,18 @@ declare class LogEmitter {
 		durationMs: number;
 		requestId?: string;
 		clientIp?: string;
+		traceId?: string;
+		spanId?: string;
 	}): void;
 	/** Error log after the hook pipeline (real stack always included). */
-	emitInvokeError(failureKind: string, error: unknown, clientMessage: string, labels?: Record<string, string | number | boolean>): void;
+	emitInvokeError(failureKind: string, error: unknown, clientMessage: string, meta?: {
+		labels?: Record<string, string | number | boolean>;
+		requestId?: string;
+		traceId?: string;
+		spanId?: string;
+	}): void;
 	private formatLine;
+	private buildEnrichContext;
 	private formatTextLine;
 	private appendFile;
 }
@@ -996,6 +1064,8 @@ export declare class Cli {
 			request: Request;
 			clientIp: string;
 			requestId: string;
+			traceId?: string;
+			spanId?: string;
 		};
 		mcp?: {
 			rpcMethod: string;

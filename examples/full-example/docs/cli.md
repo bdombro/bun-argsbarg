@@ -195,7 +195,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -231,7 +231,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -408,7 +408,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -444,7 +444,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -649,7 +649,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -685,7 +685,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -872,7 +872,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -908,7 +908,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -1085,7 +1085,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -1121,7 +1121,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -1309,7 +1309,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -1345,7 +1345,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -1522,7 +1522,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -1558,7 +1558,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -1735,7 +1735,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -1771,7 +1771,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
@@ -1948,7 +1948,7 @@ MCP server and bundle tools.
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
 
@@ -1984,7 +1984,7 @@ HTTP API server for tools.
 | `--port` | number | optional | — | Listen port. |
 | `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
 | `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
-| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS) or text. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
 | `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
 | `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
 | `--dev` | flag | optional | — | Print full stacks to stderr on errors. |

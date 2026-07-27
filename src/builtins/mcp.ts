@@ -13,7 +13,7 @@ const MCP_SERVE_OPTIONS: CliOption[] = [
   { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: CliOptionKind.Presence },
   {
     name: "log-format",
-    description: "Log format: json (ECS) or text.",
+    description: "Log format: json (ECS Logging) or text.",
     kind: CliOptionKind.Enum,
     choices: ["json", "text"],
   },

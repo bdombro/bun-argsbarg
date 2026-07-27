@@ -4,8 +4,9 @@ Framework log emitter: ECS json or human text to stderr with optional file tee.
 
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { CliProgram } from "../core/types.ts";
-import { type EcsLogEvent, type EcsLogLevel, formatEcsLine } from "./ecs.ts";
+import type { CliLogConfig, CliProgram } from "../core/types.ts";
+import type { LogEnrichContext } from "./ecs.ts";
+import { durationMsToEcsNanos, type EcsLogEvent, type EcsLogLevel, formatEcsLine } from "./ecs.ts";
 
 /** Resolved logging options for a server or invoke session. */
 export interface ResolvedLogConfig {
@@ -14,6 +15,8 @@ export interface ResolvedLogConfig {
   access: boolean;
   errors: boolean;
   dev: boolean;
+  enrich?: CliLogConfig["enrich"];
+  serialize?: CliLogConfig["serialize"];
 }
 
 /** Options for {@link LogEmitter}. */
@@ -38,6 +41,8 @@ export function resolveLogConfig(program: CliProgram, overrides: Partial<Resolve
     access: overrides.access ?? log?.access ?? true,
     errors: overrides.errors ?? log?.errors ?? true,
     dev: overrides.dev ?? false,
+    enrich: log?.enrich,
+    serialize: log?.serialize,
   };
 }
 
@@ -80,6 +85,8 @@ export class LogEmitter {
     durationMs: number;
     requestId?: string;
     clientIp?: string;
+    traceId?: string;
+    spanId?: string;
   }): void {
     if (!this.resolved.access) {
       return;
@@ -91,17 +98,42 @@ export class LogEmitter {
       this.appendFile(line);
       return;
     }
+
+    const isHttp = fields.method !== "MCP";
+    const action = isHttp ? "http.access" : "mcp.access";
+    const httpFields: Record<string, unknown> = isHttp
+      ? {
+          "http.request.method": fields.method,
+          "url.path": fields.path,
+          "http.response.status_code": fields.status,
+          "event.duration": durationMsToEcsNanos(fields.durationMs),
+        }
+      : {
+          "event.duration": durationMsToEcsNanos(fields.durationMs),
+        };
+
+    if (fields.clientIp && fields.clientIp !== "unknown") {
+      httpFields["client.ip"] = fields.clientIp;
+    }
+
     this.emit({
       level: "info",
       message: `${fields.method} ${fields.path}`,
-      action: "http.access",
+      action,
+      requestId: fields.requestId,
+      traceId: fields.traceId,
+      spanId: fields.spanId,
+      fields: httpFields,
       labels: {
         ...(fields.requestId ? { request_id: fields.requestId } : {}),
-        ...(fields.clientIp ? { client_ip: fields.clientIp } : {}),
-        http_method: fields.method,
-        http_path: fields.path,
-        http_status: fields.status,
-        duration_ms: fields.durationMs,
+        ...(isHttp ? {} : { rpc_method: fields.path }),
+      },
+      http: {
+        method: fields.method,
+        path: fields.path,
+        status: fields.status,
+        durationMs: fields.durationMs,
+        clientIp: fields.clientIp,
       },
     });
   }
@@ -111,7 +143,12 @@ export class LogEmitter {
     failureKind: string,
     error: unknown,
     clientMessage: string,
-    labels?: Record<string, string | number | boolean>,
+    meta?: {
+      labels?: Record<string, string | number | boolean>;
+      requestId?: string;
+      traceId?: string;
+      spanId?: string;
+    },
   ): void {
     if (!this.resolved.errors) {
       return;
@@ -120,7 +157,10 @@ export class LogEmitter {
       level: failureKind === "unexpected" ? "error" : "warn",
       message: clientMessage,
       action: "invoke.error",
-      labels: { failure_kind: failureKind, ...labels },
+      labels: { failure_kind: failureKind, ...meta?.labels },
+      requestId: meta?.requestId,
+      traceId: meta?.traceId,
+      spanId: meta?.spanId,
       error,
     });
     if (this.resolved.dev && error instanceof Error && error.stack) {
@@ -133,7 +173,30 @@ export class LogEmitter {
     if (this.resolved.format === "text") {
       return this.formatTextLine(event);
     }
-    return formatEcsLine(this.service, event);
+    const enrichCtx = this.buildEnrichContext(event);
+    if (this.resolved.serialize) {
+      return this.resolved.serialize(enrichCtx);
+    }
+    return formatEcsLine({
+      service: this.service,
+      event,
+      enrich: this.resolved.enrich,
+    });
+  }
+
+  private buildEnrichContext(event: EcsLogEvent): LogEnrichContext {
+    return {
+      level: event.level,
+      message: event.message,
+      action: event.action,
+      requestId: event.requestId,
+      traceId: event.traceId,
+      spanId: event.spanId,
+      labels: event.labels,
+      error: event.error,
+      service: this.service,
+      http: event.http,
+    };
   }
 
   private formatTextLine(event: EcsLogEvent): string {
