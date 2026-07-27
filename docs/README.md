@@ -8,7 +8,7 @@ Start here to pick the right guide.
 | **Authoring a `CliProgram`** (humans or agents) | [cli-program.md](cli-program.md) — schema, formats, headless, `read*Flags` |
 | **JSON stdout / `outputSchema`** | [output-schema.md](output-schema.md) — codegen pipeline, JSDoc, narrowing |
 | **App config / `program.appConfig`** | [config-schema.md](config-schema.md) — flat JSON file, `ctx.appConfig`, codegen |
-| **JSON Schema subset (validation)** | [json-schema-subset.md](json-schema-subset.md) — supported keywords for config and `inputSchema` |
+| **JSON Schema validation** | [json-schema-subset.md](json-schema-subset.md) — Draft-07 / 2019-09 / 2020-12 (`$schema` on each schema; default Draft-07) |
 | **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `configure --sync` |
 | **HTTP tool server** | [http-server.md](http-server.md) — `myapp http`, endpoints, curl examples |
 | **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure --sync` |

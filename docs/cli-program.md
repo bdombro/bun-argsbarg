@@ -111,7 +111,7 @@ Descriptions and schemas are copied into MCP tools, HTTP OpenAPI, and generated 
 - For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
 - Skill **`reference.md`** uses a compact CLI guide (no inline `outputSchema` JSON) — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
 
-Validation keywords: [json-schema-subset.md](json-schema-subset.md).
+Validation: [json-schema-subset.md](json-schema-subset.md) (Draft-07 default; 2019-09 / 2020-12 when `$schema` is set — including Zod-generated schemas).
 
 ## Well-known option names
 
@@ -293,7 +293,7 @@ For nested tool bodies (e.g. invoice template data), declare a matching property
 
 **Precedence:** if `--invoice` is set, the flag value wins and stdin is not read.
 
-Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>()`** — all synchronous. Argsbarg reads piped stdin before calling the handler when a `pipable` Json flag is omitted. When `leaf.inputSchema` is set, argsbarg validates merged inputs **before the handler runs** (same JSON Schema subset as `program.appConfig`); `ctx.inputs` returns the cached result.
+Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>()`** — all synchronous. Argsbarg reads piped stdin before calling the handler when a `pipable` Json flag is omitted. When `leaf.inputSchema` is set, argsbarg validates merged inputs **before the handler runs** (same engine as `program.appConfig`; draft from `$schema` on the schema object); `ctx.inputs` returns the cached result.
 
 At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
 
@@ -321,7 +321,7 @@ When the entire tool body is JSON (no CLI flags), set **`kind: "json"`** on the 
 
 Example CLI: `jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice`
 
-See [output-schema.md](output-schema.md) for schemagen `inputType`, [http-server.md](http-server.md) for HTTP tool bodies, and [json-schema-subset.md](json-schema-subset.md) for supported schema keywords.
+See [output-schema.md](output-schema.md) for schemagen `inputType`, [http-server.md](http-server.md) for HTTP tool bodies, and [json-schema-subset.md](json-schema-subset.md) for validation drafts, Zod interop, and keyword notes.
 
 `CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.
 

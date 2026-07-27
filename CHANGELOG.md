@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.8] - 2026-07-27
+
+### Changed
+
+- **JSON Schema validation** — `inputSchema` and `program.appConfig` validation uses `@cfworker/json-schema`; draft is resolved from each schema’s `$schema` (default Draft-07). Hand-written schemas may opt into 2019-09 or 2020-12 (`$defs` supported). Docs updated for multi-draft and Zod interop.
+
 ## [6.1.7] - 2026-07-24
 
 ### Changed
@@ -859,7 +865,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.7...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.8...HEAD
+[6.1.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.8
 [6.1.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.7
 [6.1.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.6
 [6.1.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.5

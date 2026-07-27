@@ -3,7 +3,7 @@ Tests for config/validate module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import { parseConfigSetValue, validateConfigDocument } from "./validate.ts";
+import { parseConfigSetValue, resolveSchemaDraft, validateConfigDocument } from "./validate.ts";
 
 const rootSchema = {
   type: "object",
@@ -97,5 +97,49 @@ describe("config/validate", () => {
     };
     expect(() => parseConfigSetValue("a,b", schema, rootSchema, false)).toThrow(/--json/);
     expect(parseConfigSetValue('[{"ttl":1}]', schema, rootSchema, false)).toEqual([{ ttl: 1 }]);
+  });
+
+  test("resolveSchemaDraft maps $schema URIs", () => {
+    expect(resolveSchemaDraft({ $schema: "http://json-schema.org/draft-07/schema#" })).toBe("7");
+    expect(resolveSchemaDraft({ $schema: "https://json-schema.org/draft/2020-12/schema" })).toBe("2020-12");
+    expect(resolveSchemaDraft({ $schema: "https://json-schema.org/draft/2019-09/schema" })).toBe("2019-09");
+    expect(resolveSchemaDraft({})).toBe("7");
+  });
+
+  test("validates draft 2020-12 schemas when $schema is set", () => {
+    const schema = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      additionalProperties: false,
+      required: ["name"],
+      properties: {
+        name: { type: "string", minLength: 1 },
+      },
+    };
+    expect(validateConfigDocument({ name: "ok" }, schema).valid).toBe(true);
+    expect(validateConfigDocument({ name: "" }, schema).valid).toBe(false);
+    expect(validateConfigDocument({}, schema).valid).toBe(false);
+  });
+
+  test("validates draft 2020-12 $defs refs", () => {
+    const schema = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      additionalProperties: false,
+      required: ["item"],
+      properties: {
+        item: { $ref: "#/$defs/Item" },
+      },
+      $defs: {
+        Item: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id"],
+          properties: { id: { type: "string" } },
+        },
+      },
+    };
+    expect(validateConfigDocument({ item: { id: "a" } }, schema).valid).toBe(true);
+    expect(validateConfigDocument({ item: { id: 1 } }, schema).valid).toBe(false);
   });
 });

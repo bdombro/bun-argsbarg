@@ -33,7 +33,7 @@ Zod may actually cause more complexity and little/no gain for consumers.
 Yes Zod implements some features we do custom for JSON-SCHEMA, but is opinionated, less flexible, and would actually explode complexity in some situations. Zod could be a win for consumers if they require substantial, complex validation -- but then that may not convert well to json-schema anyways and json-schema generation is a big win.
 
 1. Argsbarg does a lot of schema patching/manipulation to create different schemas per target (cli-schema.json, MCP contract, openapi.json). This would be harder with Zod
-2. Consumers can already use zod if they want by using Zod's to-json-schema features to convert when passing to Argsbarg. So we aren't actually alienating / thwarting consumers from using Zod anyways.
+2. Consumers can use Zod by converting to JSON Schema (`zod-to-json-schema`, `z.toJSONSchema()`) and passing the result to `inputSchema` / `appConfig.jsonSchema`. Argsbarg resolves the validator draft from each schema’s `$schema` (Draft-07 default; 2019-09 / 2020-12 when set).
 3. For uses like API pass-through, proxy, dynamic schemas, Zod may actually explode complexity for consumers.
 4. Our TS->json-schema approach is actually easier and better in many cases
   - Just write plain typescript, done.

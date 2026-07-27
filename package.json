@@ -1,13 +1,14 @@
 {
   "name": "argsbarg",
-  "version": "6.1.7",
+  "version": "6.1.8",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "dependencies": {
+    "@cfworker/json-schema": "^4",
     "ts-json-schema-generator": "^2.3.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
+    "@biomejs/biome": "^2.5.5",
     "@types/bun": "^1.3.12",
     "dts-bundle-generator": "^9.5.1",
     "typescript": "^5.9.3"

@@ -29,7 +29,7 @@ export const status = {
 
 **Set on the leaf only** — not under `mcpTool`.
 
-**Draft version** — argsbarg accepts any JSON Schema object (`type`, `properties`, `definitions`, etc.). Generators may emit draft-07 or draft 2020-12; docgen embeds the object as-is.
+**Draft version** — for **`inputSchema`** and **`appConfig.jsonSchema`**, argsbarg validates using the draft declared in `$schema` (default Draft-07 when omitted). Schemas from schemagen, `zod-to-json-schema`, or `z.toJSONSchema()` may use Draft-07 or 2020-12. **`outputSchema`** is embedded in docs/MCP/OpenAPI as-is and is not runtime-validated.
 
 See [cli-program.md — Structured stdout](cli-program.md#structured-stdout) for when to use `outputSchema` vs `notes`, and [mcp.md](mcp.md) for how MCP returns parsed JSON as `structuredContent`.
 

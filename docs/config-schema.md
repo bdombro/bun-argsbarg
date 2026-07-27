@@ -48,7 +48,7 @@ await cli.run();
 
 **`_bindings`** — reserved top-level metadata: `{ "_bindings": { "apiToken": "env" } }`. Set via wizard (Enter to use env), `configure set --from-env`, or `ctx.appConfig.set` (marks `file`). Optional keys can be bound to `skip`.
 
-**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema ([supported subset](json-schema-subset.md)). Partial writes (bindings only, single-key updates) skip required-property checks.
+**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema ([validation](json-schema-subset.md)). Draft is chosen from `jsonSchema.$schema` (default Draft-07). Partial writes (bindings only, single-key updates) skip required-property checks.
 
 See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and `configure get`/`set`.
 
@@ -67,7 +67,7 @@ export interface CliAppConfigEntry {
 
 export interface CliAppConfig {
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
-  jsonSchema?: Record<string, unknown>;  // draft-07 block schema
+  jsonSchema?: Record<string, unknown>;  // JSON Schema block; include $schema to opt into 2019-09 / 2020-12
   entries: Record<string, CliAppConfigEntry>;
 }
 ```
@@ -155,7 +155,7 @@ flowchart LR
   end
   subgraph runtime [Runtime]
     Program["program.appConfig.jsonSchema"]
-    Validate["argsbarg runtime subset validator"]
+    Validate["@cfworker/json-schema (draft from $schema)"]
   end
   src --> Script --> Gen --> Json
   Gen --> Index --> Program --> Validate
@@ -180,16 +180,19 @@ export interface AppConfig {
 
 Wire on the program root: `import { AppConfigSchema } from "./config/__generated__"`.
 
-### Supported AppConfig shapes (argsbarg runtime validator)
+### Supported AppConfig shapes (runtime validation)
 
-| Supported (v1) | Deferred |
+Validation is [@cfworker/json-schema](https://www.npmjs.com/package/@cfworker/json-schema) with draft from `$schema` (default Draft-07). See [json-schema-subset.md](json-schema-subset.md) for drafts, Zod interop, and limits.
+
+| Commonly used | Notes |
 | --- | --- |
-| `type`, `properties`, `required`, `additionalProperties` | remote `$ref` |
-| `enum`, `const`, `default` | complex `if`/`then`/`else` |
-| local `#/definitions` + `$ref` | full draft-2020-12 |
-| `anyOf` / `oneOf` (basic) | |
+| `type`, `properties`, `required`, `additionalProperties` | |
+| `enum`, `const` | `default` is not applied at validation time |
+| local `#/definitions` + `$ref` (Draft-07) or `#/$defs` + `$ref` (2020-12) | remote `$ref` not supported |
+| `anyOf` / `oneOf` / `allOf` | |
 | `items`, `minItems`, `maxItems` | |
 | `minimum`, `maximum`, `minLength`, `maxLength`, `pattern` | |
+| `format` | includes argsbarg `comma-list` |
 
 ## Minimal example (no schemagen)
 
