@@ -70,7 +70,7 @@ Exclude `examples/full-example/node_modules/` from the npm tarball via [`.npmign
 [`examples/full-example/`](../examples/full-example/) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
 
 ```bash
-just full-example-schemagen
+just example-full-schemagen
 just test
 ```
 

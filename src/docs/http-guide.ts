@@ -45,7 +45,7 @@ export function generateHttpGuide(root: CliProgram): string {
     "",
     `Listens on **${baseUrl}** by default (\`httpServer.host\` / \`httpServer.port\`).`,
     "",
-    "Bind is localhost-only in v0 — use a reverse proxy for remote access.",
+    "Bind is localhost-only by default — use a reverse proxy for remote access.",
     "",
     "## Endpoints",
     "",

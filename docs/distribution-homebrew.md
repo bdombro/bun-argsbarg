@@ -1,159 +1,172 @@
-# Shipping via Homebrew (tap-from-repo)
+# Homebrew Distribution & Release Guide (Tap-from-Repo)
 
-Argsbarg apps distribute the **binary and shell completions** through Homebrew, and **agent artifacts** (skills, MCP config) through `configure --sync`.
+ArgsBarg provides native, first-class support for packaging, releasing, and distributing command-line binaries and shell autocomplete configurations through Homebrew via a standard **tap-from-repo** model. This is designed to serve as a secure, standard-compliant mechanism for internal enterprise distribution.
 
-## Distribution model
+---
 
-| Layer | Mechanism |
-| --- | --- |
-| Binary + completions | Formula `install` block |
-| Skills + MCP | Formula `post_install` → `{key} configure --sync --yes` |
-| App config file | Bootstrapped as `{}` on `post_install` via `--sync` (`~/.local/lib/<key>/config.json`) |
-| App config values | User opt-in: `{key} configure` (interactive wizard when `program.appConfig` has entries) |
-| App config cleanup | Formula `uninstall` → `{key} configure --remove-all --yes` |
+## 1. Enterprise Distribution Model
 
-**Only tap-from-repo** — in-repo `Formula/` or GitHub tap. Not Homebrew core.
+ArgsBarg maps the lifecycle of your application directly to standard Homebrew hooks, separating binary installation from user-interactive environment setup.
 
-### End-user install
+| Layer | Mechanism | Role in Lifecycle |
+| --- | --- | --- |
+| **Binary & Autocompletions** | Formula `install` block | Installs compiled binary and registers native shell autocompletions. |
+| **Telemetry & Agent Synclinks** | Formula `post_install` | Automatically runs `{key} configure --sync --yes` to bootstrap configuration files and sync developer tools. |
+| **Application Configuration** | User-facing `{key} configure` | Runs an interactive TTY setup wizard (only when `program.appConfig` defines required parameters). |
+| **Clean Uninstall** | Formula `uninstall` | Automatically runs `{key} configure --remove-all --yes` to clean up local configurations and symlinks. |
 
-For **private or internal GitHub taps**, authenticate with GitHub CLI before `brew install` or `brew upgrade` (release formulae download via the GitHub API; Homebrew discovers credentials from `gh auth login`).
+*Note: This architecture explicitly separates non-interactive installation (safe for automation/CI) from interactive configuration (which requires a TTY).*
+
+---
+
+## 2. Distribution Strategies: Public vs. Private Taps
+
+ArgsBarg supports both open-source public formulas and secure private enterprise distribution. You can configure your repository structure depending on your project type.
+
+### Strategy A: Public Open-Source Taps (Default)
+
+For open-source projects, Homebrew requires zero authentication. Users can tap your public repository and install your application with standard commands out of the box:
 
 ```bash
-brew install gh   # skip if already installed
-gh auth login     # skip if already authenticated
+# Tap the public repository
+brew tap <org>/<repo>
+
+# Install the application
+brew install <tap>/{key}
 ```
 
-Then:
+The generated Homebrew formula points directly to your public GitHub release asset URL, allowing anyone to install and receive automatic updates securely.
+
+### Strategy B: Private & Proprietary Corporate Taps
+
+For proprietary, inner-source, or internal company tools, security is paramount. ArgsBarg provides a built-in strategy to distribute packages securely from private GitHub repositories without exposing sensitive personal tokens or raw download links in your formula code.
+
+#### 1. End-User Authentication:
+Users authenticate locally using the standard GitHub CLI (`gh`), which Homebrew natively integrates with to retrieve download credentials:
 
 ```bash
+# 1. Install and authenticate with GitHub CLI (if not already done)
+brew install gh
+gh auth login
+
+# 2. Tap and install your private corporate repository
 brew tap <org>/<repo> git@github.com:<org>/<repo>.git
 brew install <tap>/{key}
-{key} configure   # when app config is required
+
+# 3. Perform interactive configuration (such as API tokens) if required
+{key} configure
 ```
 
-Upgrade:
-
-```bash
-brew upgrade {key}
-```
-
-Local dev installs (`just install-local`) use a `file://` staging URL and do not need GitHub authentication.
-
-### Developer install
-
-```bash
-just build
-just install-local    # or `just install` (alias)
-just reinstall-local   # fast binary swap (`install -m 755` into Cellar; run install-local first)
-just uninstall        # undo formula + agent artifacts (app config removed by formula uninstall)
-```
-
-Dev and release use the **same formula file** (`Formula/{key}.rb`). `just install-local` runs:
-
-```bash
-bun scripts/dev-formula.ts install    # back up release formula, write file:// dev formula
-brew install --formula <tap>/{key}  # install from the dev formula
-bun scripts/dev-formula.ts reset      # restore release formula
-```
-
-If `brew install` fails, run `bun scripts/dev-formula.ts reset` manually to restore the release formula.
-
-### Developer uninstall
-
-| Recipe | Removes |
-| --- | --- |
-| `just uninstall` | Formula `{key}` + tap symlink + skills/MCP + app config via formula `uninstall` |
-| `just uninstall-config` | App config file only (`configure --remove-config --yes`) |
-| `just uninstall-release` | Release formula from `{tap}` (keeps tap; agent artifacts via formula `uninstall`) |
-| `just uninstall-release-tap` | Release formula + `brew untap {tap}` (agent artifacts via formula `uninstall`) |
-| `just test-release` | Install release formula and run formula test |
-
-End users: `brew uninstall <tap>/<key>`. The formula `uninstall` hook runs `configure --remove-all --yes` (skills, MCP, and app config).
-
-## Formula pattern
-
-```ruby
-def install
-  bin.install "{key}"
-  generate_completions_from_executable(bin/"{key}", "completion", base_name: "{key}")
-end
-
-def post_install
-  system bin/"{key}", "configure", "--sync", "--yes"
-end
-
-def uninstall
-  system bin/"{key}", "configure", "--remove-all", "--yes"
-end
-```
-
-Release formulae generated by `scripts/formula-shared.ts` embed a `GitHubPrivateReleaseDownloadStrategy` that resolves the release asset through the GitHub API at download time and authenticates with `GitHub::API.credentials` (Homebrew discovers `gh auth login` automatically):
+#### 2. The Private Release Strategy:
+Release formulae generated by ArgsBarg's scripts utilize a custom **`GitHubPrivateReleaseDownloadStrategy`**. This strategy executes the secure asset download through standard GitHub API requests, leveraging the user's local `gh` login credentials securely under the hood:
 
 ```ruby
 url "https://github.com/<org>/<repo>/releases/download/vX.Y.Z/{key}",
     using: GitHubPrivateReleaseDownloadStrategy
 ```
 
-Local dev formulae (`just install-local`) use a plain `file://` URL and do not need the token.
+---
 
-Completions require users to configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
+## 3. Standardized Formula Pattern
 
-**Why the wizard is separate from `post_install`:** prompting for secrets requires a TTY. `post_install` only bootstraps an empty `config.json` and refreshes skills/MCP. Apps with `appConfig` print a one-line configure hint in formula `caveats` for the interactive wizard.
+ArgsBarg standardizes your Homebrew formulas. A typical generated formula (`Formula/{key}.rb`) is incredibly clean:
 
-**MCP hosts:** when `mcpServer.enabled` is true, add a caveats line that chat apps (Cursor, Claude Desktop, etc.) must be **restarted** after `brew install` / `brew upgrade` — `post_install` updates MCP config on disk, but hosts typically load it only at startup.
+```ruby
+class Myapp < Formula
+  desc "My application description"
+  homepage "https://github.com/org/myapp"
+  url "https://github.com/org/myapp/releases/download/v1.0.0/myapp.zip"
+  sha256 "a1b2c3d4e5f6g7h8..."
+  version "1.0.0"
 
-## Bootstrap CLI (`argsbarg create`)
+  def install
+    bin.install "myapp"
+    # Auto-generates shell completions for bash, zsh, and fish directly from the executable
+    generate_completions_from_executable(bin/"myapp", "completion", base_name: "myapp")
+  end
 
-Copy the shipped `examples/full-example` template into a new directory with identity substitutions, then run install, schemagen, tests, and git init (when appropriate):
+  def post_install
+    # Non-interactive bootstrap of config files and developer links
+    system bin/"myapp", "configure", "--sync", "--yes"
+  end
 
-```bash
-bunx argsbarg create my-cli \
-  --key my-cli --class-name MyCli --tap org/my-cli \
-  --homepage https://github.com/org/my-cli --release-repo org/my-cli \
-  --yes
+  def uninstall
+    # Graceful clean up of local files on uninstall
+    system bin/"myapp", "configure", "--remove-all", "--yes"
+  end
+  
+  def caveats
+    <<~EOS
+      Interactive configuration is required. Please run:
+        myapp configure
+    EOS
+  end
+end
 ```
 
-On a TTY, omit flags to use the interactive wizard. Verify an existing tree:
+---
+
+## 4. Developer Iteration Workflow
+
+ArgsBarg provides an optimized workflow for developers to build, package, and test their Homebrew installer locally before pushing releases.
+
+### Local Staging Commands:
 
 ```bash
-bunx argsbarg create --check .
+# 1. Build the local release binary
+just build
+
+# 2. Stage and install the formula locally (bypasses GitHub, uses file://)
+just install-local
+
+# 3. Swap updated binaries quickly during tight edit cycles
+just reinstall-local
+
+# 4. Uninstall the binary and gracefully clean up all configurations
+just uninstall
 ```
 
-Template source: [`examples/full-example/`](../examples/full-example/) in the argsbarg package (also under `node_modules/argsbarg/examples/full-example` after `bun add argsbarg`).
+### Under the Hood:
 
-**Git bootstrap skip rules:** post-create skips `git init` when the target already has a `.git` directory, or when the target sits inside an existing git work tree (e.g. a monorepo subfolder). Standalone new directories get an `Initial commit`.
+To ensure you test the exact formula that will be shipped to production, `just install-local` runs:
 
-## Release workflow
+1.  `bun scripts/dev-formula.ts install` — Safely backs up your production formula and writes a temporary local dev formula using a `file://` URL pointing to your build directory.
+2.  `brew install --formula <tap>/{key}` — Installs the package locally using Homebrew.
+3.  `bun scripts/dev-formula.ts reset` — Automatically restores your production formula on disk.
 
-1. `just build` → `dist/{key}`
-2. `scripts/release.ts` → zips `dist/{key}` to `dist/{key}.zip`, writes `Formula/{key}.rb` (GitHub zip URL + archive sha256), commits, tags, uploads `dist/{key}.zip` to GitHub Releases
-3. Users `brew upgrade {key}` from the tap
+---
 
-Requires the `zip` CLI on the release machine. `just install-local` still stages the bare binary via `file://` (no zip).
+## 5. Automated Release Pipeline
 
-### Stale release cleanup
+ArgsBarg automates the release cycle. A production-ready release is performed using a single command:
 
 ```bash
-just release --purge              # delete all GitHub releases except the newest (confirm on TTY)
-just release --purge --yes        # skip confirmation
-just release --purge --dry-run    # list tags that would be deleted
-just release patch --purge        # release, then purge older releases
+# Performs build, zips binary, updates Formula with new SHA-256, tags git, pushes, and uploads release asset
+just release patch   # or minor | major
 ```
 
-`--purge` removes GitHub Release records and attached assets only — git tags remain on the remote. Old formula pins that reference deleted release URLs will fail until users upgrade.
+### Release Pipeline Steps:
 
-## Removed (breaking)
+1.  **Build**: Compiles the binary to `dist/{key}`.
+2.  **Archive**: Packages the binary into a compressed `dist/{key}.zip`.
+3.  **Integrity Check**: Calculates the cryptographically secure SHA-256 hash of the zip file.
+4.  **Formula Sync**: Updates the version number and `sha256` parameter in `Formula/{key}.rb`.
+5.  **Tag & Push**: Commits changes, tags the repository with the new version, pushes to GitHub, and publishes the compiled zip to GitHub Releases.
 
-- Self-install to `~/.local/bin`
-- Top-level `install` and `uninstall` commands (use `configure`)
-- `install --update` / `updateGetLatest`
-- Homebrew completion installer via CLI (Homebrew owns completions)
-- Bare-argv install bootstrap
-- Auto configure wizard after sync
-- Separate `{key}-local` formula and `{key}/dev` tap
+### Older Release Retention & Cleanup:
 
-## Config path
+To keep your storage footprint clean, the pipeline supports purging stale historical release assets while preserving the git tags:
 
-Default: `~/.local/lib/<sanitized-key>/config.json`
+```bash
+just release --purge              # Interactive tag purge of older release records
+just release --purge --yes        # Silent automated purge (useful in CI/CD)
+just release --purge --dry-run    # Preview list of tag deletions
+```
 
-Export helpers: `resolveAppConfigPath`, `displayAppConfigPath` from `argsbarg`.
+---
+
+## 6. Directory Defaults
+
+Applications packaged via ArgsBarg adhere to standard system directories:
+*   **Resolved Configuration Path**: `~/.local/lib/<sanitized-key>/config.json`
+*   **Auto-Exports**: Developers can import `resolveAppConfigPath` or `displayAppConfigPath` directly from `argsbarg` to display helpful directories in help screens.

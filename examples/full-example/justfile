@@ -34,6 +34,22 @@ migrate DB="./workspaces.db":
 # Run schemagen, typecheck, and format
 check: schemagen format typecheck
 
+# demo the HTTP API
+demo-http:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bun ./src/index.ts http --port 13000 &
+    trap 'kill $! 2>/dev/null || true' EXIT
+    until curl -sf http://127.0.0.1:13000/health/liveness >/dev/null; do sleep 0.1; done
+
+# demo a CLI command
+demo-cli:
+    @just run {{cli_key}} status
+
+# demo a CLI command
+demo-help:
+    @just run {{cli_key}} --help
+
 # Run the CLI from source with optional args; restarts on file changes
 dev *ARGS:
     bun --watch ./src/index.ts {{ARGS}}
@@ -52,6 +68,10 @@ alias fmt := format
 # Format and lint sources (auto-fix)
 format:
     bun run biome check ./src ./scripts --write --unsafe
+
+# Run the HTTP server
+http:
+    @just run http
 
 # Alias for backward compatibility
 install: install-local

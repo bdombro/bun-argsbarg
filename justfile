@@ -2,18 +2,15 @@
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+# Apps which contributers are testing argsbarg with; helpful for testing and keeping in sync.
+consumer_apps := ""
+
 # List available recipes (default)
 _:
     @just --list
 
 # Typecheck and format the codebase
 check: format typecheck
-
-consumer_apps := "~/sqsp-workspaces/workspaces/pdfs/invoicing-document-service ~/dev/ss/pdf-gen ~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
-
-# Verify full-example schemagen runs and template drift
-check-full-example: full-example-schemagen
-    bun ./src/cli-tool/main.ts create --check examples/full-example
 
 # Smoke-test argsbarg create into a temp directory
 create-smoke:
@@ -26,14 +23,6 @@ create-smoke:
       --key smoke-cli --release-repo example/smoke-cli --yes
     test -d "$tmpdir/smoke-cli/.git"
     git -C "$tmpdir/smoke-cli" log -1 --oneline | grep -q Initial
-
-# Install deps for examples/full-example
-full-example-install:
-    cd examples/full-example && just setup
-
-# Regenerate JSON Schema artifacts in examples/full-example
-full-example-schemagen:
-    bun ./src/cli-tool/main.ts schemagen --root examples/full-example
 
 # Run schemagen in each local consumer app (paths must exist)
 consumers-schemagen:
@@ -76,6 +65,11 @@ consumers-sync:
       echo "==> $(basename "$dir") ($dir)"
       (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
     done
+
+# Run the full example (use the justfile in the examples/full-example directory)
+example-full:
+    echo "Use the justfile in the examples/full-example directory."
+    exit 1
 
 # Run the minimal example once
 example-minimal *ARGS:

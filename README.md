@@ -5,32 +5,48 @@ Logo
 [npm version](https://www.npmjs.com/package/argsbarg)
 [Bun](https://bun.sh)
 
-Build beautiful, well-behaved CLI+MCP+HTTP apps with Bun — **no third-party runtime dependencies**. 
+Build beautiful, well-behaved, production-grade CLIs, HTTP REST services, MCP Servers for Bun from a single, unified schema. All with only 2 modest dependencies.
 
-Why another CLI parser?
+Why ArgsBarg?
 
-*Schema-first* — define your entire CLI’s structure, commands, options, and help in a single, explicit data model, making the command-line interface auto-validated, centralized, clear, and self-describing upfront.
+*Schema-first & Auto-validated* — Define your entire command structure, options, description, and inputs once. ArgsBarg compiles this into type-safe option accessors, command-line routing, and validation schemas, keeping your code and interfaces perfectly aligned.
 
-*AI Friendly* — Generate and install rich skills, mcp server, docs based on the schema.
+*Automated Schemagen & Docgen* — Maintain single-source truth by decorating standard TypeScript types (`/** @sg */ interface...`) to automatically compile them into runtime validation schemas (`argsbarg schemagen`). Easily export standard-compliant API documentation, full CLI reference markdown, OpenAPI 3.1 definitions, and agent skill sheets directly from your code (`docs --save` command) using introspection.
 
-*Beautiful* `-h` *screens* — scoped help at any routing depth, rendered in rounded UTF-8 boxes with tables, terminal-width wrapping, and color when stdout is a TTY. Errors print in red with contextual help on stderr.
+*Production REST Server* — Instantly expose your commands as HTTP REST endpoints (`POST /v1/some-command`) with built-in Kubernetes-compliant `/health/liveness` and `/health/readiness` probes, ECS structured JSON logging to `stderr`, and auto-generated OpenAPI 3.1 specs with an interactive Swagger UI.
+
+*First-Class Homebrew Distribution* — Exposes robust native support for packaging and distributing compiled binaries and shell completions cleanly via a standard tap-from-repo Homebrew model. Includes built-in completion script generators (`completion bash`/`zsh`/`fish`) consumed by Homebrew's standard `generate_completions_from_executable` command out of the box, ensuring friction-free installations and updates for your developers.
+
+*High-Performance & Light Footprint* — Optimized specifically for Bun. Executes TypeScript and TSX source files directly with no transpile or bundling steps required, leveraging `Bun.serve` for rapid startup and low memory usage. Ships with only two production dependencies (`@cfworker/json-schema` and `ts-json-schema-generator`).
+
+*Beautiful* `-h` *screens* — Scoped help at any routing depth, rendered in rounded UTF-8 boxes with tables, terminal-width wrapping, and color when stdout is a TTY. Errors print in red with contextual help on stderr.
 
 *Shell completions* — `completion bash`, `completion zsh`, and `completion fish` built-ins generate scripts consumed by Homebrew during formula `install` (`generate_completions_from_executable`). See [docs/distribution-homebrew.md](docs/distribution-homebrew.md).
-
-*Bun-optimized* — built from the ground up for Bun and TypeScript, leveraging Bun’s performance and modern JavaScript features without any extra dependencies.
 
 Also checkout ArgsBarg for [cpp](https://github.com/bdombro/cpp-argsbarg), [nim](https://github.com/bdombro/nim-argsbarg), and [swift](https://github.com/bdombro/swift-argsbarg)!
 
 Halps! -->
 help-preview.png
+[help-preview.png](docs/help-preview.png)
+
 
 Sub-level Halps! -->
 help-l2-preview.png
+[help-l2-preview.png](docs/help-l2-preview.png)
 
 Shell completions! -->
 completions-preview.png
+[completions-preview.png](docs/completions-preview.png)
 
-## Usage
+Production-grade HTTP Server! -->
+```sh
+$ myapp http
+{"@timestamp":"2026-07-29T10:23:59.094Z","message":"HTTP API listening on http://127.0.0.1:13000",...}
+{"@timestamp":"2026-07-29T10:23:59.194Z","message":"GET /health/liveness","ecs.version":"8.11.0",...}
+{"@timestamp":"2026-07-29T10:23:59.195Z","message":"server stopping","ecs.version":"8.11.0",...}
+```
+
+## Basic Usage
 
 ```typescript
 import { Cli, type CliProgram, CliOptionKind } from "argsbarg";
@@ -85,54 +101,115 @@ Everything you need for a first-class CLI:
 - **Rich help**: rounded UTF-8 boxes, tables, terminal width detection (`process.stdout.columns`), colors when stdout/stderr is a TTY
 - **TypeScript-native**: Typed option accessors (`ctx.typedOpt<T>`) and `async/await` handler support.
 
+## Getting Started
 
+You can either quickly bootstrap a complete, feature-rich project skeleton using our CLI creator or manually integrate ArgsBarg into an existing codebase.
 
-## Built-ins
+### Option A: Bootstrap a New Project (Recommended)
 
-Every app gets:
-
-- `-h` / `--help` at any routing depth (scoped help).
-- `completion bash` **/** `completion zsh` **/** `completion fish` — print shell completion scripts to stdout (injected by `Cli.run()`).
-- `version` — print `CliProgram.version` (`myapp version`).
-- `mcp` — when `mcpServer.enabled` is `true`, run as an MCP stdio server (`myapp mcp`).
-- `http` — when `httpServer.enabled` is `true`, run as an HTTP tool server (`myapp http`).
-- `docs` — print bundled markdown topics, schema JSON, CLI markdown, and generated skill content (`myapp docs cli`, `myapp docs cli-schema`, `myapp docs skill`, …). Enabled by default; opt out with `docs: { enabled: false }`. See [docs/bundled-docs.md](docs/bundled-docs.md).
-- `configure` — manage agent skills, MCP config, and app config (`myapp configure --sync --yes` after Homebrew install). See [docs/configure.md](docs/configure.md).
-
-Do not declare a top-level command named `completion`, `version`, or `configure` — they are reserved.
-When `mcpServer.enabled` is `true`, do not declare a top-level command named `mcp` — it is reserved for the MCP built-in.
-When `httpServer.enabled` is `true`, do not declare a top-level command named `http` — it is reserved for the HTTP built-in.
-When docs is enabled (default), do not declare a top-level command named `docs` — it is reserved for the docs built-in. Opt out with `docs: { enabled: false }` if needed.
-
-### MCP (AI agents)
-
-Opt in on the program root with `mcpServer: { enabled: true }`, then run `myapp mcp` for a stdio MCP server. Each leaf command becomes a tool; the CLI tree is available as resource `<sanitized-key>://schema` (same as `myapp docs cli-schema`). Handlers can read `ctx.invocation`; use `cli.invoke(argv)` for headless testing.
-
-See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor setup, and protocol details. See **[docs/cli-program.md](docs/cli-program.md)** for schema authoring (consumer apps: run `bunx argsbarg create` or refresh with `bun scripts/merge-cli-program-rule.ts .` from the argsbarg package).
-
-### HTTP tool server
-
-Opt in on the program root with `httpServer: { enabled: true }`, then run `myapp http` for an HTTP REST server (default `http://127.0.0.1:3000`). Nested CLI paths map to REST routes at the server root by default (e.g. `/workspaces`); set `httpServer.pathPrefix: "/api"` to prefix all user routes. Discover routes via `GET /openapi.json`.
-
-See **[docs/http-server.md](docs/http-server.md)** for endpoints, curl examples, and response shapes.
-
-### Configure CLI
-
-Ship via **Homebrew** (tap-from-repo). The formula installs the binary and shell completions; `post_install` runs agent artifact refresh. Private taps require `gh auth login` — see [docs/distribution-homebrew.md](docs/distribution-homebrew.md#end-user-install).
+ArgsBarg provides an interactive project generator to scaffold a new repository fully equipped with TypeScript, Biome, automated schemagen/docgen, standard testing, and Homebrew integration rules:
 
 ```bash
-brew install gh
-gh auth login
-brew tap <org>/<repo> git@github.com:<org>/<repo>.git
-brew install <tap>/myapp
-myapp configure    # interactive per-target setup; opt-in app config wizard
+# Interactive setup (prompts for naming and git configurations)
+bunx argsbarg create my-app
+
+# Non-interactive / Headless setup
+bunx argsbarg create my-app \
+  --key my-cli --release-repo org/my-cli --yes
 ```
 
-See **[docs/distribution-homebrew.md](docs/distribution-homebrew.md)** for formula patterns and `bunx argsbarg create`. See **[docs/configure.md](docs/configure.md)** for `configure`, `--sync`, `--remove-all`, and `--status`.
+Edit `scripts/create-identity.ts` in the new repository to set your description. The `create` command copies the full-featured template, runs `bun install`, bootstraps a git repository (if standalone), and runs initial validation tests.
 
-### Shell completions
+#### What the bootstrapped template includes:
 
-Homebrew installs completion scripts during `brew install` via `generate_completions_from_executable`. The CLI still exposes generation for formula authors:
+| Area                  | Files / wiring                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| All built-ins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`       |
+| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`          |
+| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`          |
+| Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
+| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                       |
+| MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled   |
+| Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                      |
+| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`            |
+| Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                         |
+| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                                |
+
+*Tip: Verify an existing tree or template setup with `bunx argsbarg create --check .`*
+
+### Option B: Manual Installation (For Existing Projects)
+
+To manually integrate ArgsBarg into your existing Bun application: `bun add argsbarg`.
+
+
+## Built-in Commands
+
+ArgsBarg automatically integrates several core features into your application. These are divided into stable core capabilities and optional experimental integrations:
+
+### Core Capabilities (Stable)
+
+- `-h` / `--help` — Highly-formatted, terminal-width scoped help at any routing depth.
+- `version` — Print the program's version (e.g., `myapp version`).
+- `http` — Launch the high-performance HTTP REST server (injected when `httpServer.enabled` is `true`).
+- `completion bash` / `zsh` / `fish` — Generate shell completion scripts to stdout for deployment and packaging.
+- `docs` — Print bundled markdown topics, schema JSON, or CLI reference markdown (`myapp docs cli`, `myapp docs cli-schema`, etc.). Enabled by default; see [docs/bundled-docs.md](docs/bundled-docs.md).
+- `configure get` / `set` — Query and update application-level configurations non-interactively (active when `program.appConfig` contains configuration schema entries).
+
+### Experimental Integrations (Opt-in)
+
+- `mcp` — Run as a Model Context Protocol stdio-based agent server (injected when `mcpServer.enabled` is `true`). See [docs/mcp.md](docs/mcp.md).
+- `configure` (`--sync` / `--status` / `--remove-all`) — Interactive environment setup and developer agent credentials sync (enabled by default; opt out with `configure: { enabled: false }`). See [docs/configure.md](docs/configure.md).
+
+Do not declare top-level commands named `completion`, `version`, or `docs` as they are reserved by default. If their respective features are enabled, `http`, `mcp`, and `configure` are also reserved.
+
+## HTTP REST Server
+
+By opting in with `httpServer: { enabled: true }` on your program root, running your app with the `http` subcommand launches a high-performance HTTP REST server powered natively by `Bun.serve`. This is ideal for sidecars, microservices, and micro-container deployments (such as in Kubernetes).
+
+Nested command paths map directly to standard REST paths (e.g., `v1 invoices render` maps to `POST /v1/invoices/render`).
+
+```typescript
+const cli = {
+  key: "myapp",
+  version: "1.0.0",
+  description: "My service.",
+  httpServer: { enabled: true, port: 3000 },
+  commands: [/* ... */],
+} satisfies CliProgram;
+```
+
+```bash
+myapp http --port 3000
+```
+
+
+
+### Key HTTP Features:
+
+- **Built-in Health Checks** — Automatic `/health/liveness` (responds 200 when online) and `/health/readiness` (responds 200 when online and config validation passes) probes out of the box, compliant with container orchestrators.
+- **OpenAPI 3.1 Spec & Swagger UI** — Serves standard `/openapi.json` and a `/swagger` interactive API browser generated directly from your command schema and JSDoc metadata.
+- **Pre-Handler Schema Validation** — Incoming request payloads are validated against the compile-time JSON Schema (`inputSchema`) on leaf commands before your handler ever runs.
+- **ECS Structured Logging** — Access and error logs are automatically structured as Elastic Common Schema (ECS) JSON objects and written to `stderr` (e.g., for Datadog or ELK collection).
+- **W3C Distributed Tracing** — Automatically parses, propagates, and echoes `traceparent` headers for distributed tracing pipelines.
+
+See **[docs/http-server.md](docs/http-server.md)** for details on endpoints and response shapes, and **[docs/logging.md](docs/logging.md)** for log configurations.
+
+## Distribution & Packaging (Homebrew)
+
+ArgsBarg is built to distribute the compiled binary and shell completions cleanly through Homebrew via a standard **tap-from-repo** model.
+
+### Installation & Post-Install Setup:
+
+```bash
+brew tap <org>/<repo> git@github.com:<org>/<repo>.git
+brew install <tap>/myapp
+```
+
+During installation, Homebrew registers the built-in generated shell completions automatically via `generate_completions_from_executable` (see [docs/distribution-homebrew.md](docs/distribution-homebrew.md)).
+
+### Shell Completions:
+
+Completion scripts can also be output directly at any time for manual setups or formula auditing:
 
 ```bash
 myapp completion bash
@@ -140,28 +217,7 @@ myapp completion zsh
 myapp completion fish
 ```
 
-Users configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
 
-## Quick Start
-
-```bash
-bun add argsbarg
-```
-
-
-
-### Cursor / AI agents
-
-Argsbarg ships authoring docs in `node_modules/argsbarg/docs/`. Agents do not load them unless your repo points there — copy the thin Cursor rule after install (it tells agents to **read** `cli-program.md`, not duplicate it):
-
-```bash
-mkdir -p .cursor/rules
-mkdir -p .cursor/rules
-bun scripts/merge-cli-program-rule.ts . \
-  node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc
-```
-
-Add app-specific conventions in a second rule if needed. Copy the rule from the template, then add a `**<your-app> conventions:**` block at the bottom (see **Cursor rule** in [docs/cli-program.md](docs/cli-program.md)). Documentation map: **[docs/README.md](docs/README.md)**.
 
 ## How it works
 
@@ -230,7 +286,7 @@ Check the `examples/` directory for full working scripts:
 | --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
 | `ArgsBargMinimal`     | `examples/minimal.ts`    | String + presence flags, `MissingOrUnknown` fallback.                                             |
 | `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                            |
-| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `ctx.inputs`.                                                  |
+| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `ctx.inputs`.                                                        |
 | `ArgsBargFullExample` | `examples/full-example/` | **Copy template:** all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`. |
 
 
@@ -266,21 +322,21 @@ To refresh Cursor rules in an existing consumer: `bun scripts/merge-cli-program-
 ### What the full-example template includes
 
 
-| Area                  | Files / wiring                                                                         |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`      |
-| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`         |
-| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`         |
+| Area                  | Files / wiring                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`       |
+| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`          |
+| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`          |
 | Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
-| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                     |
-| MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled |
-| Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                    |
-| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`          |
-| Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                       |
-| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                              |
+| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                       |
+| MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled   |
+| Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                      |
+| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`            |
+| Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                         |
+| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                                |
 
 
-When changing builtins or the template, run `just check-full-example` from the argsbarg repo root.
+When changing builtins or the template, run `just example-full-check` from the argsbarg repo root.
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -301,6 +357,42 @@ just run status --json
 
 
 
+## [Experimental] AI Agent & Copilot Integrations
+
+ArgsBarg includes optional experimental features designed to make your CLI and services easily discoverable and executable by modern developer AI agents (such as Cursor, Claude Code, and standard MCP clients). These are entirely opt-in and do not affect the footprint, performance, or stability of the core CLI and HTTP layers.
+
+### 1. Model Context Protocol (MCP) Server
+
+Opt in by setting `mcpServer: { enabled: true }` on your program root. Running `myapp mcp` starts a JSON-RPC 2.0 stdio server.
+
+- **Automatic Tool Exposure** — Every leaf command in your CLI tree becomes an executable MCP tool with inputs automatically generated from your CLI options.
+- **Documentation Resources** — Your CLI structure, JSON schemas, and bundled `docs.topics` are automatically exposed to agents as resources (e.g., `<key>://schema`).
+- **Context-Aware Invocations** — Handlers can read `ctx.invocation` to distinguish between direct CLI, HTTP requests, or headless MCP calls.
+
+See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor/Claude setup, and protocol details.
+
+### 2. IDE Copilot Rules (Cursor / Claude Code)
+
+ArgsBarg ships authoring docs under `node_modules/argsbarg/docs/`. Because AI agents do not automatically read inside `node_modules/`, you can copy a thin custom rule into your project:
+
+```bash
+mkdir -p .cursor/rules
+bun scripts/merge-cli-program-rule.ts . \
+  node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc
+```
+
+This acts as a "tripwire" that instructs AI agents in your workspace to read ArgsBarg's framework documentation before modifying your command definitions or schemas. See the **Cursor rule** section in [docs/cli-program.md](docs/cli-program.md).
+
+### 3. Generated Skills & Workspace Configuration
+
+Running `myapp configure` launches an interactive setup wizard that can automatically write compact `SKILL.md` index files and full-reference markdown files (`reference.md`) directly into your global IDE directories (e.g., `~/.cursor/skills/` or `~/.claude/skills/`).
+
+See **[docs/configure.md](docs/configure.md)** and **[docs/ai-skills.md](docs/ai-skills.md)** for developer setup and automated Homebrew pipeline integration.
+
+---
+
+
+
 ## Public API overview
 
 The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you need to define a schema and run it. Parsing, completion script generation, help rendering, and schema pre-validation live in other modules under `src/` for tests and advanced integrations.
@@ -311,8 +403,8 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 | `CliProgram`, `CliOption`, `CliPositional`, `CliHandler`          | Schema and handler types.                                                                                                                      |
 | `CliOptionKind`, `CliValueFormat`, `CliFallbackMode`              | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior.                                       |
 | `CliSchemaValidationError`                                        | Thrown when the static command tree violates schema rules.                                                                                     |
-| `CliContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.inputs`, `ctx.invocation`, …).                                |
-| `CliLeafInputs`                                                   | Record type returned by `ctx.inputs` — coerced option/positional values keyed by schema name.                                            |
+| `CliContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.inputs`, `ctx.invocation`, …).                                        |
+| `CliLeafInputs`                                                   | Record type returned by `ctx.inputs` — coerced option/positional values keyed by schema name.                                                  |
 | `Cli`                                                             | Runtime: validate + freeze program, `run()`, `invoke()`, `serveMcp()`, `appConfig` getter, `exportCommandSchema()`, `exportAppConfigSchema()`. |
 | `CliInvokeResult`, `CliInvokeKind`                                | Result types from `cli.invoke()`.                                                                                                              |
 | `CliAppConfig`, `CliAppConfigEntry`                               | App config block on the program root (`entries` metadata overlay + optional `jsonSchema`).                                                     |
