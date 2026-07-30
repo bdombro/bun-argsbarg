@@ -28,8 +28,7 @@ afterEach(() => {
 
 /** Tests for resolveInstallTargetPreview. */
 describe("resolveInstallTargetPreview", () => {
-  /** Mcp app previews MCP keys for all and mcp scopes. */
-  test("mcp app previews MCP keys for all and mcp scopes", () => {
+  test("mcp app includes agentsMcp in all scope when mcpServer enabled", () => {
     const program: CliProgram = {
       key: "mcpapp",
       version: "1",
@@ -39,38 +38,36 @@ describe("resolveInstallTargetPreview", () => {
     };
     const paths = resolveInstallPaths(program);
     const preview = resolveInstallTargetPreview(program, paths);
-    expect(preview.agentIntegration).toBe("mcp");
-    expect(preview.all).not.toContain("app");
-    expect(preview.all.length).toBeGreaterThan(0);
-    expect(preview.all.every((k) => k.endsWith("Mcp") || k === "configure")).toBe(true);
+    expect(preview.all).toEqual(["agentsMcp"]);
+    expect(preview.mcp).toEqual(["agentsMcp"]);
+    expect(preview.skill).toEqual([]);
   });
 
-  /** Tests that shell app previews skill keys. */
-  test("shell app previews skill keys", () => {
+  test("skill app includes skill in all scope when enabled", () => {
     const program: CliProgram = {
       key: "cliapp",
       version: "1",
       description: "x",
+      skill: { enabled: true },
       handler: () => {},
     };
     const paths = resolveInstallPaths(program);
     const preview = resolveInstallTargetPreview(program, paths);
-    expect(preview.agentIntegration).toBe("skill");
-    expect(preview.all).not.toContain("app");
-    expect(preview.all.length).toBeGreaterThan(0);
+    expect(preview.all).toEqual(["skill"]);
+    expect(preview.skill).toEqual(["skill"]);
     expect(preview.mcp).toEqual([]);
   });
 });
 
 /** Tests for printInstallStatus json. */
 describe("printInstallStatus json", () => {
-  /** Includes agentIntegration and effective scopes. */
-  test("includes agentIntegration and effective scopes", () => {
+  test("includes effective scopes", () => {
     const program: CliProgram = {
       key: "app",
       version: "1",
       description: "x",
       mcpServer: { enabled: true },
+      skill: { enabled: true },
       handler: () => {},
     };
     const chunks: string[] = [];
@@ -82,11 +79,11 @@ describe("printInstallStatus json", () => {
     try {
       printInstallStatus(program, { json: true });
       const parsed = JSON.parse(chunks.join("")) as {
-        agentIntegration: string;
         effective: { all: string[]; mcp: string[]; skill: string[] };
       };
-      expect(parsed.agentIntegration).toBe("mcp");
-      expect(parsed.effective.all.length).toBeGreaterThan(0);
+      expect(parsed.effective.all).toEqual(["skill", "agentsMcp"]);
+      expect(parsed.effective.skill).toEqual(["skill"]);
+      expect(parsed.effective.mcp).toEqual(["agentsMcp"]);
     } finally {
       process.stdout.write = orig;
     }

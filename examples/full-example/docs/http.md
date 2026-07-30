@@ -60,14 +60,7 @@ See the argsbarg [logging guide](https://github.com/bdombro/bun-argsbarg/blob/ma
 ## REST routes
 
 - `POST /echo` (CLI: `full-example echo`) — Echo a message (MCP-friendly leaf).
-- `POST /render-json` (CLI: `full-example render-json`) — Echo a JSON message (schema-first JSON leaf demo).
 - `POST /status` (CLI: `full-example status`) — Show app version. (flags: --json)
-- `GET /workspaces` (CLI: `full-example workspaces get`) — List workspaces.
-- `POST /workspaces` (CLI: `full-example workspaces post`) — Create a workspace.
-- `GET /workspaces/{id}` (CLI: `full-example workspaces :id get`) — Get one workspace.
-- `PUT /workspaces/{id}` (CLI: `full-example workspaces :id put`) — Replace a workspace.
-- `PATCH /workspaces/{id}` (CLI: `full-example workspaces :id patch`) — Patch a workspace name.
-- `DELETE /workspaces/{id}` (CLI: `full-example workspaces :id delete`) — Delete a workspace.
 
 ## Request bodies
 

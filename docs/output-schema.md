@@ -198,7 +198,7 @@ Handlers keep using runtime types; only discovered roots (and their type graph) 
 
 ## Tests
 
-In argsbarg: `src/cli-tool/schemagen/schemagen.test.ts` locks discovery and generation against `examples/full-example/`.
+In argsbarg: `src/cli-tool/schemagen/schemagen.test.ts` locks discovery and generation against `examples/full-example-json/`.
 
 Per consumer repo (optional):
 
@@ -214,7 +214,7 @@ Per consumer repo (optional):
 
 Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md`.
 
-**Reference implementation:** [`examples/full-example/`](../examples/full-example/) in this repo — `@sg` on command types, `__generated__/`, and `status` leaf with `StatusJsonOutputSchema`.
+**Reference implementation:** [`examples/full-example-json/`](../examples/full-example-json/) in this repo — `@sg` on command types, `__generated__/`, and `status` leaf with `StatusJsonOutputSchema`.
 
 ## Out of scope
 

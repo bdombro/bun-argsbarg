@@ -14,37 +14,9 @@ export interface InstallScope {
 }
 
 /** Artifact keys for install.targets. */
-export type CliInstallArtifactKey =
-  | "app"
-  | "chatgptMcp"
-  | "claudeCodeMcp"
-  | "claudeDesktopMcp"
-  | "claudeSkill"
-  | "codexMcp"
-  | "codexSkill"
-  | "configure"
-  | "cursorMcp"
-  | "cursorSkill"
-  | "openclawMcp"
-  | "openclawSkill"
-  | "opencodeMcp"
-  | "opencodeSkill";
+export type CliInstallArtifactKey = "app" | "agentsMcp" | "configure" | "skill";
 
-export type InstallActionKind =
-  | "app"
-  | "cursor-skill"
-  | "claude-skill"
-  | "codex-skill"
-  | "opencode-skill"
-  | "openclaw-skill"
-  | "cursor-mcp"
-  | "claude-mcp"
-  | "claude-desktop-mcp"
-  | "opencode-mcp"
-  | "codex-mcp"
-  | "openclaw-mcp"
-  | "chatgpt-desktop-mcp"
-  | "configure";
+export type InstallActionKind = "app" | "agent-skill" | "agents-mcp" | "configure";
 
 export type InstallTargetCategory = "core" | "skill" | "mcp";
 
@@ -64,34 +36,14 @@ export interface UninstallAction {
 
 export interface InstalledArtifacts {
   app: boolean;
-  cursorSkill: boolean;
-  claudeSkill: boolean;
-  codexSkill: boolean;
-  opencodeSkill: boolean;
-  openclawSkill: boolean;
-  cursorMcp: boolean;
-  claudeMcp: boolean;
-  claudeDesktopMcp: boolean;
-  opencodeMcp: boolean;
-  codexMcp: boolean;
-  openclawMcp: boolean;
-  chatGptMcp: boolean;
+  skill: boolean;
+  agentsMcp: boolean;
 }
 
 export interface InstallStatus {
   app?: string;
-  cursorSkill?: string;
-  claudeSkill?: string;
-  codexSkill?: string;
-  opencodeSkill?: string;
-  openclawSkill?: string;
-  cursorMcp?: string;
-  claudeMcp?: string;
-  claudeDesktopMcp?: string;
-  opencodeMcp?: string;
-  codexMcp?: string;
-  openclawMcp?: string;
-  chatGptMcp?: string;
+  skill?: string;
+  agentsMcp?: string;
 }
 
 export interface DetectedSnapshot extends InstalledArtifacts {

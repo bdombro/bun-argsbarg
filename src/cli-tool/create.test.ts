@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   applyCreate,
+  type CreateOptions,
   classNameFromKey,
   diffCreate,
   diffCreateDetails,
@@ -16,25 +17,39 @@ import {
   substituteTemplateContent,
 } from "./create.ts";
 
+function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
+  return {
+    templateId: "cli",
+    key: "testapp",
+    className: "Testapp",
+    tap: "local/testapp",
+    homepage: "https://example.com",
+    releaseRepo: "example/testapp",
+    desc: "Test",
+    force: false,
+    dryRun: false,
+    check: false,
+    diff: false,
+    yes: false,
+    devTemplate: false,
+    ...overrides,
+  };
+}
+
 /** Tests for argsbarg create. */
 describe("argsbarg create", () => {
-  /** Tests that substitutes {key} tokens. */
   test("substitutes {key} tokens", () => {
     const out = substituteTemplateContent(
       "key={key} class={className} env={envPrefix}_API_TOKEN tap={tap} org={tapOrg}",
       {
-        key: "my-cli",
-        className: "MyCli",
-        tap: "org/my-cli",
-        homepage: "https://github.com/org/my-cli",
-        releaseRepo: "org/my-cli",
-        desc: "My CLI",
-        force: false,
-        dryRun: false,
-        check: false,
-        diff: false,
-        yes: false,
-        devTemplate: false,
+        ...baseOpts({
+          key: "my-cli",
+          className: "MyCli",
+          tap: "org/my-cli",
+          homepage: "https://github.com/org/my-cli",
+          releaseRepo: "org/my-cli",
+          desc: "My CLI",
+        }),
       },
     );
     expect(out).toContain("my-cli");
@@ -50,7 +65,6 @@ describe("argsbarg create", () => {
     expect(classNameFromKey("1password")).toBe("App1password");
   });
 
-  /** ResolveCreateOptions derives identity defaults from key. */
   test("resolveCreateOptions derives identity defaults from key", () => {
     expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe("App1password");
     expect(resolveCreateOptions({ key: "my-cli", className: "Custom", releaseRepo: "org/my-cli" }).className).toBe(
@@ -58,83 +72,45 @@ describe("argsbarg create", () => {
     );
     const opts = resolveCreateOptions({ key: "at1", releaseRepo: "bdombro/at1" });
     expect(opts.tap).toBe("bdombro/at1");
-    expect(opts.releaseRepo).toBe("bdombro/at1");
-    expect(opts.homepage).toBe("https://github.com/bdombro/at1");
-    expect(opts.desc).toBe("At1 CLI");
+    expect(opts.templateId).toBe("cli");
   });
 
   test("resolveCreateOptions requires release repo", () => {
     expect(() => resolveCreateOptions({ key: "at1" })).toThrow(/release repo/i);
   });
 
-  /** Tests that renderCreateTree includes justfile and create-identity. */
-  test("renderCreateTree includes justfile and create-identity", () => {
-    const tree = renderCreateTree({
-      key: "testapp",
-      className: "Testapp",
-      tap: "local/testapp",
-      homepage: "https://example.com",
-      releaseRepo: "example/testapp",
-      desc: "Test",
-      force: false,
-      dryRun: false,
-      check: false,
-      diff: false,
-      yes: false,
-      devTemplate: false,
-    });
+  test("renderCreateTree includes justfile and create-identity for cli template", () => {
+    const tree = renderCreateTree(baseOpts({ key: "testapp" }));
     expect(tree.has("justfile")).toBe(true);
-    expect(tree.has("biome.json")).toBe(true);
-    expect(tree.has(".cursor/rules/code.mdc")).toBe(true);
     expect(tree.has("scripts/create-identity.ts")).toBe(true);
     const identity = tree.get("scripts/create-identity.ts");
     expect(identity).toContain('key: "testapp"');
-    const formula = tree.get("scripts/formula-shared.ts");
-    expect(formula).toContain("create-identity.ts");
+    expect(identity).toContain('template: "cli"');
+    expect(tree.has("src/commands/render-json/command.ts")).toBe(false);
   });
 
-  /** Tests that --check detects drift. */
+  test("renderCreateTree json template includes schemagen commands", () => {
+    const tree = renderCreateTree(baseOpts({ templateId: "json", key: "testapp" }));
+    expect(tree.has("src/commands/render-json/command.ts")).toBe(true);
+    expect(tree.has("src/db/index.ts")).toBe(true);
+    const identity = tree.get("scripts/create-identity.ts");
+    expect(identity).toContain('template: "json"');
+  });
+
   test("--check detects drift", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
-      applyCreate(dir, {
-        key: "testapp",
-        className: "Testapp",
-        tap: "local/testapp",
-        homepage: "https://example.com",
-        releaseRepo: "example/testapp",
-        desc: "Test",
-        force: true,
-        dryRun: false,
-        check: false,
-        diff: false,
-        yes: false,
-        devTemplate: false,
-      });
-      expect(diffCreate(dir, { key: "testapp", className: "Testapp" })).toEqual([]);
+      applyCreate(dir, baseOpts({ force: true }));
+      expect(diffCreate(dir, { key: "testapp", className: "Testapp", templateId: "cli" })).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  /** Tests that --check infers options from create-identity.ts. */
   test("--check infers options from create-identity.ts", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
-      applyCreate(dir, {
-        key: "testapp",
-        className: "Testapp",
-        tap: "local/testapp",
-        homepage: "https://example.com",
-        releaseRepo: "example/testapp",
-        desc: "Test",
-        force: true,
-        dryRun: false,
-        check: false,
-        diff: false,
-        yes: false,
-        devTemplate: false,
-      });
+      applyCreate(dir, baseOpts({ force: true }));
       expect(diffCreate(dir, { check: true })).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });

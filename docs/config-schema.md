@@ -224,9 +224,9 @@ Object/array/`$ref` properties require `--json` on `configure set` when comma-se
 
 | Example | Role |
 | --- | --- |
-| [`examples/full-example/`](../examples/full-example/) | **Copy template** — `@sg` schemagen, builtins; optional `program.appConfig` |
+| [`examples/full-example-json/`](../examples/full-example-json/) | **Schema-first copy template** — `@sg` schemagen, builtins; optional `program.appConfig` |
 
 ```bash
-cd examples/full-example && just setup && just schemagen
-FULL_EXAMPLE_API_TOKEN=dev just run configure get apiToken --json
+cd examples/full-example-json && just setup && just schemagen
+FULL_EXAMPLE_JSON_API_TOKEN=dev just run configure get apiToken --json
 ```

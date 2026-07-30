@@ -446,7 +446,7 @@ test("minimal.ts mcp without opt-in fails", async () => {
 
 test("MCP resources/list includes custom resource", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 10, method: "resources/list", params: {} }], {
-    script: "examples/mcp-test.ts",
+    script: "src/test/mcp-integration-fixture.ts",
   });
   const res = responses.get(10) as { result: { resources: { uri: string }[] } };
   const uris = res.result.resources.map((r) => r.uri);
@@ -466,7 +466,7 @@ test("MCP resources/read returns docs topic resource body", async () => {
         params: { uri: "mcp_test://docs/readme" },
       },
     ],
-    { script: "examples/mcp-test.ts" },
+    { script: "src/test/mcp-integration-fixture.ts" },
   );
   const res = responses.get(13) as { result: { contents: { text: string }[] } };
   expect(res.result.contents[0]?.text).toBe("# MCP test readme\n");
@@ -475,7 +475,7 @@ test("MCP resources/read returns docs topic resource body", async () => {
 test("MCP resources/read returns custom resource body", async () => {
   const responses = await mcpRequest(
     [{ jsonrpc: "2.0", id: 11, method: "resources/read", params: { uri: "test://hello" } }],
-    { script: "examples/mcp-test.ts" },
+    { script: "src/test/mcp-integration-fixture.ts" },
   );
   const res = responses.get(11) as { result: { contents: { text: string }[] } };
   expect(res.result.contents[0]?.text).toBe("hello resource");
@@ -484,7 +484,7 @@ test("MCP resources/read returns custom resource body", async () => {
 test("MCP resources/read unknown URI returns error", async () => {
   const responses = await mcpRequest(
     [{ jsonrpc: "2.0", id: 12, method: "resources/read", params: { uri: "missing://nope" } }],
-    { script: "examples/mcp-test.ts" },
+    { script: "src/test/mcp-integration-fixture.ts" },
   );
   const res = responses.get(12) as { error: { code: number } };
   expect(res.error.code).toBe(-32602);

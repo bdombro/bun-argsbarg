@@ -13,10 +13,7 @@ import {
   resolveMcpSchemaUri,
   sanitizeToolSegment,
 } from "../mcp/tools.ts";
-import type { SkillTarget } from "./naming.ts";
-import { skillDirNameForTarget, skillFrontmatterName } from "./naming.ts";
-
-export type { SkillTarget } from "./naming.ts";
+import { skillDirName } from "./naming.ts";
 
 export interface SkillBundle {
   dirName: string;
@@ -103,16 +100,18 @@ function buildConfigurationSection(root: CliProgram): string[] {
   return lines;
 }
 
-/** Builds SKILL.md body for the given target. */
-function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): string {
-  const name = skillFrontmatterName(root.key, target);
+/** Builds SKILL.md body for the agent skill bundle. */
+function buildSkillMd(root: CliProgram, dirName: string): string {
+  const name = dirName;
   const description = skillDescription(root);
   const tools = collectMcpTools(root);
 
   const lines: string[] = [
     "---",
+    `id: ${dirName}`,
     `name: ${name}`,
     `description: ${description}`,
+    "enabled: true",
     "---",
     "",
     `# ${root.key}`,
@@ -151,41 +150,23 @@ function buildSkillMd(root: CliProgram, target: SkillTarget, dirName: string): s
     "",
     `For full detail, open \`reference.md\` in this skill directory (same as \`${root.key} docs cli\`).`,
     "",
+    "## Install location",
+    "",
+    "Install follows the [.agents protocol](https://dotagentsprotocol.com/):",
+    "",
+    `- Auto-install: \`${root.key} configure --sync --yes\` when \`skill.enabled\` → \`~/.agents/skills/${dirName}/\``,
+    `- Cursor and most coding agents read \`~/.agents/skills/\` natively`,
+    "",
+    "**Claude Code (manual):** symlink or copy into Claude's skill directory:",
+    "",
+    "```bash",
+    "mkdir -p ~/.claude/skills",
+    `ln -sf ~/.agents/skills/${dirName} ~/.claude/skills/${dirName}`,
+    "```",
+    "",
+    `Project override (optional): \`.agents/skills/${dirName}/\``,
+    "",
   );
-
-  if (target === "cursor") {
-    lines.push(
-      "## Cursor install location",
-      "",
-      `- Project: \`.cursor/skills/${dirName}/\``,
-      `- Global: \`~/.cursor/skills/${dirName}/\``,
-      "",
-      "Do not install under `~/.cursor/skills-cursor/` (reserved for Cursor built-ins).",
-      "",
-    );
-  } else if (target === "claude") {
-    lines.push(
-      "## Claude Code",
-      "",
-      `- Invoke with \`/${dirName}\` or let Claude auto-match from the description.`,
-      `- Project skills: \`.claude/skills/${dirName}/\``,
-      `- Global skills: \`~/.claude/skills/${dirName}/\``,
-      `- Bundled files in this directory are available via \`\${CLAUDE_SKILL_DIR}\` when the skill runs.`,
-      "",
-    );
-  } else if (target === "codex") {
-    lines.push(
-      "## Codex",
-      "",
-      `- Global: \`~/.codex/skills/${dirName}/\``,
-      "- Enable skills in `~/.codex/config.toml` if required.",
-      "",
-    );
-  } else if (target === "opencode") {
-    lines.push("## OpenCode", "", `- Global: \`~/.config/opencode/skills/${dirName}/\``, "");
-  } else {
-    lines.push("## OpenClaw", "", `- Global: \`~/.openclaw/skills/${dirName}/\``, "");
-  }
 
   return lines.join("\n");
 }
@@ -243,12 +224,12 @@ export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
   };
 }
 
-/** Generates SKILL.md and reference.md for Cursor or Claude Code. */
-export function generateSkillBundle(root: CliProgram, target: SkillTarget): SkillBundle {
-  const dirName = skillDirNameForTarget(root.key, target);
+/** Generates SKILL.md and reference.md for agent skill install. */
+export function generateSkillBundle(root: CliProgram): SkillBundle {
+  const dirName = skillDirName(root.key);
   return {
     dirName,
-    skillMd: buildSkillMd(root, target, dirName),
+    skillMd: buildSkillMd(root, dirName),
     referenceMd: buildReferenceMd(root),
   };
 }

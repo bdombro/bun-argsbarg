@@ -8,18 +8,8 @@ import type { CliInstallArtifactKey } from "./artifacts/target-types.ts";
 /** Human-readable labels for each install artifact key in interactive prompts. */
 const LABELS: Record<CliInstallArtifactKey, string> = {
   app: "App binary",
-  cursorSkill: "Cursor skill",
-  claudeSkill: "Claude skill",
-  codexSkill: "Codex skill",
-  opencodeSkill: "OpenCode skill",
-  openclawSkill: "OpenClaw skill",
-  cursorMcp: "Cursor MCP",
-  claudeCodeMcp: "Claude Code MCP",
-  claudeDesktopMcp: "Claude Desktop MCP",
-  opencodeMcp: "OpenCode MCP",
-  codexMcp: "Codex MCP",
-  openclawMcp: "OpenClaw MCP",
-  chatgptMcp: "ChatGPT desktop MCP",
+  skill: "Agent skill",
+  agentsMcp: "Agents MCP",
   configure: "App config",
 };
 

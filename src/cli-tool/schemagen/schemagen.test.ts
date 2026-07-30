@@ -6,7 +6,7 @@ import { discoverSchemaRoots } from "./discover-schema-roots.ts";
 import { schemaExportName, schemaJsonBasename } from "./names.ts";
 import { runSchemagen } from "./run.ts";
 
-const exampleRoot = join(import.meta.dir, "../../../examples/full-example");
+const exampleRoot = join(import.meta.dir, "../../../examples/full-example-json");
 
 const tempRoots: string[] = [];
 
@@ -46,7 +46,7 @@ function writeSrcFile(root: string, relPath: string, body: string): void {
 }
 
 describe("schemagen", () => {
-  test("discovers @sg types in full-example", () => {
+  test("discovers @sg types in full-example-json", () => {
     const roots = discoverSchemaRoots(exampleRoot);
     expect(roots.map((r) => r.typeName).sort()).toEqual(["RenderJsonInput", "StatusJsonOutput", "WorkspaceNameInput"]);
   });
@@ -56,7 +56,7 @@ describe("schemagen", () => {
     expect(schemaExportName("RenderJsonInput")).toBe("RenderJsonInputSchema");
   });
 
-  test("runSchemagen writes __generated__ artifacts in full-example", () => {
+  test("runSchemagen writes __generated__ artifacts in full-example-json", () => {
     const counts = runSchemagen({ projectRoot: exampleRoot });
     expect(counts).toEqual({ schemas: 3 });
   });

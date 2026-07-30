@@ -20,16 +20,6 @@ import pkg from "../package.json" with { type: "json" };
 import { Cli, CliOptionKind, type CliProgram } from "../src/index";
 
 const program = {
-  key: "servers.ts",
-  version: pkg.version,
-  description: "Tiny demo.",
-  mcpServer: { enabled: true },
-  httpServer: { enabled: true },
-  docs: {
-    topics: {
-      readme: { text: "# servers.ts\n\nServers demo.\n" },
-    },
-  },
   commands: [
     {
       key: "hello",
@@ -65,6 +55,16 @@ const program = {
       },
     },
   ],
+  description: "Tiny demo.",
+  docs: {
+    topics: {
+      readme: { text: "# servers.ts\n\nServers demo.\n" },
+    },
+  },
+  httpServer: { enabled: true },
+  key: "servers.ts",
+  mcpServer: { enabled: true },
+  version: pkg.version,
 } satisfies CliProgram;
 
 const cli = new Cli(program);

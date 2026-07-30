@@ -8,14 +8,16 @@ import { join } from "node:path";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 
-const exampleRoot = join(import.meta.dir, "../../examples/full-example");
-const programSource = readFileSync(join(exampleRoot, "src/program.ts"), "utf8");
+const cliExampleRoot = join(import.meta.dir, "../../examples/full-example");
+const jsonExampleRoot = join(import.meta.dir, "../../examples/full-example-json");
+const cliProgramSource = readFileSync(join(cliExampleRoot, "src/program.ts"), "utf8");
+const jsonProgramSource = readFileSync(join(jsonExampleRoot, "src/program.ts"), "utf8");
 
-/** Mirror of full-example/src/program.ts capability flags (in-repo types only). */
+/** Mirror capability flags for copy templates (in-repo types only). */
 const sinkProgram = {
   key: "full-example",
   version: "1.0.0",
-  description: "Full example reference.",
+  description: "Copy template reference.",
   docs: {
     topics: { readme: { text: "# readme\n" } },
   },
@@ -44,25 +46,22 @@ const sinkProgram = {
   ],
 } satisfies CliProgram;
 
-/** Tests for full-example template. */
-describe("full-example template", () => {
-  /** Tests that program source enables every builtin flag. */
+describe("full-example cli template", () => {
   test("program source enables every builtin flag", () => {
-    expect(programSource).toContain("mcpServer: {");
-    expect(programSource).toContain("httpServer: {");
-    expect(programSource).toContain("docs:");
-    expect(programSource).not.toMatch(/docs:\s*\{[^}]*enabled:\s*true/s);
-    expect(programSource).not.toContain("appConfig:");
+    expect(cliProgramSource).toContain("mcpServer: {");
+    expect(cliProgramSource).toContain("httpServer: {");
+    expect(cliProgramSource).toContain("docs:");
+    expect(cliProgramSource).not.toMatch(/docs:\s*\{[^}]*enabled:\s*true/s);
+    expect(cliProgramSource).not.toContain("appConfig:");
   });
 
-  test("status command defines outputSchema", () => {
-    const statusSource = readFileSync(join(exampleRoot, "src/commands/status/command.ts"), "utf8");
-    expect(statusSource).toMatch(/outputSchema[,:]/);
-    expect(statusSource).toContain("StatusJsonOutputSchema");
-    expect(statusSource).toContain('from "./__generated__"');
+  test("status command has no outputSchema", () => {
+    const statusSource = readFileSync(join(cliExampleRoot, "src/commands/status/command.ts"), "utf8");
+    expect(statusSource).not.toMatch(/outputSchema[,:]/);
+    expect(statusSource).not.toContain("__generated__");
   });
 
-  test("resolveCapabilities matches full sink shape", () => {
+  test("resolveCapabilities matches sink shape", () => {
     expect(resolveCapabilities(sinkProgram)).toEqual({
       http: true,
       completion: true,
@@ -71,5 +70,21 @@ describe("full-example template", () => {
       docs: true,
       configCommands: false,
     });
+  });
+});
+
+describe("full-example-json template", () => {
+  test("program source enables every builtin flag", () => {
+    expect(jsonProgramSource).toContain("mcpServer: {");
+    expect(jsonProgramSource).toContain("httpServer: {");
+    expect(jsonProgramSource).toContain("docs:");
+    expect(jsonProgramSource).not.toContain("appConfig:");
+  });
+
+  test("status command defines outputSchema", () => {
+    const statusSource = readFileSync(join(jsonExampleRoot, "src/commands/status/command.ts"), "utf8");
+    expect(statusSource).toMatch(/outputSchema[,:]/);
+    expect(statusSource).toContain("StatusJsonOutputSchema");
+    expect(statusSource).toContain('from "./__generated__"');
   });
 });

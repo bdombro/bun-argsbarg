@@ -1,11 +1,48 @@
-/** `argsbarg create` — copy npm-shipped examples/full-example with substitutions. */
+/** `argsbarg create` — copy npm-shipped example templates with substitutions. */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pkg from "../../package.json" with { type: "json" };
 
+export type CreateTemplateId = "cli" | "json";
+
+export interface CreateTemplateSpec {
+  id: CreateTemplateId;
+  dirName: string;
+  displayName: string;
+  description: string;
+}
+
+export const CREATE_TEMPLATES: CreateTemplateSpec[] = [
+  {
+    id: "cli",
+    dirName: "full-example",
+    displayName: "full-example",
+    description: "Production CLI with MCP, HTTP, configure, and skills. Options and flags only; no schemagen.",
+  },
+  {
+    id: "json",
+    dirName: "full-example-json",
+    displayName: "full-example-json",
+    description: "Same shell plus @sg schemagen, input/outputSchema validation, JSON HTTP leaves, and REST CRUD demo.",
+  },
+];
+
+export function normalizeCreateTemplateId(value: string | undefined): CreateTemplateId {
+  return value === "json" ? "json" : "cli";
+}
+
+export function templateDirFor(templateId: CreateTemplateId): string {
+  const spec = CREATE_TEMPLATES.find((t) => t.id === templateId);
+  if (!spec) {
+    throw new Error(`Unknown create template: ${templateId}`);
+  }
+  return join(packageRoot(), "examples", spec.dirName);
+}
+
 export interface CreateOptions {
+  templateId: CreateTemplateId;
   key: string;
   className: string;
   tap: string;
@@ -29,12 +66,25 @@ export function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 }
 
-export function templateDir(): string {
-  return join(packageRoot(), "examples/full-example");
+export function templateDir(templateId: CreateTemplateId = "cli"): string {
+  return templateDirFor(templateId);
 }
 
-export function isDevTemplateDir(baseDir: string): boolean {
-  return resolve(baseDir) === resolve(templateDir());
+export function devTemplateIdForDir(baseDir: string): CreateTemplateId | undefined {
+  const resolved = resolve(baseDir);
+  for (const spec of CREATE_TEMPLATES) {
+    if (resolved === resolve(templateDirFor(spec.id))) {
+      return spec.id;
+    }
+  }
+  return undefined;
+}
+
+export function isDevTemplateDir(baseDir: string, templateId?: CreateTemplateId): boolean {
+  if (templateId) {
+    return resolve(baseDir) === resolve(templateDirFor(templateId));
+  }
+  return devTemplateIdForDir(baseDir) !== undefined;
 }
 
 export function keyToEnvPrefix(key: string): string {
@@ -70,10 +120,13 @@ function tapLibraryParts(tap: string): { org: string; repo: string } {
 }
 
 /** Parse `scripts/create-identity.ts` for inference and template defaults. */
-export function parseCreateIdentityFile(path: string): Partial<CreateOptions> & { envPrefix?: string } {
+export function parseCreateIdentityFile(
+  path: string,
+): Partial<CreateOptions> & { envPrefix?: string; template?: string } {
   if (!existsSync(path)) return {};
   const text = readFileSync(path, "utf8");
   const pick = (field: string) => text.match(new RegExp(`${field}:\\s*"([^"]*)"`))?.[1];
+  const templateRaw = text.match(/template:\s*"(cli|json)"/)?.[1];
   return {
     key: pick("key"),
     className: pick("className"),
@@ -82,10 +135,13 @@ export function parseCreateIdentityFile(path: string): Partial<CreateOptions> & 
     releaseRepo: pick("releaseRepo"),
     desc: pick("desc"),
     envPrefix: pick("envPrefix"),
+    template: templateRaw,
+    templateId: templateRaw ? normalizeCreateTemplateId(templateRaw) : undefined,
   };
 }
 
-export function templateIdentity(): {
+export function templateIdentity(templateId: CreateTemplateId = "cli"): {
+  templateId: CreateTemplateId;
   key: string;
   className: string;
   tap: string;
@@ -94,15 +150,16 @@ export function templateIdentity(): {
   desc: string;
   envPrefix: string;
 } {
-  const parsed = parseCreateIdentityFile(join(templateDir(), CREATE_IDENTITY_REL));
-  const key = parsed.key ?? "full-example";
+  const parsed = parseCreateIdentityFile(join(templateDirFor(templateId), CREATE_IDENTITY_REL));
+  const key = parsed.key ?? CREATE_TEMPLATES.find((t) => t.id === templateId)?.displayName ?? "full-example";
   return {
+    templateId,
     key,
     className: parsed.className ?? classNameFromKey(key),
     tap: parsed.tap ?? `local/${key}`,
     homepage: parsed.homepage ?? "https://github.com/bdombro/bun-argsbarg",
     releaseRepo: parsed.releaseRepo ?? "bdombro/bun-argsbarg",
-    desc: parsed.desc ?? "Argsbarg full example reference app",
+    desc: parsed.desc ?? "Argsbarg copy template",
     envPrefix: parsed.envPrefix ?? keyToEnvPrefix(key),
   };
 }
@@ -113,6 +170,7 @@ export function inferCreateOptions(baseDir: string, partial: Partial<CreateOptio
   }
   const fromIdentity = parseCreateIdentityFile(join(baseDir, CREATE_IDENTITY_REL));
   return {
+    templateId: partial.templateId ?? fromIdentity.templateId,
     key: partial.key ?? fromIdentity.key,
     className: partial.className ?? fromIdentity.className,
     desc: partial.desc ?? fromIdentity.desc,
@@ -136,7 +194,10 @@ function assertReleaseRepoFormat(releaseRepo: string): void {
 
 export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: string): CreateOptions {
   const merged = baseDir ? inferCreateOptions(baseDir, partial) : partial;
-  const tmpl = templateIdentity();
+  const templateId = normalizeCreateTemplateId(
+    merged.templateId ?? (baseDir ? devTemplateIdForDir(baseDir) : undefined),
+  );
+  const tmpl = templateIdentity(templateId);
   const key = merged.key ?? tmpl.key ?? "full-example";
   const className = merged.className ?? classNameFromKey(key);
   const releaseRepo = merged.releaseRepo;
@@ -144,8 +205,9 @@ export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: 
     throw new Error("GitHub release repo (org/repo) is required. Pass --release-repo or use the interactive wizard.");
   }
   assertReleaseRepoFormat(releaseRepo);
-  const devTemplate = merged.devTemplate ?? (baseDir ? isDevTemplateDir(baseDir) : false);
+  const devTemplate = merged.devTemplate ?? (baseDir ? isDevTemplateDir(baseDir, templateId) : false);
   return {
+    templateId,
     key,
     className,
     tap: merged.tap ?? releaseRepo,
@@ -173,6 +235,7 @@ export const createIdentity = {
   releaseRepo: "${opts.releaseRepo}",
   desc: "${opts.desc}",
   envPrefix: "${envPrefix}",
+  template: "${opts.templateId}",
 } as const;
 `;
 }
@@ -195,7 +258,7 @@ function tokenMap(opts: CreateOptions): Record<string, string> {
 
 /** Substitute \`{key}\`-style placeholders; also replace template identity literals. */
 export function substituteTemplateContent(content: string, opts: CreateOptions): string {
-  const tmpl = templateIdentity();
+  const tmpl = templateIdentity(opts.templateId);
   const tokens = tokenMap(opts);
   const argsbargVersion = pkg.version;
 
@@ -245,8 +308,8 @@ function shouldExcludeRel(rel: string): boolean {
   return EXCLUDE_REL.has(rel);
 }
 
-function listTemplateFiles(): string[] {
-  const root = templateDir();
+function listTemplateFiles(templateId: CreateTemplateId): string[] {
+  const root = templateDirFor(templateId);
   if (!existsSync(root)) return [];
   const out: string[] = [];
   const walk = (dir: string, prefix: string) => {
@@ -266,12 +329,12 @@ function listTemplateFiles(): string[] {
 
 export function renderCreateTree(opts: CreateOptions): Map<string, string> {
   const files = new Map<string, string>();
-  for (const rel of listTemplateFiles()) {
+  for (const rel of listTemplateFiles(opts.templateId)) {
     if (rel === CREATE_IDENTITY_REL) {
       files.set(rel, renderCreateIdentitySource(opts));
       continue;
     }
-    const src = join(templateDir(), rel);
+    const src = join(templateDirFor(opts.templateId), rel);
     const raw = readFileSync(src, "utf8");
     files.set(rel, substituteTemplateContent(raw, opts));
   }
@@ -374,6 +437,7 @@ export function parseCreateArgv(rest: string[]): ParsedCreateArgv {
     else if (a === "--homepage" && rest[i + 1]) opts.homepage = rest[++i];
     else if (a === "--release-repo" && rest[i + 1]) opts.releaseRepo = rest[++i];
     else if (a === "--desc" && rest[i + 1]) opts.desc = rest[++i];
+    else if (a === "--template" && rest[i + 1]) opts.templateId = normalizeCreateTemplateId(rest[++i]);
     else if (a?.startsWith("--")) {
       throw new Error(`Unknown option: ${a}`);
     } else if (a) {

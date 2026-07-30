@@ -52,9 +52,23 @@ $ myapp http
 import { Cli, type CliProgram, CliOptionKind } from "argsbarg";
 
 const program = {
-  key: "helloapp",
-  version: "1.0.0",
   description: "Tiny demo.",
+  handler: async (ctx) => {
+    const name = ctx.args[0] ?? "world";
+    if (ctx.hasFlag("verbose")) { 
+      console.log("verbose mode"); 
+    }
+    console.log(`hello ${name}`);
+  },
+  key: "helloapp",
+  options: [
+    {
+      name: "verbose",
+      description: "Enable extra logging.",
+      kind: CliOptionKind.Presence,
+      shortName: "v",
+    },
+  ],
   positionals: [
     {
       name: "name",
@@ -64,21 +78,7 @@ const program = {
       argMax: 1,
     },
   ],
-  options: [
-    {
-      name: "verbose",
-      description: "Enable extra logging.",
-      kind: CliOptionKind.Presence,
-      shortName: "v",
-    },
-  ],
-  handler: async (ctx) => {
-    const name = ctx.args[0] ?? "world";
-    if (ctx.hasFlag("verbose")) { 
-      console.log("verbose mode"); 
-    }
-    console.log(`hello ${name}`);
-  },
+  version: "1.0.0",
 } satisfies CliProgram;
 
 const cli = new Cli(program);
@@ -170,11 +170,11 @@ Nested command paths map directly to standard REST paths (e.g., `v1 invoices ren
 
 ```typescript
 const cli = {
-  key: "myapp",
-  version: "1.0.0",
+  commands: [/* ... */],
   description: "My service.",
   httpServer: { enabled: true, port: 3000 },
-  commands: [/* ... */],
+  key: "myapp",
+  version: "1.0.0",
 } satisfies CliProgram;
 ```
 
@@ -284,19 +284,20 @@ Check the `examples/` directory for full working scripts:
 
 | Example               | File                     | Shows                                                                                             |
 | --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
-| `ArgsBargMinimal`     | `examples/minimal.ts`    | String + presence flags, `MissingOrUnknown` fallback.                                             |
+| `ArgsBargMinimal`     | `examples/minimal.ts`    | Smallest embeddable CLI (not a copy template).                                                    |
 | `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                            |
 | `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `ctx.inputs`.                                                        |
-| `ArgsBargFullExample` | `examples/full-example/` | **Copy template:** all builtins, schemagen, Homebrew justfile, `outputSchema`, `from "argsbarg"`. |
+| `ArgsBargFullExample` | `examples/full-example/` | **Default copy template:** all builtins, Homebrew justfile; options/flags only (no schemagen). |
+| `ArgsBargFullExampleJson` | `examples/full-example-json/` | **Schema-first copy template:** `@sg`, `inputSchema`/`outputSchema`, REST CRUD, SQLite. |
 
 
 Examples ship in the npm package under `node_modules/argsbarg/examples/`.
 
 ## Bootstrap a new CLI
 
-Copy the shipped `examples/full-example` template into a new directory:
+Copy a shipped template into a new directory (`cli` default, or `json` for schema-first):
 
-Interactive (TTY):
+Interactive (TTY) — pick template A/B, then key and release repo:
 
 ```bash
 bunx argsbarg create my-cli
@@ -306,12 +307,21 @@ Non-interactive:
 
 ```bash
 bunx argsbarg create my-cli \
+  --template cli \
   --key my-cli --release-repo org/my-cli --yes
+```
+
+Schema-first (`@sg`, JSON schemas, REST CRUD demo):
+
+```bash
+bunx argsbarg create my-api \
+  --template json \
+  --key my-api --release-repo org/my-api --yes
 ```
 
 Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `program.description` and the Homebrew formula).
 
-`create` copies the template (including `.cursor/rules/cli-program.mdc`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders in `README.md` and other files, runs `bun install`, schemagen, `bun test`, and `git init` + Initial commit when appropriate.
+`create` copies the template (including `.cursor/rules/cli-program.mdc`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders, runs `bun install`, `argsbarg schemagen` (json template only), `bun test`, and `git init` + Initial commit when appropriate.
 
 **Git bootstrap:** skipped when the target already has a `.git` directory, or when the target sits inside an existing git work tree (monorepo subfolder). Standalone new directories get an `Initial commit`.
 
@@ -319,24 +329,16 @@ Verify an existing tree: `bunx argsbarg create --check .`
 
 To refresh Cursor rules in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` and `bun scripts/merge-code-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
 
-### What the full-example template includes
+### What the copy templates include
 
+Both templates ship all builtins (`completion`, `version`, `configure`, `docs`, `mcp`, `http`), Homebrew `justfile` + formula scripts, and `.cursor/rules/`.
 
-| Area                  | Files / wiring                                                                           |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| All builtins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`       |
-| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`          |
-| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`          |
-| Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
-| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                       |
-| MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled   |
-| Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                      |
-| Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`            |
-| Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                         |
-| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                                |
+| Template | Path | Adds beyond builtins |
+| --- | --- | --- |
+| **cli** (default) | `examples/full-example/` | `echo`, `status` — options/flags only; no schemagen |
+| **json** | `examples/full-example-json/` | `@sg` schemagen, `inputSchema`/`outputSchema`, `render-json`, `workspaces` REST CRUD, in-memory SQLite |
 
-
-When changing builtins or the template, run `just example-full-check` from the argsbarg repo root.
+Package import: `from "argsbarg"` (not relative to argsbarg `src/`).
 
 ```bash
 export PATH="$PATH:$(pwd)/examples"
@@ -385,7 +387,7 @@ This acts as a "tripwire" that instructs AI agents in your workspace to read Arg
 
 ### 3. Generated Skills & Workspace Configuration
 
-Running `myapp configure` launches an interactive setup wizard that can automatically write compact `SKILL.md` index files and full-reference markdown files (`reference.md`) directly into your global IDE directories (e.g., `~/.cursor/skills/` or `~/.claude/skills/`).
+Running `myapp configure --sync` installs a compact `SKILL.md` index and full-reference `reference.md` to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`.
 
 See **[docs/configure.md](docs/configure.md)** and **[docs/ai-skills.md](docs/ai-skills.md)** for developer setup and automated Homebrew pipeline integration.
 

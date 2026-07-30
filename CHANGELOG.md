@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.2.0] - 2026-07-30
+
+### Changed
+
+- **Breaking: two `argsbarg create` templates** — default `cli` template (`examples/full-example`) is CLI-centric (MCP, HTTP, configure, skills; no schemagen). Schema-first template (`examples/full-example-json`) keeps `@sg` schemagen, `inputSchema`/`outputSchema`, REST CRUD, and in-memory SQLite. Interactive create shows an A/B template picker; `--template cli|json` for non-interactive use. `create-identity.ts` records `template` for `--check` drift detection.
+- **Experimental: agent skill install** — single opt-in target via `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` (no per-host skill targets). Brew `post_install` sync installs the skill when enabled. Removed `configure.agentIntegration` and per-host skill keys (`cursorSkill`, etc.).
+- **Experimental: .agents protocol–only agent install** — MCP configure install writes only `~/.agents/mcp.json` when `mcpServer.enabled` (included in `configure --sync` automatically, parallel to `skill.enabled`). Removed vendor MCP auto-install (Cursor, Claude, Codex, OpenCode, OpenClaw, ChatGPT). Removed `configure.targets.*Mcp`; use `mcpServer.enabled`. Skill bundle adds protocol `skill.md` (+ `SKILL.md` compatibility copy). Docs and generated `docs mcp` document manual Cursor/Claude/Desktop MCP setup and Claude Code skill symlink.
+
 ## [6.1.10] - 2026-07-29
 
 ### Changed
@@ -885,7 +893,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.1.10...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.2.0...HEAD
+[6.2.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.2.0
 [6.1.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.10
 [6.1.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.9
 [6.1.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.1.8

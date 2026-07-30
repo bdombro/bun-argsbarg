@@ -19,25 +19,17 @@ export interface SkillHostSpec {
   actionKind: InstallActionKind;
   label: string;
   uninstallPrefix: string;
-  pairedMcpKey: CliInstallArtifactKey;
   skillDir: (paths: InstallPaths) => string;
-  detectedKey: keyof Pick<
-    InstalledArtifacts,
-    "cursorSkill" | "claudeSkill" | "codexSkill" | "opencodeSkill" | "openclawSkill"
-  >;
-  statusField: keyof Pick<
-    InstallStatus,
-    "cursorSkill" | "claudeSkill" | "codexSkill" | "opencodeSkill" | "openclawSkill"
-  >;
+  detectedKey: "skill";
+  statusField: "skill";
   isAvailable: (root: CliProgram, paths: InstallPaths) => boolean;
 }
 
-/** Agent shell skill directory install. */
+/** Agent shell skill directory install (`~/.agents/skills/<key>/`). */
 export class SkillInstallTarget extends InstallTarget {
   readonly key: CliInstallArtifactKey;
   readonly actionKind: InstallActionKind;
   readonly category = "skill" as const;
-  readonly pairedKey: CliInstallArtifactKey;
   readonly uninstallPrefix: string;
 
   private readonly spec: SkillHostSpec;
@@ -47,7 +39,6 @@ export class SkillInstallTarget extends InstallTarget {
     this.spec = spec;
     this.key = spec.key;
     this.actionKind = spec.actionKind;
-    this.pairedKey = spec.pairedMcpKey;
     this.uninstallPrefix = spec.uninstallPrefix;
   }
 
@@ -84,8 +75,8 @@ export class SkillInstallTarget extends InstallTarget {
     return [
       {
         kind: this.actionKind,
-        summary: `${this.spec.label.toLowerCase()} skill: ${displayInstallPath(dir)}/`,
-        message: `Installing ${this.spec.label} skill to ${displayInstallPath(dir)}/`,
+        summary: `${this.spec.label.toLowerCase()}: ${displayInstallPath(dir)}/`,
+        message: `Installing ${this.spec.label.toLowerCase()} to ${displayInstallPath(dir)}/`,
         run: () => [],
       },
     ];
@@ -97,7 +88,7 @@ export class SkillInstallTarget extends InstallTarget {
       {
         kind: this.actionKind,
         summary: `${this.uninstallPrefix}: ${displayInstallPath(dir)}/`,
-        message: `Removing ${this.spec.label} skill ${displayInstallPath(dir)}/`,
+        message: `Removing ${this.spec.label.toLowerCase()} ${displayInstallPath(dir)}/`,
         run: () => uninstallSkillDir(dir, ctx.dry),
       },
     ];

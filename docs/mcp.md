@@ -44,30 +44,38 @@ bun run examples/nested.ts mcp
 
 ## Client setup
 
-### Cursor
+### `.agents` auto-install
 
-Add a server entry under `mcpServers` in your Cursor MCP config:
+When `mcpServer.enabled` is set, `configure --sync` merges a `mcpServers` entry into `~/.agents/mcp.json` per the [.agents protocol](https://dotagentsprotocol.com/):
+
+```bash
+myapp configure --sync --yes
+```
+
+### Manual client setup
+
+Many clients do not read `~/.agents/mcp.json` yet. Copy the `mcpServers` entry from that file, or add:
 
 ```json
 {
   "mcpServers": {
     "myapp": {
-      "command": "bun",
-      "args": ["run", "myapp.ts", "ai", "mcp"]
+      "command": "myapp",
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Use your real binary or script path. For a compiled CLI, `command` can be the installed binary and `args` can be `["mcp"]`.
+| Client | Config file |
+| --- | --- |
+| **Cursor** | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) |
+| **Claude Code** | `~/.claude.json` under `mcpServers`, or project `.mcp.json` |
+| **Claude Desktop** | See platform paths below |
 
-### Claude Code
+Restart Cursor or reload MCP after editing. Restart Claude Desktop after config changes.
 
-`configure` (MCP targets) merges into `~/.claude.json` under `mcpServers`.
-
-### Claude Desktop
-
-`configure` (MCP targets) also merges into Claude Desktop config when app data is present:
+**Claude Desktop** config paths:
 
 | Platform | Path |
 | --- | --- |
@@ -75,55 +83,11 @@ Use your real binary or script path. For a compiled CLI, `command` can be the in
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Linux | `~/.config/Claude/claude_desktop_config.json` |
 
-Restart Claude Desktop after config changes. You can also install a **`.mcpb`** bundle via **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
-
-### OpenCode
-
-When `~/.config/opencode` exists, **`configure`** (MCP targets) merges a local server under the top-level **`mcp`** key (not `mcpServers`):
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "myapp": {
-      "type": "local",
-      "command": ["myapp", "mcp"],
-      "enabled": true
-    }
-  }
-}
-```
-
-OpenCode reads `opencode.jsonc`, `opencode.json`, or `config.json` in that directory. Argsbarg updates the first existing file, or creates `config.json`. JSON-with-comments (`.jsonc`) is not auto-edited — add the block manually or use a `.json` config file.
-
-### OpenAI Codex
-
-When **`codex`** is on PATH, **`configure`** (MCP targets) runs `codex mcp add <server> -- <binary> mcp`, which writes **`~/.codex/config.toml`**. Otherwise add manually:
-
-```toml
-[mcp_servers.myapp]
-command = "myapp"
-args = ["mcp"]
-```
-
-Use **`codex mcp`** to list/add/remove servers, or **Settings → MCP → Open config.toml** in the Codex app. CLI and IDE extension share the same file.
-
-### ChatGPT
-
-**Web / Connectors (OpenAI’s documented path)** — **Settings → Connectors → Developer mode** with a **remote HTTPS MCP URL**. ChatGPT does not spawn local stdio binaries; bridge and tunnel local servers when needed.
-
-**Desktop JSON (gated auto-install)** — when ChatGPT app data exists, **`configure`** (MCP targets) also merges `mcpServers` into:
-
-| Platform | Path |
-| --- | --- |
-| macOS | `~/Library/Application Support/ChatGPT/chatgpt_mcp_config.json` |
-| Windows | `%APPDATA%\OpenAI\ChatGPT\chatgpt_mcp_config.json` |
-
-Local JSON support varies by desktop build. Prefer **Connectors** for ChatGPT web or when tools do not appear after install.
+You can also install a **`.mcpb`** bundle via **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
 
 ### Other MCP hosts
 
-Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
+Copy the `mcpServers` entry from `~/.agents/mcp.json` into the host's native MCP config. Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
 
 ## Configuration
 

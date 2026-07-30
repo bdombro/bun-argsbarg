@@ -21,18 +21,8 @@ build:
     bun build ./src/index.ts --compile --outfile=dist/{{cli_key}}
     @rm -f .*.bun-build
 
-# Apply SQL migrations in src/db/migrations/ to a SQLite database file
-migrate DB="./workspaces.db":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    mkdir -p "$(dirname '{{DB}}')"
-    for f in $(ls src/db/migrations/*.sql | sort); do
-      echo "==> $f"
-      sqlite3 '{{DB}}' < "$f"
-    done
-
-# Run schemagen, typecheck, and format
-check: schemagen format typecheck
+# Run typecheck and format
+check: format typecheck
 
 # demo the HTTP API
 demo-http:
@@ -55,7 +45,7 @@ dev *ARGS:
     bun --watch ./src/index.ts {{ARGS}}
 
 # Regenerate consumer docs under ./docs/
-docgen: schemagen
+docgen:
     @just run docs cli-schema --save
     @just run docs cli --save
     @just run docs skill --save
@@ -113,15 +103,13 @@ lint:
 run *ARGS:
     bun ./src/index.ts {{ARGS}}
 
-# Generate JSON Schema artifacts from TypeScript types
+# Generate JSON Schema artifacts from TypeScript types (not used in this template)
 schemagen:
-    argsbarg schemagen
+    @echo "This CLI template has no @sg types. Use full-example-json or add /** @sg */ types first."
 
 # Install bun/npm dependencies
-# Install bun/npm dependencies and generate schemas
 setup:
     bun install
-    just schemagen
 
 # Run unit tests (after check)
 test: check

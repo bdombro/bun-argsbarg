@@ -1,37 +1,17 @@
 #!/usr/bin/env bun
 /*
-MCP test fixture for subprocess integration tests only.
+MCP integration test fixture for subprocess tests (not a public example).
 */
 
-import { Cli, CliOptionKind, type CliProgram } from "../src/index";
+import { Cli, CliOptionKind, type CliProgram } from "../index.ts";
 
 const program = {
-  key: "mcp-test",
-  version: "0.0.0-test",
-  description: "MCP integration test fixture.",
   appConfig: {
     entries: {
       argsTestSecret: {
         description: "Test secret for integration tests.",
         env: "ARGS_TEST_SECRET",
       },
-    },
-  },
-  mcpServer: {
-    enabled: true,
-    resources: [
-      {
-        uri: "test://hello",
-        name: "hello",
-        description: "Test resource.",
-        mimeType: "text/plain",
-        load: () => "hello resource",
-      },
-    ],
-  },
-  docs: {
-    topics: {
-      readme: { text: "# MCP test readme\n" },
     },
   },
   commands: [
@@ -79,6 +59,24 @@ const program = {
       },
     },
   ],
+  description: "MCP integration test fixture.",
+  docs: {
+    topics: {
+      readme: { text: "# MCP test readme\n" },
+    },
+  },
+  key: "mcp-test",
+  mcpServer: {
+    enabled: true,
+    resources: [
+      {
+        uri: "test://hello",
+        name: "hello",
+        load: () => "hello resource",
+      },
+    ],
+  },
+  version: "0.0.0-test",
 } satisfies CliProgram;
 
 const cli = new Cli(program);

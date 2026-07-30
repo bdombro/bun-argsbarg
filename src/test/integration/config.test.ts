@@ -55,7 +55,7 @@ test("MCP program.appConfig fails when required config missing", async () => {
         params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
       },
     ],
-    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "" } },
+    { script: "src/test/mcp-integration-fixture.ts", env: { ARGS_TEST_SECRET: "" } },
   );
   const res = responses.get(13) as { result: { isError: boolean; content: { text: string }[] } };
   expect(res.result.isError).toBe(true);
@@ -73,7 +73,7 @@ test("MCP program.appConfig succeeds when env present", async () => {
         params: { name: "echo_env", arguments: { name: "ARGS_TEST_SECRET" } },
       },
     ],
-    { script: "examples/mcp-test.ts", env: { ARGS_TEST_SECRET: "sekrit" } },
+    { script: "src/test/mcp-integration-fixture.ts", env: { ARGS_TEST_SECRET: "sekrit" } },
   );
   const res = responses.get(14) as {
     result: {
@@ -105,7 +105,7 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
       },
     ],
     {
-      script: "examples/mcp-test.ts",
+      script: "src/test/mcp-integration-fixture.ts",
       env: { HOME: dir, ARGS_TEST_SECRET: "present" },
     },
   );

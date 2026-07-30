@@ -15,12 +15,6 @@ import {
 } from "../src/index";
 
 const program = {
-  key: "formats.ts",
-  version: pkg.version,
-  description: "Value formats and ctx.inputs demo.",
-  fallbackCommand: "run",
-  fallbackMode: CliFallbackMode.MissingOnly,
-  mcpServer: { enabled: true },
   commands: [
     {
       key: "run",
@@ -67,6 +61,11 @@ const program = {
       },
     },
   ],
+  description: "Value formats and ctx.inputs demo.",
+  fallbackCommand: "run",
+  fallbackMode: CliFallbackMode.MissingOnly,
+  key: "formats.ts",
+  version: pkg.version,
 } satisfies CliProgram;
 
 const cli = new Cli(program);

@@ -1,6 +1,7 @@
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
-import { expectedOpenCodeMcpEntry, OPENCODE_CONFIG_SCHEMA } from "../configure/artifacts/mcp-opencode.ts";
+import { expectedMcpEntry } from "../configure/artifacts/mcp-config.ts";
+import { resolveClaudeDesktopMcpPath, userHome } from "../configure/artifacts/paths.ts";
 import { collectOptionDefs } from "../core/parse.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
 import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
@@ -8,64 +9,41 @@ import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
 import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 
-/** Extra host notes for generated `docs mcp` (manual fallbacks and ChatGPT Connectors). */
-function appendManualHostSetup(lines: string[], root: CliProgram, serverId: string): void {
-  const openCodeEntry = expectedOpenCodeMcpEntry(root);
+/** Extra manual client setup notes for generated `docs mcp`. */
+function appendManualClientSetup(
+  lines: string[],
+  _root: CliProgram,
+  serverId: string,
+  entry: { command: string; args: string[] },
+): void {
+  const home = userHome();
+  const claudeDesktopPath = resolveClaudeDesktopMcpPath(home);
+  const mcpServersJson = JSON.stringify({ mcpServers: { [serverId]: entry } }, null, 2);
 
   lines.push(
-    "| OpenCode | `~/.config/opencode/*` (when `~/.config/opencode` exists) |",
-    "| OpenAI Codex | `~/.codex/config.toml` via `codex mcp add` (when `codex` is on PATH) |",
-    "| ChatGPT desktop | `chatgpt_mcp_config.json` (when ChatGPT app data exists) |",
+    "### Manual client setup",
     "",
-    "Claude Desktop paths by platform:",
+    "Many clients do not read `~/.agents/mcp.json` yet. Copy the `mcpServers` entry from that file, or paste:",
+    "",
+    "```json",
+    mcpServersJson,
+    "```",
+    "",
+    "| Client | Config file |",
+    "| --- | --- |",
+    "| **Cursor** | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) |",
+    "| **Claude Code** | `~/.claude.json` under `mcpServers`, or project `.mcp.json` |",
+    "| **Claude Desktop** | See platform paths below |",
+    "",
+    "Restart Cursor or reload MCP after editing. Restart Claude Desktop after config changes.",
+    "",
+    "Claude Desktop config paths:",
     "",
     "- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`",
     "- **Windows:** `%APPDATA%\\Claude\\claude_desktop_config.json`",
     "- **Linux:** `~/.config/Claude/claude_desktop_config.json`",
     "",
-    "ChatGPT desktop JSON (when auto-installed):",
-    "",
-    "- **macOS:** `~/Library/Application Support/ChatGPT/chatgpt_mcp_config.json`",
-    "- **Windows:** `%APPDATA%\\OpenAI\\ChatGPT\\chatgpt_mcp_config.json`",
-    "",
-    "Restart Claude Desktop and ChatGPT desktop after changing their config files.",
-    "",
-    "### Manual fallbacks",
-    "",
-    "**OpenCode** (no `~/.config/opencode` yet):",
-    "",
-    "```json",
-    JSON.stringify(
-      {
-        $schema: OPENCODE_CONFIG_SCHEMA,
-        mcp: { [serverId]: openCodeEntry },
-      },
-      null,
-      2,
-    ),
-    "```",
-    "",
-    "**Codex** (`codex` not on PATH):",
-    "",
-    "```toml",
-    `[mcp_servers.${serverId}]`,
-    `command = "${root.key}"`,
-    'args = ["mcp"]',
-    "```",
-    "",
-    `Or after installing Codex CLI: \`codex mcp add ${serverId} -- ${root.key} mcp\`.`,
-    "",
-    "### ChatGPT web (Connectors)",
-    "",
-    `OpenAI's documented path for **ChatGPT web/desktop** is **Settings → Connectors → Developer mode** with a **remote HTTPS MCP URL** — not local stdio. ChatGPT does not spawn \`${root.key} mcp\` directly.`,
-    "",
-    "For local stdio, bridge and tunnel, then register the HTTPS URL in Connectors:",
-    "",
-    `1. Expose \`${root.key} mcp\` over HTTP (e.g. \`mcp-remote\`).`,
-    "2. Tunnel if needed (ngrok, Cloudflare Tunnel).",
-    "3. Add the public URL as a custom connector.",
-    "",
-    "Desktop `chatgpt_mcp_config.json` is merged when the ChatGPT app is installed; support varies by build. Use Connectors when local JSON is absent or tools do not appear.",
+    `On this machine (macOS/Linux): \`${claudeDesktopPath}\``,
     "",
   );
 }
@@ -92,6 +70,7 @@ export function generateMcpGuide(root: CliProgram): string {
     throw new Error("MCP server not enabled");
   }
   const caps = resolveCapabilities(root);
+  const entry = expectedMcpEntry(root);
 
   const lines: string[] = [
     `# MCP server (${root.key})`,
@@ -100,17 +79,16 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
     "## Installation",
     "",
-    "### `configure`",
+    "### `.agents` auto-install",
+    "",
+    "When `mcpServer.enabled` is set, `configure --sync` merges this server into `~/.agents/mcp.json` per the [.agents protocol](https://dotagentsprotocol.com/).",
     "",
   ];
 
   if (caps.configure) {
-    lines.push(
-      `Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`brew install ${root.key}\`). Host configs reference the app by name.`,
-      "",
-    );
+    lines.push(`Install the CLI first so \`${root.key}\` is on your PATH (e.g. \`brew install ${root.key}\`).`, "");
   } else {
-    lines.push(`The CLI binary \`${root.key}\` must already be on your PATH. Host configs reference it by name.`, "");
+    lines.push(`The CLI binary \`${root.key}\` must already be on your PATH.`, "");
   }
 
   lines.push(
@@ -118,30 +96,22 @@ export function generateMcpGuide(root: CliProgram): string {
     `${root.key} configure --sync --yes`,
     "```",
     "",
-    "Merges the server entry below into host config when each host is present:",
+    "Writes or updates `~/.agents/mcp.json` with a `mcpServers` entry for this app.",
     "",
-    "| Host | Config file |",
-    "| --- | --- |",
-    "| Cursor | `~/.cursor/mcp.json` (when `~/.cursor` exists) |",
-    "| Claude Code | `~/.claude.json` |",
-    "| Claude Desktop | `claude_desktop_config.json` (when Claude Desktop app data exists) |",
   );
 
-  appendManualHostSetup(lines, root, serverId);
+  appendManualClientSetup(lines, root, serverId, entry);
 
   lines.push(
     "### Manual `mcpServers` entry",
     "",
-    "For Cursor, Claude, and ChatGPT desktop JSON configs, add under `mcpServers`:",
+    "Same shape as in `~/.agents/mcp.json`:",
     "",
     "```json",
     JSON.stringify(
       {
         mcpServers: {
-          [serverId]: {
-            command: root.key,
-            args: ["mcp"],
-          },
+          [serverId]: entry,
         },
       },
       null,
@@ -174,11 +144,11 @@ export function generateMcpGuide(root: CliProgram): string {
       `Default config file: \`${displayAppConfigPath(root)}\` (flat JSON keys).`,
       "",
     );
-    for (const [key, entry] of Object.entries(root.appConfig.entries)) {
-      const label = entry.title ?? defaultConfigEntryTitle(key);
-      const req = entry.required === false ? "optional" : "required";
-      const envNote = entry.env ? ` → env \`${entry.env}\`` : "";
-      lines.push(`- **${label}** (\`${key}\`, ${req}${envNote}) — ${entry.description}`);
+    for (const [key, entryConfig] of Object.entries(root.appConfig.entries)) {
+      const label = entryConfig.title ?? defaultConfigEntryTitle(key);
+      const req = entryConfig.required === false ? "optional" : "required";
+      const envNote = entryConfig.env ? ` → env \`${entryConfig.env}\`` : "";
+      lines.push(`- **${label}** (\`${key}\`, ${req}${envNote}) — ${entryConfig.description}`);
     }
     lines.push(
       "",

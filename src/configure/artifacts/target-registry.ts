@@ -18,13 +18,6 @@ export const ACTION_KIND_TO_ARTIFACT: Record<InstallActionKind, CliInstallArtifa
   INSTALL_TARGETS.map((t) => [t.actionKind, t.key]),
 ) as Record<InstallActionKind, CliInstallArtifactKey>;
 
-/** Hosts with both MCP config and shell skill install targets. */
-export const AGENT_PAIRS: [CliInstallArtifactKey, CliInstallArtifactKey][] = INSTALL_TARGETS.flatMap((t) =>
-  t.category === "mcp" && t.pairedKey !== undefined
-    ? [[t.key, t.pairedKey] as [CliInstallArtifactKey, CliInstallArtifactKey]]
-    : [],
-);
-
 const targetByKey = new Map(INSTALL_TARGETS.map((t) => [t.key, t]));
 
 /** Lookup a registered install target by artifact key. */

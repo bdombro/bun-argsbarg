@@ -38,7 +38,7 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rules** — `scripts/merge-cli-program-rule.ts` and `scripts/merge-code-rule.ts` copy templates from `examples/full-example/.cursor/rules/` into each consumer, preserving any existing `**… conventions:**` footer block.
+**Argsbarg authoring rules** — `scripts/merge-cli-program-rule.ts` and `scripts/merge-code-rule.ts` copy templates from `examples/full-example-json/.cursor/rules/` into each consumer, preserving any existing `**… conventions:**` footer block.
 
 **Recommended in each consumer:** replace template placeholders with `**<app> conventions:**` bullets. Commit those files; merges refresh the shared top, not your footer.
 
@@ -55,7 +55,7 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 7. **Cursor rules:** `just consumers-dev` merges `cli-program.mdc` + `code.mdc` (includes **Abstractions** needless-extraction rule).
 8. **Verify:** `just test` and `just docgen` in each consumer repo.
 
-**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.cursor/skills/<app>/` from that app’s schema — not the argsbarg framework rule.
+**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
 
 ## npm package contents
 
@@ -63,14 +63,14 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 
 When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`docs/`, `examples/`, `src/`, etc.).
 
-Exclude `examples/full-example/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
+Exclude `examples/full-example/node_modules/` and `examples/full-example-json/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
 
-## Full example
+## Copy templates
 
-[`examples/full-example/`](../examples/full-example/) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
+Both [`examples/full-example/`](../examples/full-example/) (CLI) and [`examples/full-example-json/`](../examples/full-example-json/) (schema-first) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
 
 ```bash
-just example-full-schemagen
+just example-full-check
 just test
 ```
 

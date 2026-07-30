@@ -1,0 +1,22 @@
+{
+  "name": "full-example-json",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "description": "Argsbarg schema-first copy template (@sg schemagen; not published to npm).",
+  "engines": {
+    "bun": ">=1.3"
+  },
+  "scripts": {
+    "biome": "biome",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "argsbarg": "file:../.."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@types/bun": "^1.3.12",
+    "typescript": "^5.9.3"
+  }
+}

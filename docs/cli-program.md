@@ -8,10 +8,6 @@ ArgsBarg turns your schema into help, shell completions, MCP tools, and agent sk
 
 ```typescript
 const cli = {
-  key: "myapp",
-  version: "1.0.0",
-  description: "One-line summary of what the CLI does.",
-  mcpServer: { enabled: true },
   commands: [
     {
       key: "greet",
@@ -22,6 +18,10 @@ const cli = {
       handler: async (ctx) => { /* ... */ },
     },
   ],
+  description: "One-line summary of what the CLI does.",
+  key: "myapp",
+  mcpServer: { enabled: true },
+  version: "1.0.0",
 } satisfies CliProgram;
 ```
 
@@ -31,11 +31,11 @@ No `mcpTool` blocks required. Every leaf becomes an MCP tool; `inputSchema` come
 
 ```typescript
 const cli = {
-  key: "myapp",
-  version: "1.0.0",
+  commands: [/* ... */],
   description: "One-line summary of what the CLI does.",
   httpServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
-  commands: [/* ... */],
+  key: "myapp",
+  version: "1.0.0",
 } satisfies CliProgram;
 ```
 
@@ -90,7 +90,7 @@ export const reserveCommand = {
 
 Use a **parameterized factory** only when the schema truly depends on inputs (e.g. `createUpsertCommand(deps)` for tests or injected config). A `reserveCommand()` that returns a static literal adds indirection without benefit.
 
-**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not.
+**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not. Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `skill`, `version`, …).
 
 ## Descriptions
 
@@ -541,8 +541,9 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts.
-- **Agent integration:** `configure.agentIntegration` (`mcp` | `skill` | `both`) sets default sync targets; see [configure.md](configure.md#configuretargets).
+- **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts to `~/.agents/` ([.agents protocol](https://dotagentsprotocol.com/)).
+- **Agent skill:** `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` on `configure --sync`; see [configure.md](configure.md) and [ai-skills.md](ai-skills.md).
+- **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure --sync`; manual Cursor/Claude setup in [mcp.md](mcp.md).
 
 See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
 
@@ -583,7 +584,7 @@ If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just co
 
 3. **Optional:** a separate rule (e.g. `.cursor/argsbarg.mdc` or `AGENTS.md`) for broader package API notes.
 
-**Not this file:** `myapp configure` writes the **app** skill (`SKILL.md` under `~/.cursor/skills/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
+- **Not this file:** `myapp configure --sync` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
 
 ## See also
 

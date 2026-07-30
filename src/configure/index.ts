@@ -6,8 +6,8 @@ import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
 import { ensureAppConfigFile } from "../config/file.ts";
 import type { CliProgram } from "../core/types.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
-import { cliSkillInstall, skillTargetFromActionKind } from "../skill/install.ts";
-import { resolveInstallPaths } from "./artifacts/paths.ts";
+import { cliSkillInstall, isAgentSkillActionKind } from "../skill/install.ts";
+import { displayInstallPath, resolveInstallPaths } from "./artifacts/paths.ts";
 import { buildInstallPlan, buildUpdatePlan } from "./artifacts/plan.ts";
 import {
   installErr,
@@ -23,7 +23,6 @@ import { buildDetectedSnapshot, buildTargetPlanContext } from "./artifacts/targe
 import type {
   CliInstallArtifactKey,
   InstallAction,
-  InstallActionKind,
   InstallOpts,
   TargetPlanContext,
   UninstallAction,
@@ -94,11 +93,9 @@ function configureToInstallOpts(opts: ConfigureOpts): InstallOpts {
   return { dry: opts.dry, json: opts.json };
 }
 
-/** Installs a skill target and returns changed paths. */
-function runSkillAction(root: CliProgram, kind: InstallActionKind, opts: InstallOpts): string[] {
-  const target = skillTargetFromActionKind(kind);
-  if (!target) return [];
-  return cliSkillInstall(root, target, {
+/** Installs the agent skill bundle and returns changed paths. */
+function runSkillAction(root: CliProgram, opts: InstallOpts): string[] {
+  return cliSkillInstall(root, {
     global: true,
     rimraf: true,
     dry: opts.dry,
@@ -171,17 +168,14 @@ function runPlanAction(
   opts: InstallOpts,
   paths: ReturnType<typeof resolveInstallPaths>,
 ): string[] {
-  if ("kind" in action && action.kind) {
-    const skillTarget = skillTargetFromActionKind(action.kind);
-    if (skillTarget) {
-      const runResult = action.run();
-      if (runResult.length > 0) return runResult;
-      if (opts.uninstall) {
-        const skillDir = skillDirFromUninstallSummary(action.summary, paths);
-        return skillDir ? uninstallSkillDir(skillDir, !!opts.dry) : [];
-      }
-      return runSkillAction(root, action.kind as InstallActionKind, opts);
+  if ("kind" in action && action.kind && isAgentSkillActionKind(action.kind)) {
+    const runResult = action.run();
+    if (runResult.length > 0) return runResult;
+    if (opts.uninstall) {
+      const skillDir = skillDirFromUninstallSummary(action.summary, paths);
+      return skillDir ? uninstallSkillDir(skillDir, !!opts.dry) : [];
     }
+    return runSkillAction(root, opts);
   }
   if (!("kind" in action) || !action.kind) {
     const skillDir = skillDirFromUninstallSummary(action.summary, paths);
@@ -205,6 +199,12 @@ function executePlan(
     }
     const changed = runPlanAction(root, action, opts, paths);
     if (changed.length === 0) continue;
+    if (action.kind === "agent-skill" && !opts.uninstall && !opts.dry) {
+      installOut(`Skill installed to ${displayInstallPath(paths.agentsSkillDir)}/`, opts);
+    }
+    if (action.kind === "agents-mcp" && !opts.uninstall && !opts.dry) {
+      installOut(`MCP server registered in ${displayInstallPath(paths.agentsMcpPath)}`, opts);
+    }
     if (action.kind === "configure") {
       recordArtifactMutation(summary, changed, opts.uninstall ? "removed" : "configured");
     } else {
@@ -264,7 +264,7 @@ async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): P
   const summary = emptyMutationSummary();
 
   for (const target of INSTALL_TARGETS) {
-    if (target.key === "app") continue;
+    if (target.key === "app" || target.key === "skill" || target.key === "agentsMcp") continue;
     if (!effective[target.key].enabled) continue;
     if (target.key !== "configure" && !target.isAvailable(root, paths)) continue;
     if (target.key === "configure" && !root.appConfig) continue;
