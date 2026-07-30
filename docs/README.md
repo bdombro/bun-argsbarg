@@ -27,7 +27,8 @@ Examples are included in the npm tarball (`package.json` `files`). After `bun ad
 | Tier | Path | Use when |
 | --- | --- | --- |
 | Learn | [examples/minimal.ts](../examples/minimal.ts), [examples/nested.ts](../examples/nested.ts), [formats.ts](../examples/formats.ts) | One feature at a time |
-| **Copy** | [examples/full-example/](../examples/full-example/) | Bootstrapping a production CLI (all builtins + schemagen + Homebrew justfile) |
+| **Copy (CLI)** | [examples/full-example/](../examples/full-example/) | Default `create` template — all builtins, Homebrew justfile; no schemagen |
+| **Copy (JSON)** | [examples/full-example-json/](../examples/full-example-json/) | `create --template json` — `@sg`, schemas, REST CRUD, SQLite |
 
 ## Framework docs vs consumer docgen
 
@@ -35,6 +36,6 @@ Examples are included in the npm tarball (`package.json` `files`). After `bun ad
 | --- | --- | --- |
 | **Framework docs** | How argsbarg works; authoring conventions | This directory — shipped in `node_modules/argsbarg/docs/` after `bun add argsbarg` |
 | **Consumer docgen** | *Your* command tree, API, MCP guide for *your* app | `myapp docs cli`, `docs cli-schema`, `docs mcp` — written to `./docs/` with `--save` |
-| **Cursor rule** | Thin tripwire telling agents to read framework docs | `node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc` — included by `create`; refresh with `merge-cli-program-rule.ts` |
+| **Cursor rule** | Thin tripwire telling agents to read framework docs | `node_modules/argsbarg/examples/full-example-json/.cursor/rules/cli-program.mdc` — merge default for consumers; `create` includes a template copy |
 
 Agents do **not** load `node_modules/argsbarg/docs/` unless your repo references them (Cursor rule, `AGENTS.md`, or an `alwaysApply` project rule). Generated `./docs/cli.md` in a consumer repo describes **your** CLI, not argsbarg itself.

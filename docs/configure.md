@@ -68,10 +68,8 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | --- | --- | --- |
 | Binary | skipped (read-only) | Homebrew formula `bin.install` |
 | Shell completions | skipped | Homebrew `generate_completions_from_executable` |
-| Cursor skill | Y/n prompt | `~/.cursor/skills/<dir>/` when `~/.cursor` exists |
-| Claude skill | Y/n prompt | `~/.claude/skills/<dir>/` when `~/.claude` exists |
-| Codex / OpenCode / OpenClaw skills | Y/n prompt | Agent-specific dirs when available |
-| MCP config | Y/n prompt when `mcpServer.enabled` | Cursor, Claude Code/Desktop, OpenCode, Codex, OpenClaw, ChatGPT desktop |
+| Agent skill | skipped (automatic) | `~/.agents/skills/<key>/` when `program.skill.enabled` |
+| MCP config | skipped (automatic) | `~/.agents/mcp.json` when `mcpServer.enabled` ([.agents protocol](https://dotagentsprotocol.com/)) |
 | App config | auto-runs wizard | Interactive wizard may update `~/.local/lib/<key>/config.json` when values change; `--sync` bootstraps an empty file on install |
 
 ### Externally managed binary (Homebrew)
@@ -79,37 +77,35 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 When **`PATH`** resolves the program key to the **running executable** (e.g. after `brew install`):
 
 - **`configure --status`** shows `app: system (PATH)`
-- **`--sync`** refreshes skills and MCP; also creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps)
+- **`configure --sync`** refreshes the agent skill (when `program.skill.enabled`) and merges MCP into `~/.agents/mcp.json` (when `mcpServer.enabled`); also creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps)
 
-MCP config uses the command name on **`PATH`**, not a Cellar path.
+MCP config uses the command name on **`PATH`**, not a Cellar path. For Cursor, Claude Code, and Claude Desktop, copy the `mcpServers` entry manually — see [mcp.md](mcp.md) and `docs mcp`.
 
 ### Interactive default
 
-Bare **`configure`** (TTY required) walks enabled install targets in order. For each target:
+Bare **`configure`** (TTY required) runs the app config wizard when `program.appConfig` has entries. Agent skills and MCP are **not** prompted — they install automatically via brew `post_install` / `--sync` when `program.skill.enabled` or `mcpServer.enabled` respectively.
 
-- **Not installed:** `[Y/n]` — default install; `n` skips.
-- **Installed:** `[y/N]` — default keep; `n` uninstalls.
-- **App config** (`program.appConfig` with entries): runs the config wizard automatically (no Y/n gate). Remove the config file with **`configure --remove-config --yes`**.
+Remove the config file with **`configure --remove-config --yes`**.
 
-The **`app`** target (binary on PATH) is shown in `--status` only — never mutated by `configure`.
+The **`app`** and **`skill`** / **`agentsMcp`** targets are shown in `--status` only — never mutated by interactive `configure` (use `--sync` / brew hooks).
 
 ### `configure.targets`
 
-Configure which artifacts participate in `--sync`:
+Optional gates for app binary status and app-config wizard participation in `--sync`:
 
 ```typescript
+skill: { enabled: true },
+mcpServer: { enabled: true },
 configure: {
-  agentIntegration: "mcp", // | "skill" | "both" — default from mcpServer.enabled
   targets: {
-    chatgptMcp: false,
-    cursorSkill: { includedInAll: true },
+    configure: { includedInAll: true }, // optional: app config wizard on --sync
   },
 },
 ```
 
 `ConfigureTargetSpec` is `boolean` or `{ enabled?: boolean; includedInAll?: boolean }`.
 
-Artifact keys: `chatgptMcp`, `claudeCodeMcp`, `claudeDesktopMcp`, `claudeSkill`, `codexMcp`, `codexSkill`, `configure`, `cursorMcp`, `cursorSkill`, `openclawMcp`, `openclawSkill`, `opencodeMcp`, `opencodeSkill`.
+Artifact keys: `app`, `configure`. Legacy `configure.targets.*Mcp` keys are rejected — MCP installs to `~/.agents/mcp.json` when `mcpServer.enabled`.
 
 ## App config (`program.appConfig`)
 

@@ -6,83 +6,54 @@ full-example exposes an MCP server with features similar to the CLI.
 
 ## Installation
 
-### `configure`
+### `.agents` auto-install
 
-Install the CLI first so `full-example` is on your PATH (e.g. `brew install full-example`). Host configs reference the app by name.
+When `mcpServer.enabled` is set, `configure --sync` merges this server into `~/.agents/mcp.json` per the [.agents protocol](https://dotagentsprotocol.com/).
+
+Install the CLI first so `full-example` is on your PATH (e.g. `brew install full-example`).
 
 ```bash
 full-example configure --sync --yes
 ```
 
-Merges the server entry below into host config when each host is present:
+Writes or updates `~/.agents/mcp.json` with a `mcpServers` entry for this app.
 
-| Host | Config file |
-| --- | --- |
-| Cursor | `~/.cursor/mcp.json` (when `~/.cursor` exists) |
-| Claude Code | `~/.claude.json` |
-| Claude Desktop | `claude_desktop_config.json` (when Claude Desktop app data exists) |
-| OpenCode | `~/.config/opencode/*` (when `~/.config/opencode` exists) |
-| OpenAI Codex | `~/.codex/config.toml` via `codex mcp add` (when `codex` is on PATH) |
-| ChatGPT desktop | `chatgpt_mcp_config.json` (when ChatGPT app data exists) |
+### Manual client setup
 
-Claude Desktop paths by platform:
-
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux:** `~/.config/Claude/claude_desktop_config.json`
-
-ChatGPT desktop JSON (when auto-installed):
-
-- **macOS:** `~/Library/Application Support/ChatGPT/chatgpt_mcp_config.json`
-- **Windows:** `%APPDATA%\OpenAI\ChatGPT\chatgpt_mcp_config.json`
-
-Restart Claude Desktop and ChatGPT desktop after changing their config files.
-
-### Manual fallbacks
-
-**OpenCode** (no `~/.config/opencode` yet):
+Many clients do not read `~/.agents/mcp.json` yet. Copy the `mcpServers` entry from that file, or paste:
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
+  "mcpServers": {
     "full_example": {
-      "type": "local",
-      "command": [
-        "full-example",
+      "command": "full-example",
+      "args": [
         "mcp"
-      ],
-      "enabled": true
+      ]
     }
   }
 }
 ```
 
-**Codex** (`codex` not on PATH):
+| Client | Config file |
+| --- | --- |
+| **Cursor** | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) |
+| **Claude Code** | `~/.claude.json` under `mcpServers`, or project `.mcp.json` |
+| **Claude Desktop** | See platform paths below |
 
-```toml
-[mcp_servers.full_example]
-command = "full-example"
-args = ["mcp"]
-```
+Restart Cursor or reload MCP after editing. Restart Claude Desktop after config changes.
 
-Or after installing Codex CLI: `codex mcp add full_example -- full-example mcp`.
+Claude Desktop config paths:
 
-### ChatGPT web (Connectors)
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
 
-OpenAI's documented path for **ChatGPT web/desktop** is **Settings → Connectors → Developer mode** with a **remote HTTPS MCP URL** — not local stdio. ChatGPT does not spawn `full-example mcp` directly.
-
-For local stdio, bridge and tunnel, then register the HTTPS URL in Connectors:
-
-1. Expose `full-example mcp` over HTTP (e.g. `mcp-remote`).
-2. Tunnel if needed (ngrok, Cloudflare Tunnel).
-3. Add the public URL as a custom connector.
-
-Desktop `chatgpt_mcp_config.json` is merged when the ChatGPT app is installed; support varies by build. Use Connectors when local JSON is absent or tools do not appear.
+On this machine (macOS/Linux): `/Users/briandombrowski/Library/Application Support/Claude/claude_desktop_config.json`
 
 ### Manual `mcpServers` entry
 
-For Cursor, Claude, and ChatGPT desktop JSON configs, add under `mcpServers`:
+Same shape as in `~/.agents/mcp.json`:
 
 ```json
 {
@@ -121,14 +92,7 @@ full-example mcp
 ## Exposed tools
 
 - `full-example echo` — echo — Echo a message (MCP-friendly leaf).
-- `full-example render-json` — render-json — Echo a JSON message (schema-first JSON leaf demo).
 - `full-example status` — status — Show app version. (flags: --json)
-- `full-example workspaces get` — workspaces get — List workspaces.
-- `full-example workspaces post` — workspaces post — Create a workspace.
-- `full-example workspaces :id get` — workspaces :id get — Get one workspace.
-- `full-example workspaces :id put` — workspaces :id put — Replace a workspace.
-- `full-example workspaces :id patch` — workspaces :id patch — Patch a workspace name.
-- `full-example workspaces :id delete` — workspaces :id delete — Delete a workspace.
 
 ## Tool arguments
 

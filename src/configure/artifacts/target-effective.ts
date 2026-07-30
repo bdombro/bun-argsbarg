@@ -1,26 +1,11 @@
-import type {
-  CliConfigureConfig,
-  CliConfigureTargets,
-  CliProgram,
-  InstallAgentIntegration,
-  InstallTargetSpec,
-} from "../../core/types.ts";
+import type { CliConfigureConfig, CliProgram, InstallTargetSpec } from "../../core/types.ts";
 import { resolveCapabilities } from "../../runtime/capabilities.ts";
-import {
-  AGENT_PAIRS,
-  INSTALL_ARTIFACT_KEYS,
-  installTargetForKey,
-  mcpServerRequiredForArtifact,
-} from "./target-registry.ts";
+import { INSTALL_ARTIFACT_KEYS, installTargetForKey, mcpServerRequiredForArtifact } from "./target-registry.ts";
 import type { CliInstallArtifactKey, InstallPlanMode } from "./target-types.ts";
 
 export type { InstallTargetSpec, ResolvedInstallTarget } from "../../core/types.ts";
 
 export type { InstallPlanMode, InstallScope } from "./target-types.ts";
-
-export function resolveAgentIntegration(configure?: CliConfigureConfig, mcpEnabled = false): InstallAgentIntegration {
-  return configure?.agentIntegration ?? (mcpEnabled ? "mcp" : "skill");
-}
 
 /** Resolves a boolean or object target spec against category defaults. */
 export function resolveInstallTargetSpec(
@@ -44,56 +29,34 @@ export function resolveInstallTargetSpec(
 
 function artifactDefaults(
   key: CliInstallArtifactKey,
-  integration: InstallAgentIntegration,
-  mcpServerEnabled: boolean,
+  program?: Pick<CliProgram, "mcpServer" | "skill">,
 ): { enabled: boolean; includedInAll: boolean } {
+  if (key === "skill") {
+    const on = program?.skill?.enabled === true;
+    return { enabled: on, includedInAll: on };
+  }
+  if (key === "agentsMcp") {
+    const on = program?.mcpServer?.enabled === true;
+    return { enabled: on, includedInAll: on };
+  }
   const target = installTargetForKey(key);
-  const includedInAll = target?.defaultIncludedInAll(integration) ?? false;
-  if (!mcpServerRequiredForArtifact(key, mcpServerEnabled)) {
+  if (!mcpServerRequiredForArtifact(key, program?.mcpServer?.enabled === true)) {
     return { enabled: false, includedInAll: false };
   }
-  return { enabled: true, includedInAll };
-}
-
-function applyAgentPairDedupe(
-  out: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
-  user: CliConfigureTargets | undefined,
-  integration: InstallAgentIntegration,
-): void {
-  if (integration === "both") return;
-
-  for (const [mcpKey, skillKey] of AGENT_PAIRS) {
-    const mcp = out[mcpKey];
-    const skill = out[skillKey];
-    if (!mcp.includedInAll || !skill.includedInAll) continue;
-
-    const mcpKeyExplicit = user?.[mcpKey] !== undefined;
-    const skillKeyExplicit = user?.[skillKey] !== undefined;
-
-    if (mcpKeyExplicit && !skillKeyExplicit) continue;
-    if (skillKeyExplicit && !mcpKeyExplicit) continue;
-
-    if (integration === "mcp") {
-      out[skillKey] = { ...skill, includedInAll: false };
-    } else {
-      out[mcpKey] = { ...mcp, includedInAll: false };
-    }
-  }
+  return { enabled: true, includedInAll: target?.defaultIncludedInAll() ?? false };
 }
 
 /** Effective per-artifact gates for install.targets. */
 export function resolveEffectiveInstallTargets(
   configure?: CliConfigureConfig,
-  program?: Pick<CliProgram, "mcpServer">,
+  program?: Pick<CliProgram, "mcpServer" | "skill">,
 ): Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }> {
-  const mcpEnabled = program?.mcpServer?.enabled === true;
-  const integration = resolveAgentIntegration(configure, mcpEnabled);
   const user = configure?.targets;
   const out = {} as Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   for (const key of INSTALL_ARTIFACT_KEYS) {
-    out[key] = resolveInstallTargetSpec(user?.[key], artifactDefaults(key, integration, mcpEnabled));
+    const userSpec = key === "skill" || key === "agentsMcp" ? undefined : user?.[key];
+    out[key] = resolveInstallTargetSpec(userSpec, artifactDefaults(key, program));
   }
-  applyAgentPairDedupe(out, user, integration);
   return out;
 }
 
@@ -103,7 +66,6 @@ export function mcpCategoryEnabled(root: CliProgram): boolean {
 }
 
 export interface InstallTargetPreview {
-  agentIntegration: InstallAgentIntegration;
   all: CliInstallArtifactKey[];
   mcp: CliInstallArtifactKey[];
   skill: CliInstallArtifactKey[];

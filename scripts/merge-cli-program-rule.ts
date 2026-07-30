@@ -22,6 +22,7 @@ function extractConventionSuffix(existing: string): string {
     if (!/^\*\*[^*\n]+ conventions:\*\*/.test(line)) continue;
     if (PLACEHOLDER_SUFFIX_LINE.test(line)) continue;
     if (/^\*\*full-example conventions:\*\*/i.test(line)) continue;
+    if (/^\*\*full-example-json conventions:\*\*/i.test(line)) continue;
     best = lines.slice(i).join("\n").trimEnd();
   }
   return best;
@@ -40,7 +41,7 @@ if (!consumerDir) {
   process.exit(1);
 }
 
-const templatePath = process.argv[3] ?? join(repoRoot, "examples/full-example/.cursor/rules/cli-program.mdc");
+const templatePath = process.argv[3] ?? join(repoRoot, "examples/full-example-json/.cursor/rules/cli-program.mdc");
 const rulePath = join(consumerDir, ".cursor/rules/cli-program.mdc");
 
 const template = readFileSync(templatePath, "utf8").trimEnd();

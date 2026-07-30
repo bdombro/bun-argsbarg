@@ -28,6 +28,7 @@ const fixture: CliProgram = {
   version: "0.0.0",
   description: "Test",
   mcpServer: { enabled: true },
+  skill: { enabled: true },
   handler: () => {},
 };
 
@@ -72,7 +73,7 @@ describe("configure opts", () => {
 describe("configure mutation summary", () => {
   test("interactive uninstall reports removed artifacts not file count", () => {
     const msg = formatConfigureMutationSummary(
-      { paths: ["~/.cursor/skills/testapp/"], installed: 0, removed: 1, configured: 0 },
+      { paths: ["~/.agents/skills/testapp/"], installed: 0, removed: 1, configured: 0 },
       {},
     );
     expect(msg).toBe("Removed 1 artifact.");
@@ -81,7 +82,7 @@ describe("configure mutation summary", () => {
   test("interactive install reports installed artifacts not file count", () => {
     const msg = formatConfigureMutationSummary(
       {
-        paths: ["~/.cursor/skills/testapp/SKILL.md", "~/.cursor/skills/testapp/reference.md"],
+        paths: ["~/.agents/skills/testapp/SKILL.md", "~/.agents/skills/testapp/reference.md"],
         installed: 1,
         removed: 0,
         configured: 0,
@@ -110,10 +111,10 @@ describe("configure mutation summary", () => {
 
 /** Tests for install paths. */
 describe("install paths", () => {
-  test("resolveInstallPaths includes skill and mcp paths", () => {
+  test("resolveInstallPaths includes agents skill and mcp paths", () => {
     const paths = resolveInstallPaths(fixture);
-    expect(paths.cursorSkillDir).toContain(".cursor/skills");
-    expect(paths.cursorMcpPath).toContain("mcp.json");
+    expect(paths.agentsSkillDir).toContain(".agents/skills");
+    expect(paths.agentsMcpPath).toContain(".agents/mcp.json");
   });
 
   test("claude desktop mcp path on darwin", () => {
@@ -131,28 +132,28 @@ describe("install paths", () => {
 
 /** Tests for detect installed. */
 describe("detect installed", () => {
-  /** Detects cursor mcp when configured. */
-  test("detects cursor mcp when configured", () => {
+  test("detects agents mcp when configured", () => {
     const paths = resolveInstallPaths(fixture);
-    mkdirSync(join(home, ".cursor"), { recursive: true });
+    mkdirSync(join(home, ".agents"), { recursive: true });
     writeFileSync(
-      paths.cursorMcpPath,
+      paths.agentsMcpPath,
       JSON.stringify({ mcpServers: { testapp: { command: "testapp", args: ["mcp"] } } }),
       "utf8",
     );
 
     const detected = detectInstalledArtifacts(paths, fixture);
-    expect(detected.cursorMcp).toBe(true);
+    expect(detected.agentsMcp).toBe(true);
     expect(detected.app).toBe(false);
   });
 });
 
 /** Tests for sync plan. */
 describe("sync plan", () => {
-  test("buildUpdatePlan greenfield includes agent targets", () => {
+  test("buildUpdatePlan greenfield includes skill when enabled", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUpdatePlan(fixture, paths, parseInstallOpts({ reinstall: "1", yes: "1" }));
     expect(plan.length).toBeGreaterThan(0);
+    expect(plan.some((a) => a.kind === "agent-skill")).toBe(true);
     expect(plan.some((a) => a.kind === "app")).toBe(false);
   });
 
@@ -160,19 +161,14 @@ describe("sync plan", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ all: "1" }));
     expect(plan.some((a) => a.kind === "app")).toBe(false);
-    expect(plan.some((a) => a.kind.endsWith("-mcp"))).toBe(true);
+    expect(plan.some((a) => a.kind === "agent-skill")).toBe(true);
+    expect(plan.some((a) => a.kind === "agents-mcp")).toBe(true);
   });
 
-  test("buildInstallPlan respects configure.agentIntegration skill", () => {
-    const skillApp: CliProgram = {
-      ...fixture,
-      configure: { agentIntegration: "skill" },
-    };
-    const paths = resolveInstallPaths(skillApp);
-    mkdirSync(join(home, ".claude"), { recursive: true });
-    mkdirSync(join(home, ".cursor"), { recursive: true });
-    const plan = buildInstallPlan(skillApp, paths, parseInstallOpts({ mcp: "1" }));
-    expect(plan.some((a) => a.kind.endsWith("-mcp"))).toBe(false);
+  test("buildInstallPlan --mcp scoped includes agentsMcp when mcp enabled", () => {
+    const paths = resolveInstallPaths(fixture);
+    const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ mcp: "1" }));
+    expect(plan.some((a) => a.kind === "agents-mcp")).toBe(true);
   });
 });
 
@@ -184,43 +180,35 @@ describe("remove plan", () => {
     expect(plan.length).toBe(0);
   });
 
-  test("configure --remove-all removes installed cursor skill", async () => {
-    const skillApp: CliProgram = {
-      ...fixture,
-      configure: { agentIntegration: "skill" },
-    };
-    const paths = resolveInstallPaths(skillApp);
-    mkdirSync(paths.cursorSkillDir, { recursive: true });
-    writeFileSync(join(paths.cursorSkillDir, "SKILL.md"), "# test\n", "utf8");
+  test("configure --remove-all removes installed agent skill", async () => {
+    const paths = resolveInstallPaths(fixture);
+    mkdirSync(paths.agentsSkillDir, { recursive: true });
+    writeFileSync(join(paths.agentsSkillDir, "SKILL.md"), "# test\n", "utf8");
 
-    expect(detectInstalledArtifacts(paths, skillApp).cursorSkill).toBe(true);
+    expect(detectInstalledArtifacts(paths, fixture).skill).toBe(true);
 
-    const result = await new Cli(skillApp).invoke(["configure", "--remove-all", "--yes"]);
+    const result = await new Cli(fixture).invoke(["configure", "--remove-all", "--yes"]);
     expect(result.exitCode).toBe(0);
-    expect(existsSync(paths.cursorSkillDir)).toBe(false);
+    expect(existsSync(paths.agentsSkillDir)).toBe(false);
   });
 
-  test("scoped skill uninstall action removes directory without global uninstall flag", () => {
-    const skillApp: CliProgram = {
-      ...fixture,
-      configure: { agentIntegration: "skill" },
-    };
-    const paths = resolveInstallPaths(skillApp);
-    mkdirSync(paths.cursorSkillDir, { recursive: true });
-    writeFileSync(join(paths.cursorSkillDir, "SKILL.md"), "# test\n", "utf8");
+  test("scoped skill uninstall action removes directory", () => {
+    const paths = resolveInstallPaths(fixture);
+    mkdirSync(paths.agentsSkillDir, { recursive: true });
+    writeFileSync(join(paths.agentsSkillDir, "SKILL.md"), "# test\n", "utf8");
 
-    const detected = buildDetectedSnapshot(skillApp, paths);
-    const ctx = buildTargetPlanContext(skillApp, paths, {}, detected);
-    const target = installTargetForKey("cursorSkill");
+    const detected = buildDetectedSnapshot(fixture, paths);
+    const ctx = buildTargetPlanContext(fixture, paths, {}, detected);
+    const target = installTargetForKey("skill");
     expect(target).toBeDefined();
     const actions = target!.planUninstall({
       ...ctx,
       mode: "uninstall-scoped",
-      include: (key) => key === "cursorSkill",
+      include: (key) => key === "skill",
     });
     expect(actions).toHaveLength(1);
     expect(actions[0]!.run().length).toBeGreaterThan(0);
-    expect(existsSync(paths.cursorSkillDir)).toBe(false);
+    expect(existsSync(paths.agentsSkillDir)).toBe(false);
   });
 });
 
@@ -247,6 +235,7 @@ describe("configure --sync bootstrap", () => {
       key: "syncboot",
       version: "0.0.0",
       description: "Sync bootstrap test.",
+      skill: { enabled: true },
       handler: () => {},
       configure: { enabled: true },
     };

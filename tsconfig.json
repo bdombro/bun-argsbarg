@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "exclude": ["examples/full-example", "src/pdf-gen.integration.test.ts"]
+  "exclude": ["examples/full-example", "examples/full-example-json", "src/pdf-gen.integration.test.ts"]
 }

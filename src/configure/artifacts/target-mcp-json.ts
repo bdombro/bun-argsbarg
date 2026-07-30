@@ -23,10 +23,9 @@ export interface McpJsonHostSpec {
   key: CliInstallArtifactKey;
   actionKind: InstallActionKind;
   label: string;
-  pairedSkillKey?: CliInstallArtifactKey;
   configPath: (paths: InstallPaths) => string;
-  detectedKey: keyof Pick<InstalledArtifacts, "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp">;
-  statusField: keyof Pick<InstallStatus, "cursorMcp" | "claudeMcp" | "claudeDesktopMcp" | "chatGptMcp">;
+  detectedKey: keyof Pick<InstalledArtifacts, "agentsMcp">;
+  statusField: keyof Pick<InstallStatus, "agentsMcp">;
   isAvailable: (root: CliProgram, paths: InstallPaths) => boolean;
   /** Append server name to status line (default false). */
   statusIncludesServer?: boolean;
@@ -41,7 +40,6 @@ export class McpJsonInstallTarget extends InstallTarget {
   readonly key: CliInstallArtifactKey;
   readonly actionKind: InstallActionKind;
   readonly category = "mcp" as const;
-  readonly pairedKey?: CliInstallArtifactKey;
 
   private readonly spec: McpJsonHostSpec;
 
@@ -50,7 +48,6 @@ export class McpJsonInstallTarget extends InstallTarget {
     this.spec = spec;
     this.key = spec.key;
     this.actionKind = spec.actionKind;
-    this.pairedKey = spec.pairedSkillKey;
   }
 
   isAvailable(root: CliProgram, paths: InstallPaths): boolean {

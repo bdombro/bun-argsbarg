@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 import type { CliProgram } from "../../core/types.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
 import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
-import { resolveAgentIntegration, resolveEffectiveInstallTargets } from "./target-effective.ts";
+import { resolveEffectiveInstallTargets } from "./target-effective.ts";
 import { isArtifactInScope } from "./target-scope.ts";
 
 /** Tests for normalizeInstallRawOpts. */
@@ -27,17 +27,6 @@ describe("normalizeInstallRawOpts", () => {
   });
 });
 
-/** Tests for resolveAgentIntegration. */
-describe("resolveAgentIntegration", () => {
-  test("defaults to skill without MCP", () => {
-    expect(resolveAgentIntegration(undefined, false)).toBe("skill");
-  });
-
-  test("defaults to mcp when MCP enabled", () => {
-    expect(resolveAgentIntegration(undefined, true)).toBe("mcp");
-  });
-});
-
 /** Tests for resolveEffectiveInstallTargets. */
 describe("resolveEffectiveInstallTargets", () => {
   test("defaults app and configure not in --all", () => {
@@ -46,77 +35,50 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.configure.includedInAll).toBe(false);
   });
 
-  test("skill mode includes skills in --all not MCP pairs", () => {
-    const program: Pick<CliProgram, "mcpServer"> = {};
-    const t = resolveEffectiveInstallTargets(undefined, program);
-    expect(t.cursorSkill.includedInAll).toBe(true);
-    expect(t.cursorSkill.enabled).toBe(true);
-    expect(t.cursorMcp.includedInAll).toBe(false);
-    expect(t.cursorMcp.enabled).toBe(false);
+  test("skill disabled by default", () => {
+    const t = resolveEffectiveInstallTargets(undefined, {});
+    expect(t.skill.enabled).toBe(false);
+    expect(t.skill.includedInAll).toBe(false);
+    expect(t.agentsMcp.includedInAll).toBe(false);
   });
 
-  test("mcp mode includes MCP in --all not paired skills", () => {
+  test("skill enabled via program.skill", () => {
+    const t = resolveEffectiveInstallTargets(undefined, { skill: { enabled: true } });
+    expect(t.skill.enabled).toBe(true);
+    expect(t.skill.includedInAll).toBe(true);
+  });
+
+  test("agentsMcp in --all when mcpServer enabled", () => {
     const program: Pick<CliProgram, "mcpServer"> = { mcpServer: { enabled: true } };
     const t = resolveEffectiveInstallTargets(undefined, program);
-    expect(t.cursorMcp.includedInAll).toBe(true);
-    expect(t.cursorSkill.includedInAll).toBe(false);
-    expect(t.claudeDesktopMcp.includedInAll).toBe(true);
+    expect(t.agentsMcp.enabled).toBe(true);
+    expect(t.agentsMcp.includedInAll).toBe(true);
+    expect(t.skill.includedInAll).toBe(false);
   });
 
-  test("both mode includes MCP and skills", () => {
-    const program: Pick<CliProgram, "mcpServer"> = { mcpServer: { enabled: true } };
-    const t = resolveEffectiveInstallTargets({ agentIntegration: "both" }, program);
-    expect(t.cursorMcp.includedInAll).toBe(true);
-    expect(t.cursorSkill.includedInAll).toBe(true);
-  });
-
-  test("per-key override disables one skill", () => {
-    const t = resolveEffectiveInstallTargets({
-      targets: { cursorSkill: false },
-    });
-    expect(t.claudeSkill.includedInAll).toBe(true);
-    expect(t.cursorSkill.enabled).toBe(false);
-  });
-
-  /** Scoped --mcp uses effective targets not all MCP hosts. */
-  test("scoped --mcp uses effective targets not all MCP hosts", () => {
+  test("scoped --mcp includes agentsMcp when mcpServer enabled", () => {
     const program: CliProgram = {
       key: "app",
       version: "1",
       description: "x",
       mcpServer: { enabled: true },
-      configure: { agentIntegration: "skill" },
       handler: () => {},
     };
     const effective = resolveEffectiveInstallTargets(program.configure, program);
     const scope = { mcp: true };
-    expect(isArtifactInScope("cursorMcp", scope, effective, "install-scoped", program)).toBe(false);
-    expect(
-      isArtifactInScope(
-        "cursorMcp",
-        scope,
-        resolveEffectiveInstallTargets({ targets: { cursorMcp: true }, agentIntegration: "both" }, program),
-        "install-scoped",
-        program,
-      ),
-    ).toBe(true);
+    expect(isArtifactInScope("agentsMcp", scope, effective, "install-scoped", program)).toBe(true);
   });
 
-  /** Scoped --mcp --skill --configure includes skill and mcp not only configure. */
-  test("scoped --mcp --skill --configure includes skill and mcp not only configure", () => {
+  test("scoped --skill includes skill when program.skill.enabled", () => {
     const program: CliProgram = {
       key: "app",
       version: "1",
       description: "x",
-      mcpServer: { enabled: true },
-      configure: { agentIntegration: "both" },
+      skill: { enabled: true },
       handler: () => {},
     };
     const effective = resolveEffectiveInstallTargets(program.configure, program);
-    const scope = { mcp: true, skill: true, configure: true };
-    expect(isArtifactInScope("cursorSkill", scope, effective, "install-scoped", program)).toBe(true);
-    expect(isArtifactInScope("cursorMcp", scope, effective, "install-scoped", program)).toBe(true);
-    expect(isArtifactInScope("configure", scope, effective, "install-scoped", program)).toBe(true);
-    expect(isArtifactInScope("claudeSkill", scope, effective, "install-scoped", program)).toBe(true);
+    const scope = { skill: true };
+    expect(isArtifactInScope("skill", scope, effective, "install-scoped", program)).toBe(true);
   });
 });

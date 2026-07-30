@@ -6,13 +6,14 @@ import {
   applyCreate,
   type CreateOptions,
   diffCreateDetails,
+  normalizeCreateTemplateId,
   parseCreateArgv,
   printCreateDiffs,
   renderCreateTree,
   resolveCreateOptions,
 } from "./create.ts";
 import { printPostCreatePlan, runPostCreate } from "./post-create.ts";
-import { promptConfirm, promptOptional, promptRequired } from "./prompt.ts";
+import { promptConfirm, promptOptional, promptRequired, promptTemplateChoice } from "./prompt.ts";
 
 function isInteractiveTty(): boolean {
   return Boolean(process.stdin.isTTY);
@@ -22,7 +23,10 @@ function collectInteractiveOptions(
   partial: Partial<CreateOptions>,
   dir: string,
 ): { opts: CreateOptions; baseDir: string } {
-  process.stderr.write("Argsbarg create — bootstrap a new CLI from full-example\n\n");
+  process.stderr.write("Argsbarg create — bootstrap a new CLI\n\n");
+
+  const templateId = partial.templateId ?? promptTemplateChoice();
+
   const targetDir = promptOptional("Target directory", dir) ?? dir;
   const baseDir = resolve(process.cwd(), targetDir);
   const key = promptRequired("CLI key (binary name)", partial.key);
@@ -31,6 +35,7 @@ function collectInteractiveOptions(
   const opts = resolveCreateOptions(
     {
       ...partial,
+      templateId,
       key,
       releaseRepo,
       force: partial.force ?? false,
@@ -38,7 +43,8 @@ function collectInteractiveOptions(
     baseDir,
   );
 
-  process.stderr.write(`\nTarget: ${baseDir}\n`);
+  process.stderr.write(`\nTemplate: ${opts.templateId}\n`);
+  process.stderr.write(`Target: ${baseDir}\n`);
   process.stderr.write(`Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}  Release: ${opts.releaseRepo}\n`);
   process.stderr.write(`Homepage: ${opts.homepage}\n\n`);
   const tree = renderCreateTree(opts);
@@ -47,7 +53,7 @@ function collectInteractiveOptions(
     process.stderr.write(`  ${rel}\n`);
   }
   process.stderr.write("\n");
-  printPostCreatePlan();
+  printPostCreatePlan(opts.templateId);
   process.stderr.write("\n");
 
   if (!promptConfirm("Proceed")) {
@@ -91,7 +97,13 @@ export async function runCreate(input: Partial<CreateOptions> & { dir?: string }
     if (!partial.releaseRepo) {
       throw new Error("--release-repo is required in non-interactive mode.");
     }
-    opts = resolveCreateOptions(partial, baseDir);
+    opts = resolveCreateOptions(
+      {
+        ...partial,
+        templateId: normalizeCreateTemplateId(partial.templateId),
+      },
+      baseDir,
+    );
     return runCreateApply(baseDir, opts, partial.dryRun ?? false);
   } catch (err) {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
@@ -104,7 +116,7 @@ async function runCreateApply(baseDir: string, opts: CreateOptions, dryRun: bool
     const written = applyCreate(baseDir, { ...opts, dryRun: true, check: false });
     process.stdout.write(`Would write ${written.length} file(s) under ${baseDir}\n`);
     for (const w of written) process.stdout.write(`  ${relative(baseDir, w) || w}\n`);
-    printPostCreatePlan();
+    printPostCreatePlan(opts.templateId);
     return 0;
   }
 
@@ -120,7 +132,7 @@ async function runCreateApply(baseDir: string, opts: CreateOptions, dryRun: bool
     process.stdout.write(`  ${relative(baseDir, w) || w}\n`);
   }
 
-  await runPostCreate(baseDir, false);
+  await runPostCreate(baseDir, false, opts.templateId);
   process.stdout.write("Done.\n");
   return 0;
 }

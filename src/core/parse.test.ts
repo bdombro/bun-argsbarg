@@ -1149,13 +1149,17 @@ test("configure.prefix is rejected", () => {
 
 /** Tests that generateSkillBundle includes frontmatter and compact command index. */
 test("generateSkillBundle includes frontmatter and compact command index", () => {
-  const bundle = generateSkillBundle(nestedMcpFixture, "cursor");
-  expect(bundle.dirName).toBe("nested_ts");
-  expect(bundle.skillMd).toMatch(/^---\nname: nested_ts\n/);
+  const bundle = generateSkillBundle(nestedMcpFixture);
+  expect(bundle.dirName).toBe("nested.ts");
+  expect(bundle.skillMd).toMatch(/^---\nid: nested\.ts\nname: nested\.ts\n/);
+  expect(bundle.skillMd).toContain("enabled: true");
+  expect(bundle.skillMd).toContain("dotagentsprotocol.com");
+  expect(bundle.skillMd).toContain("~/.claude/skills/nested.ts");
   expect(bundle.skillMd).toContain("## Commands");
   expect(bundle.skillMd).toContain("`nested.ts stat owner lookup <path>`");
   expect(bundle.skillMd).toContain("Invoke via shell:");
   expect(bundle.skillMd).toContain("For full detail, open `reference.md`");
+  expect(bundle.skillMd).toContain("~/.agents/skills/nested.ts/");
   expect(bundle.skillMd).not.toContain("#### Options");
   expect(bundle.skillMd).not.toContain("CLI API reference");
   expect(bundle.skillMd).not.toContain("mcp.json");
@@ -1183,15 +1187,15 @@ test("generatePluginSkillBundle is MCP routing stub without shell catalog", () =
   expect(bundle.skillMd).not.toContain("## Commands");
 });
 
-/** CliSkillInstall writes project Cursor skill files. */
-test("cliSkillInstall writes project Cursor skill files", () => {
+/** CliSkillInstall writes project agent skill files. */
+test("cliSkillInstall writes project agent skill files", () => {
   const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-"));
   const prev = process.cwd();
   process.chdir(cwd);
   try {
-    const files = cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
-    expect(files.some((f) => f.includes(".cursor/skills/nested_ts/"))).toBe(true);
-    const skillDir = join(cwd, ".cursor", "skills", "nested_ts");
+    const files = cliSkillInstall(nestedMcpFixture, { global: false, rimraf: true });
+    expect(files.some((f) => f.includes(".agents/skills/nested.ts/"))).toBe(true);
+    const skillDir = join(cwd, ".agents", "skills", "nested.ts");
     expect(existsSync(join(skillDir, "SKILL.md"))).toBe(true);
     expect(existsSync(join(skillDir, "reference.md"))).toBe(true);
     expect(readFileSync(join(skillDir, "SKILL.md"), "utf8")).toContain("## Commands");
@@ -1208,15 +1212,15 @@ test("cliSkillInstall writes project Cursor skill files", () => {
   }
 });
 
-/** CliSkillInstall global uses HOME skills directory. */
-test("cliSkillInstall global uses HOME skills directory", () => {
+/** CliSkillInstall global uses HOME agents skills directory. */
+test("cliSkillInstall global uses HOME agents skills directory", () => {
   const home = mkdtempSync(join(tmpdir(), "argsbarg-home-"));
   const prevHome = process.env.HOME;
   process.env.HOME = home;
   try {
-    const files = cliSkillInstall(nestedMcpFixture, "cursor", { global: true, rimraf: true });
-    expect(files.some((f) => f.includes(join(home, ".cursor", "skills", "nested_ts")))).toBe(true);
-    expect(existsSync(join(home, ".cursor", "skills", "nested_ts", "SKILL.md"))).toBe(true);
+    const files = cliSkillInstall(nestedMcpFixture, { global: true, rimraf: true });
+    expect(files.some((f) => f.includes(join(home, ".agents", "skills", "nested.ts")))).toBe(true);
+    expect(existsSync(join(home, ".agents", "skills", "nested.ts", "SKILL.md"))).toBe(true);
   } finally {
     if (prevHome === undefined) {
       delete process.env.HOME;
@@ -1233,28 +1237,13 @@ test("cliSkillInstall rimraf overwrites existing directory", () => {
   const prev = process.cwd();
   process.chdir(cwd);
   try {
-    cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
-    writeFileSync(join(cwd, ".cursor", "skills", "nested_ts", "SKILL.md"), "stale", "utf8");
-    const files = cliSkillInstall(nestedMcpFixture, "cursor", { rimraf: true });
+    cliSkillInstall(nestedMcpFixture, { global: false, rimraf: true });
+    writeFileSync(join(cwd, ".agents", "skills", "nested.ts", "SKILL.md"), "stale", "utf8");
+    const files = cliSkillInstall(nestedMcpFixture, { global: false, rimraf: true });
     expect(files.length).toBeGreaterThan(0);
-    expect(readFileSync(join(cwd, ".cursor", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain(
+    expect(readFileSync(join(cwd, ".agents", "skills", "nested.ts", "SKILL.md"), "utf8")).toContain(
       "stat owner lookup",
     );
-  } finally {
-    process.chdir(prev);
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
-
-/** CliSkillInstall claude target uses .claude/skills. */
-test("cliSkillInstall claude target uses .claude/skills", () => {
-  const cwd = mkdtempSync(join(tmpdir(), "argsbarg-skill-claude-"));
-  const prev = process.cwd();
-  process.chdir(cwd);
-  try {
-    const files = cliSkillInstall(nestedMcpFixture, "claude", { rimraf: true });
-    expect(files.some((f) => f.includes(".claude/skills/nested_ts/"))).toBe(true);
-    expect(readFileSync(join(cwd, ".claude", "skills", "nested_ts", "SKILL.md"), "utf8")).toContain("Claude Code");
   } finally {
     process.chdir(prev);
     rmSync(cwd, { recursive: true, force: true });

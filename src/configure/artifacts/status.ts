@@ -34,7 +34,6 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
   if (opts.json) {
     const preview = resolveInstallTargetPreview(root, paths);
     const json: Record<string, unknown> = {
-      agentIntegration: preview.agentIntegration,
       effective: {
         all: preview.all,
         mcp: preview.mcp,
@@ -42,14 +41,8 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
       },
     };
     if (status.app) json.app = status.app;
-    if (status.cursorSkill) json.cursorSkill = status.cursorSkill;
-    if (status.claudeSkill) json.claudeSkill = status.claudeSkill;
-    if (status.cursorMcp) json.cursorMcp = status.cursorMcp;
-    if (status.claudeMcp) json.claudeMcp = status.claudeMcp;
-    if (status.claudeDesktopMcp) json.claudeDesktopMcp = status.claudeDesktopMcp;
-    if (status.opencodeMcp) json.opencodeMcp = status.opencodeMcp;
-    if (status.codexMcp) json.codexMcp = status.codexMcp;
-    if (status.chatGptMcp) json.chatGptMcp = status.chatGptMcp;
+    if (status.skill) json.skill = status.skill;
+    if (status.agentsMcp) json.agentsMcp = status.agentsMcp;
     process.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
     return;
   }
@@ -57,14 +50,8 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
   installOut(`Installed artifacts for ${root.key}:`, opts);
   const lines: [string, string | undefined][] = [
     ["app", status.app],
-    ["cursor skill", status.cursorSkill],
-    ["claude skill", status.claudeSkill],
-    ["cursor mcp", status.cursorMcp],
-    ["claude code mcp", status.claudeMcp],
-    ["claude desktop mcp", status.claudeDesktopMcp],
-    ["opencode mcp", status.opencodeMcp],
-    ["codex mcp", status.codexMcp],
-    ["chatgpt desktop mcp", status.chatGptMcp],
+    ["agent skill", status.skill],
+    [".agents mcp", status.agentsMcp],
   ];
   let any = false;
   for (const [label, value] of lines) {
@@ -79,10 +66,6 @@ export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
 
   const configStatus = appConfigStatus(root);
   if (configStatus) {
-    installOut(`  app config: ${configStatus.path}${configStatus.exists ? "" : " (missing)"}`, opts);
-    for (const req of configStatus.required) {
-      const bindingHint = req.binding && req.binding !== "missing" && req.set ? ` (${req.binding})` : "";
-      installOut(`    ${req.key}: ${req.set ? "set" : "missing"}${bindingHint}`, opts);
-    }
+    installOut(`  app config: ${configStatus}`, opts);
   }
 }

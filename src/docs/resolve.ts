@@ -99,7 +99,7 @@ export function docsTopicContent(program: CliProgram, topic: string): string {
     return generateCliGuide(program);
   }
   if (topic === "skill") {
-    return `${generateSkillBundle(program, "cursor").skillMd}\n`;
+    return `${generateSkillBundle(program).skillMd}\n`;
   }
   const text = docsTopicText(program, topic);
   return text.endsWith("\n") ? text : `${text}\n`;

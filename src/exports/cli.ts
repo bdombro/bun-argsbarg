@@ -32,7 +32,7 @@ export type {
   CliProgram,
   CliRespondBody,
   CliRespondOptions,
-  InstallAgentIntegration,
+  CliSkillConfig,
   InstallTargetSpec,
   ResolvedInstallTarget,
 } from "../core/types.ts";

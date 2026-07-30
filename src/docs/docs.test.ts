@@ -296,17 +296,17 @@ test("completions offer docs subcommands", () => {
   expect(bash).toContain("skill) echo");
 });
 
-test("generateMcpGuide includes schema URI and configure sync", () => {
+test("generateMcpGuide includes schema URI and .agents install", () => {
   const guide = generateMcpGuide(docsFixture(true));
   expect(guide).toContain("myapp://schema");
+  expect(guide).toContain("~/.agents/mcp.json");
   expect(guide).toContain("~/.cursor/mcp.json");
   expect(guide).toContain("claude_desktop_config.json");
   expect(guide).toContain("## Installation");
   expect(guide).toContain("## Running directly");
   expect(guide).toContain("configure --sync");
-  expect(guide).toContain("brew install myapp");
-  expect(guide).toContain("OpenAI Codex");
-  expect(guide).toContain("ChatGPT");
+  expect(guide).toContain("dotagentsprotocol.com");
+  expect(guide).not.toContain("OpenAI Codex");
 });
 
 test("docs --save writes topic file", async () => {

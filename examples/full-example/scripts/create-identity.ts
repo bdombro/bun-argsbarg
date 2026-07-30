@@ -6,6 +6,7 @@ export const createIdentity = {
   tap: "bdombro/bun-argsbarg",
   homepage: "https://github.com/bdombro/bun-argsbarg",
   releaseRepo: "bdombro/bun-argsbarg",
-  desc: "Argsbarg full example reference app",
+  desc: "Argsbarg CLI copy template (MCP, HTTP, configure, skills; no schemagen)",
   envPrefix: "FULL_EXAMPLE",
+  template: "cli",
 } as const;

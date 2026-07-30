@@ -6,7 +6,7 @@ alwaysApply: true
 
 ## JSDoc
 
-Add doc comments for exported surfaces that are not obvious from the name alone: JSON output schemas, public types, and non-trivial algorithms. Skip comments on short test callbacks and pure re-export files.
+Add doc comments for exported surfaces that are not obvious from the name alone. Skip comments on short test callbacks and pure re-export files.
 
 ## Names
 
@@ -21,27 +21,18 @@ After imports, put **exported** symbols first (alphabetical within each kind), t
 | Path | Owns | Must not |
 | --- | --- | --- |
 | `src/index.ts` | Thin entry: `new Cli(program).run()` | Inline leaf handlers, business logic |
-| `src/types/` | Global type declarations and module augmentations (e.g. `argsbarg.d.ts`, `md.d.ts`) | Runtime logic, imports from outside `types/` |
+| `src/types/` | Global type declarations (e.g. `md.d.ts`) | Runtime logic |
 | `src/program.ts` | `CliProgram` assembly: `docs`, `commands: […]` | Inline leaf handlers, business logic |
-| `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrate.ts`, `migrations/*.sql` | Command handlers |
-| `src/commands/<name>/` | One user-facing command: `command.ts`, optional `types.ts` with `/** @sg */` | Shared helpers (lift to `src/db/`) |
-| `src/**/__generated__/` | Generated JSON Schema + `index.ts` re-exports | Hand-edited generated files |
+| `src/commands/<name>/` | One user-facing command: `command.ts` | Shared helpers unrelated to the command |
 | `scripts/` | Dev tooling (formula helpers) | Production command paths |
 
-When adding commands: `src/commands/<name>/command.ts` + `types.ts` when schemas are needed; register in `program.ts` **alphabetically by command key**.
+When adding commands: `src/commands/<name>/command.ts`; register in `program.ts` **alphabetically by command key**.
 
 **Argsbarg schema:** `.cursor/rules/cli-program.mdc`.
 
 ## Execution
 
-- **Runtime:** Bun (`just test`, `just dev`).
-- **Tests:** colocate `*.test.ts` next to the module.
-- **Schemagen:** after changing `/** @sg */` types in `src/`, run `just schemagen` (`__generated__/` is gitignored).
+- **CLI:** `bun ./src/index.ts …` or `just run …`
+- **Tests:** `just test` (after `just check`)
 
-**full-example conventions:** replace with domain-specific layout notes (JSON-only vs Ink, shared flags, etc.).
-
-## Abstractions
-
-Avoid needless extraction: keep single-use helpers in the calling file by default. Split only when reused elsewhere, the caller is large or hard to follow, or extraction clarifies a substantial unit. Do not create tiny one-off helpers.
-- ❌ `utils/formatX.ts` — 60-line helper used by one command
-- ✅ inline helper in that command file
+**full-example conventions:** replace this line with app-specific bullets. Keep at the bottom of this file.

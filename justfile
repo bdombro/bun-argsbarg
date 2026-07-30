@@ -2,8 +2,9 @@
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-# Apps which contributers are testing argsbarg with; helpful for testing and keeping in sync.
-consumer_apps := ""
+# Local argsbarg consumer repos (machine-specific). Each program should set skill.enabled and/or
+# mcpServer.enabled; configure --sync installs to ~/.agents/skills/<key>/ and ~/.agents/mcp.json.
+consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
 
 # List available recipes (default)
 _:
@@ -53,7 +54,7 @@ consumers-dev:
       (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
     done
 
-# Pin consumers to ^<this repo version>, install, merge Cursor rule, build, docgen
+# Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure --sync → ~/.agents/)
 consumers-sync:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
@@ -63,13 +64,24 @@ consumers-sync:
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       echo "==> $(basename "$dir") ($dir)"
-      (cd "$dir" && bun add "argsbarg@^${latest}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
+      (cd "$dir" && bun add "argsbarg@^${latest}" && \
+        bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && \
+        bun "${root}/scripts/merge-code-rule.ts" "$dir" && \
+        just build && just docgen && just install-local)
     done
 
 # Run the full example (use the justfile in the examples/full-example directory)
 example-full:
     echo "Use the justfile in the examples/full-example directory."
     exit 1
+
+# Verify in-repo copy templates match argsbarg create output
+example-full-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{justfile_directory()}}"
+    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/full-example"
+    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/full-example-json"
 
 # Run the minimal example once
 example-minimal *ARGS:

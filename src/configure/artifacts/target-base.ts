@@ -1,13 +1,11 @@
-import type { CliProgram, InstallAgentIntegration } from "../../core/types.ts";
+import type { CliProgram } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import type {
   CliInstallArtifactKey,
   DetectedSnapshot,
   InstallAction,
-  InstallActionKind,
   InstalledArtifacts,
   InstallStatus,
-  InstallTargetCategory,
   TargetPlanContext,
   UninstallAction,
 } from "./target-types.ts";
@@ -15,18 +13,11 @@ import type {
 /** Shared lifecycle for one install artifact. */
 export abstract class InstallTarget {
   abstract readonly key: CliInstallArtifactKey;
-  abstract readonly actionKind: InstallActionKind;
-  abstract readonly category: InstallTargetCategory;
+  abstract readonly actionKind: import("./target-types.ts").InstallActionKind;
+  abstract readonly category: import("./target-types.ts").InstallTargetCategory;
 
-  /** Paired MCP/skill key for agentIntegration dedupe. */
-  readonly pairedKey?: CliInstallArtifactKey;
-
-  defaultIncludedInAll(integration: InstallAgentIntegration): boolean {
-    if (this.category === "core") return true;
-    if (this.category === "mcp") {
-      return integration === "mcp" || integration === "both";
-    }
-    return integration === "skill" || integration === "both";
+  defaultIncludedInAll(): boolean {
+    return false;
   }
 
   abstract isAvailable(root: CliProgram, paths: InstallPaths): boolean;

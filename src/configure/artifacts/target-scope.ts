@@ -6,7 +6,6 @@ import {
   type InstallPlanMode,
   type InstallScope,
   type InstallTargetPreview,
-  resolveAgentIntegration,
   resolveEffectiveInstallTargets,
   resolveInstallPlanMode,
 } from "./target-effective.ts";
@@ -30,18 +29,8 @@ export { mcpCategoryEnabled } from "./target-effective.ts";
 function emptyInstalledArtifacts(): InstalledArtifacts {
   return {
     app: false,
-    cursorSkill: false,
-    claudeSkill: false,
-    codexSkill: false,
-    opencodeSkill: false,
-    openclawSkill: false,
-    cursorMcp: false,
-    claudeMcp: false,
-    claudeDesktopMcp: false,
-    opencodeMcp: false,
-    codexMcp: false,
-    openclawMcp: false,
-    chatGptMcp: false,
+    skill: false,
+    agentsMcp: false,
   };
 }
 
@@ -75,6 +64,7 @@ export function buildDetectedSnapshot(root: CliProgram, paths: InstallPaths): De
 }
 
 function targetExplicitlyConfigured(user: CliConfigureTargets | undefined, key: CliInstallArtifactKey): boolean {
+  if (key === "skill" || key === "agentsMcp") return false;
   return user?.[key] !== undefined;
 }
 
@@ -101,6 +91,8 @@ export function isArtifactInScope(
   root: CliProgram,
   targets?: CliConfigureTargets,
 ): boolean {
+  const userTargets = targets ?? root.configure?.targets;
+
   if (mode === "uninstall-all") {
     return true;
   }
@@ -119,10 +111,10 @@ export function isArtifactInScope(
 
     let inScope = false;
     if (scope.skill) {
-      inScope = inScope || agentCategoryInScope(key, SKILL_KEYS, "skill", effective, targets, root);
+      inScope = inScope || agentCategoryInScope(key, SKILL_KEYS, "skill", effective, userTargets, root);
     }
     if (scope.mcp) {
-      inScope = inScope || agentCategoryInScope(key, MCP_KEYS, "mcp", effective, targets, root);
+      inScope = inScope || agentCategoryInScope(key, MCP_KEYS, "mcp", effective, userTargets, root);
     }
     if (scope.configure && key === "configure") {
       inScope = true;
@@ -225,13 +217,11 @@ export function detectedForArtifact(key: CliInstallArtifactKey, detected: Detect
 /** Resolved artifact keys for `--all`, `--mcp`, and `--skill` (availability-gated). */
 export function resolveInstallTargetPreview(program: CliProgram, paths: InstallPaths): InstallTargetPreview {
   const effective = resolveEffectiveInstallTargets(program.configure, program);
-  const integration = resolveAgentIntegration(program.configure, program.mcpServer?.enabled === true);
 
   const keysForScope = (scope: InstallScope, mode: InstallPlanMode): CliInstallArtifactKey[] =>
     INSTALL_ARTIFACT_KEYS.filter((key) => shouldIncludeArtifact(key, program, paths, scope, mode, effective));
 
   return {
-    agentIntegration: integration,
     all: keysForScope({ all: true }, "install-all"),
     mcp: keysForScope({ mcp: true }, "install-scoped"),
     skill: keysForScope({ skill: true }, "install-scoped"),

@@ -1,5 +1,5 @@
 import { appConfigInstalled, displayAppConfigPath, uninstallAppConfig } from "../../../config/file.ts";
-import type { CliProgram, InstallAgentIntegration } from "../../../core/types.ts";
+import type { CliProgram } from "../../../core/types.ts";
 import type { InstallPaths } from "../paths.ts";
 import { InstallTarget } from "../target-base.ts";
 import type {
@@ -16,10 +16,6 @@ class ConfigureInstallTarget extends InstallTarget {
   readonly key = "configure" as const;
   readonly actionKind = "configure" as const;
   readonly category = "core" as const;
-
-  defaultIncludedInAll(_integration: InstallAgentIntegration): boolean {
-    return false;
-  }
 
   isAvailable(root: CliProgram, _paths: InstallPaths): boolean {
     return root.appConfig !== undefined;

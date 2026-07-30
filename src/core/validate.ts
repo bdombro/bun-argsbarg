@@ -2,7 +2,6 @@
 This module validates CLI schemas before execution.
 */
 
-import { AGENT_PAIRS, MCP_KEYS, mcpServerRequiredForArtifact } from "../configure/artifacts/target-registry.ts";
 import { reservedDocsTopicResourceUris } from "../docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "../docs/resolve.ts";
 import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "../http/paths.ts";
@@ -16,8 +15,6 @@ import {
   type CliProgram,
   CliSchemaValidationError,
   CliValueFormat,
-  type InstallAgentIntegration,
-  type InstallTargetSpec,
   isCliLeaf,
   isCliRouter,
   isJsonLeaf,
@@ -98,21 +95,7 @@ function validateConfigBlock(appConfigBlock: import("./types.ts").CliAppConfig):
   }
 }
 
-const PAIR_HOST_LABELS: Record<string, string> = {
-  cursorMcp: "cursor",
-  claudeCodeMcp: "claudeCode",
-  codexMcp: "codex",
-  opencodeMcp: "opencode",
-  openclawMcp: "openclaw",
-};
-
-function installTargetExplicitTruthy(spec: InstallTargetSpec | undefined): boolean {
-  if (spec === undefined || spec === false) return false;
-  if (spec === true) return true;
-  return spec.enabled !== false;
-}
-
-/** Validates `program.configure` targets and agentIntegration. */
+/** Validates `program.configure` targets. */
 function validateConfigureConfig(program: CliProgram): void {
   const configure = program.configure;
   if (!configure) return;
@@ -121,48 +104,48 @@ function validateConfigureConfig(program: CliProgram): void {
     throw new CliSchemaValidationError("configure.prefix removed; app binary installs via Homebrew");
   }
 
+  if ("agentIntegration" in configure) {
+    throw new CliSchemaValidationError("configure.agentIntegration removed; use program.skill.enabled for skills");
+  }
+
   if (!configure.targets) return;
 
   const targets = configure.targets;
   if ("allSkills" in targets || "allMcps" in targets) {
-    throw new CliSchemaValidationError(
-      "configure.targets.allSkills/allMcps removed; use agentIntegration and per-key targets",
-    );
+    throw new CliSchemaValidationError("configure.targets.allSkills/allMcps removed; use per-key targets");
   }
 
-  const integration: InstallAgentIntegration =
-    configure.agentIntegration ?? (program.mcpServer?.enabled === true ? "mcp" : "skill");
-
-  const mcpEnabled = program.mcpServer?.enabled === true;
-
-  for (const [mcpKey, skillKey] of AGENT_PAIRS) {
-    const mcpSpec = targets[mcpKey];
-    const skillSpec = targets[skillKey];
-    const mcpOn = installTargetExplicitTruthy(mcpSpec);
-    const skillOn = installTargetExplicitTruthy(skillSpec);
-    const host = PAIR_HOST_LABELS[mcpKey] ?? mcpKey;
-
-    if (mcpOn && skillOn && integration !== "both") {
+  const legacySkillKeys = ["cursorSkill", "claudeSkill", "codexSkill", "opencodeSkill", "openclawSkill"] as const;
+  for (const key of legacySkillKeys) {
+    if (key in targets) {
       throw new CliSchemaValidationError(
-        `configure.targets: ${host} has both MCP and skill configured; set agentIntegration: 'both' or disable one side`,
-      );
-    }
-
-    if (integration === "skill" && mcpOn) {
-      throw new CliSchemaValidationError(
-        `configure.targets.${mcpKey} requires agentIntegration: 'both' when agentIntegration is 'skill'`,
-      );
-    }
-    if (integration === "mcp" && skillOn) {
-      throw new CliSchemaValidationError(
-        `configure.targets.${skillKey} requires agentIntegration: 'both' when agentIntegration is 'mcp'`,
+        `configure.targets.${key} removed; use program.skill.enabled for agent skill install`,
       );
     }
   }
 
-  for (const mcpKey of MCP_KEYS) {
-    if (!mcpServerRequiredForArtifact(mcpKey, mcpEnabled) && installTargetExplicitTruthy(targets[mcpKey])) {
-      throw new CliSchemaValidationError(`configure.targets.${mcpKey} requires mcpServer.enabled`);
+  const legacyMcpKeys = [
+    "cursorMcp",
+    "claudeCodeMcp",
+    "claudeDesktopMcp",
+    "codexMcp",
+    "chatgptMcp",
+    "openclawMcp",
+    "opencodeMcp",
+    "agentsMcp",
+  ] as const;
+  for (const key of legacyMcpKeys) {
+    if (key in targets) {
+      throw new CliSchemaValidationError(
+        `configure.targets.${key} removed; MCP installs to ~/.agents/mcp.json when mcpServer.enabled`,
+      );
+    }
+  }
+
+  const allowedKeys = new Set(["app", "configure"]);
+  for (const key of Object.keys(targets)) {
+    if (!allowedKeys.has(key)) {
+      throw new CliSchemaValidationError(`configure.targets.${key} is not a valid target key`);
     }
   }
 }

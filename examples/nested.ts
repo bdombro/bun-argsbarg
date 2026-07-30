@@ -11,16 +11,6 @@ import pkg from "../package.json" with { type: "json" };
 import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../src/index";
 
 const program = {
-  key: "nested.ts",
-  version: pkg.version,
-  description: "Nested groups demo.",
-  mcpServer: { enabled: true },
-  docs: {
-    topics: {
-      readme: { text: "# nested.ts\n\nNested groups demo.\n" },
-    },
-  },
-  configure: {},
   commands: [
     {
       key: "stat",
@@ -112,8 +102,18 @@ const program = {
       },
     },
   ],
+  configure: {},
+  description: "Nested groups demo.",
+  docs: {
+    topics: {
+      readme: { text: "# nested.ts\n\nNested groups demo.\n" },
+    },
+  },
   fallbackCommand: "read",
   fallbackMode: CliFallbackMode.MissingOrUnknown,
+  key: "nested.ts",
+  mcpServer: { enabled: true },
+  version: pkg.version,
 } satisfies CliProgram;
 
 const cli = new Cli(program);

@@ -11,9 +11,19 @@ import pkg from "../package.json" with { type: "json" };
 import { Cli, CliOptionKind, type CliProgram, isInteractiveTty } from "../src/index";
 
 const program = {
-  key: "option-required.ts",
-  version: pkg.version,
   description: "Demo of a required option.",
+  handler: (ctx) => {
+    const requiredAlways = ctx.stringOpt("requiredAlways");
+    if (requiredAlways === undefined) {
+      throw new Error("requiredAlways missing after validation");
+    }
+    const requiredNonTty = ctx.stringOpt("requiredNonTty") ?? "valueWhenOmitted";
+    const optional = ctx.stringOpt("optional") ?? "valueWhenOmitted";
+    console.log(`requiredAlways: ${requiredAlways}`);
+    console.log(`requiredNonTty: ${requiredNonTty}`);
+    console.log(`optional: ${optional}`);
+  },
+  key: "option-required.ts",
   options: [
     {
       name: "requiredAlways",
@@ -36,17 +46,7 @@ const program = {
       shortName: "o",
     },
   ],
-  handler: (ctx) => {
-    const requiredAlways = ctx.stringOpt("requiredAlways");
-    if (requiredAlways === undefined) {
-      throw new Error("requiredAlways missing after validation");
-    }
-    const requiredNonTty = ctx.stringOpt("requiredNonTty") ?? "valueWhenOmitted";
-    const optional = ctx.stringOpt("optional") ?? "valueWhenOmitted";
-    console.log(`requiredAlways: ${requiredAlways}`);
-    console.log(`requiredNonTty: ${requiredNonTty}`);
-    console.log(`optional: ${optional}`);
-  },
+  version: pkg.version,
 } satisfies CliProgram;
 
 const cli = new Cli(program);

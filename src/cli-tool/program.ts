@@ -4,21 +4,22 @@ Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 
 import pkg from "../../package.json" with { type: "json" };
 import { CliOptionKind, type CliProgram } from "../index.ts";
+import { normalizeCreateTemplateId } from "./create.ts";
 import { runCreate } from "./run-create.ts";
 import { runSchemagenCli } from "./run-schemagen.ts";
 
 export const program = {
-  key: "argsbarg",
-  version: pkg.version,
-  description: "Argsbarg developer tools — bootstrap CLIs from the full-example template.",
-  completion: { enabled: false },
-  configure: { enabled: false },
-  docs: { enabled: false },
   commands: [
     {
       key: "create",
-      description: "Copy the full-example template into a directory with substitutions.",
+      description: "Copy a CLI template into a directory with substitutions.",
       options: [
+        {
+          name: "template",
+          description: "Template: cli (default) or json (schema-first).",
+          kind: CliOptionKind.Enum,
+          choices: ["cli", "json"],
+        },
         { name: "key", description: "CLI binary name.", kind: CliOptionKind.String },
         {
           name: "class-name",
@@ -77,8 +78,10 @@ export const program = {
         },
       ],
       handler: async (ctx) => {
+        const templateRaw = ctx.stringOpt("template");
         const code = await runCreate({
           dir: ctx.args[0],
+          ...(templateRaw !== undefined ? { templateId: normalizeCreateTemplateId(templateRaw) } : {}),
           key: ctx.stringOpt("key"),
           className: ctx.stringOpt("class-name"),
           tap: ctx.stringOpt("tap"),
@@ -130,4 +133,10 @@ export const program = {
       },
     },
   ],
+  completion: { enabled: false },
+  configure: { enabled: false },
+  description: "Argsbarg developer tools — bootstrap CLIs from copy templates.",
+  docs: { enabled: false },
+  key: "argsbarg",
+  version: pkg.version,
 } satisfies CliProgram;

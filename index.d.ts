@@ -533,22 +533,18 @@ export interface CliCompletionConfig {
 	/** When `false`, hide/disable `completion` (default: enabled). */
 	enabled?: boolean;
 }
+/** Opt-in agent skill install to `~/.agents/skills/<key>/` (default: disabled). */
+export interface CliSkillConfig {
+	/** When `true`, install and sync the agent skill via `configure --sync`. Default false when omitted. */
+	enabled?: boolean;
+}
 /** @experimental */
 export interface CliConfigureConfig {
 	/** When `false`, hide/disable `configure` (default: enabled). */
 	enabled?: boolean;
-	/**
-	 * Default agent integration for sync (`configure --sync`).
-	 * - `'mcp'` when `mcpServer.enabled` (default): MCP targets in sync; paired skills excluded.
-	 * - `'skill'` when MCP is off (default): skill targets in sync; paired MCP excluded.
-	 * - `'both'`: sync MCP and skill for the same host when both are available.
-	 */
-	agentIntegration?: InstallAgentIntegration;
 	/** Per-artifact gates for configure sync and interactive wizard. See {@link resolveEffectiveInstallTargets}. */
 	targets?: CliConfigureTargets;
 }
-/** Agent integration mode for install — MCP vs shell skill per host. */
-export type InstallAgentIntegration = "mcp" | "skill" | "both";
 /** Boolean or structured gate for one install artifact. */
 export type InstallTargetSpec = boolean | {
 	/** When false, artifact is never installed (even with scoped CLI flags). Default true. */
@@ -564,32 +560,8 @@ export interface ResolvedInstallTarget {
 export interface CliConfigureTargets {
 	/** App binary status only (Homebrew PATH); no self-install. */
 	app?: InstallTargetSpec;
-	/** ChatGPT desktop MCP. Default false. */
-	chatgptMcp?: InstallTargetSpec;
-	/** Claude Code MCP (`~/.claude.json`). Default false. */
-	claudeCodeMcp?: InstallTargetSpec;
-	/** Claude Desktop MCP. Default false. */
-	claudeDesktopMcp?: InstallTargetSpec;
-	/** Claude Code skill. Default false. */
-	claudeSkill?: InstallTargetSpec;
-	/** Codex MCP (`codex mcp add`). Default false. */
-	codexMcp?: InstallTargetSpec;
-	/** Codex skill. Default false. */
-	codexSkill?: InstallTargetSpec;
 	/** App config: interactive wizard step in `configure`. Default not in sync. */
 	configure?: InstallTargetSpec;
-	/** Cursor MCP. Default false. */
-	cursorMcp?: InstallTargetSpec;
-	/** Cursor skill. Default false. */
-	cursorSkill?: InstallTargetSpec;
-	/** OpenClaw MCP. Default false. */
-	openclawMcp?: InstallTargetSpec;
-	/** OpenClaw skill. Default false. */
-	openclawSkill?: InstallTargetSpec;
-	/** OpenCode MCP. Default false. */
-	opencodeMcp?: InstallTargetSpec;
-	/** OpenCode skill. Default false. */
-	opencodeSkill?: InstallTargetSpec;
 }
 /**
  * One bundled documentation topic for the `docs` built-in (program root only).
@@ -802,26 +774,28 @@ export interface CliLogConfig {
  * May be a leaf or router, plus optional program-level MCP and install config.
  */
 export type CliProgram = CliNode & {
-	/** Program version (printed by the `version` built-in and MCP serverInfo). */
-	version: string;
 	/** Schema-driven app config file, bootstrap, and MCP metadata. */
 	appConfig?: CliAppConfig;
-	/** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
-	mcpServer?: CliMcpServerConfig;
-	/** When set with `enabled: true`, enables the `http` built-in HTTP server. */
-	httpServer?: CliHttpServerConfig;
-	/** Opt-out and defaults for `configure`. */
-	configure?: CliConfigureConfig;
 	/** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
 	completion?: CliCompletionConfig;
+	/** Opt-out and defaults for `configure`. */
+	configure?: CliConfigureConfig;
 	/** Opt-out and optional topics for the `docs` built-in (default: enabled). */
 	docs?: CliDocsConfig;
 	/** Invoke and error hooks for user commands on CLI, HTTP, and MCP. */
 	hooks?: CliProgramHooks;
-	/** Optional readiness probe for HTTP/MCP `GET /health/readiness` only. */
-	readiness?: (ctx: ReadinessContext) => boolean | Promise<boolean>;
+	/** When set with `enabled: true`, enables the `http` built-in HTTP server. */
+	httpServer?: CliHttpServerConfig;
 	/** Framework logging (stderr + optional file). */
 	log?: CliLogConfig;
+	/** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
+	mcpServer?: CliMcpServerConfig;
+	/** Optional readiness probe for HTTP/MCP `GET /health/readiness` only. */
+	readiness?: (ctx: ReadinessContext) => boolean | Promise<boolean>;
+	/** Opt-in agent skill (`~/.agents/skills/<key>/`). Default disabled when omitted. */
+	skill?: CliSkillConfig;
+	/** Program version (printed by the `version` built-in and MCP serverInfo). */
+	version: string;
 };
 /** True when the leaf accepts a pure JSON body (no CLI flags). */
 export declare function isJsonLeaf(leaf: CliLeaf): boolean;
