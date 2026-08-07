@@ -212,7 +212,7 @@ Per consumer repo (optional):
 4. `just docgen` / `myapp docs cli --save` — refresh consumer docs.
 5. Document which commands use which roots in **your** `docs/architecture.md` (argsbarg does not maintain per-app tables).
 
-Add a bullet under your app’s `**… conventions:**` block in `.cursor/rules/cli-program.mdc` pointing at `node_modules/argsbarg/docs/output-schema.md`.
+Add a bullet under your app’s `**… conventions:**` block in `AGENTS.md` pointing at `node_modules/argsbarg/docs/output-schema.md`.
 
 **Reference implementation:** [`examples/full-example-json/`](../examples/full-example-json/) in this repo — `@sg` on command types, `__generated__/`, and `status` leaf with `StatusJsonOutputSchema`.
 

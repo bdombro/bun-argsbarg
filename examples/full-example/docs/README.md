@@ -5,7 +5,7 @@ Reference template for argsbarg consumer docgen. Every builtin is enabled in `sr
 | If you are… | Read |
 | --- | --- |
 | **Using the CLI** | [../README.md](../README.md) |
-| **Authoring argsbarg schema** | `node_modules/argsbarg/docs/cli-program.md` — see `.cursor/rules/cli-program.mdc` |
+| **Authoring argsbarg schema** | `node_modules/argsbarg/docs/cli-program.md` — see [`AGENTS.md`](../AGENTS.md) |
 | **HTTP API / curl** | [http.md](http.md) — generated; or run `full-example docs http` |
 | **MCP tools** | [mcp.md](mcp.md) — generated; or run `full-example docs mcp` |
 | **Full command tree (markdown)** | [cli.md](cli.md) — generated |

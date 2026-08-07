@@ -3,7 +3,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Local argsbarg consumer repos (machine-specific).
-consumer_apps := ""
+consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
 
 # List available recipes (default)
 _:
@@ -43,14 +43,13 @@ consumers-schemagen:
 consumers-dev:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"
-    template="${root}/examples/full-example/.cursor/rules/cli-program.mdc"
     echo "argsbarg@file:<relative-to-consumer> → ${root}"
     for path in {{consumer_apps}}; do
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
       echo "==> $(basename "$dir") ($dir) → file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && bun "${root}/scripts/merge-code-rule.ts" "$dir")
+      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-agents-md.ts" "$dir")
     done
 
 # Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure --sync → ~/.agents/)
@@ -64,8 +63,7 @@ consumers-sync:
       dir="$(cd "$dir" && pwd)"
       echo "==> $(basename "$dir") ($dir)"
       (cd "$dir" && bun add "argsbarg@^${latest}" && \
-        bun "${root}/scripts/merge-cli-program-rule.ts" "$dir" && \
-        bun "${root}/scripts/merge-code-rule.ts" "$dir" && \
+        bun "${root}/scripts/merge-agents-md.ts" "$dir" && \
         just build && just docgen && just install-local)
     done
 

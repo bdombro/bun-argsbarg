@@ -152,7 +152,7 @@ function buildSkillMd(root: CliProgram, dirName: string): string {
     "",
     "## Install location",
     "",
-    "Install follows the [.agents protocol](https://dotagentsprotocol.com/):",
+    "Install follows the https://dotagentsprotocol.com:",
     "",
     `- Auto-install: \`${root.key} configure --sync --yes\` when \`skill.enabled\` → \`~/.agents/skills/${dirName}/\``,
     `- Cursor and most coding agents read \`~/.agents/skills/\` natively`,

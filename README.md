@@ -133,7 +133,7 @@ Edit `scripts/create-identity.ts` in the new repository to set your description.
 | Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                      |
 | Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`            |
 | Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                         |
-| Cursor rules          | `.cursor/rules/cli-program.mdc`, `.cursor/rules/code.mdc`                                |
+| Agent instructions    | `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`)                                                 |
 
 *Tip: Verify an existing tree or template setup with `bunx argsbarg create --check .`*
 
@@ -321,17 +321,17 @@ bunx argsbarg create my-api \
 
 Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `program.description` and the Homebrew formula).
 
-`create` copies the template (including `.cursor/rules/cli-program.mdc`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders, runs `bun install`, `argsbarg schemagen` (json template only), `bun test`, and `git init` + Initial commit when appropriate.
+`create` copies the template (including `AGENTS.md` and `CLAUDE.md`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders, runs `bun install`, `argsbarg schemagen` (json template only), `bun test`, and `git init` + Initial commit when appropriate.
 
 **Git bootstrap:** skipped when the target already has a `.git` directory, or when the target sits inside an existing git work tree (monorepo subfolder). Standalone new directories get an `Initial commit`.
 
 Verify an existing tree: `bunx argsbarg create --check .`
 
-To refresh Cursor rules in an existing consumer: `bun scripts/merge-cli-program-rule.ts .` and `bun scripts/merge-code-rule.ts .` from an argsbarg checkout (or pass the npm package path to the template).
+To refresh agent instructions in an existing consumer: `bun scripts/merge-agents-md.ts .` from an argsbarg checkout (or pass the npm package path to the template).
 
 ### What the copy templates include
 
-Both templates ship all builtins (`completion`, `version`, `configure`, `docs`, `mcp`, `http`), Homebrew `justfile` + formula scripts, and `.cursor/rules/`.
+Both templates ship all builtins (`completion`, `version`, `configure`, `docs`, `mcp`, `http`), Homebrew `justfile` + formula scripts, and `AGENTS.md` + `CLAUDE.md`.
 
 | Template | Path | Adds beyond builtins |
 | --- | --- | --- |
@@ -373,17 +373,15 @@ Opt in by setting `mcpServer: { enabled: true }` on your program root. Running `
 
 See **[docs/mcp.md](docs/mcp.md)** for configuration, env bootstrapping, custom resources, Cursor/Claude setup, and protocol details.
 
-### 2. IDE Copilot Rules (Cursor / Claude Code)
+### 2. Agent instructions (`AGENTS.md`)
 
-ArgsBarg ships authoring docs under `node_modules/argsbarg/docs/`. Because AI agents do not automatically read inside `node_modules/`, you can copy a thin custom rule into your project:
+ArgsBarg ships authoring docs under `node_modules/argsbarg/docs/`. Because AI agents do not automatically read inside `node_modules/`, each copy template includes an `AGENTS.md` with inlined argsbarg authoring rules and a `CLAUDE.md` bridge (`@AGENTS.md`).
 
 ```bash
-mkdir -p .cursor/rules
-bun scripts/merge-cli-program-rule.ts . \
-  node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc
+bun scripts/merge-agents-md.ts .
 ```
 
-This acts as a "tripwire" that instructs AI agents in your workspace to read ArgsBarg's framework documentation before modifying your command definitions or schemas. See the **Cursor rule** section in [docs/cli-program.md](docs/cli-program.md).
+This refreshes the argsbarg-managed section in `AGENTS.md` while preserving your app-specific prefix and `**<app> conventions:**` footer. See **Agent instructions** in [docs/cli-program.md](docs/cli-program.md).
 
 ### 3. Generated Skills & Workspace Configuration
 

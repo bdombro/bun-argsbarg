@@ -69,7 +69,7 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | Binary | skipped (read-only) | Homebrew formula `bin.install` |
 | Shell completions | skipped | Homebrew `generate_completions_from_executable` |
 | Agent skill | skipped (automatic) | `~/.agents/skills/<key>/` when `program.skill.enabled` |
-| MCP config | skipped (automatic) | `~/.agents/mcp.json` when `mcpServer.enabled` ([.agents protocol](https://dotagentsprotocol.com/)) |
+| MCP config | skipped (automatic) | `~/.agents/mcp.json` when `mcpServer.enabled` (see https://dotagentsprotocol.com) |
 | App config | auto-runs wizard | Interactive wizard may update `~/.local/lib/<key>/config.json` when values change; `--sync` bootstraps an empty file on install |
 
 ### Externally managed binary (Homebrew)

@@ -541,7 +541,7 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts to `~/.agents/` ([.agents protocol](https://dotagentsprotocol.com/)).
+- **Configure:** interactive `configure` runs the app config wizard; **`configure --sync`** refreshes agent artifacts to `~/.agents/` (see https://dotagentsprotocol.com).
 - **Agent skill:** `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` on `configure --sync`; see [configure.md](configure.md) and [ai-skills.md](ai-skills.md).
 - **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure --sync`; manual Cursor/Claude setup in [mcp.md](mcp.md).
 
@@ -555,21 +555,19 @@ See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.m
 
 Do not declare user commands named `completion`, `configure`, `mcp`, `version`, or `docs` at the root — ArgsBarg injects these when configured. App config uses `configure get` / `configure set` subcommands (not a top-level `config` command).
 
-## Cursor rule for consumer repos
+## Agent instructions for consumer repos
 
-Argsbarg ships framework docs under `node_modules/argsbarg/docs/` (same files as this repo’s `docs/`). **This file is the authoritative guide** — the Cursor rule is a thin tripwire that tells agents to read it.
+Argsbarg ships framework docs under `node_modules/argsbarg/docs/` (same files as this repo’s `docs/`). **This file is the authoritative guide** — `AGENTS.md` inlines the tripwire rules that tell agents when to read it.
 
 Agents do **not** discover package docs automatically. Wire them in after `bun add argsbarg`:
 
-1. **Copy the Cursor rule** (recommended):
+1. **Use the copy template `AGENTS.md`** (recommended):
 
 ```bash
-mkdir -p .cursor/rules
-bun scripts/merge-cli-program-rule.ts . \
-  node_modules/argsbarg/examples/full-example/.cursor/rules/cli-program.mdc
+bun scripts/merge-agents-md.ts .
 ```
 
-The template is ~30 lines: when to read which doc, plus hard rules agents often get wrong. It does **not** duplicate this guide. `bunx argsbarg create` copies this file into new projects automatically.
+`bunx argsbarg create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`) into new projects automatically.
 
 2. **Add an app-specific block at the bottom** (recommended). Replace the template placeholder with a heading like `**myapp conventions:**` and short bullets — shared flag modules, `read*Flags` / `resolve*` paths, Ink vs JSON-only, etc. Example:
 
@@ -580,11 +578,11 @@ The template is ~30 lines: when to read which doc, plus hard rules agents often 
 - Per command: `read*Flags` + `resolve*Input` in `commands/<name>/resolve.ts`.
 ```
 
-If you maintain argsbarg from a sibling checkout, `just consumer-dev` / `just consumers-sync` refresh the shared template and **keep** this footer (matched by the `**… conventions:**` heading). Commit `.cursor/rules/cli-program.mdc` in your repo.
+If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just consumers-sync` refresh the shared managed section and **keep** your prefix and conventions footer. Commit `AGENTS.md` in your repo.
 
-3. **Optional:** a separate rule (e.g. `.cursor/argsbarg.mdc` or `AGENTS.md`) for broader package API notes.
+3. **Optional:** add consumer-specific sections above the `<!-- argsbarg:managed -->` marker in `AGENTS.md` (project context, Ink patterns, domain notes).
 
-- **Not this file:** `myapp configure --sync` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. The rule above is for *authoring* argsbarg schema.
+- **Not this file:** `myapp configure --sync` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
 
 ## See also
 

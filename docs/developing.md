@@ -32,15 +32,15 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `.cursor/rules/cli-program.mdc` and `code.mdc` from template (keeps app-specific suffix) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `AGENTS.md` from template (keeps app-specific prefix and conventions footer) |
 | `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **cli-program** + **code** Cursor rules, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
 | `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rules** — `scripts/merge-cli-program-rule.ts` and `scripts/merge-code-rule.ts` copy templates from `examples/full-example-json/.cursor/rules/` into each consumer, preserving any existing `**… conventions:**` footer block.
+**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/full-example-json/AGENTS.md` into each consumer, preserving any existing prefix and `**… conventions:**` footer block.
 
-**Recommended in each consumer:** replace template placeholders with `**<app> conventions:**` bullets. Commit those files; merges refresh the shared top, not your footer.
+**Recommended in each consumer:** replace template placeholders with `**<app> conventions:**` bullets. Commit `AGENTS.md`; merges refresh the managed section, not your prefix or footer.
 
 ## Upgrading consumer apps to 7.0
 
@@ -52,7 +52,7 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 4. **HTTP:** use `/api/...` REST routes only (`POST /tools/*` removed).
 5. **Hooks:** remove manual `ctx.locals.requestId` in `beforeInvoke` — framework seeds it.
 6. **Exports:** stop importing `loadLeafInputs` / `CliHttpResponseConfig` from `argsbarg` (use `ctx.inputs`, leaf `http.successContentType`).
-7. **Cursor rules:** `just consumers-dev` merges `cli-program.mdc` + `code.mdc` (includes **Abstractions** needless-extraction rule).
+7. **Agent instructions:** `just consumers-dev` merges `AGENTS.md` + `CLAUDE.md` (includes **Abstractions** needless-extraction rule).
 8. **Verify:** `just test` and `just docgen` in each consumer repo.
 
 **Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.

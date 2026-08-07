@@ -46,7 +46,7 @@ bun run examples/nested.ts mcp
 
 ### `.agents` auto-install
 
-When `mcpServer.enabled` is set, `configure --sync` merges a `mcpServers` entry into `~/.agents/mcp.json` per the [.agents protocol](https://dotagentsprotocol.com/):
+When `mcpServer.enabled` is set, `configure --sync` merges a `mcpServers` entry into `~/.agents/mcp.json` per the https://dotagentsprotocol.com:
 
 ```bash
 myapp configure --sync --yes

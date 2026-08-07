@@ -41,7 +41,7 @@ For full detail, open `reference.md` in this skill directory (same as `full-exam
 
 ## Install location
 
-Install follows the [.agents protocol](https://dotagentsprotocol.com/):
+Install follows the https://dotagentsprotocol.com:
 
 - Auto-install: `full-example-json configure --sync --yes` when `skill.enabled` → `~/.agents/skills/full-example-json/`
 - Cursor and most coding agents read `~/.agents/skills/` natively

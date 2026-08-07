@@ -81,7 +81,7 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
     "### `.agents` auto-install",
     "",
-    "When `mcpServer.enabled` is set, `configure --sync` merges this server into `~/.agents/mcp.json` per the [.agents protocol](https://dotagentsprotocol.com/).",
+    "When `mcpServer.enabled` is set, `configure --sync` merges this server into `~/.agents/mcp.json` per the https://dotagentsprotocol.com.",
     "",
   ];
 

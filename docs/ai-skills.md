@@ -2,7 +2,7 @@
 
 > This feature is experimental.
 
-ArgsBarg can generate agent skill directories (`skill.md` + `reference.md`) from your CLI schema and install them to `~/.agents/skills/<key>/` per the [.agents protocol](https://dotagentsprotocol.com/).
+ArgsBarg can generate agent skill directories (`skill.md` + `reference.md`) from your CLI schema and install them to `~/.agents/skills/<key>/` per the open standard at https://dotagentsprotocol.com/.
 
 ## Enable on the program root
 
@@ -36,7 +36,7 @@ import { cliSkillInstall } from "argsbarg/skill/install"; // internal module
 
 ## Generated content
 
-- **`skill.md`** — [.agents protocol](https://dotagentsprotocol.com/) frontmatter (`id`, `name`, `description`, `enabled`), compact command index, pitfalls, client setup, and a pointer to `reference.md`
+- **`skill.md`** — https://dotagentsprotocol.com frontmatter (`id`, `name`, `description`, `enabled`), compact command index, pitfalls, client setup, and a pointer to `reference.md`
 - **`SKILL.md`** — compatibility copy of `skill.md` for tools that expect uppercase filenames
 - **`reference.md`** — full `docs cli` markdown reference
 
