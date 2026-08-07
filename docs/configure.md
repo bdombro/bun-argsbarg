@@ -32,10 +32,10 @@ To remove app config only (keep skills/MCP), run `configure --remove-config --ye
 
 ```bash
 just build
-just install-local    # same formula as production; temporary file:// URL during brew install (`just install` is an alias)
+just install-local    # uninstall, then build + brew install (`just install` is an alias)
 ```
 
-Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --refresh --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Run `<key> configure --refresh --yes` (or `just run configure --refresh --yes`) to refresh agent artifacts without touching the binary.
+Dev flow matches release: `install-local` runs `uninstall` first (keg + untap; formula hook runs `configure --remove-all`), then stages the dev formula and installs. `post_install` runs `<key> configure --refresh --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Run `<key> configure --refresh --yes` (or `just run configure --refresh --yes`) to refresh agent artifacts without touching the binary.
 
 ## Quick reference
 

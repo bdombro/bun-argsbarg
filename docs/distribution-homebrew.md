@@ -116,7 +116,7 @@ ArgsBarg provides an optimized workflow for developers to build, package, and te
 # 1. Build the local release binary
 just build
 
-# 2. Stage and install the formula locally (bypasses GitHub, uses file://)
+# 2. Uninstall any existing formula/tap, stage and install locally (bypasses GitHub, uses file://)
 just install-local
 
 # 3. Swap updated binaries quickly during tight edit cycles
@@ -130,9 +130,10 @@ just uninstall
 
 To ensure you test the exact formula that will be shipped to production, `just install-local` runs:
 
-1.  `bun scripts/dev-formula.ts install` — Safely backs up your production formula and writes a temporary local dev formula using a `file://` URL pointing to your build directory.
-2.  `brew install --formula <tap>/{key}` — Installs the package locally using Homebrew.
-3.  `bun scripts/dev-formula.ts reset` — Automatically restores your production formula on disk.
+1.  `just uninstall` — Remove any existing keg and untap (formula `uninstall` hook runs `configure --remove-all`).
+2.  `bun scripts/dev-formula.ts install` — Safely backs up your production formula and writes a temporary local dev formula using a `file://` URL pointing to your build directory.
+3.  `brew reinstall || brew install --force` — Installs the package locally using Homebrew.
+4.  `bun scripts/dev-formula.ts reset` — Automatically restores your production formula on disk.
 
 ---
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.3.2] - 2026-08-07
+
+
 ## [6.3.1] - 2026-08-07
 
 
@@ -24,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking: `configure --sync` → `configure --refresh`** — renames the non-interactive agent-artifact refresh flag (skills, MCP, config bootstrap). No `--sync` alias. Copy-template justfiles no longer ship a `refresh-artifacts` recipe; run `configure --refresh --yes` directly.
-- **Copy-template justfiles** — `install-local` uses `brew reinstall || brew install --force`; uninstall/untap recipes prefix `NONINTERACTIVE=1` so agents and CI skip Homebrew confirm prompts (including post-uninstall untap). `install-production` unchanged.
+- **Copy-template justfiles** — `install-local` depends on `uninstall` then `build` (`brew reinstall || brew install --force`). Dropped `uninstall-artifacts`, `uninstall-formula`, `uninstall-release`, and `uninstall-release-tap` (use `uninstall` + `uninstall-config`). Brew recipes prefix `HOMEBREW_NO_ASK=1`.
 
 ## [6.2.2] - 2026-08-07
 
@@ -922,7 +925,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.3.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v6.3.2...HEAD
+[6.3.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.3.2
 [6.3.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.3.1
 [6.3.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.3.0
 [6.2.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v6.2.2
