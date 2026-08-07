@@ -37,7 +37,7 @@ export function configureCommandDescription(program: CliProgram, caps: CliCapabi
   return `Set up ${prose(program, caps)} for this app (binary via Homebrew).`;
 }
 
-export function configureSyncOptionDescription(program: CliProgram, caps: CliCapabilities): string {
+export function configureRefreshOptionDescription(program: CliProgram, caps: CliCapabilities): string {
   return `Refresh installed ${short(program, caps)}. Used by Homebrew post_install.`;
 }
 
@@ -54,7 +54,7 @@ export function configureCommandNotes(program: CliProgram, _caps: CliCapabilitie
     "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).",
     "",
     "Homebrew post_install runs:",
-    `  ${app} configure --sync --yes`,
+    `  ${app} configure --refresh --yes`,
     "",
     "Interactive setup (per target):",
     `  ${app} configure`,

@@ -406,16 +406,33 @@ export interface CliCompletionConfig {
 
 /** Opt-in agent skill install to `~/.agents/skills/<key>/` (default: disabled). */
 export interface CliSkillConfig {
-  /** When `true`, install and sync the agent skill via `configure --sync`. Default false when omitted. */
+  /** When `true`, install and refresh the agent skill via `configure --refresh`. Default false when omitted. */
   enabled?: boolean;
+}
+
+/** Context for {@link CliConfigureConfig} lifecycle hooks. */
+export interface ConfigureHookContext {
+  program: CliProgram;
+  /** When true, the configure run is `--dry` (hook should not write files). */
+  dry: boolean;
+  paths: {
+    agentsSkillDir: string;
+    agentsMcpPath: string;
+    mcpName: string;
+    skillDirName: string;
+  };
 }
 
 /** @experimental */
 export interface CliConfigureConfig {
   /** When `false`, hide/disable `configure` (default: enabled). */
   enabled?: boolean;
-  /** Per-artifact gates for configure sync and interactive wizard. See {@link resolveEffectiveInstallTargets}. */
+  /** Per-artifact gates for configure refresh and interactive wizard. See {@link resolveEffectiveInstallTargets}. */
   targets?: CliConfigureTargets;
+  /** Runs after framework artifacts are installed/refreshed (`configure --refresh`). */
+  afterRefresh?: (ctx: ConfigureHookContext) => void | Promise<void>;
+  /** Runs before framework artifacts are removed (`configure --remove-all`). */
+  beforeRemoveAll?: (ctx: ConfigureHookContext) => void | Promise<void>;
 }
 
 /** Boolean or structured gate for one install artifact. */
@@ -424,7 +441,7 @@ export type InstallTargetSpec =
   | {
       /** When false, artifact is never installed (even with scoped CLI flags). Default true. */
       enabled?: boolean;
-      /** When true, included in `configure --sync`. Default varies by key. */
+      /** When true, included in `configure --refresh`. Default varies by key. */
       includedInAll?: boolean;
     };
 
@@ -437,7 +454,7 @@ export interface ResolvedInstallTarget {
 export interface CliConfigureTargets {
   /** App binary status only (Homebrew PATH); no self-install. */
   app?: InstallTargetSpec;
-  /** App config: interactive wizard step in `configure`. Default not in sync. */
+  /** App config: interactive wizard step in `configure`. Default not in refresh. */
   configure?: InstallTargetSpec;
 }
 

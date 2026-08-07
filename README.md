@@ -158,7 +158,7 @@ ArgsBarg automatically integrates several core features into your application. T
 ### Experimental Integrations (Opt-in)
 
 - `mcp` — Run as a Model Context Protocol stdio-based agent server (injected when `mcpServer.enabled` is `true`). See [docs/mcp.md](docs/mcp.md).
-- `configure` (`--sync` / `--status` / `--remove-all`) — Interactive environment setup and developer agent credentials sync (enabled by default; opt out with `configure: { enabled: false }`). See [docs/configure.md](docs/configure.md).
+- `configure` (`--refresh` / `--status` / `--remove-all`) — Interactive environment setup and developer agent credentials sync (enabled by default; opt out with `configure: { enabled: false }`). See [docs/configure.md](docs/configure.md).
 
 Do not declare top-level commands named `completion`, `version`, or `docs` as they are reserved by default. If their respective features are enabled, `http`, `mcp`, and `configure` are also reserved.
 
@@ -385,7 +385,7 @@ This refreshes the argsbarg-managed section in `AGENTS.md` while preserving your
 
 ### 3. Generated Skills & Workspace Configuration
 
-Running `myapp configure --sync` installs a compact `SKILL.md` index and full-reference `reference.md` to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`.
+Running `myapp configure --refresh` installs a compact `SKILL.md` index and full-reference `reference.md` to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`.
 
 See **[docs/configure.md](docs/configure.md)** and **[docs/ai-skills.md](docs/ai-skills.md)** for developer setup and automated Homebrew pipeline integration.
 

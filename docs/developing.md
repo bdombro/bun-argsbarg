@@ -26,6 +26,10 @@ The release script bumps `package.json`, promotes `[Unreleased]` in `CHANGELOG.m
 
 Update `CHANGELOG.md` under `[Unreleased]` before releasing.
 
+## Cursor test hook (optional)
+
+Copy templates and the argsbarg repo root include `.cursor/hooks.json` plus `.cursor/hooks/run-tests-on-stop.ts`. On agent **stop** (completed turn), when git shows changes to `justfile` or `*.{ts,tsx,js,jsx}` (excluding `node_modules/`, `dist/`, `.cursor/`), the hook runs `just test`. Failures return a `followup_message` (up to **20** auto-retries via `loop_limit`). Requires [Cursor hooks](https://cursor.com/docs/hooks); not part of `AGENTS.md`. New projects get hooks via `argsbarg create`.
+
 ## Local consumer apps
 
 Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_apps` variable, e.g. `~/dev/ss/sqsp-workspaces`):
@@ -33,7 +37,7 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 | Recipe | When | Effect |
 | --- | --- | --- |
 | `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `AGENTS.md` from template (keeps app-specific prefix and conventions footer) |
-| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge **cli-program** + **code** Cursor rules, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
+| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge `AGENTS.md`, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
 | `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
@@ -55,7 +59,7 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 7. **Agent instructions:** `just consumers-dev` merges `AGENTS.md` + `CLAUDE.md` (includes **Abstractions** needless-extraction rule).
 8. **Verify:** `just test` and `just docgen` in each consumer repo.
 
-**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --sync --yes`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
+**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --refresh --yes`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
 
 ## npm package contents
 
@@ -95,7 +99,7 @@ import { runSchemagen } from "argsbarg/schemagen";
 | `schema.ts`, `parse.ts`, `context.ts` | Transport-agnostic CLI core |
 | `http/` | HTTP tool server (`httpServer` capability) |
 | `mcp/` | MCP stdio server and bundle (`mcpServer` capability) |
-| `configure/artifacts/` | Agent artifact sync (`configure` capability) |
+| `configure/artifacts/` | Agent artifact install/refresh (`configure` capability) |
 | `docs/` | Built-in documentation generators |
 
 Capabilities are declared on `CliProgram`; builtins wire them in [`src/builtins/`](../src/builtins/).

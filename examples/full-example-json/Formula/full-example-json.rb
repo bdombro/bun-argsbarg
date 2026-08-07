@@ -11,7 +11,7 @@ class FullExampleJson < Formula
   end
 
   def post_install
-    system bin/"full-example-json", "configure", "--sync", "--yes"
+    system bin/"full-example-json", "configure", "--refresh", "--yes"
   end
 
   def uninstall

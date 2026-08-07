@@ -55,12 +55,12 @@ afterEach(() => {
 /** Tests for configure opts. */
 describe("configure opts", () => {
   test("validate rejects multiple modes", () => {
-    const opts = parseConfigureOpts({ sync: "1", status: "1" });
+    const opts = parseConfigureOpts({ refresh: "1", status: "1" });
     expect(validateConfigureOpts(opts)).toContain("only one");
   });
 
-  test("sync requires --yes", () => {
-    const opts = parseConfigureOpts({ sync: "1" });
+  test("refresh requires --yes", () => {
+    const opts = parseConfigureOpts({ refresh: "1" });
     expect(validateConfigureOpts(opts)).toContain("--yes");
   });
 
@@ -92,12 +92,12 @@ describe("configure mutation summary", () => {
     expect(msg).toBe("Installed 1 artifact.");
   });
 
-  test("sync mode uses synced verb and artifact count", () => {
+  test("refresh mode uses refreshed verb and artifact count", () => {
     const msg = formatConfigureMutationSummary(
       { paths: ["a", "b", "c"], installed: 3, removed: 0, configured: 0 },
-      { sync: true },
+      { refresh: true },
     );
-    expect(msg).toBe("Synced 3 artifacts.");
+    expect(msg).toBe("Refreshed 3 artifacts.");
   });
 
   test("remove-all uses removed verb", () => {
@@ -147,8 +147,8 @@ describe("detect installed", () => {
   });
 });
 
-/** Tests for sync plan. */
-describe("sync plan", () => {
+/** Tests for refresh plan. */
+describe("refresh plan", () => {
   test("buildUpdatePlan greenfield includes skill when enabled", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUpdatePlan(fixture, paths, parseInstallOpts({ reinstall: "1", yes: "1" }));
@@ -229,19 +229,92 @@ describe("app config wizard", () => {
   });
 });
 
-describe("configure --sync bootstrap", () => {
+describe("configure --refresh bootstrap", () => {
   test("creates config.json for apps without appConfig", async () => {
     const program: CliProgram = {
-      key: "syncboot",
+      key: "refreshboot",
       version: "0.0.0",
-      description: "Sync bootstrap test.",
+      description: "Refresh bootstrap test.",
       skill: { enabled: true },
       handler: () => {},
       configure: { enabled: true },
     };
     expect(appConfigFileExists(program)).toBe(false);
-    const result = await new Cli(program).invoke(["configure", "--sync", "--yes"]);
+    const result = await new Cli(program).invoke(["configure", "--refresh", "--yes"]);
     expect(result.exitCode).toBe(0);
     expect(appConfigFileExists(program)).toBe(true);
+  });
+});
+
+describe("configure lifecycle hooks", () => {
+  test("afterRefresh runs after --refresh plan", async () => {
+    const calls: string[] = [];
+    const program: CliProgram = {
+      ...fixture,
+      key: "hookrefresh",
+      configure: {
+        afterRefresh: async (ctx) => {
+          calls.push(`after:${ctx.paths.mcpName}:dry=${ctx.dry}`);
+        },
+      },
+    };
+    const result = await new Cli(program).invoke(["configure", "--refresh", "--yes"]);
+    expect(result.exitCode).toBe(0);
+    expect(calls).toEqual([`after:hookrefresh:dry=false`]);
+  });
+
+  test("beforeRemoveAll runs before --remove-all plan", async () => {
+    const paths = resolveInstallPaths({ ...fixture, key: "hookremove" });
+    mkdirSync(paths.agentsSkillDir, { recursive: true });
+    writeFileSync(join(paths.agentsSkillDir, "SKILL.md"), "# test\n", "utf8");
+
+    const calls: string[] = [];
+    const program: CliProgram = {
+      ...fixture,
+      key: "hookremove",
+      configure: {
+        beforeRemoveAll: async (ctx) => {
+          calls.push(`before:${ctx.paths.skillDirName}`);
+          expect(existsSync(ctx.paths.agentsSkillDir)).toBe(true);
+        },
+      },
+    };
+    const result = await new Cli(program).invoke(["configure", "--remove-all", "--yes"]);
+    expect(result.exitCode).toBe(0);
+    expect(calls).toEqual(["before:hookremove"]);
+    expect(existsSync(paths.agentsSkillDir)).toBe(false);
+  });
+
+  test("hooks receive dry from --dry", async () => {
+    const calls: string[] = [];
+    const program: CliProgram = {
+      ...fixture,
+      key: "hookdry",
+      configure: {
+        afterRefresh: (ctx) => {
+          calls.push(`dry=${ctx.dry}`);
+        },
+      },
+    };
+    const result = await new Cli(program).invoke(["configure", "--refresh", "--yes", "--dry"]);
+    expect(result.exitCode).toBe(0);
+    expect(calls).toEqual(["dry=true"]);
+  });
+
+  test("beforeRemoveAll is not called for --remove-config", async () => {
+    let called = false;
+    const program: CliProgram = {
+      ...fixture,
+      key: "hookcfg",
+      appConfig: { entries: { token: { description: "Token." } } },
+      configure: {
+        beforeRemoveAll: () => {
+          called = true;
+        },
+      },
+    };
+    const result = await new Cli(program).invoke(["configure", "--remove-config", "--yes"]);
+    expect(result.exitCode).toBe(0);
+    expect(called).toBe(false);
   });
 });

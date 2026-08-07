@@ -1,6 +1,5 @@
 node_modules/
 dist/
 Formula/.staging/
-.cursor/
 .private/
 .DS_Store

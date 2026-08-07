@@ -12,7 +12,7 @@ import { configureConfigSubcommands } from "./config.ts";
 import {
   configureCommandDescription,
   configureCommandNotes,
-  configureSyncOptionDescription,
+  configureRefreshOptionDescription,
 } from "./configure-copy.ts";
 
 /** Hidden fallback leaf for bare `configure` (interactive / flag modes). */
@@ -23,8 +23,8 @@ export function configureBuiltinOptions(root: CliProgram): CliOption[] {
   const caps = resolveCapabilities(root);
   const opts: CliOption[] = [
     {
-      name: "sync",
-      description: configureSyncOptionDescription(root, caps),
+      name: "refresh",
+      description: configureRefreshOptionDescription(root, caps),
       kind: CliOptionKind.Presence,
     },
     {
@@ -50,7 +50,7 @@ export function configureBuiltinOptions(root: CliProgram): CliOption[] {
     },
     {
       name: "yes",
-      description: "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+      description: "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
       kind: CliOptionKind.Presence,
       shortName: "y",
     },

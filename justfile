@@ -52,7 +52,7 @@ consumers-dev:
       (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-agents-md.ts" "$dir")
     done
 
-# Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure --sync → ~/.agents/)
+# Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure --refresh → ~/.agents/)
 consumers-sync:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"

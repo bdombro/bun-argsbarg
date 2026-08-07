@@ -67,16 +67,16 @@ http:
 install: install-local
 
 # Refresh skills and MCP without reinstalling the formula
-sync-artifacts:
-    just run configure --sync --yes
+refresh-artifacts:
+    just run configure --refresh --yes
 
 # Dev install: build, stage dev formula, brew install, restore release formula
 install-local: build
-    @brew untap {{tap}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
     bun scripts/dev-formula.ts install
-    brew install --formula {{tap}}/{{cli_key}}
+    brew install --force --formula {{tap}}/{{cli_key}}
     bun scripts/dev-formula.ts reset
     @echo ""
     @echo "Next: {{cli_key}} configure"
@@ -121,10 +121,10 @@ release *ARGS:
 
 # Install release formula from tap and run formula test
 test-release:
-    brew untap {{tap}} 2>/dev/null || true
+    NONINTERACTIVE=1 brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
-    brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    NONINTERACTIVE=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
     brew install --formula {{tap}}/{{cli_key}}
     brew test {{cli_key}}
 
@@ -145,15 +145,15 @@ uninstall-config:
 
 # Remove formula and untap
 uninstall-formula:
-    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
-    @brew uninstall --formula {{tap}}/{{cli_key}}-local 2>/dev/null || true
-    @brew untap {{tap}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew uninstall --formula {{tap}}/{{cli_key}}-local 2>/dev/null || true
+    @NONINTERACTIVE=1 brew untap {{tap}} 2>/dev/null || true
 
 # Remove release formula (does not untap)
 uninstall-release:
-    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
 
 # Remove release formula and untap
 uninstall-release-tap:
-    @brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
-    @brew untap {{tap}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
+    @NONINTERACTIVE=1 brew untap {{tap}} 2>/dev/null || true

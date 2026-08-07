@@ -53,6 +53,7 @@ export type {
   CliRespondBody,
   CliRespondOptions,
   CliSkillConfig,
+  ConfigureHookContext,
   ErrorHookContext,
   InstallTargetSpec,
   InvokeFailureKind,

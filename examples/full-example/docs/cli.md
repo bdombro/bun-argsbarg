@@ -44,7 +44,7 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
 > Homebrew post_install runs:
->   full-example configure --sync --yes
+>   full-example configure --refresh --yes
 > 
 > Interactive setup (per target):
 >   full-example configure
@@ -72,10 +72,10 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
-| `--sync` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
+| `--refresh` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
 | `--remove-all` | flag | optional | — | Remove all detected agent artifacts (skills and MCP). |
 | `--status` | flag | optional | — | Print what is currently installed (read-only). |
-| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --sync, --remove-all, --remove-config). |
+| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --refresh, --remove-all, --remove-config). |
 | `--dry` | flag | optional | — | Show what would change without writing files. |
 | `--json` | flag | optional | — | Print changed paths or status JSON on stdout. |
 
@@ -263,7 +263,7 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
 > Homebrew post_install runs:
->   full-example configure --sync --yes
+>   full-example configure --refresh --yes
 > 
 > Interactive setup (per target):
 >   full-example configure
@@ -291,10 +291,10 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
-| `--sync` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
+| `--refresh` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
 | `--remove-all` | flag | optional | — | Remove all detected agent artifacts (skills and MCP). |
 | `--status` | flag | optional | — | Print what is currently installed (read-only). |
-| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --sync, --remove-all, --remove-config). |
+| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --refresh, --remove-all, --remove-config). |
 | `--dry` | flag | optional | — | Show what would change without writing files. |
 | `--json` | flag | optional | — | Print changed paths or status JSON on stdout. |
 

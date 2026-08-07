@@ -4,10 +4,10 @@ Interactive and automated `configure` command orchestration (agent artifacts and
 
 import { displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
 import { ensureAppConfigFile } from "../config/file.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { CliProgram, ConfigureHookContext } from "../core/types.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { cliSkillInstall, isAgentSkillActionKind } from "../skill/install.ts";
-import { displayInstallPath, resolveInstallPaths } from "./artifacts/paths.ts";
+import { displayInstallPath, type InstallPaths, resolveInstallPaths } from "./artifacts/paths.ts";
 import { buildInstallPlan, buildUpdatePlan } from "./artifacts/plan.ts";
 import {
   installErr,
@@ -38,7 +38,7 @@ export function appConfigHasEntries(program: CliProgram): boolean {
 
 /** Parsed flags for the top-level `configure` built-in. */
 export interface ConfigureOpts {
-  sync?: boolean;
+  refresh?: boolean;
   removeAll?: boolean;
   removeConfig?: boolean;
   status?: boolean;
@@ -51,7 +51,7 @@ export interface ConfigureOpts {
 export function parseConfigureOpts(raw: Record<string, string>): ConfigureOpts {
   const flag = (name: string) => raw[name] === "1";
   return {
-    sync: flag("sync"),
+    refresh: flag("refresh"),
     removeAll: flag("remove-all"),
     removeConfig: flag("remove-config"),
     status: flag("status"),
@@ -63,15 +63,15 @@ export function parseConfigureOpts(raw: Record<string, string>): ConfigureOpts {
 
 /** Returns an error message when configure flags are inconsistent; otherwise null. */
 export function validateConfigureOpts(opts: ConfigureOpts): string | null {
-  const flags = [opts.sync, opts.removeAll, opts.removeConfig, opts.status].filter(Boolean);
+  const flags = [opts.refresh, opts.removeAll, opts.removeConfig, opts.status].filter(Boolean);
   if (flags.length > 1) {
-    return "Use only one of --sync, --remove-all, --remove-config, or --status.";
+    return "Use only one of --refresh, --remove-all, --remove-config, or --status.";
   }
   if (opts.json) {
     opts.yes = true;
   }
-  if ((opts.sync || opts.removeAll || opts.removeConfig) && !opts.yes) {
-    return "--yes is required with --sync, --remove-all, or --remove-config.";
+  if ((opts.refresh || opts.removeAll || opts.removeConfig) && !opts.yes) {
+    return "--yes is required with --refresh, --remove-all, or --remove-config.";
   }
   return null;
 }
@@ -81,7 +81,7 @@ function configureToInstallOpts(opts: ConfigureOpts): InstallOpts {
   if (opts.status) {
     return { status: true, yes: opts.yes, dry: opts.dry, json: opts.json };
   }
-  if (opts.sync) {
+  if (opts.refresh) {
     return { reinstall: true, yes: true, dry: opts.dry, json: opts.json };
   }
   if (opts.removeAll) {
@@ -141,10 +141,10 @@ export function formatConfigureMutationSummary(summary: ConfigureMutationSummary
     return n === 1 ? "Removed 1 artifact." : `Removed ${n} artifacts.`;
   }
 
-  if (opts.sync) {
+  if (opts.refresh) {
     const n = summary.installed;
     if (n === 0) return null;
-    return n === 1 ? "Synced 1 artifact." : `Synced ${n} artifacts.`;
+    return n === 1 ? "Refreshed 1 artifact." : `Refreshed ${n} artifacts.`;
   }
 
   const parts: string[] = [];
@@ -182,6 +182,29 @@ function runPlanAction(
     if (skillDir) return uninstallSkillDir(skillDir, !!opts.dry);
   }
   return action.run();
+}
+
+function configureHookContext(root: CliProgram, paths: InstallPaths, dry: boolean): ConfigureHookContext {
+  return {
+    program: root,
+    dry,
+    paths: {
+      agentsSkillDir: paths.agentsSkillDir,
+      agentsMcpPath: paths.agentsMcpPath,
+      mcpName: paths.mcpName,
+      skillDirName: paths.skillDirName,
+    },
+  };
+}
+
+async function runConfigureLifecycleHook(
+  hook: ((ctx: ConfigureHookContext) => void | Promise<void>) | undefined,
+  root: CliProgram,
+  paths: InstallPaths,
+  dry: boolean,
+): Promise<void> {
+  if (!hook) return;
+  await hook(configureHookContext(root, paths, dry));
 }
 
 /** Runs install or uninstall actions and collects changed paths. */
@@ -253,7 +276,7 @@ function actionsForTarget(
 /** Walks enabled targets with per-target prompts (TTY required). */
 async function runInteractiveConfigure(root: CliProgram, opts: ConfigureOpts): Promise<ConfigureMutationSummary> {
   if (!process.stdin.isTTY) {
-    throw new Error("Interactive configure requires a TTY. Use flags such as --sync --yes.");
+    throw new Error("Interactive configure requires a TTY. Use flags such as --refresh --yes.");
   }
 
   writeInteractiveInstallIntro(root);
@@ -319,6 +342,10 @@ async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Pro
 
   const summary = emptyMutationSummary();
 
+  if (opts.removeAll) {
+    await runConfigureLifecycleHook(root.configure?.beforeRemoveAll, root, paths, !!installOpts.dry);
+  }
+
   if (installOpts.reinstall && !installOpts.uninstall) {
     const bootstrapped = ensureAppConfigFile(root, !!installOpts.dry);
     if (bootstrapped) {
@@ -345,6 +372,11 @@ async function runAutomatedConfigure(root: CliProgram, opts: ConfigureOpts): Pro
   }
 
   mergeMutationSummary(summary, executePlan(root, actions, installOpts, true));
+
+  if (opts.refresh) {
+    await runConfigureLifecycleHook(root.configure?.afterRefresh, root, paths, !!installOpts.dry);
+  }
+
   return summary;
 }
 
@@ -357,7 +389,7 @@ export async function cliConfigure(root: CliProgram, rawOpts: Record<string, str
     process.exit(1);
   }
 
-  const isInteractive = !opts.sync && !opts.removeAll && !opts.removeConfig && !opts.status;
+  const isInteractive = !opts.refresh && !opts.removeAll && !opts.removeConfig && !opts.status;
 
   let summary = emptyMutationSummary();
   try {

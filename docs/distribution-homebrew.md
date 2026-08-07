@@ -11,7 +11,7 @@ ArgsBarg maps the lifecycle of your application directly to standard Homebrew ho
 | Layer | Mechanism | Role in Lifecycle |
 | --- | --- | --- |
 | **Binary & Autocompletions** | Formula `install` block | Installs compiled binary and registers native shell autocompletions. |
-| **Telemetry & Agent Synclinks** | Formula `post_install` | Automatically runs `{key} configure --sync --yes` to bootstrap configuration files and sync developer tools. |
+| **Agent artifacts** | Formula `post_install` | Automatically runs `{key} configure --refresh --yes` to bootstrap configuration files and refresh agent artifacts. |
 | **Application Configuration** | User-facing `{key} configure` | Runs an interactive TTY setup wizard (only when `program.appConfig` defines required parameters). |
 | **Clean Uninstall** | Formula `uninstall` | Automatically runs `{key} configure --remove-all --yes` to clean up local configurations and symlinks. |
 
@@ -87,7 +87,7 @@ class Myapp < Formula
 
   def post_install
     # Non-interactive bootstrap of config files and developer links
-    system bin/"myapp", "configure", "--sync", "--yes"
+    system bin/"myapp", "configure", "--refresh", "--yes"
   end
 
   def uninstall

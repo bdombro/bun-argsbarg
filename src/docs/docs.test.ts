@@ -153,7 +153,7 @@ test("docs mcp when MCP enabled", async () => {
   expect(result.stdout).toContain("MCP server (myapp)");
   expect(result.stdout).toContain("myapp mcp");
   expect(result.stdout).toContain("claude_desktop_config.json");
-  expect(result.stdout).toContain("configure --sync --yes");
+  expect(result.stdout).toContain("configure --refresh --yes");
 });
 
 test("docs rejects unknown subcommand", async () => {
@@ -304,7 +304,7 @@ test("generateMcpGuide includes schema URI and .agents install", () => {
   expect(guide).toContain("claude_desktop_config.json");
   expect(guide).toContain("## Installation");
   expect(guide).toContain("## Running directly");
-  expect(guide).toContain("configure --sync");
+  expect(guide).toContain("configure --refresh");
   expect(guide).toContain("dotagentsprotocol.com");
   expect(guide).not.toContain("OpenAI Codex");
 });

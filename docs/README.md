@@ -9,10 +9,10 @@ Start here to pick the right guide.
 | **JSON stdout / `outputSchema`** | [output-schema.md](output-schema.md) — codegen pipeline, JSDoc, narrowing |
 | **App config / `program.appConfig`** | [config-schema.md](config-schema.md) — flat JSON file, `ctx.appConfig`, codegen |
 | **JSON Schema validation** | [json-schema-subset.md](json-schema-subset.md) — Draft-07 / 2019-09 / 2020-12 (`$schema` on each schema; default Draft-07) |
-| **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `configure --sync` |
+| **Exposing MCP tools** | [mcp.md](mcp.md) — stdio server, `inputSchema`, varargs, `configure --refresh` |
 | **HTTP tool server** | [http-server.md](http-server.md) — `myapp http`, endpoints, curl examples |
 | **Server logging** (`program.log`, `enrich`, `serialize`) | [logging.md](logging.md) — ECS JSON lines, trace headers, custom formats |
-| **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure --sync` |
+| **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure --refresh` |
 | **Homebrew tap-from-repo distribution** | [distribution-homebrew.md](distribution-homebrew.md) — formula pattern, `argsbarg create` |
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |
 | **Agent skills** | [ai-skills.md](ai-skills.md) — `configure`, `docs skill` |

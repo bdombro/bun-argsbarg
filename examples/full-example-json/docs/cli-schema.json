@@ -21,10 +21,10 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
           "options": [
             {
-              "name": "sync",
+              "name": "refresh",
               "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
               "kind": "presence"
             },
@@ -40,7 +40,7 @@
             },
             {
               "name": "yes",
-              "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
               "kind": "presence",
               "shortName": "y"
             },
@@ -254,10 +254,10 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
           "options": [
             {
-              "name": "sync",
+              "name": "refresh",
               "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
               "kind": "presence"
             },
@@ -273,7 +273,7 @@
             },
             {
               "name": "yes",
-              "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
               "kind": "presence",
               "shortName": "y"
             },
@@ -509,10 +509,10 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
           "options": [
             {
-              "name": "sync",
+              "name": "refresh",
               "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
               "kind": "presence"
             },
@@ -528,7 +528,7 @@
             },
             {
               "name": "yes",
-              "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
               "kind": "presence",
               "shortName": "y"
             },
@@ -746,10 +746,10 @@
             {
               "key": "configure",
               "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
               "options": [
                 {
-                  "name": "sync",
+                  "name": "refresh",
                   "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                   "kind": "presence"
                 },
@@ -765,7 +765,7 @@
                 },
                 {
                   "name": "yes",
-                  "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                  "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                   "kind": "presence",
                   "shortName": "y"
                 },
@@ -979,10 +979,10 @@
             {
               "key": "configure",
               "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
               "options": [
                 {
-                  "name": "sync",
+                  "name": "refresh",
                   "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                   "kind": "presence"
                 },
@@ -998,7 +998,7 @@
                 },
                 {
                   "name": "yes",
-                  "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                  "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                   "kind": "presence",
                   "shortName": "y"
                 },
@@ -1216,10 +1216,10 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
                   "options": [
                     {
-                      "name": "sync",
+                      "name": "refresh",
                       "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                       "kind": "presence"
                     },
@@ -1235,7 +1235,7 @@
                     },
                     {
                       "name": "yes",
-                      "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                       "kind": "presence",
                       "shortName": "y"
                     },
@@ -1449,10 +1449,10 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
                   "options": [
                     {
-                      "name": "sync",
+                      "name": "refresh",
                       "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                       "kind": "presence"
                     },
@@ -1468,7 +1468,7 @@
                     },
                     {
                       "name": "yes",
-                      "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                       "kind": "presence",
                       "shortName": "y"
                     },
@@ -1682,10 +1682,10 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
                   "options": [
                     {
-                      "name": "sync",
+                      "name": "refresh",
                       "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                       "kind": "presence"
                     },
@@ -1701,7 +1701,7 @@
                     },
                     {
                       "name": "yes",
-                      "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                       "kind": "presence",
                       "shortName": "y"
                     },
@@ -1915,10 +1915,10 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --sync --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
                   "options": [
                     {
-                      "name": "sync",
+                      "name": "refresh",
                       "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
                       "kind": "presence"
                     },
@@ -1934,7 +1934,7 @@
                     },
                     {
                       "name": "yes",
-                      "description": "Skip confirmation (required for --sync, --remove-all, --remove-config).",
+                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
                       "kind": "presence",
                       "shortName": "y"
                     },

@@ -11,7 +11,7 @@ class FullExample < Formula
   end
 
   def post_install
-    system bin/"full-example", "configure", "--sync", "--yes"
+    system bin/"full-example", "configure", "--refresh", "--yes"
   end
 
   def uninstall

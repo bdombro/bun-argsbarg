@@ -20,7 +20,7 @@ export const formulaInstallRuby = `def install
   end`;
 
 export const formulaPostInstallRuby = `def post_install
-    system bin/"${key}", "configure", "--sync", "--yes"
+    system bin/"${key}", "configure", "--refresh", "--yes"
   end`;
 
 export const formulaUninstallRuby = `def uninstall

@@ -97,11 +97,11 @@ By default (unless `docs.enabled: false`):
 
 - **`docs cli-schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
 - **`docs cli`** — markdown rendering of the same command tree (options, positionals, subcommands, fallback routing).
-- **`docs skill`** — prints the compact `SKILL.md` index. Prefer `configure --sync --yes` for agents (persists index + full API in `reference.md`).
+- **`docs skill`** — prints the compact `SKILL.md` index. Prefer `configure --refresh --yes` for agents (persists index + full API in `reference.md`).
 
 ## MCP guide (`docs mcp`)
 
-When both docs (default) and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `configure --sync`, and protocol notes.
+When both docs (default) and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `configure --refresh`, and protocol notes.
 
 There is no override API in v1 — customize behavior via `mcpTool.description` on leaf commands.
 

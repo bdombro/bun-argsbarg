@@ -35,13 +35,13 @@ just build
 just install-local    # same formula as production; temporary file:// URL during brew install (`just install` is an alias)
 ```
 
-Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --sync --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Use `just sync-artifacts` to refresh agent artifacts without touching the binary.
+Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --refresh --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Use `just refresh-artifacts` to refresh agent artifacts without touching the binary.
 
 ## Quick reference
 
 ```bash
 # Refresh skills/MCP after upgrade (Homebrew post_install runs this automatically)
-<key> configure --sync --yes
+<key> configure --refresh --yes
 
 # See what is installed
 <key> configure --status
@@ -60,7 +60,7 @@ Dev flow matches release: formula `install` copies the binary and generates comp
 <key> configure set <key> <value> [--json] [--from-env]
 ```
 
-Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remove-all`**, **`--remove-config`**) — see [Confirmation](#confirmation).
+Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--refresh`**, **`--remove-all`**, **`--remove-config`**) — see [Confirmation](#confirmation).
 
 ## What gets configured
 
@@ -70,35 +70,35 @@ Non-interactive / CI: pass **`--yes`** (or **`--json`**, **`--sync`**, **`--remo
 | Shell completions | skipped | Homebrew `generate_completions_from_executable` |
 | Agent skill | skipped (automatic) | `~/.agents/skills/<key>/` when `program.skill.enabled` |
 | MCP config | skipped (automatic) | `~/.agents/mcp.json` when `mcpServer.enabled` (see https://dotagentsprotocol.com) |
-| App config | auto-runs wizard | Interactive wizard may update `~/.local/lib/<key>/config.json` when values change; `--sync` bootstraps an empty file on install |
+| App config | auto-runs wizard | Interactive wizard may update `~/.local/lib/<key>/config.json` when values change; `--refresh` bootstraps an empty file on install |
 
 ### Externally managed binary (Homebrew)
 
 When **`PATH`** resolves the program key to the **running executable** (e.g. after `brew install`):
 
 - **`configure --status`** shows `app: system (PATH)`
-- **`configure --sync`** refreshes the agent skill (when `program.skill.enabled`) and merges MCP into `~/.agents/mcp.json` (when `mcpServer.enabled`); also creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps)
+- **`configure --refresh`** refreshes the agent skill (when `program.skill.enabled`) and merges MCP into `~/.agents/mcp.json` (when `mcpServer.enabled`); also creates `~/.local/lib/<key>/config.json` as `{}` when missing (all apps)
 
 MCP config uses the command name on **`PATH`**, not a Cellar path. For Cursor, Claude Code, and Claude Desktop, copy the `mcpServers` entry manually — see [mcp.md](mcp.md) and `docs mcp`.
 
 ### Interactive default
 
-Bare **`configure`** (TTY required) runs the app config wizard when `program.appConfig` has entries. Agent skills and MCP are **not** prompted — they install automatically via brew `post_install` / `--sync` when `program.skill.enabled` or `mcpServer.enabled` respectively.
+Bare **`configure`** (TTY required) runs the app config wizard when `program.appConfig` has entries. Agent skills and MCP are **not** prompted — they install automatically via brew `post_install` / `--refresh` when `program.skill.enabled` or `mcpServer.enabled` respectively.
 
 Remove the config file with **`configure --remove-config --yes`**.
 
-The **`app`** and **`skill`** / **`agentsMcp`** targets are shown in `--status` only — never mutated by interactive `configure` (use `--sync` / brew hooks).
+The **`app`** and **`skill`** / **`agentsMcp`** targets are shown in `--status` only — never mutated by interactive `configure` (use `--refresh` / brew hooks).
 
 ### `configure.targets`
 
-Optional gates for app binary status and app-config wizard participation in `--sync`:
+Optional gates for app binary status and app-config wizard participation in `--refresh`:
 
 ```typescript
 skill: { enabled: true },
 mcpServer: { enabled: true },
 configure: {
   targets: {
-    configure: { includedInAll: true }, // optional: app config wizard on --sync
+    configure: { includedInAll: true }, // optional: app config wizard on --refresh
   },
 },
 ```
@@ -107,15 +107,37 @@ configure: {
 
 Artifact keys: `app`, `configure`. Legacy `configure.targets.*Mcp` keys are rejected — MCP installs to `~/.agents/mcp.json` when `mcpServer.enabled`.
 
+### Lifecycle hooks
+
+Optional callbacks on `program.configure` for app-specific agent setup beyond the `.agents` protocol (e.g. Cursor or Claude Desktop config). Framework artifacts are installed/refreshed first; hooks extend or retract custom files.
+
+```typescript
+configure: {
+  afterRefresh: async (ctx) => {
+    if (ctx.dry) return;
+    // e.g. symlink skill, merge Cursor mcp.json — ctx.paths has agentsSkillDir, agentsMcpPath, mcpName
+  },
+  beforeRemoveAll: async (ctx) => {
+    if (ctx.dry) return;
+    // undo custom installs before framework removes ~/.agents/ artifacts
+  },
+},
+```
+
+| Hook | When |
+| --- | --- |
+| `afterRefresh` | After `configure --refresh` installs framework artifacts |
+| `beforeRemoveAll` | Before `configure --remove-all` removes framework artifacts (not `--remove-config`) |
+
 ## App config (`program.appConfig`)
 
-Every app gets `~/.local/lib/<sanitized-key>/config.json` on first **`configure --sync`** (Homebrew `post_install`), even without `program.appConfig`.
+Every app gets `~/.local/lib/<sanitized-key>/config.json` on first **`configure --refresh`** (Homebrew `post_install`), even without `program.appConfig`.
 
 When `program.appConfig` is set, ArgsBarg manages schema-driven values in that file.
 
 | Mode | Description |
 | --- | --- |
-| `configure --sync` | Bootstraps `config.json` as `{}` when missing |
+| `configure --refresh` | Bootstraps `config.json` as `{}` when missing |
 | Interactive `configure` | Config wizard when `entries` is non-empty; re-prompts every entry (Enter keeps current); writes only when values or `_bindings` change |
 | `--status` | Shows config path, required keys (`set` / `missing`), and binding hints (`env`, `file`, `skip`) |
 | `--remove-config --yes` | Removes the config directory |
@@ -132,7 +154,7 @@ Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 | Flag | Description |
 | --- | --- |
 | `--status` | Read-only inventory |
-| `--sync` | Refresh installed agent artifacts; bootstrap `config.json` when missing (Homebrew `post_install`; greenfield → full sync plan) |
+| `--refresh` | Refresh installed agent artifacts; bootstrap `config.json` when missing (Homebrew `post_install`; greenfield → full install plan) |
 | `--remove-all` | Remove all detected agent artifacts |
 | `--remove-config` | Remove app config directory only |
 
@@ -146,7 +168,7 @@ Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 
 ## Confirmation
 
-Interactive `configure` prints a **`{app} Setup`** banner and per-target prompts. Non-interactive modes (`--sync`, `--remove-all`, `--remove-config`) require **`--yes`** unless `--dry`.
+Interactive `configure` prints a **`{app} Setup`** banner and per-target prompts. Non-interactive modes (`--refresh`, `--remove-all`, `--remove-config`) require **`--yes`** unless `--dry`.
 
 ## MCP merge behavior
 
@@ -164,7 +186,7 @@ Release formulae should run:
 
 ```ruby
 def post_install
-  system bin/"myapp", "configure", "--sync", "--yes"
+  system bin/"myapp", "configure", "--refresh", "--yes"
 end
 ```
 

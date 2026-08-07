@@ -9,7 +9,7 @@ import { cliBuiltinDocsGroup } from "../docs/builtin.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from ".";
 import { cliBuiltinConfigureCommand, configureBuiltinOptions } from "./configure.ts";
-import { configureCommandDescription, configureSyncOptionDescription } from "./configure-copy.ts";
+import { configureCommandDescription, configureRefreshOptionDescription } from "./configure-copy.ts";
 import { exportPresentationBuiltins } from "./export.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
@@ -43,7 +43,7 @@ describe("builtins help copy", () => {
     expect(configure.description).toContain("MCP config");
     expect(configure.notes).toContain("brew upgrade");
     const names = configureBuiltinOptions(fixture).map((o) => o.name);
-    expect(names).toContain("sync");
+    expect(names).toContain("refresh");
     expect(names).toContain("remove-all");
     expect(names).toContain("status");
     const yesOpt = configureBuiltinOptions(fixture).find((o) => o.name === "yes");
@@ -54,7 +54,7 @@ describe("builtins help copy", () => {
     const caps = resolveCapabilities(noMcp);
     expect(configureCommandDescription(noMcp, caps)).toBe("Set up agent skills for this app (binary via Homebrew).");
     expect(configureCommandDescription(noMcp, caps)).not.toContain("MCP");
-    expect(configureSyncOptionDescription(noMcp, caps)).not.toContain("MCP");
+    expect(configureRefreshOptionDescription(noMcp, caps)).not.toContain("MCP");
     const configure = cliBuiltinConfigureCommand(noMcp);
     expect(configure.description).not.toContain("MCP");
   });
@@ -63,7 +63,7 @@ describe("builtins help copy", () => {
   test("configure notes mention brew upgrade and interactive configure", () => {
     const configure = cliBuiltinConfigureCommand(fixture);
     expect(configure.notes).toContain("brew upgrade");
-    expect(configure.notes).toContain("configure --sync --yes");
+    expect(configure.notes).toContain("configure --refresh --yes");
     expect(configure.notes).toContain(`${fixture.key} configure`);
 
     const withConfig: CliProgram = {
@@ -77,11 +77,11 @@ describe("builtins help copy", () => {
 
   test("configure -y parses as --yes", () => {
     const root = cliParseRoot(fixture);
-    const pr = postParseValidate(root, parse(root, ["configure", "-y", "--sync"]));
+    const pr = postParseValidate(root, parse(root, ["configure", "-y", "--refresh"]));
     expect(pr.kind).toBe(ParseKind.Ok);
     if (pr.kind === ParseKind.Ok) {
       expect(pr.opts.yes).toBe("1");
-      expect(pr.opts.sync).toBe("1");
+      expect(pr.opts.refresh).toBe("1");
     }
   });
 
@@ -134,7 +134,7 @@ describe("completion emitters", () => {
     const schema = cliPresentationRoot(fixture);
     const bash = completionBashScript(schema);
     expect(bash).toContain("hello");
-    expect(bash).toContain("--sync");
+    expect(bash).toContain("--refresh");
   });
 
   test("zsh script registers compdef", () => {
