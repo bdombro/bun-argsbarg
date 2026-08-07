@@ -30,8 +30,8 @@ describe("builtins/config", () => {
   /** Tests that config get redacts sensitive values. */
   test("config get redacts sensitive values", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -43,8 +43,8 @@ describe("builtins/config", () => {
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("REDACTED");
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prev !== undefined) process.env.API_TOKEN = prev;
       rmSync(dir, { recursive: true, force: true });
     }
@@ -53,8 +53,8 @@ describe("builtins/config", () => {
   /** Tests that config get --json redacts sensitive as { set: true }. */
   test("config get --json redacts sensitive as { set: true }", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -66,8 +66,8 @@ describe("builtins/config", () => {
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual({ set: true });
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prev !== undefined) process.env.API_TOKEN = prev;
       rmSync(dir, { recursive: true, force: true });
     }
@@ -76,8 +76,8 @@ describe("builtins/config", () => {
   /** Tests that config set writes and resolves without required exit. */
   test("config set writes and resolves without required exit", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-builtin-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -88,8 +88,8 @@ describe("builtins/config", () => {
       const get = await new Cli(program).invoke(["configure", "get", "port"]);
       expect(get.stdout.trim()).toBe("9090");
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prev !== undefined) process.env.API_TOKEN = prev;
       rmSync(dir, { recursive: true, force: true });
     }
@@ -97,8 +97,8 @@ describe("builtins/config", () => {
 
   test("config set --from-env stores binding without literal", async () => {
     const dir = mkdtempSync(join(tmpdir(), "cfg-from-env-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prev = process.env.API_TOKEN;
     process.env.API_TOKEN = "from-env";
     try {
@@ -114,8 +114,8 @@ describe("builtins/config", () => {
       expect(onDisk.apiToken).toBeUndefined();
       expect(readBindings(onDisk).apiToken).toBe("env");
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prev === undefined) delete process.env.API_TOKEN;
       else process.env.API_TOKEN = prev;
       rmSync(dir, { recursive: true, force: true });

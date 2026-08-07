@@ -2,12 +2,21 @@
 Shared host path primitives for install, config, and skill modules.
 */
 
-import { homedir } from "node:os";
+import { existsSync } from "node:fs";
+import { userInfo } from "node:os";
 import { join } from "node:path";
 
-/** Resolves the user home directory (`$HOME` when set). */
+/**
+ * Resolves the user home directory without depending on `$HOME`.
+ * This is helpful for when homebrew post-install hooks run with a temporary `$HOME`.
+ */
 export function userHome(): string {
-  return process.env.HOME ?? homedir();
+  const user = process.env.USER ?? process.env.LOGNAME;
+  return (
+    [process.env.TEST_USER_HOME, user && `/Users/${user}`, user && `/home/${user}`, process.env.USERPROFILE].find(
+      (p) => p && existsSync(p),
+    ) ?? userInfo().homedir
+  );
 }
 
 /** Expands a leading `~` or `~/` in a path using {@link userHome}. */

@@ -84,6 +84,7 @@ export type { EcsLogEvent, LogEnrichContext } from "./log/ecs.ts";
 export { ECS_VERSION, formatEcsLine } from "./log/ecs.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+export { userHome } from "./paths/host.ts";
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "./runtime/cli.ts";
 export { cliErrWithHelp } from "./runtime/cli-errors.ts";
 export { isInteractiveTty } from "./utils.ts";

@@ -66,17 +66,13 @@ http:
 # Alias for backward compatibility
 install: install-local
 
-# Refresh skills and MCP without reinstalling the formula
-refresh-artifacts:
-    just run configure --refresh --yes
-
 # Dev install: build, stage dev formula, brew install, restore release formula
 install-local: build
     @NONINTERACTIVE=1 brew untap {{tap}} 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
     bun scripts/dev-formula.ts install
-    brew install --force --formula {{tap}}/{{cli_key}}
+    NONINTERACTIVE=1 brew reinstall --formula {{tap}}/{{cli_key}} || NONINTERACTIVE=1 brew install --force --formula {{tap}}/{{cli_key}}
     bun scripts/dev-formula.ts reset
     @echo ""
     @echo "Next: {{cli_key}} configure"

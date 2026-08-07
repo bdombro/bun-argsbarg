@@ -29,8 +29,8 @@ describe("config/context", () => {
   /** Tests that AppConfigSnapshot get, require, read, set. */
   test("AppConfigSnapshot get, require, read, set", () => {
     const dir = mkdtempSync(join(tmpdir(), "ctx-test-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prevToken = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -48,8 +48,8 @@ describe("config/context", () => {
       expect(ctx.get("note")).toBe("updated");
       expect(ctx.read().note).toBe("updated");
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prevToken === undefined) delete process.env.API_TOKEN;
       else process.env.API_TOKEN = prevToken;
       rmSync(dir, { recursive: true, force: true });
@@ -82,8 +82,8 @@ describe("config/context", () => {
 
   test("AppConfigSnapshot unsafe read/write", () => {
     const dir = mkdtempSync(join(tmpdir(), "ctx-unsafe-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     const prevToken = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -95,8 +95,8 @@ describe("config/context", () => {
       ctx.setUnsafe("note", "raw");
       expect(ctx.getUnsafe("note")).toBe("raw");
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       if (prevToken === undefined) delete process.env.API_TOKEN;
       else process.env.API_TOKEN = prevToken;
       rmSync(dir, { recursive: true, force: true });
@@ -105,8 +105,8 @@ describe("config/context", () => {
 
   test("EmptyAppConfigSnapshot unsafe read/write", () => {
     const dir = mkdtempSync(join(tmpdir(), "ctx-empty-unsafe-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = dir;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = dir;
     try {
       const programWithoutConfig: CliProgram = {
         key: "rawapp",
@@ -119,8 +119,8 @@ describe("config/context", () => {
       expect(empty.getUnsafe("custom")).toBe(42);
       expect(empty.readUnsafe().custom).toBe(42);
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       rmSync(dir, { recursive: true, force: true });
     }
   });

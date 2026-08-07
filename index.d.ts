@@ -909,6 +909,11 @@ export interface PackMcpBundleOpts {
  * Requires the compiled binary to exist.
  */
 export declare function packMcpBundle(program: CliProgram, opts?: PackMcpBundleOpts): string;
+/**
+ * Resolves the user home directory without depending on `$HOME`.
+ * This is helpful for when homebrew post-install hooks run with a temporary `$HOME`.
+ */
+export declare function userHome(): string;
 /** JSON-safe command node (no handlers). */
 export interface CliSchemaExport {
 	key: string;

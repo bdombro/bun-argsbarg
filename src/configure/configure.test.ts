@@ -33,20 +33,20 @@ const fixture: CliProgram = {
 };
 
 let home: string;
-let prevHome: string | undefined;
+let prevTestHome: string | undefined;
 let prevXdg: string | undefined;
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), "argsbarg-configure-"));
-  prevHome = process.env.HOME;
+  prevTestHome = process.env.TEST_USER_HOME;
   prevXdg = process.env.XDG_CONFIG_HOME;
-  process.env.HOME = home;
+  process.env.TEST_USER_HOME = home;
   delete process.env.XDG_CONFIG_HOME;
 });
 
 afterEach(() => {
-  if (prevHome === undefined) delete process.env.HOME;
-  else process.env.HOME = prevHome;
+  if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+  else process.env.TEST_USER_HOME = prevTestHome;
   if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
   else process.env.XDG_CONFIG_HOME = prevXdg;
   rmSync(home, { recursive: true, force: true });

@@ -1212,20 +1212,20 @@ test("cliSkillInstall writes project agent skill files", () => {
   }
 });
 
-/** CliSkillInstall global uses HOME agents skills directory. */
-test("cliSkillInstall global uses HOME agents skills directory", () => {
+/** CliSkillInstall global uses TEST_USER_HOME agents skills directory. */
+test("cliSkillInstall global uses TEST_USER_HOME agents skills directory", () => {
   const home = mkdtempSync(join(tmpdir(), "argsbarg-home-"));
-  const prevHome = process.env.HOME;
-  process.env.HOME = home;
+  const prevTestHome = process.env.TEST_USER_HOME;
+  process.env.TEST_USER_HOME = home;
   try {
     const files = cliSkillInstall(nestedMcpFixture, { global: true, rimraf: true });
     expect(files.some((f) => f.includes(join(home, ".agents", "skills", "nested.ts")))).toBe(true);
     expect(existsSync(join(home, ".agents", "skills", "nested.ts", "SKILL.md"))).toBe(true);
   } finally {
-    if (prevHome === undefined) {
-      delete process.env.HOME;
+    if (prevTestHome === undefined) {
+      delete process.env.TEST_USER_HOME;
     } else {
-      process.env.HOME = prevHome;
+      process.env.TEST_USER_HOME = prevTestHome;
     }
     rmSync(home, { recursive: true, force: true });
   }

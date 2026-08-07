@@ -13,8 +13,8 @@ import { mcpRequest, testProgram } from "../fixtures.ts";
 /** Tests that bootstrapAppConfig prefers host env over config file. */
 test("bootstrapAppConfig prefers host env over config file", () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-env-"));
-  const prevHome = process.env.HOME;
-  process.env.HOME = dir;
+  const prevTestHome = process.env.TEST_USER_HOME;
+  process.env.TEST_USER_HOME = dir;
   process.env.FOO = "original";
   try {
     const p = testProgram({
@@ -36,8 +36,8 @@ test("bootstrapAppConfig prefers host env over config file", () => {
     expect(process.env.FOO).toBe("original");
     expect(process.env.BAR).toBe("bar");
   } finally {
-    if (prevHome === undefined) delete process.env.HOME;
-    else process.env.HOME = prevHome;
+    if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+    else process.env.TEST_USER_HOME = prevTestHome;
     delete process.env.FOO;
     delete process.env.BAR;
     rmSync(dir, { recursive: true, force: true });
@@ -106,7 +106,7 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
     ],
     {
       script: "src/test/mcp-integration-fixture.ts",
-      env: { HOME: dir, ARGS_TEST_SECRET: "present" },
+      env: { TEST_USER_HOME: dir, ARGS_TEST_SECRET: "present" },
     },
   );
   const res = responses.get(15) as {
@@ -148,7 +148,7 @@ const program = {
 await new Cli(program).run(process.argv.slice(2));
 `,
   );
-  const env = { ...process.env, HOME: dir } as Record<string, string | undefined>;
+  const env = { ...process.env, TEST_USER_HOME: dir } as Record<string, string | undefined>;
   delete env.DOCS_SKIP_RUN_TOKEN;
   try {
     const proc = Bun.spawn(["bun", "run", mainPath, "docs", "cli"], {

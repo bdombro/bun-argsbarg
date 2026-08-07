@@ -37,13 +37,13 @@ const program: CliProgram = {
 
 function withHome<T>(fn: (home: string) => T): T {
   const home = mkdtempSync(join(tmpdir(), "cfg-test-"));
-  const prevHome = process.env.HOME;
-  process.env.HOME = home;
+  const prevTestHome = process.env.TEST_USER_HOME;
+  process.env.TEST_USER_HOME = home;
   try {
     return fn(home);
   } finally {
-    if (prevHome === undefined) delete process.env.HOME;
-    else process.env.HOME = prevHome;
+    if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+    else process.env.TEST_USER_HOME = prevTestHome;
     rmSync(home, { recursive: true, force: true });
   }
 }

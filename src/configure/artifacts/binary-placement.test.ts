@@ -84,14 +84,14 @@ describe("isAppInstalled", () => {
   /** Tests that false when not on PATH and no local copy. */
   test("false when not on PATH and no local copy", () => {
     const home = mkdtempSync(join(tmpdir(), "argsbarg-placement-home-"));
-    const prevHome = process.env.HOME;
-    process.env.HOME = home;
+    const prevTestHome = process.env.TEST_USER_HOME;
+    process.env.TEST_USER_HOME = home;
     process.env.PATH = tmp;
     try {
       expect(isAppInstalled(program)).toBe(false);
     } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
+      if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+      else process.env.TEST_USER_HOME = prevTestHome;
       rmSync(home, { recursive: true, force: true });
     }
   });

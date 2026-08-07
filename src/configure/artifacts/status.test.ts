@@ -12,17 +12,17 @@ import { printInstallStatus } from "./status.ts";
 import { resolveInstallTargetPreview } from "./target-scope.ts";
 
 let home: string;
-let prevHome: string | undefined;
+let prevTestHome: string | undefined;
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), "argsbarg-status-"));
-  prevHome = process.env.HOME;
-  process.env.HOME = home;
+  prevTestHome = process.env.TEST_USER_HOME;
+  process.env.TEST_USER_HOME = home;
 });
 
 afterEach(() => {
-  if (prevHome === undefined) delete process.env.HOME;
-  else process.env.HOME = prevHome;
+  if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
+  else process.env.TEST_USER_HOME = prevTestHome;
   rmSync(home, { recursive: true, force: true });
 });
 

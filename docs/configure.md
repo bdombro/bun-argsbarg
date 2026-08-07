@@ -35,7 +35,7 @@ just build
 just install-local    # same formula as production; temporary file:// URL during brew install (`just install` is an alias)
 ```
 
-Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --refresh --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Use `just refresh-artifacts` to refresh agent artifacts without touching the binary.
+Dev flow matches release: formula `install` copies the binary and generates completions; `post_install` runs `<key> configure --refresh --yes` for skills/MCP. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles (skips completions and `post_install`). Run `<key> configure --refresh --yes` (or `just run configure --refresh --yes`) to refresh agent artifacts without touching the binary.
 
 ## Quick reference
 
