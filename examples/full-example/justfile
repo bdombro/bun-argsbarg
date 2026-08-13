@@ -66,29 +66,31 @@ http:
 # Alias for backward compatibility
 install: install-local
 
-# Dev install: build, stage dev formula, brew install, restore release formula
+# Dev install: build, stage dev formula, brew install, refresh agent artifacts
 install-local: uninstall build
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
     bun scripts/dev-formula.ts install
     HOMEBREW_NO_ASK=1 brew reinstall --formula {{tap}}/{{cli_key}} || HOMEBREW_NO_ASK=1 brew install --force --formula {{tap}}/{{cli_key}}
     bun scripts/dev-formula.ts reset
-    @echo ""
-    @echo "Next: {{cli_key}} configure"
+    {{cli_key}} configure install
 
 # Remove local dev install, then install from GitHub tap (requires gh auth login)
 install-production: uninstall
     brew tap {{release_repo}} {{tap_git_url}}
     brew install --formula {{release_repo}}/{{cli_key}}
-    @echo ""
-    @echo "Next: {{cli_key}} configure"
+    {{cli_key}} configure install
 
 # Alias for backward compatibility
 reinstall: reinstall-local
 
-# Rebuild binary and swap into Cellar (run install-local first)
+# Rebuild binary and swap into Cellar (run install-local first; run `just refresh` for skills/MCP)
 reinstall-local: build
     install -m 755 dist/{{cli_key}} "$(brew --prefix {{cli_key}})/bin/{{cli_key}}"
+
+# Refresh agent skills/MCP without reinstalling the binary
+refresh:
+    {{cli_key}} configure install
 
 # Lint sources without writing
 lint:
@@ -105,6 +107,7 @@ schemagen:
 # Install bun/npm dependencies
 setup:
     bun install
+    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg
 
 # Run unit tests (after check)
 test: check
@@ -127,12 +130,9 @@ test-release:
 typecheck:
     bun run tsc --noEmit
 
-# Undo dev/Homebrew install (formula uninstall hook runs configure --remove-all)
+# Undo dev/Homebrew install (remove agent artifacts, then keg + untap)
 uninstall:
+    @{{cli_key}} configure uninstall --yes 2>/dev/null || just run configure uninstall --yes
     @HOMEBREW_NO_ASK=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
     @HOMEBREW_NO_ASK=1 brew uninstall --formula {{tap}}/{{cli_key}}-local 2>/dev/null || true
     @HOMEBREW_NO_ASK=1 brew untap {{tap}} 2>/dev/null || true
-
-# Remove app config file only
-uninstall-config:
-    just run configure --remove-config --yes

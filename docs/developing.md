@@ -36,7 +36,7 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; refresh `AGENTS.md` from template (keeps app-specific prefix and conventions footer) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; fix `.bin/argsbarg` symlink; refresh `AGENTS.md` from template (keeps app-specific prefix and conventions footer) |
 | `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge `AGENTS.md`, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
 | `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
@@ -59,7 +59,7 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 7. **Agent instructions:** `just consumers-dev` merges `AGENTS.md` + `CLAUDE.md` (includes **Abstractions** needless-extraction rule).
 8. **Verify:** `just test` and `just docgen` in each consumer repo.
 
-**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure --refresh --yes`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
+**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure install`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
 
 ## npm package contents
 
@@ -71,7 +71,7 @@ Exclude `examples/full-example/node_modules/` and `examples/full-example-json/no
 
 ## Copy templates
 
-Both [`examples/full-example/`](../examples/full-example/) (CLI) and [`examples/full-example-json/`](../examples/full-example-json/) (schema-first) must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
+Both [`examples/full-example/`](../examples/full-example/) (CLI) and [`examples/full-example-json/`](../examples/full-example-json/) (schema-first) use `argsbarg: file:../..` in-repo; `just setup` fixes the Bun `.bin/argsbarg` symlink so `argsbarg schemagen` works. They must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
 
 ```bash
 just example-full-check

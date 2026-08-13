@@ -541,9 +541,9 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** interactive `configure` runs the app config wizard; **`configure --refresh`** refreshes agent artifacts to `~/.agents/` (see https://dotagentsprotocol.com). Optional `configure.afterRefresh` / `configure.beforeRemoveAll` for app-specific agent setup; see [configure.md](configure.md).
-- **Agent skill:** `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` on `configure --refresh`; see [configure.md](configure.md) and [ai-skills.md](ai-skills.md).
-- **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure --refresh`; manual Cursor/Claude setup in [mcp.md](mcp.md).
+- **Configure:** interactive `configure` runs the app config wizard; **`configure install`** refreshes agent artifacts to `~/.agents/` (see https://dotagentsprotocol.com). Optional `configure.afterInstall` / `configure.beforeUninstall` for app-specific agent setup; see [configure.md](configure.md).
+- **Agent skill:** `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` on `configure install`; see [configure.md](configure.md) and [ai-skills.md](ai-skills.md).
+- **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure install`; manual Cursor/Claude setup in [mcp.md](mcp.md).
 
 See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
 
@@ -582,7 +582,7 @@ If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just c
 
 3. **Optional:** add consumer-specific sections above the `<!-- argsbarg:managed -->` marker in `AGENTS.md` (project context, Ink patterns, domain notes).
 
-- **Not this file:** `myapp configure --refresh` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
+- **Not this file:** `myapp configure install` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
 
 ## See also
 

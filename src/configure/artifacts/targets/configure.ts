@@ -17,12 +17,11 @@ class ConfigureInstallTarget extends InstallTarget {
   readonly actionKind = "configure" as const;
   readonly category = "core" as const;
 
-  isAvailable(root: CliProgram, _paths: InstallPaths): boolean {
-    return root.appConfig !== undefined;
+  isAvailable(_root: CliProgram, _paths: InstallPaths): boolean {
+    return true;
   }
 
   isDetected(_paths: InstallPaths, root: CliProgram): boolean {
-    if (!root.appConfig) return false;
     return appConfigInstalled(root);
   }
 

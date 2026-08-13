@@ -19,17 +19,15 @@ export const formulaInstallRuby = `def install
     generate_completions_from_executable(bin/"${key}", "completion", base_name: "${key}")
   end`;
 
-export const formulaPostInstallRuby = `def post_install
-    system bin/"${key}", "configure", "--refresh", "--yes"
-  end`;
-
-export const formulaUninstallRuby = `def uninstall
-    system bin/"${key}", "configure", "--remove-all", "--yes"
-  end`;
-
 export const formulaCaveatsRuby = `def caveats
     <<~EOS
-      Run \`${key} configure\` to set up agent artifacts and app config (interactive).
+      After install or upgrade:
+        ${key} configure install
+
+      Before uninstall:
+        ${key} configure uninstall
+        brew uninstall <tap>/${key}
+
       Restart MCP chat apps (Cursor, Claude Desktop, etc.) after install or upgrade so they load the updated server.
     EOS
   end`;
@@ -135,10 +133,6 @@ export function renderFormula(coords: FormulaCoords): string {
   sha256 "${coords.sha256}"
 
   ${formulaInstallRuby}
-
-  ${formulaPostInstallRuby}
-
-  ${formulaUninstallRuby}
 
   ${formulaCaveatsRuby}
 

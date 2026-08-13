@@ -12,9 +12,10 @@ const LABEL: Record<Kind, { prose: string; short: string }> = {
 };
 
 function enabledKinds(program: CliProgram, caps: CliCapabilities): Kind[] {
-  const kinds: Kind[] = ["skills"];
-  if (caps.mcp) kinds.push("mcp");
-  if (program.appConfig) kinds.push("config");
+  const kinds: Kind[] = [];
+  if (program.skill?.enabled) kinds.push("skills");
+  if (caps.mcp && program.mcpServer?.enabled) kinds.push("mcp");
+  if (program.appConfig && Object.keys(program.appConfig.entries).length > 0) kinds.push("config");
   return kinds;
 }
 
@@ -29,21 +30,18 @@ function prose(program: CliProgram, caps: CliCapabilities): string {
   return joinEnglish(enabledKinds(program, caps).map((k) => LABEL[k].prose));
 }
 
-function short(program: CliProgram, caps: CliCapabilities): string {
-  return joinEnglish(enabledKinds(program, caps).map((k) => LABEL[k].short));
+/** True when brew caveats should mention `configure install` / `configure uninstall`. */
+export function needsConfigureCaveats(program: CliProgram, caps: CliCapabilities): boolean {
+  return enabledKinds(program, caps).length > 0;
 }
 
 export function configureCommandDescription(program: CliProgram, caps: CliCapabilities): string {
   return `Set up ${prose(program, caps)} for this app (binary via Homebrew).`;
 }
 
-export function configureRefreshOptionDescription(program: CliProgram, caps: CliCapabilities): string {
-  return `Refresh installed ${short(program, caps)}. Used by Homebrew post_install.`;
-}
-
 export function docsSkillTopicDescription(_program: CliProgram, caps: CliCapabilities): string {
   if (caps.configure) {
-    return "Print a reference agent SKILL; run `configure` to install an optimized copy.";
+    return "Print a reference agent SKILL; run `configure install` to install an optimized copy.";
   }
   return "Print a reference agent SKILL for AI agents.";
 }
@@ -53,30 +51,29 @@ export function configureCommandNotes(program: CliProgram, _caps: CliCapabilitie
   const lines = [
     "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).",
     "",
-    "Homebrew post_install runs:",
-    `  ${app} configure --refresh --yes`,
+    "Homebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.",
     "",
-    "Interactive setup (per target):",
-    `  ${app} configure`,
+    "After install or upgrade:",
+    `  ${app} configure install`,
     "",
     "Upgrade:",
     `  brew upgrade ${app}`,
+    `  ${app} configure install`,
     "",
     "Shell completions are installed by Homebrew during brew install.",
     "See: https://docs.brew.sh/Shell-Completion",
     "",
     "See what is installed:",
-    `  ${app} configure --status`,
+    `  ${app} configure status`,
     "",
     "Uninstall:",
+    `  ${app} configure uninstall`,
     `  brew uninstall <tap>/${app}`,
     "",
-    "The formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).",
-    "",
   ];
-  if (program.appConfig) {
-    lines.push("Remove app config only:", `  ${app} configure --remove-config --yes`, "");
+  if (program.appConfig && Object.keys(program.appConfig.entries).length > 0) {
+    lines.push("Set configuration values:", `  ${app} configure set <key> <value>`, "");
   }
-  lines.push("Use --dry to preview changes without writing files.", "Use --json for machine-readable output.");
+  lines.push("Use `configure status --json` for machine-readable output.");
   return lines.join("\n");
 }

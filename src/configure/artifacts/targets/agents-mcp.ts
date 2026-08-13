@@ -7,5 +7,5 @@ export const agentsMcpTarget = new McpJsonInstallTarget({
   configPath: (p) => p.agentsMcpPath,
   detectedKey: "agentsMcp",
   statusField: "agentsMcp",
-  isAvailable: (_root, _paths) => true,
+  isAvailable: (root) => root.mcpServer?.enabled === true,
 });

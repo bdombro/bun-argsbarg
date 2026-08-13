@@ -294,7 +294,9 @@ export function substituteTemplateContent(content: string, opts: CreateOptions):
   out = out.replace(/@@PROTECT(\d+)@@/g, (_, idx: string) => protectedSpans[Number(idx)] ?? "");
 
   if (!opts.devTemplate) {
-    out = out.replace(/"argsbarg":\s*"file:\.\.\/\.\."/, `"argsbarg": "^${argsbargVersion}"`);
+    out = out
+      .replace(/"argsbarg":\s*"workspace:\*"/, `"argsbarg": "^${argsbargVersion}"`)
+      .replace(/"argsbarg":\s*"file:\.\.\/\.\."/, `"argsbarg": "^${argsbargVersion}"`);
   }
 
   return out;

@@ -1,4 +1,3 @@
-import { cliConfigure } from "../configure/index.ts";
 import type { ParseResult } from "../core/parse.ts";
 import { ParseKind } from "../core/parse.ts";
 import type { CliNode, CliProgram, CliRouter } from "../core/types.ts";
@@ -12,7 +11,7 @@ import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
 import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
 import { completionZshScript } from "./completion-zsh.ts";
-import { CONFIGURE_RUN_KEY, cliBuiltinConfigureCommand, isConfigureConfigPath } from "./configure.ts";
+import { cliBuiltinConfigureCommand, isConfigureConfigPath } from "./configure.ts";
 import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
@@ -115,12 +114,6 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     if (isConfigureConfigPath(pr.path)) {
       return;
     }
-    const runSeg = pr.path[1];
-    if (pr.path.length > 2 || (pr.path.length === 2 && runSeg !== CONFIGURE_RUN_KEY)) {
-      process.stderr.write(`Unknown subcommand: configure ${pr.path.slice(1).join(" ")}\n`);
-      process.exit(1);
-    }
-    await cliConfigure(program, pr.opts);
   }
 }
 

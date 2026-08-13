@@ -10,17 +10,15 @@ class FullExampleJson < Formula
     generate_completions_from_executable(bin/"full-example-json", "completion", base_name: "full-example-json")
   end
 
-  def post_install
-    system bin/"full-example-json", "configure", "--refresh", "--yes"
-  end
-
-  def uninstall
-    system bin/"full-example-json", "configure", "--remove-all", "--yes"
-  end
-
   def caveats
     <<~EOS
-      Run `full-example-json configure` to set up agent artifacts and app config (interactive).
+      After install or upgrade:
+        full-example-json configure install
+
+      Before uninstall:
+        full-example-json configure uninstall
+        brew uninstall <tap>/full-example-json
+
       Restart MCP chat apps (Cursor, Claude Desktop, etc.) after install or upgrade so they load the updated server.
     EOS
   end

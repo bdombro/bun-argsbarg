@@ -43,41 +43,56 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
-> Homebrew post_install runs:
->   full-example configure --refresh --yes
+> Homebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.
 > 
-> Interactive setup (per target):
->   full-example configure
+> After install or upgrade:
+>   full-example configure install
 > 
 > Upgrade:
 >   brew upgrade full-example
+>   full-example configure install
 > 
 > Shell completions are installed by Homebrew during brew install.
 > See: https://docs.brew.sh/Shell-Completion
 > 
 > See what is installed:
->   full-example configure --status
+>   full-example configure status
 > 
 > Uninstall:
+>   full-example configure uninstall
 >   brew uninstall <tap>/full-example
 > 
-> The formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).
-> 
-> Use --dry to preview changes without writing files.
-> Use --json for machine-readable output.
+> Use `configure status --json` for machine-readable output.
 
-**Default subcommand:** `run` (`missingOnly`)
+#### Subcommands
+
+- `install` — Install agent artifacts and bootstrap app config.
+- `uninstall` — Remove agent artifacts and app config.
+- `status` — Print what is currently installed (read-only).
+
+##### `full-example echo configure install`
+
+Install agent artifacts and bootstrap app config.
+
+##### `full-example echo configure uninstall`
+
+Remove agent artifacts and app config.
 
 #### Options
 
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
-| `--refresh` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
-| `--remove-all` | flag | optional | — | Remove all detected agent artifacts (skills and MCP). |
-| `--status` | flag | optional | — | Print what is currently installed (read-only). |
-| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --refresh, --remove-all, --remove-config). |
-| `--dry` | flag | optional | — | Show what would change without writing files. |
-| `--json` | flag | optional | — | Print changed paths or status JSON on stdout. |
+| `--yes` (`-y`) | flag | optional | — | Skip uninstall confirmation. |
+
+##### `full-example echo configure status`
+
+Print what is currently installed (read-only).
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | flag | optional | — | Print status JSON on stdout. |
 
 #### `full-example echo docs`
 
@@ -99,7 +114,7 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure` to install an optimized copy.
+- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ##### `full-example echo docs readme`
 
@@ -163,7 +178,7 @@ Print the full command reference as markdown.
 
 ##### `full-example echo docs skill`
 
-Print a reference agent SKILL; run `configure` to install an optimized copy.
+Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -262,41 +277,56 @@ Set up agent skills and MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
-> Homebrew post_install runs:
->   full-example configure --refresh --yes
+> Homebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.
 > 
-> Interactive setup (per target):
->   full-example configure
+> After install or upgrade:
+>   full-example configure install
 > 
 > Upgrade:
 >   brew upgrade full-example
+>   full-example configure install
 > 
 > Shell completions are installed by Homebrew during brew install.
 > See: https://docs.brew.sh/Shell-Completion
 > 
 > See what is installed:
->   full-example configure --status
+>   full-example configure status
 > 
 > Uninstall:
+>   full-example configure uninstall
 >   brew uninstall <tap>/full-example
 > 
-> The formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).
-> 
-> Use --dry to preview changes without writing files.
-> Use --json for machine-readable output.
+> Use `configure status --json` for machine-readable output.
 
-**Default subcommand:** `run` (`missingOnly`)
+#### Subcommands
+
+- `install` — Install agent artifacts and bootstrap app config.
+- `uninstall` — Remove agent artifacts and app config.
+- `status` — Print what is currently installed (read-only).
+
+##### `full-example status configure install`
+
+Install agent artifacts and bootstrap app config.
+
+##### `full-example status configure uninstall`
+
+Remove agent artifacts and app config.
 
 #### Options
 
 | Option | Type | Required | Format / default | Description |
 | --- | --- | --- | --- | --- |
-| `--refresh` | flag | optional | — | Refresh installed skills and MCP. Used by Homebrew post_install. |
-| `--remove-all` | flag | optional | — | Remove all detected agent artifacts (skills and MCP). |
-| `--status` | flag | optional | — | Print what is currently installed (read-only). |
-| `--yes` (`-y`) | flag | optional | — | Skip confirmation (required for --refresh, --remove-all, --remove-config). |
-| `--dry` | flag | optional | — | Show what would change without writing files. |
-| `--json` | flag | optional | — | Print changed paths or status JSON on stdout. |
+| `--yes` (`-y`) | flag | optional | — | Skip uninstall confirmation. |
+
+##### `full-example status configure status`
+
+Print what is currently installed (read-only).
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | flag | optional | — | Print status JSON on stdout. |
 
 #### `full-example status docs`
 
@@ -318,7 +348,7 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure` to install an optimized copy.
+- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ##### `full-example status docs readme`
 
@@ -382,7 +412,7 @@ Print the full command reference as markdown.
 
 ##### `full-example status docs skill`
 
-Print a reference agent SKILL; run `configure` to install an optimized copy.
+Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 

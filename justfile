@@ -48,11 +48,11 @@ consumers-dev:
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
-      echo "==> $(basename "$dir") ($dir) → file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}" && bun "${root}/scripts/merge-agents-md.ts" "$dir")
+      echo "==> $(basename "$dir") ($dir) → bun add argsbarg@file:${rel}"
+      (cd "$dir" && bun add "argsbarg@file:${rel}" && test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg && bun "${root}/scripts/merge-agents-md.ts" "$dir")
     done
 
-# Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure --refresh → ~/.agents/)
+# Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure install → ~/.agents/)
 consumers-sync:
     #!/usr/bin/env bash
     root="$(cd "{{justfile_directory()}}" && pwd)"

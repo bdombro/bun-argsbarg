@@ -1,11 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { CliProgram } from "../../core/types.ts";
+import { displayHomePath } from "../../paths/host.ts";
 
 export interface McpServerEntry {
   command: string;
   args: string[];
 }
+
+export type McpInstallResult = "installed" | "skipped-match" | "skipped-conflict";
 
 export function expectedMcpEntry(root: CliProgram): McpServerEntry {
   return { command: root.key, args: ["mcp"] };
@@ -28,18 +31,20 @@ export function readMcpServerEntry(path: string, name: string): McpServerEntry |
   }
 }
 
-/** Returns an error message when existing entry conflicts, or null if safe to merge. */
-export function checkMcpConflict(path: string, name: string, expected: McpServerEntry, yes: boolean): string | null {
+/** Installs MCP entry when missing; skips when matching; warns and skips on conflict. */
+export function installMcpServerEntry(path: string, name: string, entry: McpServerEntry): McpInstallResult {
   const existing = readMcpServerEntry(path, name);
-  if (existing && !entriesEqual(existing, expected) && !yes) {
-    return (
-      `MCP server "${name}" in ${path} differs from expected entry.\n` +
-      `  existing: ${JSON.stringify(existing)}\n` +
-      `  expected: ${JSON.stringify(expected)}\n` +
-      `Use --yes to overwrite.`
+  if (existing) {
+    if (entriesEqual(existing, entry)) {
+      return "skipped-match";
+    }
+    process.stderr.write(
+      `MCP server "${name}" in ${displayHomePath(path)} differs; leaving existing entry unchanged.\n`,
     );
+    return "skipped-conflict";
   }
-  return null;
+  mergeMcpConfig(path, name, entry, false);
+  return "installed";
 }
 
 /** Merges MCP server entry into config file. */
@@ -57,10 +62,11 @@ export function mergeMcpConfig(path: string, name: string, entry: McpServerEntry
 }
 
 /** Removes MCP server entry from config file (keeps file if other keys remain). */
-export function removeMcpConfig(path: string, name: string, dry: boolean): void {
-  if (dry || !existsSync(path)) return;
+export function removeMcpConfig(path: string, name: string, dry: boolean): string[] {
+  if (dry || !existsSync(path)) return [];
   const data = JSON.parse(readFileSync(path, "utf8")) as { mcpServers?: Record<string, unknown> };
-  if (!data.mcpServers?.[name]) return;
+  if (!data.mcpServers?.[name]) return [];
   delete data.mcpServers[name];
   writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  return [path];
 }

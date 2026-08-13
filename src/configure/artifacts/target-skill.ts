@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import type { CliProgram } from "../../core/types.ts";
+import { cliSkillInstall } from "../../skill/install.ts";
 import { displayInstallPath, type InstallPaths } from "./paths.ts";
 import { InstallTarget } from "./target-base.ts";
 import type {
@@ -72,12 +73,16 @@ export class SkillInstallTarget extends InstallTarget {
 
   protected buildInstallActions(ctx: TargetPlanContext): InstallAction[] {
     const dir = this.spec.skillDir(ctx.paths);
+    const displayDir = `${displayInstallPath(dir)}/`;
     return [
       {
         kind: this.actionKind,
-        summary: `${this.spec.label.toLowerCase()}: ${displayInstallPath(dir)}/`,
-        message: `Installing ${this.spec.label.toLowerCase()} to ${displayInstallPath(dir)}/`,
-        run: () => [],
+        summary: `${this.spec.label.toLowerCase()}: ${displayDir}`,
+        message: `Installing ${this.spec.label.toLowerCase()} to ${displayDir}`,
+        run: () => {
+          cliSkillInstall(ctx.root, { global: true, rimraf: true, dry: ctx.dry });
+          return [];
+        },
       },
     ];
   }

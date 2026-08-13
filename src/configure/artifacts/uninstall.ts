@@ -1,5 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import type { CliProgram } from "../../core/types.ts";
+import { displayHomePath } from "../../paths/host.ts";
 import type { InstallPaths } from "./paths.ts";
 import { buildUninstallPlanFromTargets } from "./target-plan-build.ts";
 import { skillTargetForUninstallSummary } from "./target-registry.ts";
@@ -15,7 +16,10 @@ export function buildUninstallPlan(root: CliProgram, paths: InstallPaths, opts: 
 /** Rimraf skill directories during uninstall. */
 export function uninstallSkillDir(dir: string, dry: boolean): string[] {
   if (!existsSync(dir)) return [];
-  if (!dry) rmSync(dir, { recursive: true, force: true });
+  if (!dry) {
+    rmSync(dir, { recursive: true, force: true });
+    process.stdout.write(`Removed skill from ${displayHomePath(dir)}/\n`);
+  }
   return [`${dir}/`];
 }
 

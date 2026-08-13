@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CliProgram } from "../core/types.ts";
-import { userHome } from "../paths/host.ts";
+import { displayHomePath, userHome } from "../paths/host.ts";
 import { generateSkillBundle } from "./generate.ts";
 import { applySkillInstallHints } from "./hint.ts";
 import { skillDirName } from "./naming.ts";
@@ -40,6 +40,7 @@ export function cliSkillInstall(root: CliProgram, opts: SkillInstallOpts): strin
     writeFileSync(skillPath, skillMd, "utf8");
     writeFileSync(skillCompatPath, skillMd, "utf8");
     writeFileSync(refPath, referenceMd, "utf8");
+    process.stdout.write(`Installed skill to ${displayHomePath(dir)}/\n`);
   }
 
   changed.push(skillPath, skillCompatPath, refPath);

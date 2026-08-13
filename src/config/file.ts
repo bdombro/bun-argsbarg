@@ -168,6 +168,7 @@ export function uninstallAppConfig(program: CliProgram, dry: boolean): string[] 
   if (!dry) {
     if (hasFile) unlinkSync(path);
     if (hasDir) rmSync(dir, { recursive: true, force: true });
+    process.stdout.write(`Removed app config ${displayAppConfigPath(program)}\n`);
   }
   return changed;
 }

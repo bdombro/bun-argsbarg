@@ -1,11 +1,5 @@
 import type { CliProgram } from "../../core/types.ts";
-import {
-  checkMcpConflict,
-  expectedMcpEntry,
-  mergeMcpConfig,
-  readMcpServerEntry,
-  removeMcpConfig,
-} from "./mcp-config.ts";
+import { expectedMcpEntry, installMcpServerEntry, readMcpServerEntry, removeMcpConfig } from "./mcp-config.ts";
 import { displayInstallPath, type InstallPaths } from "./paths.ts";
 import { InstallTarget } from "./target-base.ts";
 import type {
@@ -78,22 +72,25 @@ export class McpJsonInstallTarget extends InstallTarget {
     status[this.spec.statusField] = line;
   }
 
-  preflight(ctx: TargetPlanContext): string | null {
-    const entry = expectedMcpEntry(ctx.root);
-    return checkMcpConflict(this.spec.configPath(ctx.paths), ctx.paths.mcpName, entry, !!ctx.opts.yes);
+  preflight(_ctx: TargetPlanContext): string | null {
+    return null;
   }
 
   protected buildInstallActions(ctx: TargetPlanContext): InstallAction[] {
     const configPath = this.spec.configPath(ctx.paths);
     const entry = expectedMcpEntry(ctx.root);
+    const displayPath = displayInstallPath(configPath);
     return [
       {
         kind: this.actionKind,
-        summary: `${this.spec.label}: ${displayInstallPath(configPath)}`,
-        message: `Merging MCP server "${ctx.paths.mcpName}" into ${displayInstallPath(configPath)}`,
+        summary: `${this.spec.label}: ${displayPath}`,
+        message: `Merging MCP server "${ctx.paths.mcpName}" into ${displayPath}`,
         run: () => {
-          mergeMcpConfig(configPath, ctx.paths.mcpName, entry, ctx.dry);
-          return [configPath];
+          const result = installMcpServerEntry(configPath, ctx.paths.mcpName, entry);
+          if (result === "installed") {
+            process.stdout.write(`Registered MCP server in ${displayPath}\n`);
+          }
+          return result === "installed" ? [configPath] : [];
         },
       },
     ];
@@ -101,14 +98,18 @@ export class McpJsonInstallTarget extends InstallTarget {
 
   protected buildUninstallActions(ctx: TargetPlanContext): UninstallAction[] {
     const configPath = this.spec.configPath(ctx.paths);
+    const displayPath = displayInstallPath(configPath);
     return [
       {
         kind: this.actionKind,
-        summary: `${this.spec.label}: ${displayInstallPath(configPath)}`,
-        message: `Removing MCP server "${ctx.paths.mcpName}" from ${displayInstallPath(configPath)}`,
+        summary: `${this.spec.label}: ${displayPath}`,
+        message: `Removing MCP server "${ctx.paths.mcpName}" from ${displayPath}`,
         run: () => {
-          removeMcpConfig(configPath, ctx.paths.mcpName, ctx.dry);
-          return [configPath];
+          const changed = removeMcpConfig(configPath, ctx.paths.mcpName, ctx.dry);
+          if (changed.length > 0 && !ctx.dry) {
+            process.stdout.write(`Removed MCP server from ${displayPath}\n`);
+          }
+          return changed;
         },
       },
     ];

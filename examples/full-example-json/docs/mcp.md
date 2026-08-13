@@ -8,12 +8,12 @@ full-example-json exposes an MCP server with features similar to the CLI.
 
 ### `.agents` auto-install
 
-When `mcpServer.enabled` is set, `configure --refresh` merges this server into `~/.agents/mcp.json` per the https://dotagentsprotocol.com.
+When `mcpServer.enabled` is set, `configure install` merges this server into `~/.agents/mcp.json` per the https://dotagentsprotocol.com.
 
 Install the CLI first so `full-example-json` is on your PATH (e.g. `brew install full-example-json`).
 
 ```bash
-full-example-json configure --refresh --yes
+full-example-json configure install
 ```
 
 Writes or updates `~/.agents/mcp.json` with a `mcpServers` entry for this app.

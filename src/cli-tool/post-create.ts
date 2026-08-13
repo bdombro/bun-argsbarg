@@ -55,6 +55,10 @@ export async function runPostCreate(
                 cwd: abs,
                 stdout: "inherit",
                 stderr: "inherit",
+                env: {
+                  ...process.env,
+                  PATH: `${join(abs, "node_modules/.bin")}:${process.env.PATH ?? ""}`,
+                },
               });
               if (proc.exitCode !== 0) throw new Error("schemagen failed");
             },
@@ -113,7 +117,7 @@ export function printPostCreatePlan(templateId: CreateTemplateId = "cli"): void 
   process.stderr.write("Post-create steps:\n");
   process.stderr.write("  1. bun install\n");
   if (templateId === "json") {
-    process.stderr.write("  2. argsbarg schemagen\n");
+    process.stderr.write("  2. just schemagen\n");
     process.stderr.write("  3. bun test\n");
     process.stderr.write("  4. git init + Initial commit (skipped inside existing git work tree)\n");
   } else {

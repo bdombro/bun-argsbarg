@@ -46,10 +46,10 @@ bun run examples/nested.ts mcp
 
 ### `.agents` auto-install
 
-When `mcpServer.enabled` is set, `configure --refresh` merges a `mcpServers` entry into `~/.agents/mcp.json` per the https://dotagentsprotocol.com:
+When `mcpServer.enabled` is set, `configure install` merges a `mcpServers` entry into `~/.agents/mcp.json` per the https://dotagentsprotocol.com:
 
 ```bash
-myapp configure --refresh --yes
+myapp configure install
 ```
 
 ### Manual client setup
@@ -381,7 +381,7 @@ The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the
 
 Load locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
 
-Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` MCP targets and MCP hosts). Use **`configure --refresh --yes`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
+Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` MCP targets and MCP hosts). Use **`configure install`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
 
 ## Hidden commands and options
 

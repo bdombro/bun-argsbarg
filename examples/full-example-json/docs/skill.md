@@ -43,7 +43,7 @@ For full detail, open `reference.md` in this skill directory (same as `full-exam
 
 Install follows the https://dotagentsprotocol.com:
 
-- Auto-install: `full-example-json configure --refresh --yes` when `skill.enabled` → `~/.agents/skills/full-example-json/`
+- Auto-install: `full-example-json configure install` when `skill.enabled` → `~/.agents/skills/full-example-json/`
 - Cursor and most coding agents read `~/.agents/skills/` natively
 
 **Claude Code (manual):** symlink or copy into Claude's skill directory:

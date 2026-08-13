@@ -154,7 +154,7 @@ function buildSkillMd(root: CliProgram, dirName: string): string {
     "",
     "Install follows the https://dotagentsprotocol.com:",
     "",
-    `- Auto-install: \`${root.key} configure --refresh --yes\` when \`skill.enabled\` → \`~/.agents/skills/${dirName}/\``,
+    `- Auto-install: \`${root.key} configure install\` when \`skill.enabled\` → \`~/.agents/skills/${dirName}/\``,
     `- Cursor and most coding agents read \`~/.agents/skills/\` natively`,
     "",
     "**Claude Code (manual):** symlink or copy into Claude's skill directory:",

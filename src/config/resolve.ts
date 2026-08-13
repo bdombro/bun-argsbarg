@@ -223,7 +223,7 @@ export function formatMissingConfigMessage(program: CliProgram, keys: string[]):
   const path = displayAppConfigPath(program);
   return [
     `Missing required configuration: ${list}`,
-    `Configure interactively:  ${program.key} configure`,
+    `Configure interactively:  ${program.key} configure install`,
     `Or set via:               ${program.key} configure set <key> <value>`,
     `Config file:              ${path}`,
     `See:                      ${program.key} docs mcp`,

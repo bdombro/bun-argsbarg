@@ -21,42 +21,36 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-          "options": [
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+          "commands": [
             {
-              "name": "refresh",
-              "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-              "kind": "presence"
+              "key": "install",
+              "description": "Install agent artifacts and bootstrap app config."
             },
             {
-              "name": "remove-all",
-              "description": "Remove all detected agent artifacts (skills and MCP).",
-              "kind": "presence"
+              "key": "uninstall",
+              "description": "Remove agent artifacts and app config.",
+              "options": [
+                {
+                  "name": "yes",
+                  "description": "Skip uninstall confirmation.",
+                  "kind": "presence",
+                  "shortName": "y"
+                }
+              ]
             },
             {
-              "name": "status",
+              "key": "status",
               "description": "Print what is currently installed (read-only).",
-              "kind": "presence"
-            },
-            {
-              "name": "yes",
-              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-              "kind": "presence",
-              "shortName": "y"
-            },
-            {
-              "name": "dry",
-              "description": "Show what would change without writing files.",
-              "kind": "presence"
-            },
-            {
-              "name": "json",
-              "description": "Print changed paths or status JSON on stdout.",
-              "kind": "presence"
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Print status JSON on stdout.",
+                  "kind": "presence"
+                }
+              ]
             }
-          ],
-          "fallbackCommand": "run",
-          "fallbackMode": "missingOnly"
+          ]
         },
         {
           "key": "docs",
@@ -138,7 +132,7 @@
             },
             {
               "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -254,42 +248,36 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-          "options": [
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+          "commands": [
             {
-              "name": "refresh",
-              "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-              "kind": "presence"
+              "key": "install",
+              "description": "Install agent artifacts and bootstrap app config."
             },
             {
-              "name": "remove-all",
-              "description": "Remove all detected agent artifacts (skills and MCP).",
-              "kind": "presence"
+              "key": "uninstall",
+              "description": "Remove agent artifacts and app config.",
+              "options": [
+                {
+                  "name": "yes",
+                  "description": "Skip uninstall confirmation.",
+                  "kind": "presence",
+                  "shortName": "y"
+                }
+              ]
             },
             {
-              "name": "status",
+              "key": "status",
               "description": "Print what is currently installed (read-only).",
-              "kind": "presence"
-            },
-            {
-              "name": "yes",
-              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-              "kind": "presence",
-              "shortName": "y"
-            },
-            {
-              "name": "dry",
-              "description": "Show what would change without writing files.",
-              "kind": "presence"
-            },
-            {
-              "name": "json",
-              "description": "Print changed paths or status JSON on stdout.",
-              "kind": "presence"
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Print status JSON on stdout.",
+                  "kind": "presence"
+                }
+              ]
             }
-          ],
-          "fallbackCommand": "run",
-          "fallbackMode": "missingOnly"
+          ]
         },
         {
           "key": "docs",
@@ -371,7 +359,7 @@
             },
             {
               "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -509,42 +497,36 @@
         {
           "key": "configure",
           "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-          "options": [
+          "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+          "commands": [
             {
-              "name": "refresh",
-              "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-              "kind": "presence"
+              "key": "install",
+              "description": "Install agent artifacts and bootstrap app config."
             },
             {
-              "name": "remove-all",
-              "description": "Remove all detected agent artifacts (skills and MCP).",
-              "kind": "presence"
+              "key": "uninstall",
+              "description": "Remove agent artifacts and app config.",
+              "options": [
+                {
+                  "name": "yes",
+                  "description": "Skip uninstall confirmation.",
+                  "kind": "presence",
+                  "shortName": "y"
+                }
+              ]
             },
             {
-              "name": "status",
+              "key": "status",
               "description": "Print what is currently installed (read-only).",
-              "kind": "presence"
-            },
-            {
-              "name": "yes",
-              "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-              "kind": "presence",
-              "shortName": "y"
-            },
-            {
-              "name": "dry",
-              "description": "Show what would change without writing files.",
-              "kind": "presence"
-            },
-            {
-              "name": "json",
-              "description": "Print changed paths or status JSON on stdout.",
-              "kind": "presence"
+              "options": [
+                {
+                  "name": "json",
+                  "description": "Print status JSON on stdout.",
+                  "kind": "presence"
+                }
+              ]
             }
-          ],
-          "fallbackCommand": "run",
-          "fallbackMode": "missingOnly"
+          ]
         },
         {
           "key": "docs",
@@ -626,7 +608,7 @@
             },
             {
               "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -746,42 +728,36 @@
             {
               "key": "configure",
               "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-              "options": [
+              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+              "commands": [
                 {
-                  "name": "refresh",
-                  "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                  "kind": "presence"
+                  "key": "install",
+                  "description": "Install agent artifacts and bootstrap app config."
                 },
                 {
-                  "name": "remove-all",
-                  "description": "Remove all detected agent artifacts (skills and MCP).",
-                  "kind": "presence"
+                  "key": "uninstall",
+                  "description": "Remove agent artifacts and app config.",
+                  "options": [
+                    {
+                      "name": "yes",
+                      "description": "Skip uninstall confirmation.",
+                      "kind": "presence",
+                      "shortName": "y"
+                    }
+                  ]
                 },
                 {
-                  "name": "status",
+                  "key": "status",
                   "description": "Print what is currently installed (read-only).",
-                  "kind": "presence"
-                },
-                {
-                  "name": "yes",
-                  "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                  "kind": "presence",
-                  "shortName": "y"
-                },
-                {
-                  "name": "dry",
-                  "description": "Show what would change without writing files.",
-                  "kind": "presence"
-                },
-                {
-                  "name": "json",
-                  "description": "Print changed paths or status JSON on stdout.",
-                  "kind": "presence"
+                  "options": [
+                    {
+                      "name": "json",
+                      "description": "Print status JSON on stdout.",
+                      "kind": "presence"
+                    }
+                  ]
                 }
-              ],
-              "fallbackCommand": "run",
-              "fallbackMode": "missingOnly"
+              ]
             },
             {
               "key": "docs",
@@ -863,7 +839,7 @@
                 },
                 {
                   "key": "skill",
-                  "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                  "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                   "options": [
                     {
                       "name": "save",
@@ -979,42 +955,36 @@
             {
               "key": "configure",
               "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-              "options": [
+              "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+              "commands": [
                 {
-                  "name": "refresh",
-                  "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                  "kind": "presence"
+                  "key": "install",
+                  "description": "Install agent artifacts and bootstrap app config."
                 },
                 {
-                  "name": "remove-all",
-                  "description": "Remove all detected agent artifacts (skills and MCP).",
-                  "kind": "presence"
+                  "key": "uninstall",
+                  "description": "Remove agent artifacts and app config.",
+                  "options": [
+                    {
+                      "name": "yes",
+                      "description": "Skip uninstall confirmation.",
+                      "kind": "presence",
+                      "shortName": "y"
+                    }
+                  ]
                 },
                 {
-                  "name": "status",
+                  "key": "status",
                   "description": "Print what is currently installed (read-only).",
-                  "kind": "presence"
-                },
-                {
-                  "name": "yes",
-                  "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                  "kind": "presence",
-                  "shortName": "y"
-                },
-                {
-                  "name": "dry",
-                  "description": "Show what would change without writing files.",
-                  "kind": "presence"
-                },
-                {
-                  "name": "json",
-                  "description": "Print changed paths or status JSON on stdout.",
-                  "kind": "presence"
+                  "options": [
+                    {
+                      "name": "json",
+                      "description": "Print status JSON on stdout.",
+                      "kind": "presence"
+                    }
+                  ]
                 }
-              ],
-              "fallbackCommand": "run",
-              "fallbackMode": "missingOnly"
+              ]
             },
             {
               "key": "docs",
@@ -1096,7 +1066,7 @@
                 },
                 {
                   "key": "skill",
-                  "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                  "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                   "options": [
                     {
                       "name": "save",
@@ -1216,42 +1186,36 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-                  "options": [
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+                  "commands": [
                     {
-                      "name": "refresh",
-                      "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                      "kind": "presence"
+                      "key": "install",
+                      "description": "Install agent artifacts and bootstrap app config."
                     },
                     {
-                      "name": "remove-all",
-                      "description": "Remove all detected agent artifacts (skills and MCP).",
-                      "kind": "presence"
+                      "key": "uninstall",
+                      "description": "Remove agent artifacts and app config.",
+                      "options": [
+                        {
+                          "name": "yes",
+                          "description": "Skip uninstall confirmation.",
+                          "kind": "presence",
+                          "shortName": "y"
+                        }
+                      ]
                     },
                     {
-                      "name": "status",
+                      "key": "status",
                       "description": "Print what is currently installed (read-only).",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "yes",
-                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                      "kind": "presence",
-                      "shortName": "y"
-                    },
-                    {
-                      "name": "dry",
-                      "description": "Show what would change without writing files.",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "json",
-                      "description": "Print changed paths or status JSON on stdout.",
-                      "kind": "presence"
+                      "options": [
+                        {
+                          "name": "json",
+                          "description": "Print status JSON on stdout.",
+                          "kind": "presence"
+                        }
+                      ]
                     }
-                  ],
-                  "fallbackCommand": "run",
-                  "fallbackMode": "missingOnly"
+                  ]
                 },
                 {
                   "key": "docs",
@@ -1333,7 +1297,7 @@
                     },
                     {
                       "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1449,42 +1413,36 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-                  "options": [
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+                  "commands": [
                     {
-                      "name": "refresh",
-                      "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                      "kind": "presence"
+                      "key": "install",
+                      "description": "Install agent artifacts and bootstrap app config."
                     },
                     {
-                      "name": "remove-all",
-                      "description": "Remove all detected agent artifacts (skills and MCP).",
-                      "kind": "presence"
+                      "key": "uninstall",
+                      "description": "Remove agent artifacts and app config.",
+                      "options": [
+                        {
+                          "name": "yes",
+                          "description": "Skip uninstall confirmation.",
+                          "kind": "presence",
+                          "shortName": "y"
+                        }
+                      ]
                     },
                     {
-                      "name": "status",
+                      "key": "status",
                       "description": "Print what is currently installed (read-only).",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "yes",
-                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                      "kind": "presence",
-                      "shortName": "y"
-                    },
-                    {
-                      "name": "dry",
-                      "description": "Show what would change without writing files.",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "json",
-                      "description": "Print changed paths or status JSON on stdout.",
-                      "kind": "presence"
+                      "options": [
+                        {
+                          "name": "json",
+                          "description": "Print status JSON on stdout.",
+                          "kind": "presence"
+                        }
+                      ]
                     }
-                  ],
-                  "fallbackCommand": "run",
-                  "fallbackMode": "missingOnly"
+                  ]
                 },
                 {
                   "key": "docs",
@@ -1566,7 +1524,7 @@
                     },
                     {
                       "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1682,42 +1640,36 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-                  "options": [
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+                  "commands": [
                     {
-                      "name": "refresh",
-                      "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                      "kind": "presence"
+                      "key": "install",
+                      "description": "Install agent artifacts and bootstrap app config."
                     },
                     {
-                      "name": "remove-all",
-                      "description": "Remove all detected agent artifacts (skills and MCP).",
-                      "kind": "presence"
+                      "key": "uninstall",
+                      "description": "Remove agent artifacts and app config.",
+                      "options": [
+                        {
+                          "name": "yes",
+                          "description": "Skip uninstall confirmation.",
+                          "kind": "presence",
+                          "shortName": "y"
+                        }
+                      ]
                     },
                     {
-                      "name": "status",
+                      "key": "status",
                       "description": "Print what is currently installed (read-only).",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "yes",
-                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                      "kind": "presence",
-                      "shortName": "y"
-                    },
-                    {
-                      "name": "dry",
-                      "description": "Show what would change without writing files.",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "json",
-                      "description": "Print changed paths or status JSON on stdout.",
-                      "kind": "presence"
+                      "options": [
+                        {
+                          "name": "json",
+                          "description": "Print status JSON on stdout.",
+                          "kind": "presence"
+                        }
+                      ]
                     }
-                  ],
-                  "fallbackCommand": "run",
-                  "fallbackMode": "missingOnly"
+                  ]
                 },
                 {
                   "key": "docs",
@@ -1799,7 +1751,7 @@
                     },
                     {
                       "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1915,42 +1867,36 @@
                 {
                   "key": "configure",
                   "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
-                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew post_install runs:\n  full-example-json configure --refresh --yes\n\nInteractive setup (per target):\n  full-example-json configure\n\nUpgrade:\n  brew upgrade full-example-json\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure --status\n\nUninstall:\n  brew uninstall <tap>/full-example-json\n\nThe formula uninstall hook runs `configure --remove-all --yes` (skills, MCP, and app config).\n\nUse --dry to preview changes without writing files.\nUse --json for machine-readable output.",
-                  "options": [
+                  "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
+                  "commands": [
                     {
-                      "name": "refresh",
-                      "description": "Refresh installed skills and MCP. Used by Homebrew post_install.",
-                      "kind": "presence"
+                      "key": "install",
+                      "description": "Install agent artifacts and bootstrap app config."
                     },
                     {
-                      "name": "remove-all",
-                      "description": "Remove all detected agent artifacts (skills and MCP).",
-                      "kind": "presence"
+                      "key": "uninstall",
+                      "description": "Remove agent artifacts and app config.",
+                      "options": [
+                        {
+                          "name": "yes",
+                          "description": "Skip uninstall confirmation.",
+                          "kind": "presence",
+                          "shortName": "y"
+                        }
+                      ]
                     },
                     {
-                      "name": "status",
+                      "key": "status",
                       "description": "Print what is currently installed (read-only).",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "yes",
-                      "description": "Skip confirmation (required for --refresh, --remove-all, --remove-config).",
-                      "kind": "presence",
-                      "shortName": "y"
-                    },
-                    {
-                      "name": "dry",
-                      "description": "Show what would change without writing files.",
-                      "kind": "presence"
-                    },
-                    {
-                      "name": "json",
-                      "description": "Print changed paths or status JSON on stdout.",
-                      "kind": "presence"
+                      "options": [
+                        {
+                          "name": "json",
+                          "description": "Print status JSON on stdout.",
+                          "kind": "presence"
+                        }
+                      ]
                     }
-                  ],
-                  "fallbackCommand": "run",
-                  "fallbackMode": "missingOnly"
+                  ]
                 },
                 {
                   "key": "docs",
@@ -2032,7 +1978,7 @@
                     },
                     {
                       "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure` to install an optimized copy.",
+                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",

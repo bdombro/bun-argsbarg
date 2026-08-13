@@ -6,16 +6,16 @@ ArgsBarg provides native, first-class support for packaging, releasing, and dist
 
 ## 1. Enterprise Distribution Model
 
-ArgsBarg maps the lifecycle of your application directly to standard Homebrew hooks, separating binary installation from user-interactive environment setup.
+Homebrew installs the **binary and shell completions** into the prefix. **Agent artifacts** (skills, MCP, app config) live under the user's home directory and are installed by the app's `configure` command — Homebrew's sandbox does not allow formula hooks to write there.
 
 | Layer | Mechanism | Role in Lifecycle |
 | --- | --- | --- |
 | **Binary & Autocompletions** | Formula `install` block | Installs compiled binary and registers native shell autocompletions. |
-| **Agent artifacts** | Formula `post_install` | Automatically runs `{key} configure --refresh --yes` to bootstrap configuration files and refresh agent artifacts. |
-| **Application Configuration** | User-facing `{key} configure` | Runs an interactive TTY setup wizard (only when `program.appConfig` defines required parameters). |
-| **Clean Uninstall** | Formula `uninstall` | Automatically runs `{key} configure --remove-all --yes` to clean up local configurations and symlinks. |
+| **Agent artifacts** | `{key} configure install` | User- or script-run after `brew install` / `brew upgrade`; installs skills/MCP and bootstraps `config.json`. |
+| **Application Configuration** | `{key} configure install` | Required-config wizard on TTY when `program.appConfig` defines required parameters. |
+| **Clean Uninstall** | `{key} configure uninstall` then `brew uninstall` | Removes `~/.agents` artifacts and app config; must run **before** uninstall while the binary is still on PATH. |
 
-*Note: This architecture explicitly separates non-interactive installation (safe for automation/CI) from interactive configuration (which requires a TTY).*
+*Note: `just install-local` runs both steps for developers. End users see the commands in formula `caveats` and `brew info`.*
 
 ---
 
@@ -33,6 +33,9 @@ brew tap <org>/<repo>
 
 # Install the application
 brew install <tap>/{key}
+
+# Install agent artifacts (skills, MCP, config bootstrap)
+{key} configure install
 ```
 
 The generated Homebrew formula points directly to your public GitHub release asset URL, allowing anyone to install and receive automatic updates securely.
@@ -53,8 +56,8 @@ gh auth login
 brew tap <org>/<repo> git@github.com:<org>/<repo>.git
 brew install <tap>/{key}
 
-# 3. Perform interactive configuration (such as API tokens) if required
-{key} configure
+# 3. Install agent artifacts (and required-config wizard on TTY when needed)
+{key} configure install
 ```
 
 #### 2. The Private Release Strategy:
@@ -85,20 +88,14 @@ class Myapp < Formula
     generate_completions_from_executable(bin/"myapp", "completion", base_name: "myapp")
   end
 
-  def post_install
-    # Non-interactive bootstrap of config files and developer links
-    system bin/"myapp", "configure", "--refresh", "--yes"
-  end
-
-  def uninstall
-    # Graceful clean up of local files on uninstall
-    system bin/"myapp", "configure", "--remove-all", "--yes"
-  end
-  
   def caveats
     <<~EOS
-      Interactive configuration is required. Please run:
-        myapp configure
+      After install or upgrade:
+        myapp configure install
+
+      Before uninstall:
+        myapp configure uninstall
+        brew uninstall <tap>/myapp
     EOS
   end
 end
@@ -116,13 +113,13 @@ ArgsBarg provides an optimized workflow for developers to build, package, and te
 # 1. Build the local release binary
 just build
 
-# 2. Uninstall any existing formula/tap, stage and install locally (bypasses GitHub, uses file://)
+# 2. Uninstall any existing formula/tap, stage and install locally, refresh agent artifacts
 just install-local
 
-# 3. Swap updated binaries quickly during tight edit cycles
+# 3. Swap updated binaries quickly during tight edit cycles (run `just refresh` for skills/MCP)
 just reinstall-local
 
-# 4. Uninstall the binary and gracefully clean up all configurations
+# 4. Remove agent artifacts, uninstall the binary, and untap
 just uninstall
 ```
 
@@ -130,10 +127,11 @@ just uninstall
 
 To ensure you test the exact formula that will be shipped to production, `just install-local` runs:
 
-1.  `just uninstall` — Remove any existing keg and untap (formula `uninstall` hook runs `configure --remove-all`).
+1.  `just uninstall` — `configure uninstall` (when possible), then remove keg and untap.
 2.  `bun scripts/dev-formula.ts install` — Safely backs up your production formula and writes a temporary local dev formula using a `file://` URL pointing to your build directory.
 3.  `brew reinstall || brew install --force` — Installs the package locally using Homebrew.
 4.  `bun scripts/dev-formula.ts reset` — Automatically restores your production formula on disk.
+5.  `{key} configure install` — Installs skills/MCP into `~/.agents` (outside Homebrew's sandbox).
 
 ---
 
@@ -170,4 +168,5 @@ just release --purge --dry-run    # Preview list of tag deletions
 
 Applications packaged via ArgsBarg adhere to standard system directories:
 *   **Resolved Configuration Path**: `~/.local/lib/<sanitized-key>/config.json`
+*   **Agent skill path**: `~/.agents/skills/<key>/`
 *   **Auto-Exports**: Developers can import `resolveAppConfigPath` or `displayAppConfigPath` directly from `argsbarg` to display helpful directories in help screens.
