@@ -129,10 +129,20 @@ function attachRootCompanionSchemas(validator: Validator, root: JsonSchema, acti
     return;
   }
   const companion: Schema = {};
-  if (typeof root.definitions === "object" && root.definitions !== null && !Array.isArray(root.definitions)) {
+  if (
+    typeof root.definitions === "object" &&
+    root.definitions !== null &&
+    !Array.isArray(root.definitions) &&
+    Object.keys(root.definitions).length > 0
+  ) {
     companion.definitions = root.definitions;
   }
-  if (typeof root.$defs === "object" && root.$defs !== null && !Array.isArray(root.$defs)) {
+  if (
+    typeof root.$defs === "object" &&
+    root.$defs !== null &&
+    !Array.isArray(root.$defs) &&
+    Object.keys(root.$defs).length > 0
+  ) {
     companion.$defs = root.$defs;
   }
   if (Object.keys(companion).length > 0) {

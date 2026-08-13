@@ -5,6 +5,10 @@ Always include in context before answering or making changes in this repository:
 - [`README.md`](README.md)
 - [`docs/*`](docs/)
 
+## Versioning
+
+- Never manually update version. It should only be updated via `just release {level}`. And never do that unless I explicitly tell you to.
+
 ## Code quality
 
 - Changes must be summarized in CHANGELOG.md under the UNRELEASED section

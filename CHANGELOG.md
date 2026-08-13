@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.3] - 2026-08-13
+
+### Fixed
+
+- **Partial config validation** — skip attaching empty `definitions` / `$defs` companion schemas (fixes `Duplicate schema URI "https://github.com/cfworker"` when schemagen emits `"definitions": {}`).
+
 ## [7.0.2] - 2026-08-13
 
 
@@ -947,7 +953,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.3...HEAD
+[7.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.3
 [7.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.2
 [7.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.1
 [7.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.0

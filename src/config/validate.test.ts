@@ -3,7 +3,12 @@ Tests for config/validate module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import { parseConfigSetValue, resolveSchemaDraft, validateConfigDocument } from "./validate.ts";
+import {
+  parseConfigSetValue,
+  resolveSchemaDraft,
+  validateConfigDocument,
+  validateConfigDocumentPartial,
+} from "./validate.ts";
 
 const rootSchema = {
   type: "object",
@@ -119,6 +124,21 @@ describe("config/validate", () => {
     expect(validateConfigDocument({ name: "ok" }, schema).valid).toBe(true);
     expect(validateConfigDocument({ name: "" }, schema).valid).toBe(false);
     expect(validateConfigDocument({}, schema).valid).toBe(false);
+  });
+
+  test("validateConfigDocumentPartial accepts schemagen root with empty definitions", () => {
+    const schema = {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      additionalProperties: false,
+      required: ["email"],
+      properties: {
+        email: { type: "string" },
+        services: { type: "array", items: { type: "string" } },
+      },
+      definitions: {},
+    };
+    expect(validateConfigDocumentPartial({ email: "a@example.com", services: ["a"] }, schema).valid).toBe(true);
   });
 
   test("validates draft 2020-12 $defs refs", () => {
