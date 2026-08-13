@@ -50,12 +50,12 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
   return names;
 }
 
-/** Commands that may run without required appConfig values (read-only / config introspection). */
+/** Commands that may run without required appConfig values (read-only / config introspection / lifecycle). */
 export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities): boolean {
   const root = path[0];
-  if (root === "configure" && caps.configCommands) {
+  if (root === "configure" && caps.configure) {
     const sub = path[1];
-    if (sub === "get" || sub === "set") {
+    if (!sub || sub === "get" || sub === "set" || sub === "install" || sub === "uninstall" || sub === "status") {
       return true;
     }
   }
