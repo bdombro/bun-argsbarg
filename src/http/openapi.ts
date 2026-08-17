@@ -2,9 +2,9 @@
 Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
-import { collectOptionDefs } from "../core/parse.ts";
 import type { CliHttpMethod, CliNode, CliProgram } from "../core/types.ts";
 import { CliOptionKind, isCliLeaf, isJsonLeaf } from "../core/types.ts";
+import { leafWireOptions } from "../mcp/tools.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 
@@ -35,7 +35,7 @@ function errorResponseEntry(program: CliProgram, description: string): Record<st
 }
 
 function buildInputSchema(
-  program: CliProgram,
+  _program: CliProgram,
   route: ReturnType<typeof collectHttpRoutes>[number],
 ): Record<string, unknown> {
   const leaf = route.leaf;
@@ -48,8 +48,7 @@ function buildInputSchema(
     properties[p] = { type: "string" };
     required.push(p);
   }
-  const argv = route.commandPath.filter((k) => !k.startsWith(":"));
-  for (const opt of collectOptionDefs(program, argv)) {
+  for (const opt of leafWireOptions(leaf)) {
     if (opt.kind === CliOptionKind.Json) {
       continue;
     }
@@ -244,10 +243,7 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
     if (method === "get" || method === "delete") {
       op.parameters = [
         ...((op.parameters as unknown[]) ?? []),
-        ...collectOptionDefs(
-          program,
-          route.commandPath.filter((k) => !k.startsWith(":")),
-        ).map((opt) => ({
+        ...leafWireOptions(route.leaf).map((opt) => ({
           name: opt.name,
           in: "query",
           required: opt.required ?? false,

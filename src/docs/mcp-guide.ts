@@ -2,9 +2,8 @@ import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
 import { expectedMcpEntry } from "../configure/artifacts/mcp-config.ts";
 import { resolveClaudeDesktopMcpPath, userHome } from "../configure/artifacts/paths.ts";
-import { collectOptionDefs } from "../core/parse.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
-import { collectMcpTools, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { collectMcpTools, leafWireOptions, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
 import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
@@ -52,7 +51,7 @@ function appendManualClientSetup(
 function formatToolLine(root: CliProgram, tool: McpToolDef): string {
   const cliPath = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
   let line = `- \`${cliPath}\` — ${tool.description}`;
-  const opts = collectOptionDefs(root, tool.path);
+  const opts = leafWireOptions(tool.leaf);
   const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;

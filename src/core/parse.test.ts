@@ -370,8 +370,8 @@ test("trailing options after bounded positionals", () => {
   expect(pr.opts.verbose).toBe("1");
 });
 
-/** Tests that trailing options include parent-scoped flags. */
-test("trailing options include parent-scoped flags", () => {
+/** Tests that options on routing groups are rejected at schema validation. */
+test("rejects options on routing groups", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -390,7 +390,34 @@ test("trailing options include parent-scoped flags", () => {
           {
             key: "leaf",
             description: "leaf",
+            handler: () => {},
+          },
+        ],
+      },
+    ],
+  });
+  expect(() => cliValidateProgram(root)).toThrow(/routing group/);
+});
+
+/** Tests that leaf flags are only accepted on the leaf command segment. */
+test("leaf flags are only accepted on the leaf command segment", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "group",
+        description: "group",
+        commands: [
+          {
+            key: "leaf",
+            description: "leaf",
             options: [
+              {
+                name: "json",
+                description: "",
+                kind: CliOptionKind.Presence,
+              },
               {
                 name: "user",
                 description: "",
@@ -412,12 +439,12 @@ test("trailing options include parent-scoped flags", () => {
     ],
   });
   cliValidateProgram(root);
-  const pr = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
-  expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.path).toEqual(["group", "leaf"]);
-  expect(pr.args).toEqual(["./file"]);
-  expect(pr.opts.user).toBe("alice");
-  expect(pr.opts.json).toBe("1");
+  const ok = postParseValidate(root, parse(root, ["group", "leaf", "-u", "alice", "./file", "--json"]));
+  expect(ok.kind).toBe(ParseKind.Ok);
+  expect(ok.opts.json).toBe("1");
+
+  const bad = parse(root, ["group", "--json", "leaf", "-u", "alice", "./file"]);
+  expect(bad.kind).toBe(ParseKind.Error);
 });
 
 /** Varargs tail parses trailing options. */

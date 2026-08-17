@@ -1,16 +1,16 @@
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
-import { collectOptionDefs } from "../core/parse.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
 import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
 import { collectHttpRoutes } from "../http/routes.ts";
 import { resolveHttpListenAddress } from "../http/server.ts";
+import { leafWireOptions } from "../mcp/tools.ts";
 
 /** Formats one HTTP route for the auto-generated HTTP guide. */
 function formatRouteLine(root: CliProgram, route: ReturnType<typeof collectHttpRoutes>[number]): string {
   const cliPath = route.commandPath.join(" ");
   let line = `- \`${route.method} ${route.openApiPath}\` (CLI: \`${root.key} ${cliPath}\`) — ${route.leaf.description}`;
-  const opts = collectOptionDefs(root, route.commandPath);
+  const opts = leafWireOptions(route.leaf);
   const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;

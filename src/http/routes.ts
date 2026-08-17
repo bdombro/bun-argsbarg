@@ -2,7 +2,6 @@
 HTTP REST route collection and request matching from the CLI command tree.
 */
 
-import { collectOptionDefs } from "../core/parse.ts";
 import {
   type CliHttpMethod,
   type CliLeaf,
@@ -12,7 +11,7 @@ import {
   isJsonLeaf,
   CliOptionKind as OptKind,
 } from "../core/types.ts";
-import { formatMcpOptionValue } from "../mcp/tools.ts";
+import { formatMcpOptionValue, leafHasYesOption, leafWireOptions } from "../mcp/tools.ts";
 import { isHttpDisabled, isHttpHidden } from "../runtime/exposure.ts";
 import { buildHttpUserPath, httpUserPathRegexPrefix, resolveHttpPathPrefix } from "./paths.ts";
 
@@ -232,7 +231,7 @@ export function matchHttpRoute(program: CliProgram, method: string, pathname: st
 
 /** Builds argv from an HTTP route match, query string, and optional JSON body. */
 export function httpRequestToArgv(
-  program: CliProgram,
+  _program: CliProgram,
   route: HttpRouteDef,
   pathParams: Record<string, string>,
   query: Record<string, string>,
@@ -268,7 +267,7 @@ export function httpRequestToArgv(
     }
   }
 
-  for (const opt of collectOptionDefs(program, argv)) {
+  for (const opt of leafWireOptions(leaf)) {
     if (opt.kind === OptKind.Json) {
       continue;
     }
@@ -287,6 +286,10 @@ export function httpRequestToArgv(
       return formatted;
     }
     argv.push(`--${opt.name}`, formatted);
+  }
+
+  if (leafHasYesOption(leaf) && !argv.includes("--yes")) {
+    argv.push("--yes");
   }
 
   for (const p of leaf.positionals ?? []) {

@@ -14,13 +14,6 @@ export const nestedMcpFixture = testProgram({
     {
       key: "stat",
       description: "File metadata.",
-      options: [
-        {
-          name: "json",
-          description: "Emit handler output as JSON.",
-          kind: CliOptionKind.Presence,
-        },
-      ],
       commands: [
         {
           key: "owner",

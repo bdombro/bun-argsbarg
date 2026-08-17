@@ -153,11 +153,12 @@ test("outputSchema must be a JSON Schema object", () => {
   expect(() => cliValidateProgram(root)).toThrow(/outputSchema must be a JSON Schema object/);
 });
 
-test("collectMcpTools merges parent options into inputSchema", () => {
+test("collectMcpTools uses leaf-local options in inputSchema", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
   const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
-  expect(schema.properties.json).toBeDefined();
+  expect(schema.properties.json).toBeUndefined();
+  expect(schema.properties["user-name"]).toBeDefined();
   expect(schema.required).toContain("path");
 });
 
@@ -202,9 +203,8 @@ test("mcpToolCallToArgv builds nested lookup argv", () => {
   const argv = mcpToolCallToArgv(nestedMcpFixture, lookup, {
     "user-name": "alice",
     path: "./x",
-    json: true,
   });
-  expect(argv).toEqual(["stat", "owner", "lookup", "--json", "--user-name", "alice", "./x"]);
+  expect(argv).toEqual(["stat", "owner", "lookup", "--user-name", "alice", "./x"]);
 });
 
 test("mcpToolCallToArgv expands varargs positionals", () => {
@@ -386,10 +386,10 @@ test("MCP tools/call runs stat_owner_lookup", async () => {
     },
   ]);
   const res = responses.get(4) as {
-    result: { content: { text: string }[]; structuredContent?: { content: string }; isError: boolean };
+    result: { content: { text: string }[]; structuredContent?: { user: string; path: string }; isError: boolean };
   };
   expect(res.result.isError).toBe(false);
-  expect(res.result.structuredContent?.content).toContain("lookup user=test");
+  expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
 });
 
 /** MCP tools/call returns structuredContent for JSON stdout. */

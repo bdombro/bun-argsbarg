@@ -107,6 +107,7 @@ Use root **`notes`** for cross-cutting hints shown in help (install commands, do
 
 Descriptions and schemas are copied into MCP tools, HTTP OpenAPI, and generated skills — optimize for smaller, clearer agent payloads:
 
+- **Declare options on the leaf command** that uses them — routing groups cannot declare options (program root may). Wire schemas (MCP, OpenAPI, skills) expose leaf-local options only.
 - Prefer **`kind: "json"`** leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.

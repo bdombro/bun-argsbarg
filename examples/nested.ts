@@ -8,20 +8,13 @@ It demonstrates how the schema scales beyond one command.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../src/index";
+import { Cli, CliFallbackMode, CliOptionKind, type CliProgram, wantsExplicitJson } from "../src/index";
 
 const program = {
   commands: [
     {
       key: "stat",
       description: "File metadata.",
-      options: [
-        {
-          name: "json",
-          description: "Emit handler output as JSON.",
-          kind: CliOptionKind.Presence,
-        },
-      ],
       commands: [
         {
           key: "owner",
@@ -31,6 +24,11 @@ const program = {
               key: "lookup",
               description: "Resolve owner info.",
               options: [
+                {
+                  name: "json",
+                  description: "Emit handler output as JSON.",
+                  kind: CliOptionKind.Presence,
+                },
                 {
                   name: "user-name",
                   description: "User to look up.",
@@ -52,7 +50,7 @@ const program = {
                   console.error("Missing path.");
                   process.exit(1);
                 }
-                if (ctx.hasFlag("json")) {
+                if (wantsExplicitJson(ctx, ctx.hasFlag("json"))) {
                   const payload = { user, path };
                   if (ctx.invocation === "cli") {
                     console.log(JSON.stringify(payload));

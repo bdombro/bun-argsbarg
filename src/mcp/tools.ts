@@ -3,7 +3,6 @@ This module maps CliProgram leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for Cli.invoke.
 */
 
-import { collectOptionDefs } from "../core/parse.ts";
 import { cliSchemaJson } from "../core/schema.ts";
 import {
   type CliLeaf,
@@ -22,6 +21,9 @@ import { cliResolveNotes } from "../help.ts";
 import { isMcpHidden, visibleOptions } from "../runtime/exposure.ts";
 
 const DURATION_PATTERN = "^\\d+[hdms]?$";
+
+/** Presence flags omitted from MCP wire schemas (handled by the framework on invoke). */
+const MCP_WIRE_OMIT_PRESENCE = new Set(["json", "yes", "verbose"]);
 
 /** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
 export function defaultMcpSchemaUri(mcpId: string): string {
@@ -68,6 +70,18 @@ export function mcpToolName(root: CliProgram, path: string[]): string {
     return sanitizeToolSegment(root.key);
   }
   return path.map(sanitizeToolSegment).join("_");
+}
+
+/** Leaf options exposed on MCP/HTTP wire schemas (omits framework-handled presence flags). */
+export function leafWireOptions(leaf: CliLeaf): CliOption[] {
+  return visibleOptions(leaf.options).filter(
+    (opt) => !(opt.kind === CliOptionKind.Presence && MCP_WIRE_OMIT_PRESENCE.has(opt.name)),
+  );
+}
+
+/** True when the leaf declares a `yes` presence option (auto-injected on MCP invoke). */
+export function leafHasYesOption(leaf: CliLeaf): boolean {
+  return visibleOptions(leaf.options).some((opt) => opt.name === "yes" && opt.kind === CliOptionKind.Presence);
 }
 
 /** JSON Schema property for one option. */
@@ -140,7 +154,7 @@ function positionalProperty(p: CliPositional): Record<string, unknown> {
 }
 
 /** Builds inputSchema for a leaf command. */
-function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Record<string, unknown> {
+function buildInputSchema(leaf: CliLeaf): Record<string, unknown> {
   if (isJsonLeaf(leaf) && leaf.inputSchema !== undefined) {
     return leaf.inputSchema;
   }
@@ -148,7 +162,7 @@ function buildInputSchema(root: CliProgram, path: string[], leaf: CliLeaf): Reco
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
-  for (const opt of visibleOptions(collectOptionDefs(root, path))) {
+  for (const opt of leafWireOptions(leaf)) {
     properties[opt.name] = optionProperty(opt);
     if (opt.required) {
       required.push(opt.name);
@@ -237,7 +251,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
-        inputSchema: cmd.inputSchema ?? buildInputSchema(root, path, cmd),
+        inputSchema: cmd.inputSchema ?? buildInputSchema(cmd),
         ...(outputSchema === undefined ? {} : { outputSchema }),
       });
       return;
@@ -255,7 +269,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
     }
   }
 
-  return out;
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Resolves MCP server name and version for initialize. */
@@ -276,7 +290,7 @@ export function resolveMcpSchemaUri(root: CliProgram): string {
 
 /** Converts flat MCP tool arguments to argv for Cli.invoke. */
 export function mcpToolCallToArgv(
-  root: CliProgram,
+  _root: CliProgram,
   tool: McpToolDef,
   args: Record<string, unknown>,
 ): string[] | { error: string } {
@@ -286,7 +300,7 @@ export function mcpToolCallToArgv(
 
   const argv = [...tool.path];
 
-  for (const opt of collectOptionDefs(root, tool.path)) {
+  for (const opt of leafWireOptions(tool.leaf)) {
     if (opt.kind === CliOptionKind.Json) {
       continue;
     }
@@ -305,6 +319,10 @@ export function mcpToolCallToArgv(
       return formatted;
     }
     argv.push(`--${opt.name}`, formatted);
+  }
+
+  if (leafHasYesOption(tool.leaf) && !argv.includes("--yes")) {
+    argv.push("--yes");
   }
 
   for (const p of tool.leaf.positionals ?? []) {

@@ -95,7 +95,7 @@ describe("hidden commands and options", () => {
 
   test("MCP tools omit hidden commands", () => {
     const tools = collectMcpTools(hiddenFixture);
-    expect(tools.map((t) => t.name)).toEqual(["public", "flags"]);
+    expect(tools.map((t) => t.name)).toEqual(["flags", "public"]);
   });
 });
 

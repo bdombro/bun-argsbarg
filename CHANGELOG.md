@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.4] - 2026-08-17
+
+### Changed
+
+- **Breaking: leaf-local options only** — options apply on the command node where they are declared (routing groups cannot declare options; program root still may). MCP, OpenAPI, HTTP, and skill wire schemas expose leaf-local options only. `tools/list` is sorted alphabetically by tool name. MCP auto-injects `--yes` for mutating tools; `json`, `yes`, and `verbose` are omitted from MCP/HTTP wire schemas.
+
 ## [7.0.3] - 2026-08-13
 
 ### Fixed
@@ -953,7 +959,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.4...HEAD
+[7.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.4
 [7.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.3
 [7.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.2
 [7.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.1

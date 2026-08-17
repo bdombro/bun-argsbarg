@@ -328,6 +328,11 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
   }
 
   if (isCliRouter(node)) {
+    if (!isRoot && (node.options ?? []).length > 0) {
+      throw new CliSchemaValidationError(
+        `Options on routing group '${node.key}' are not supported — declare options on leaf commands`,
+      );
+    }
     const seenNames = new Set<string>();
     let paramRouterCount = 0;
     for (const child of node.commands) {
@@ -367,9 +372,13 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     }
   }
 
-  const positionals = isCliLeaf(node) ? (node.positionals ?? []) : [];
-  validateOptions(node.key, node.options ?? []);
-  validatePositionals(node.key, positionals);
+  if (isCliRouter(node) && !isRoot) {
+    validatePositionals(node.key, []);
+  } else {
+    const positionals = isCliLeaf(node) ? (node.positionals ?? []) : [];
+    validateOptions(node.key, node.options ?? []);
+    validatePositionals(node.key, positionals);
+  }
 }
 
 function validateOptions(scopeKey: string, options: import("./types.ts").CliOption[]): void {

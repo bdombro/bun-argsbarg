@@ -9,7 +9,14 @@ import { cliValidateProgram } from "../../core/validate.ts";
 import { generateOpenApi } from "../../http/openapi.ts";
 import { API_CORS_HEADERS } from "../../http/result.ts";
 import { handleApiRequest } from "../../http/server.ts";
-import { Cli, CliContext, type CliContext as CliContextType, CliOptionKind, cliErrWithHelp } from "../../index.ts";
+import {
+  Cli,
+  CliContext,
+  type CliContext as CliContextType,
+  CliOptionKind,
+  cliErrWithHelp,
+  wantsExplicitJson,
+} from "../../index.ts";
 import { LogEmitter } from "../../log/emitter.ts";
 import { createServerRuntime } from "../../server/context.ts";
 import { resolveHttpServeConfig } from "../../server/overrides.ts";
@@ -24,13 +31,6 @@ function nestedApiFixture() {
       {
         key: "stat",
         description: "File metadata.",
-        options: [
-          {
-            name: "json",
-            description: "Emit handler output as JSON.",
-            kind: CliOptionKind.Presence,
-          },
-        ],
         commands: [
           {
             key: "owner",
@@ -40,6 +40,11 @@ function nestedApiFixture() {
                 key: "lookup",
                 description: "Resolve owner info.",
                 options: [
+                  {
+                    name: "json",
+                    description: "Emit handler output as JSON.",
+                    kind: CliOptionKind.Presence,
+                  },
                   {
                     name: "user-name",
                     description: "User to look up.",
@@ -57,7 +62,7 @@ function nestedApiFixture() {
                 handler: (ctx: CliContextType) => {
                   const user = ctx.stringOpt("user-name") ?? "unknown";
                   const path = ctx.positional("path") ?? "";
-                  if (ctx.hasFlag("json")) {
+                  if (wantsExplicitJson(ctx, ctx.hasFlag("json"))) {
                     return { user, path };
                   }
                   return `lookup user=${user} path=${path}`;
@@ -318,7 +323,7 @@ describe("HTTP API routes", () => {
     expect(await res.json()).toEqual({ user: "alice", path: readme });
   });
 
-  test("POST /api/... returns raw text body with 201", async () => {
+  test("POST /api/... returns JSON body by default with 201", async () => {
     const readme = join(import.meta.dir, "..", "..", "..", "README.md");
     const res = await apiRequest(
       program,
@@ -329,8 +334,8 @@ describe("HTTP API routes", () => {
       }),
     );
     expect(res.status).toBe(201);
-    const text = await res.text();
-    expect(text).toContain("lookup user=alice");
+    expect(res.headers.get("content-type")).toContain("application/json");
+    expect(await res.json()).toEqual({ user: "alice", path: readme });
   });
 
   test("POST /tools returns 404 (legacy path removed)", async () => {

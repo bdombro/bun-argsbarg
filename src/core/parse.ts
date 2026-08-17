@@ -244,20 +244,52 @@ function consumeOptions(
 
 // ── Positional Collection ─────────────────────────────────────────────────────
 
-/** Merges option defs from the program root along the routed command path. */
-export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
+/** Resolves the command node at the end of a routed path. */
+function resolveNodeAtPath(root: CliNode, path: string[]): CliNode | undefined {
+  if (path.length === 0) {
+    return root;
+  }
+  let node: CliNode = root;
+  for (const seg of path) {
+    if (!isCliRouter(node)) {
+      return undefined;
+    }
+    const ch = findChild(node.commands, seg);
+    if (!ch) {
+      return undefined;
+    }
+    node = ch;
+  }
+  return node;
+}
+
+/** Options declared on each command node along the path (root + each segment). Used for post-parse validation. */
+export function collectPathOptionDefs(root: CliNode, path: string[]): CliOption[] {
   const defs = [...(root.options ?? [])];
   let node: CliNode = root;
 
   for (const seg of path) {
-    if (!isCliRouter(node)) break;
+    if (!isCliRouter(node)) {
+      break;
+    }
     const ch = findChild(node.commands, seg);
-    if (!ch) break;
+    if (!ch) {
+      break;
+    }
     defs.push(...(ch.options ?? []));
     node = ch;
   }
 
   return defs;
+}
+
+/** Options declared on the leaf command at path (wire schemas and MCP/HTTP tool args). */
+export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
+  const node = resolveNodeAtPath(root, path);
+  if (!node || !isCliLeaf(node)) {
+    return [];
+  }
+  return [...(node.options ?? [])];
 }
 
 /** Fills `args` for a json leaf from `startIdx` (0 or 1 JSON string positional). */
@@ -618,7 +650,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     }
 
     if (!forcePositionals) {
-      const orep = consumeOptions(collectOptionDefs(root, path), false, argv, i, opts);
+      const orep = consumeOptions(current.options ?? [], false, argv, i, opts);
       if (orep.report.err) {
         return errorResult(orep.report.err, path);
       }
@@ -650,7 +682,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       if (!isCliLeaf(current)) {
         return helpResult(path, false, pathParams);
       }
-      return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals, pathParams);
+      return finishLeaf(current, i, argv, path, opts, current.options ?? [], forcePositionals, pathParams);
     }
 
     const tok = argv[i];
@@ -695,32 +727,19 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     if (!isCliLeaf(current)) {
       return helpResult(path, false, pathParams);
     }
-    return finishLeaf(current, i, argv, path, opts, collectOptionDefs(root, path), forcePositionals, pathParams);
+    return finishLeaf(current, i, argv, path, opts, current.options ?? [], forcePositionals, pathParams);
   }
 }
 
 // ── Post-Parse Validation ─────────────────────────────────────────────────────
 
 /**
- * Validates option keys and numeric values for an Ok parse, merging in-scope options along `pr.path`.
+ * Validates option keys and numeric values for an Ok parse along `pr.path`.
  */
 export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
   if (pr.kind !== ParseKind.Ok) return pr;
 
-  const defs = [...(root.options ?? [])];
-  let node: CliNode = root;
-
-  for (const seg of pr.path) {
-    if (!isCliRouter(node)) {
-      return errorResult("Internal path error", pr.path);
-    }
-    const ch = findChild(node.commands, seg);
-    if (!ch) {
-      return errorResult("Internal path error", pr.path);
-    }
-    defs.push(...(ch.options ?? []));
-    node = ch;
-  }
+  const defs = collectPathOptionDefs(root, pr.path);
 
   const opts = { ...pr.opts };
   for (const d of defs) {

@@ -3,11 +3,11 @@ This module generates Agent Skills content (SKILL.md + reference.md) from a CLI 
 */
 
 import { defaultConfigEntryTitle } from "../config/entry.ts";
-import { collectOptionDefs } from "../core/parse.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
 import { generateCliGuide } from "../docs/cli-guide.ts";
 import {
   collectMcpTools,
+  leafWireOptions,
   type McpToolDef,
   mcpServerId,
   resolveMcpSchemaUri,
@@ -69,7 +69,7 @@ function commandCatalogPath(root: CliProgram, tool: McpToolDef): string {
 function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
   const cliPath = commandCatalogPath(root, tool);
   let line = `- **\`${cliPath}\`** — ${tool.leaf.description}`;
-  const opts = collectOptionDefs(root, tool.path);
+  const opts = leafWireOptions(tool.leaf);
   const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;
