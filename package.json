@@ -1,6 +1,6 @@
 {
   "name": "argsbarg",
-  "version": "7.0.7",
+  "version": "7.0.8",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "dependencies": {

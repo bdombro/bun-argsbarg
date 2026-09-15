@@ -148,7 +148,7 @@ ArgsBarg automatically integrates several core features into your application. T
 
 ### Core Capabilities (Stable)
 
-- `-h` / `--help` — Highly-formatted, terminal-width scoped help at any routing depth.
+- `-h` / `--help` — Highly-formatted, terminal-width scoped help at any routing depth. Rounded UTF-8 boxes in TTY; unboxed plain text with in-band YAML input and output schemas in non-TTY for zero-drift agent discovery.
 - `version` — Print the program's version (e.g., `myapp version`).
 - `http` — Launch the high-performance HTTP REST server (injected when `httpServer.enabled` is `true`).
 - `completion bash` / `zsh` / `fish` — Generate shell completion scripts to stdout for deployment and packaging.

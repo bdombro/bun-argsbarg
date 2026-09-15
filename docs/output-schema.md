@@ -23,6 +23,7 @@ export const status = {
 | `myapp docs cli` | Markdown per-command **Output** section |
 | MCP `tools/list` | Optional `outputSchema` on each tool |
 | HTTP `GET /openapi.json` | Response schema per tool |
+| CLI `--help` (non-TTY) | YAML output schema for zero-drift in-band agent discovery |
 
 **Not validated at runtime** — argsbarg does not parse or reject handler stdout against the schema today. The schema is documentation and MCP/HTTP metadata.
 

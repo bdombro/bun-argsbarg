@@ -1,9 +1,9 @@
 # Made with /thread-memory
 
 ## Meta
-updated: 2026-08-17 16:50
+updated: 2026-09-15 21:05
 scope: src/**, docs/**, examples/**, CHANGELOG.md, .cursor/skills/**
-counts: 11 terms
+counts: 13 terms
 
 ## Terms
 cliprogram-field-order:
@@ -18,8 +18,12 @@ current: argsbarg 7.0 subcommand replacing bare configure and --refresh. Install
 configure-uninstall:
 current: `configure uninstall` (or `configure uninstall --yes`). Run before `brew uninstall` while binary is on PATH. Removes `~/.agents/skills/<skillDirName>/`, MCP entry in `~/.agents/mcp.json`, and app config. Homebrew formula does not invoke this automatically.
 
+consumer-agents-md:
+current: Managed AGENTS.md in consumer repositories targeting application authors (developers and coding agents modifying TypeScript sources), not end-user CLI consumers. Maintained across repos via `scripts/merge-agents-md.ts`.
+
 consumers-sync:
-current: Root justfile recipe: bun add argsbarg@^version, merge-agents-md.ts per consumer, then just build && just docgen && just install-local per consumer_apps path. install-local brew post_install runs configure install/sync on the Cellar binary; skill install requires program.skill.enabled in that binary at install time.
+current: Root justfile recipe: bun add argsbarg@^version, merge-agents-md.ts per consumer, then just build && just docgen && just install-local per consumer_apps path (sqsp-workspaces, sqsp-qa-manager-poc, sqsp-i18n-tools-poc; excludes skill repos like gws-docs-edit). install-local brew post_install runs configure install/sync on the Cellar binary.
+  was 2026-09-15: Root justfile recipe: bun add argsbarg@^version, merge-agents-md.ts per consumer, then just build && just docgen && just install-local per consumer_apps path. install-local brew post_install runs configure install/sync on the Cellar binary; skill install requires program.skill.enabled in that binary at install time.
   was 2026-08-17: bun add, merge AGENTS.md, build + docgen + install-local; install-local already includes build (redundant second build/docgen pass).
 
 create-templates:
@@ -38,4 +42,8 @@ legacy-skill-paths:
 current: Pre-7.0 per-host skill dirs not managed by current configure uninstall: `~/.cursor/skills/<key>/`, `~/.claude/skills/<key>/`, `~/.codex/skills/<key>/`, `~/.config/opencode/skills/<key>/`, `~/.openclaw/skills/<key>/`. Manual removal required after migration or stale uninstall.
 
 program-skill:
-current: Opt-in via program.skill.enabled === true. configure install writes generated bundle to ~/.agents/skills/<skillDirName(key)>/ (skillDirName sanitizes /, \, spaces to _). No per-host skill targets or configure.agentIntegration.
+current: Deprecated. Skill generation was removed from the runtime, docgen, and configure install; program.skill is ignored. Skills are authored under `skills/<app>/SKILL.md` per repository convention.
+  was 2026-09-15: Opt-in via program.skill.enabled === true. configure install writes generated bundle to ~/.agents/skills/<skillDirName(key)>/ (skillDirName sanitizes /, \, spaces to _). No per-host skill targets or configure.agentIntegration.
+
+repository-skill:
+current: Intent-based router at `skills/<app>/SKILL.md` following https://dotagentsprotocol.com, scaffolded by `argsbarg create` and maintained by app authors. Guides agents to JIT discovery via `<command> --help`; never overwritten by `just docgen`.

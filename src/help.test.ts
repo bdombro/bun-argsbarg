@@ -5,7 +5,14 @@ Help rendering and label formatting tests.
 import { describe, expect, test } from "bun:test";
 import { cliPresentationRoot } from "./builtins/presentation.ts";
 import { type CliOption, CliOptionKind, type CliPositional } from "./core/types.ts";
-import { CLI_NOTES_PROGRAM, cliHelpRender, cliOptionLabel, cliPositionalLabel, cliResolveNotes } from "./help.ts";
+import {
+  CLI_NOTES_PROGRAM,
+  cliHelpRender,
+  cliOptionLabel,
+  cliPositionalLabel,
+  cliResolveNotes,
+  schemaToYamlLines,
+} from "./help.ts";
 import { testProgram } from "./test/fixtures.ts";
 
 describe("cliOptionLabel", () => {
@@ -147,5 +154,241 @@ describe("cliHelpRender", () => {
     const help = cliHelpRender(cliPresentationRoot(root), [], false);
     expect(help).toContain("See `myapp docs readme` for the user guide.");
     expect(help).not.toContain("docs skill");
+  });
+
+  /** Tests that non-TTY help strips box characters and renders plain text. */
+  test("non-TTY help strips boxes and renders clean plain text", () => {
+    const root = testProgram({
+      key: "myapp",
+      version: "1.0.0",
+      description: "Test application.",
+      commands: [
+        {
+          key: "status",
+          description: "Show status.",
+          options: [
+            {
+              name: "verbose",
+              shortName: "v",
+              description: "Verbose output.",
+              kind: CliOptionKind.Presence,
+            },
+          ],
+          handler: () => {},
+        },
+      ],
+    });
+    const help = cliHelpRender(cliPresentationRoot(root), ["status"], false, { isTTY: false });
+    expect(help).not.toContain("╭─");
+    expect(help).not.toContain("╰─");
+    expect(help).not.toContain("│");
+    expect(help).toContain("Usage:\n  myapp status [OPTIONS]");
+    expect(help).toContain("Options:\n  --help, -h     Show help for this command.\n  --verbose, -v  Verbose output.");
+  });
+
+  /** Tests that TTY help renders rounded UTF-8 boxes. */
+  test("TTY help renders rounded UTF-8 boxes and omits output schema by default", () => {
+    const root = testProgram({
+      key: "myapp",
+      version: "1.0.0",
+      description: "Test application.",
+      commands: [
+        {
+          key: "status",
+          description: "Show status.",
+          outputSchema: {
+            type: "object",
+            properties: {
+              version: { type: "string", description: "App version." },
+            },
+            required: ["version"],
+          },
+          handler: () => {},
+        },
+      ],
+    });
+    const help = cliHelpRender(cliPresentationRoot(root), ["status"], false, { isTTY: true });
+    expect(help).toContain("╭");
+    expect(help).toContain("╰");
+    expect(help).toContain("│");
+    expect(help).not.toContain("Output Schema");
+  });
+
+  /** Tests that non-TTY help automatically includes output schema in YAML by default. */
+  test("non-TTY help automatically includes output schema in YAML by default", () => {
+    const root = testProgram({
+      key: "myapp",
+      version: "1.0.0",
+      description: "Test application.",
+      commands: [
+        {
+          key: "status",
+          description: "Show status.",
+          outputSchema: {
+            type: "object",
+            properties: {
+              version: { type: "string", description: "App version." },
+            },
+            required: ["version"],
+          },
+          handler: () => {},
+        },
+      ],
+    });
+    const help = cliHelpRender(cliPresentationRoot(root), ["status"], false, { isTTY: false });
+    expect(help).toContain("Output Schema (with --json):");
+    expect(help).toContain("# App version.");
+    expect(help).toContain("version: string");
+  });
+
+  /** Tests that json leaf commands render Output Schema (JSON) and Input Schema. */
+  test("json leaf renders Output Schema (JSON) and Input Schema in non-TTY mode", () => {
+    const root = testProgram({
+      key: "myapp",
+      version: "1.0.0",
+      description: "Test application.",
+      commands: [
+        {
+          key: "create",
+          kind: "json",
+          description: "Create resource.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Resource name." },
+            },
+            required: ["name"],
+          },
+          outputSchema: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Generated ID." },
+            },
+            required: ["id"],
+          },
+          handler: () => {},
+        },
+      ],
+    });
+    const help = cliHelpRender(cliPresentationRoot(root), ["create"], false, { isTTY: false });
+    expect(help).toContain("Input Schema:");
+    expect(help).toContain("# Resource name.");
+    expect(help).toContain("name: string");
+    expect(help).toContain("Output Schema (JSON):");
+    expect(help).toContain("# Generated ID.");
+    expect(help).toContain("id: string");
+  });
+});
+
+/** Tests for converting JSON Schema to human- and agent-friendly YAML lines. */
+describe("schemaToYamlLines", () => {
+  /** Tests primitive properties with required and optional keys and comments. */
+  test("formats primitive properties with descriptions and optionality", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        documentId: {
+          type: "string",
+          description: "Unique document identifier.",
+        },
+        index: {
+          type: "integer",
+        },
+      },
+      required: ["documentId"],
+    };
+    const lines = schemaToYamlLines(schema, 0);
+    expect(lines).toEqual(["# Unique document identifier.", "documentId: string", "index?: integer"]);
+  });
+
+  /** Tests enums, string formats, and union types. */
+  test("formats enums, string formats, and union types", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        format: {
+          type: "string",
+          enum: ["pdf", "html"],
+        },
+        createdAt: {
+          type: "string",
+          format: "date-time",
+        },
+        status: {
+          anyOf: [{ type: "string" }, { type: "number" }],
+        },
+      },
+    };
+    const lines = schemaToYamlLines(schema, 0);
+    expect(lines).toEqual(['format?: "pdf" | "html"', "createdAt?: string (date-time)", "status?: string | number"]);
+  });
+
+  /** Tests nested objects and arrays of objects with definitions. */
+  test("formats nested objects and arrays of objects with definition resolution", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        tab: {
+          type: "object",
+          description: "Active tab metadata.",
+          properties: {
+            tabId: { type: "string" },
+            title: { type: "string" },
+          },
+          required: ["tabId", "title"],
+        },
+        tabs: {
+          type: "array",
+          items: {
+            $ref: "#/definitions/TabItem",
+          },
+        },
+      },
+      definitions: {
+        TabItem: {
+          type: "object",
+          properties: {
+            tabId: { type: "string" },
+            title: { type: "string" },
+            index: { type: "integer" },
+          },
+          required: ["tabId", "title", "index"],
+        },
+      },
+      required: ["tab"],
+    };
+    const lines = schemaToYamlLines(schema, 0);
+    expect(lines).toEqual([
+      "# Active tab metadata.",
+      "tab:",
+      "  tabId: string",
+      "  title: string",
+      "tabs?:",
+      "  - tabId: string",
+      "    title: string",
+      "    index: integer",
+    ]);
+  });
+
+  /** Tests recursive references handle cycles gracefully without infinite loop. */
+  test("handles recursive definition references without infinite loop", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        parent: { $ref: "#/definitions/TreeNode" },
+      },
+      definitions: {
+        TreeNode: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            parent: { $ref: "#/definitions/TreeNode" },
+          },
+        },
+      },
+    };
+    const lines = schemaToYamlLines(schema, 0);
+    expect(lines).toEqual(["name?: string", "parent?:", "  name?: string", "  parent?: TreeNode"]);
   });
 });

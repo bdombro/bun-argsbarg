@@ -1,13 +1,14 @@
 /*
-This module renders CLI help with wrapping, boxes, tables, and TTY color.
-It formats both explicit help and error output, using the terminal width to keep the
-layout readable and aligned with the current display.
+This module renders CLI help with wrapping, boxes, tables, and TTY color for interactive
+terminal sessions, as well as clean unboxed plain text with in-band YAML input and output
+schemas for non-TTY agent discovery and piping.
 
 It keeps help formatting shared across help and error paths so users see one consistent
 style no matter how help is reached.
 */
 
 import {
+  type CliLeaf,
   type CliNode,
   type CliOption,
   CliOptionKind,
@@ -73,9 +74,9 @@ function getHelpWidth(): number {
   return Math.max(40, process.stdout.columns || 80);
 }
 
-/** True when stdout is a TTY (used to decide on color). */
-function isStdoutTTY(): boolean {
-  return !!process.stdout.isTTY;
+/** True when stdout/stderr is a TTY (used to decide on boxes and color). */
+function isOutputTTY(useStderr: boolean): boolean {
+  return useStderr ? !!process.stderr.isTTY : !!process.stdout.isTTY;
 }
 
 // ── Width Helpers ─────────────────────────────────────────────────────────────
@@ -321,6 +322,52 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
   return out;
 }
 
+/** Renders a plain-text section with a header and 2-space indented lines (non-TTY). */
+function renderPlainSection(
+  /** Section header title (e.g. "Usage" or "Notes"). */
+  title: string,
+  /** Content lines to indent under the header. */
+  lines: string[],
+): string[] {
+  if (lines.length === 0) return [];
+  const out: string[] = [`${title}:`];
+  for (const line of lines) {
+    out.push(line.length > 0 ? `  ${line}` : "");
+  }
+  return out;
+}
+
+/** Renders a plain-text two-column table without box borders (non-TTY). */
+function renderPlainTable(
+  /** Section header title (e.g. "Options" or "Subcommands"). */
+  title: string,
+  /** Rows with label and description to format. */
+  rows: HelpRow[],
+  /** Available terminal width. */
+  hw: number,
+): string[] {
+  if (rows.length === 0) return [];
+  let labelWidth = 0;
+  for (const row of rows) {
+    labelWidth = Math.max(labelWidth, visibleWidth(row.label));
+  }
+  const descWidth = Math.max(20, hw - labelWidth - 4);
+  const out: string[] = [`${title}:`];
+  for (const row of rows) {
+    const wrapped = wrapText(row.description, descWidth);
+    const paddedLabel = padVisible(row.label, labelWidth);
+    if (wrapped.length === 0 || wrapped[0].length === 0) {
+      out.push(`  ${row.label}`);
+    } else {
+      out.push(`  ${paddedLabel}  ${wrapped[0]}`);
+      for (let idx = 1; idx < wrapped.length; idx++) {
+        out.push(`  ${spaces(labelWidth)}  ${wrapped[idx]}`);
+      }
+    }
+  }
+  return out;
+}
+
 // ── Usage & Rows ──────────────────────────────────────────────────────────────
 
 /** Builds one or two usage line strings (OPTIONS / COMMAND / ARGS) for the help header. */
@@ -404,24 +451,287 @@ function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
     .map((c) => ({ label: c.key, description: c.description }));
 }
 
+// ── Schema YAML Formatting ───────────────────────────────────────────────────
+
+/**
+ * Resolves a JSON Schema $ref pointer from definitions or $defs.
+ */
+function resolveRef(
+  /** Reference URI string (e.g. `#/definitions/Foo` or `#/$defs/Foo`). */
+  ref: string,
+  /** Definitions dictionary from the root schema. */
+  defs: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const name = ref.replace(/^#\/(definitions|\$defs)\//, "");
+  const target = defs[name];
+  if (typeof target === "object" && target !== null) {
+    return target as Record<string, unknown>;
+  }
+  return null;
+}
+
+/**
+ * Formats a single-line type representation from a JSON Schema fragment.
+ * Returns null if the type is complex and requires multiline YAML formatting.
+ */
+function formatType(
+  /** Schema fragment to inspect. */
+  schema: Record<string, unknown>,
+  /** Schema definitions for reference lookup. */
+  defs: Record<string, unknown>,
+  /** Ancestor reference names visited in the current descent. */
+  seen: Set<string>,
+): string | null {
+  if (typeof schema.$ref === "string") {
+    const name = schema.$ref.replace(/^#\/(definitions|\$defs)\//, "");
+    if (seen.has(name)) {
+      return name;
+    }
+    seen.add(name);
+    const resolved = resolveRef(schema.$ref, defs);
+    const res = resolved ? formatType(resolved, defs, seen) : name;
+    seen.delete(name);
+    return res;
+  }
+
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    return schema.enum.map((v) => (typeof v === "string" ? JSON.stringify(v) : String(v))).join(" | ");
+  }
+
+  const union = (schema.anyOf ?? schema.oneOf) as unknown[];
+  if (Array.isArray(union) && union.length > 0) {
+    const parts: string[] = [];
+    let allSimple = true;
+    for (const variant of union) {
+      if (typeof variant === "object" && variant !== null) {
+        const formatted = formatType(variant as Record<string, unknown>, defs, seen);
+        if (formatted !== null) {
+          parts.push(formatted);
+        } else {
+          allSimple = false;
+          break;
+        }
+      }
+    }
+    if (allSimple && parts.length > 0) {
+      return parts.join(" | ");
+    }
+  }
+
+  if (Array.isArray(schema.type)) {
+    return schema.type.join(" | ");
+  }
+
+  if (schema.type === "string") {
+    if (typeof schema.format === "string") {
+      return `string (${schema.format})`;
+    }
+    return "string";
+  }
+
+  if (schema.type === "number") return "number";
+  if (schema.type === "integer") return "integer";
+  if (schema.type === "boolean") return "boolean";
+  if (schema.type === "null") return "null";
+
+  if (schema.type === "array" && schema.items && typeof schema.items === "object") {
+    const itemType = formatType(schema.items as Record<string, unknown>, defs, seen);
+    if (itemType !== null) {
+      if (itemType.includes(" | ")) {
+        return `(${itemType})[]`;
+      }
+      return `${itemType}[]`;
+    }
+    return null;
+  }
+
+  if (schema.type === "object" || schema.properties !== undefined) {
+    if (schema.properties && typeof schema.properties === "object" && Object.keys(schema.properties).length > 0) {
+      return null;
+    }
+    if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+      const valType = formatType(schema.additionalProperties as Record<string, unknown>, defs, seen) ?? "object";
+      return `{ [key: string]: ${valType} }`;
+    }
+    return "object";
+  }
+
+  return null;
+}
+
+/**
+ * Formats a JSON Schema node into multiline YAML lines with JSDoc comments.
+ */
+function formatSchemaLines(
+  /** Schema object to format. */
+  schema: Record<string, unknown>,
+  /** Schema definitions dictionary. */
+  defs: Record<string, unknown>,
+  /** Indentation level in spaces. */
+  indent: number,
+  /** Ancestor reference names visited in the current descent. */
+  seen: Set<string>,
+): string[] {
+  if (typeof schema.$ref === "string") {
+    const name = schema.$ref.replace(/^#\/(definitions|\$defs)\//, "");
+    if (seen.has(name)) {
+      return [`${spaces(indent)}${name}`];
+    }
+    seen.add(name);
+    const resolved = resolveRef(schema.$ref, defs);
+    const res = resolved ? formatSchemaLines(resolved, defs, indent, seen) : [`${spaces(indent)}${name}`];
+    seen.delete(name);
+    return res;
+  }
+
+  if (schema.type === "object" || schema.properties !== undefined) {
+    const props = (schema.properties as Record<string, Record<string, unknown>>) ?? {};
+    const required = new Set(Array.isArray(schema.required) ? schema.required.map((k) => String(k)) : []);
+    const propEntries = Object.entries(props);
+    if (propEntries.length === 0) {
+      const simple = formatType(schema, defs, seen);
+      return simple ? [`${spaces(indent)}${simple}`] : [`${spaces(indent)}{}`];
+    }
+
+    const lines: string[] = [];
+    for (const [key, prop] of propEntries) {
+      if (typeof prop !== "object" || prop === null) continue;
+      const desc = typeof prop.description === "string" ? prop.description.trim() : "";
+      if (desc.length > 0) {
+        for (const dLine of desc.split("\n")) {
+          lines.push(`${spaces(indent)}# ${dLine.trim()}`);
+        }
+      }
+      const isReq = required.has(key);
+      const keyStr = isReq ? key : `${key}?`;
+      const simple = formatType(prop, defs, seen);
+      if (simple !== null) {
+        lines.push(`${spaces(indent)}${keyStr}: ${simple}`);
+      } else {
+        if (prop.type === "array" && prop.items && typeof prop.items === "object") {
+          lines.push(`${spaces(indent)}${keyStr}:`);
+          const itemSchema = prop.items as Record<string, unknown>;
+          const itemLines = formatSchemaLines(itemSchema, defs, 0, seen);
+          if (itemLines.length > 0) {
+            lines.push(`${spaces(indent + 2)}- ${itemLines[0]}`);
+            for (let i = 1; i < itemLines.length; i++) {
+              lines.push(`${spaces(indent + 4)}${itemLines[i]}`);
+            }
+          } else {
+            lines.push(`${spaces(indent + 2)}- {}`);
+          }
+        } else {
+          lines.push(`${spaces(indent)}${keyStr}:`);
+          const childLines = formatSchemaLines(prop, defs, indent + 2, seen);
+          lines.push(...childLines);
+        }
+      }
+    }
+    return lines;
+  }
+
+  if (schema.type === "array") {
+    if (schema.items && typeof schema.items === "object") {
+      const itemSchema = schema.items as Record<string, unknown>;
+      const simple = formatType(itemSchema, defs, seen);
+      if (simple !== null) {
+        return [`${spaces(indent)}- ${simple}`];
+      }
+      const itemLines = formatSchemaLines(itemSchema, defs, 0, seen);
+      if (itemLines.length > 0) {
+        const out: string[] = [`${spaces(indent)}- ${itemLines[0]}`];
+        for (let i = 1; i < itemLines.length; i++) {
+          out.push(`${spaces(indent + 2)}${itemLines[i]}`);
+        }
+        return out;
+      }
+      return [`${spaces(indent)}- {}`];
+    }
+    return [`${spaces(indent)}array`];
+  }
+
+  const fallback = formatType(schema, defs, seen);
+  return fallback ? [`${spaces(indent)}${fallback}`] : [`${spaces(indent)}object`];
+}
+
+/**
+ * Converts a JSON Schema object into human-readable, agent-friendly YAML lines.
+ */
+export function schemaToYamlLines(
+  /** JSON Schema object to format. */
+  schema: Record<string, unknown>,
+  /** Starting indentation column in spaces (default 0). */
+  indent = 0,
+): string[] {
+  const defs = ((schema.definitions ?? schema.$defs) as Record<string, unknown>) ?? {};
+  const lines: string[] = [];
+  if (typeof schema.description === "string" && schema.description.trim().length > 0) {
+    for (const dLine of schema.description.trim().split("\n")) {
+      lines.push(`${spaces(indent)}# ${dLine.trim()}`);
+    }
+  }
+  lines.push(...formatSchemaLines(schema, defs, indent, new Set<string>()));
+  return lines;
+}
+
 // ── Main Help Render ──────────────────────────────────────────────────────────
 
-function appendNotesBox(lines: string[], notes: string | undefined, appKey: string, hw: number, color: boolean): void {
+/**
+ * Optional rendering options for CLI help output.
+ */
+export interface CliHelpRenderOptions {
+  /** Override TTY detection for testing or headless environments. */
+  isTTY?: boolean;
+  /** Force schema display in TTY mode (always included by default in non-TTY). */
+  showSchema?: boolean;
+}
+
+/** Appends notes section to lines, using boxes in TTY mode and clean indentation in non-TTY mode. */
+function appendNotesBox(
+  /** Accumulator lines for help output. */
+  lines: string[],
+  /** Raw notes text from schema. */
+  notes: string | undefined,
+  /** Program key for placeholder resolution. */
+  appKey: string,
+  /** Available terminal width. */
+  hw: number,
+  /** Whether ANSI color styling is enabled. */
+  color: boolean,
+  /** Whether output is targeting a TTY terminal. */
+  isTTY: boolean,
+): void {
   if ((notes ?? "").length === 0) {
     return;
   }
   const resolved = cliResolveNotes(notes ?? "", appKey);
   lines.push("");
-  lines.push(renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"));
+  if (isTTY) {
+    lines.push(renderTextBox("Notes", wrapText(resolved, hw - 4), hw, color).join("\n"));
+  } else {
+    lines.push(renderPlainSection("Notes", wrapText(resolved, hw - 4)).join("\n"));
+  }
 }
 
 /**
  * Renders full help for the app root or a nested command, following `helpPath` from the root key.
- * `useStderr` is reserved for call-site consistency; width and color use stdout TTY.
+ * In TTY mode, renders rounded UTF-8 boxes with ANSI color.
+ * In non-TTY mode, strips boxes and borders, and renders full untruncated YAML schemas by default.
  */
-export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr: boolean): string {
+export function cliHelpRender(
+  /** Root command presentation schema. */
+  schema: CliRouter,
+  /** Segment path to the target command node. */
+  helpPath: string[],
+  /** Whether output will be directed to stderr. */
+  useStderr: boolean,
+  /** Optional rendering overrides. */
+  opts?: CliHelpRenderOptions,
+): string {
   const hw = getHelpWidth();
-  const color = isStdoutTTY();
+  const isTTY = opts?.isTTY ?? isOutputTTY(useStderr);
+  const color = isTTY;
+  const showSchema = opts?.showSchema ?? !isTTY;
 
   if (helpPath.length === 0) {
     const lines: string[] = [];
@@ -430,25 +740,43 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
       lines.push(color ? style.white(schema.description) : schema.description);
       lines.push("");
     }
-    lines.push(
-      renderTextBox(
-        "Usage",
-        usageLines(schema.key, helpPath, (schema.commands ?? []).length > 0, false, false, color),
-        hw,
-        color,
-      ).join("\n"),
-    );
+    const usage = usageLines(schema.key, helpPath, (schema.commands ?? []).length > 0, false, false, color);
+    if (isTTY) {
+      lines.push(renderTextBox("Usage", usage, hw, color).join("\n"));
+    } else {
+      lines.push(renderPlainSection("Usage", usage).join("\n"));
+    }
 
-    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(schema.options), color), hw, color);
+    const optRows = rowsForOptions(visibleOptions(schema.options), color);
+    const optBox = isTTY ? renderTableBox("Options", optRows, hw, color) : renderPlainTable("Options", optRows, hw);
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
     }
     if ((schema.commands ?? []).length > 0) {
+      const subRows = rowsForSubcommands(schema.commands ?? []);
+      const subBox = isTTY ? renderTableBox("Commands", subRows, hw, color) : renderPlainTable("Commands", subRows, hw);
       lines.push("");
-      lines.push(renderTableBox("Commands", rowsForSubcommands(schema.commands ?? []), hw, color).join("\n"));
+      lines.push(subBox.join("\n"));
     }
-    appendNotesBox(lines, schema.notes, schema.key, hw, color);
+
+    if (isCliLeaf(schema as unknown as CliNode) && showSchema) {
+      const leaf = schema as unknown as CliLeaf;
+      if (leaf.outputSchema !== undefined) {
+        const title = isJsonLeaf(leaf) ? "Output Schema (JSON)" : "Output Schema (with --json)";
+        const yamlLines = schemaToYamlLines(leaf.outputSchema, 0);
+        if (yamlLines.length > 0) {
+          lines.push("");
+          if (isTTY) {
+            lines.push(renderTextBox(title, yamlLines, hw, color).join("\n"));
+          } else {
+            lines.push(renderPlainSection(title, yamlLines).join("\n"));
+          }
+        }
+      }
+    }
+
+    appendNotesBox(lines, schema.notes, schema.key, hw, color, isTTY);
     return `${lines.join("\n")}\n\n`;
   }
 
@@ -473,41 +801,48 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
     lines.push("");
   }
   const nodeIsJsonLeaf = isCliLeaf(node) && isJsonLeaf(node);
-  lines.push(
-    renderTextBox(
-      "Usage",
-      usageLines(
-        schema.key,
-        helpPath,
-        isCliRouter(node) && node.commands.length > 0,
-        isCliLeaf(node) && (node.positionals ?? []).length > 0,
-        nodeIsJsonLeaf,
-        color,
-      ),
-      hw,
-      color,
-    ).join("\n"),
+  const usage = usageLines(
+    schema.key,
+    helpPath,
+    isCliRouter(node) && node.commands.length > 0,
+    isCliLeaf(node) && (node.positionals ?? []).length > 0,
+    nodeIsJsonLeaf,
+    color,
   );
+  if (isTTY) {
+    lines.push(renderTextBox("Usage", usage, hw, color).join("\n"));
+  } else {
+    lines.push(renderPlainSection("Usage", usage).join("\n"));
+  }
 
   if (nodeIsJsonLeaf && isCliLeaf(node)) {
-    const inputBox = renderTableBox("Input", rowsForJsonInput(node.inputSchema), hw, color);
+    const inputRows = rowsForJsonInput(node.inputSchema);
+    const inputBox = isTTY ? renderTableBox("Input", inputRows, hw, color) : renderPlainTable("Input", inputRows, hw);
     if (inputBox.length > 0) {
       lines.push("");
       lines.push(inputBox.join("\n"));
     }
+    if (showSchema && node.inputSchema !== undefined) {
+      const yamlLines = schemaToYamlLines(node.inputSchema, 0);
+      if (yamlLines.length > 0) {
+        lines.push("");
+        if (isTTY) {
+          lines.push(renderTextBox("Input Schema", yamlLines, hw, color).join("\n"));
+        } else {
+          lines.push(renderPlainSection("Input Schema", yamlLines).join("\n"));
+        }
+      }
+    }
   } else {
-    const optBox = renderTableBox("Options", rowsForOptions(visibleOptions(node.options), color), hw, color);
+    const optRows = rowsForOptions(visibleOptions(node.options), color);
+    const optBox = isTTY ? renderTableBox("Options", optRows, hw, color) : renderPlainTable("Options", optRows, hw);
     if (optBox.length > 0) {
       lines.push("");
       lines.push(optBox.join("\n"));
     }
 
-    const posBox = renderTableBox(
-      "Arguments",
-      rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color),
-      hw,
-      color,
-    );
+    const posRows = rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color);
+    const posBox = isTTY ? renderTableBox("Arguments", posRows, hw, color) : renderPlainTable("Arguments", posRows, hw);
     if (posBox.length > 0) {
       lines.push("");
       lines.push(posBox.join("\n"));
@@ -515,14 +850,30 @@ export function cliHelpRender(schema: CliRouter, helpPath: string[], _useStderr:
   }
 
   const subcmds = isCliRouter(node) ? node.commands : [];
-  const subBox = renderTableBox("Subcommands", rowsForSubcommands(subcmds), hw, color);
+  const subRows = rowsForSubcommands(subcmds);
+  const subBox = isTTY
+    ? renderTableBox("Subcommands", subRows, hw, color)
+    : renderPlainTable("Subcommands", subRows, hw);
   if (subBox.length > 0) {
     lines.push("");
     lines.push(subBox.join("\n"));
   }
 
+  if (isCliLeaf(node) && node.outputSchema !== undefined && showSchema) {
+    const title = nodeIsJsonLeaf ? "Output Schema (JSON)" : "Output Schema (with --json)";
+    const yamlLines = schemaToYamlLines(node.outputSchema, 0);
+    if (yamlLines.length > 0) {
+      lines.push("");
+      if (isTTY) {
+        lines.push(renderTextBox(title, yamlLines, hw, color).join("\n"));
+      } else {
+        lines.push(renderPlainSection(title, yamlLines).join("\n"));
+      }
+    }
+  }
+
   if ((node.notes ?? "").length > 0) {
-    appendNotesBox(lines, node.notes, schema.key, hw, color);
+    appendNotesBox(lines, node.notes, schema.key, hw, color, isTTY);
   }
 
   return `${lines.join("\n")}\n\n`;

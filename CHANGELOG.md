@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.8] - 2026-09-15
+
+### Added
+
+- **Non-TTY in-band schema discovery in `--help`** — when `--help` is invoked in non-TTY environments (such as pipes, scripts, and AI agent subprocesses), argsbarg automatically outputs full, untruncated YAML `Output Schema` (and `Input Schema` on `kind: "json"` commands) below command options and arguments. Enables zero-drift contract discovery for AI agents in a single turn without reading external documentation.
+- **Unboxed plain-text help in non-TTY** — strips Unicode box borders, vertical bars, and trailing whitespace padding when output is not a TTY, outputting clean, indented plain text that optimizes token usage and prevents parsing artifacts in automated tooling. TTY sessions retain compact, rounded UTF-8 boxes without schema bloat by default.
+- **`schemaToYamlLines` helper** — exported utility converting JSON Schema definitions (with `$ref` resolution, property JSDoc comments, optional `?` markers, and enums) into clean, human- and agent-readable YAML representation.
+
 ## [7.0.7] - 2026-09-15
 
 ### Removed
@@ -984,7 +992,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.7...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.8...HEAD
+[7.0.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.8
 [7.0.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.7
 [7.0.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.6
 [7.0.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.5
