@@ -351,9 +351,47 @@ function finishLeaf(
   const args: string[] = [];
   let forcePositionals = forcePositionalsIn;
 
+  /**
+   * Consumes any pending options, `--`, or help flags at the current argv index.
+   * Sets `forcePositionals = true` when `--` is encountered.
+   * Returns a help or error ParseResult if parsing halts, or null to continue positional consumption.
+   */
+  function consumePendingOptions(): ParseResult | null {
+    while (!forcePositionals && idx < argv.length) {
+      const tok = argv[idx];
+      if (tok === "--") {
+        forcePositionals = true;
+        idx += 1;
+        break;
+      }
+      if (isHelpTok(tok)) {
+        return helpResult(path, true, pathParams);
+      }
+      if (tok.startsWith("-")) {
+        const rep = consumeOptions(optionDefs, false, argv, idx, opts);
+        if (rep.report.err) {
+          return errorResult(rep.report.err, path, [], pathParams);
+        }
+        if (rep.report.sawDoubleDash) {
+          forcePositionals = true;
+        }
+        if (rep.nextIndex > idx) {
+          idx = rep.nextIndex;
+          continue;
+        }
+        return errorResult(`Unexpected option token: ${tok}`, path, [], pathParams);
+      }
+      break;
+    }
+    return null;
+  }
+
   for (const p of node.positionals ?? []) {
     const { argMin = 1, argMax = 1 } = p;
     if (argMax === 1) {
+      const pendingErr = consumePendingOptions();
+      if (pendingErr) return pendingErr;
+
       if (argMin >= 1) {
         if (idx >= argv.length) {
           return errorResult(`Missing positional argument: ${p.name}`, path, [], pathParams);
@@ -361,13 +399,8 @@ function finishLeaf(
         args.push(argv[idx]);
         idx += 1;
       } else if (idx < argv.length) {
-        const tok = argv[idx];
-        if (argMin < 1 && tok.startsWith("-")) {
-          // Optional slot: leave `-` tokens for trailing option parsing.
-        } else {
-          args.push(tok);
-          idx += 1;
-        }
+        args.push(argv[idx]);
+        idx += 1;
       }
       continue;
     }
@@ -375,40 +408,20 @@ function finishLeaf(
     let count = 0;
     if (argMax === 0) {
       while (idx < argv.length) {
-        const tok = argv[idx];
+        const pendingErr = consumePendingOptions();
+        if (pendingErr) return pendingErr;
+        if (idx >= argv.length) break;
 
-        if (!forcePositionals && tok === "--") {
-          forcePositionals = true;
-          idx++;
-          continue;
-        }
-
-        if (!forcePositionals && isHelpTok(tok)) {
-          return helpResult(path, true, pathParams);
-        }
-
-        if (!forcePositionals && tok.startsWith("-")) {
-          // MUST be false — lenient mode swallows unknown flags as positionals silently
-          const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
-          if (tailRep.report.err) {
-            return errorResult(tailRep.report.err, path, [], pathParams);
-          }
-          if (tailRep.report.sawDoubleDash) {
-            forcePositionals = true;
-          }
-          if (tailRep.nextIndex > idx) {
-            idx = tailRep.nextIndex;
-            continue;
-          }
-          return errorResult(`Unexpected option token: ${tok}`, path, [], pathParams);
-        }
-
-        args.push(tok);
-        idx++;
-        count++;
+        args.push(argv[idx]);
+        idx += 1;
+        count += 1;
       }
     } else {
       while (count < argMax && idx < argv.length) {
+        const pendingErr = consumePendingOptions();
+        if (pendingErr) return pendingErr;
+        if (idx >= argv.length) break;
+
         args.push(argv[idx]);
         idx += 1;
         count += 1;
@@ -419,24 +432,11 @@ function finishLeaf(
     }
   }
 
+  const trailingErr = consumePendingOptions();
+  if (trailingErr) return trailingErr;
+
   if (idx < argv.length) {
-    if (forcePositionals) {
-      return errorResult("Unexpected extra arguments", path, [], pathParams);
-    }
-
-    if (isHelpTok(argv[idx])) {
-      return helpResult(path, true, pathParams);
-    }
-
-    const tailRep = consumeOptions(optionDefs, false, argv, idx, opts);
-    if (tailRep.report.err) {
-      return errorResult(tailRep.report.err, path, [], pathParams);
-    }
-    idx = tailRep.nextIndex;
-
-    if (idx < argv.length) {
-      return errorResult("Unexpected extra arguments", path, [], pathParams);
-    }
+    return errorResult("Unexpected extra arguments", path, [], pathParams);
   }
 
   return {

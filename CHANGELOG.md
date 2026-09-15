@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.5] - 2026-09-15
+
+### Added
+
+- **Interleaved options between positionals** — options (presence flags and value options) can now be placed anywhere between bounded or optional positional arguments (e.g. `cmd file1 --force file2`), matching varargs tail behavior rather than requiring all options to precede or follow all bounded positionals.
+
 ## [7.0.4] - 2026-08-17
 
 ### Changed
@@ -959,7 +965,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.4...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.5...HEAD
+[7.0.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.5
 [7.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.4
 [7.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.3
 [7.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.2

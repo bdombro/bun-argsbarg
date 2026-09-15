@@ -31,3 +31,12 @@ When changing argsbarg **builtins**, **capabilities**, or **schemagen documentat
 3. Run **`just test`** — includes `src/cli-tool/full-example-capabilities.test.ts`.
 
 Do not duplicate framework docs here — see [`docs/cli-program.md`](docs/cli-program.md) and consumer [`AGENTS.md`](examples/full-example-json/AGENTS.md).
+
+## Memory
+
+AI chat thread context (decisions, rejected, footguns, open items) are captured in [.agents/memories/](.agents/memories/) using Brian's `/thread-memory` skill.
+
+- Named `YYYYMMDD-{slug}.md` — read Meta first; matching bodies only (no repo glob)
+- `glossary.md` — common terms and evolution of them
+- Save via `/thread-memory sync` (`save memory` / `save decisions`)
+- Read when changing parse/MCP/HTTP wire behavior or preparing a major release

@@ -3,7 +3,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Local argsbarg consumer repos (machine-specific).
-consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
+consumer_apps := "~/dev/ss/bdombrowski-ctx/skills/gws-docs-edit ~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
 
 # List available recipes (default)
 _:

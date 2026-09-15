@@ -370,6 +370,184 @@ test("trailing options after bounded positionals", () => {
   expect(pr.opts.verbose).toBe("1");
 });
 
+/** Tests that options can be interleaved between bounded positionals. */
+test("options interleaved between bounded positionals", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "copy",
+        description: "copy",
+        options: [
+          {
+            name: "force",
+            description: "",
+            kind: CliOptionKind.Presence,
+            shortName: "f",
+          },
+          {
+            name: "mode",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
+        positionals: [
+          {
+            name: "src",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+          {
+            name: "dest",
+            description: "",
+            kind: CliOptionKind.String,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  });
+  cliValidateProgram(root);
+
+  // Presence flag interleaved between positionals
+  const prPresence = postParseValidate(root, parse(root, ["copy", "file1", "--force", "file2"]));
+  expect(prPresence.kind).toBe(ParseKind.Ok);
+  expect(prPresence.args).toEqual(["file1", "file2"]);
+  expect(prPresence.opts.force).toBe("1");
+
+  // String option with value interleaved between positionals
+  const prString = postParseValidate(root, parse(root, ["copy", "file1", "--mode", "fast", "file2"]));
+  expect(prString.kind).toBe(ParseKind.Ok);
+  expect(prString.args).toEqual(["file1", "file2"]);
+  expect(prString.opts.mode).toBe("fast");
+
+  // Multiple flags interleaved between positionals
+  const prMulti = postParseValidate(root, parse(root, ["copy", "file1", "--mode", "fast", "-f", "file2"]));
+  expect(prMulti.kind).toBe(ParseKind.Ok);
+  expect(prMulti.args).toEqual(["file1", "file2"]);
+  expect(prMulti.opts.mode).toBe("fast");
+  expect(prMulti.opts.force).toBe("1");
+
+  // Unknown option interleaved between positionals returns error
+  const prUnknown = postParseValidate(root, parse(root, ["copy", "file1", "--unknown", "file2"]));
+  expect(prUnknown.kind).toBe(ParseKind.Error);
+  expect(prUnknown.errorMsg).toContain("Unknown option: --unknown");
+
+  // Interleaved help request triggers contextual help
+  const prHelp = parse(root, ["copy", "file1", "-h"]);
+  expect(prHelp.kind).toBe(ParseKind.Help);
+  expect(prHelp.helpPath).toEqual(["copy"]);
+
+  // Double dash between positionals disables option consumption
+  const prDoubleDash = postParseValidate(root, parse(root, ["copy", "file1", "--", "--force"]));
+  expect(prDoubleDash.kind).toBe(ParseKind.Ok);
+  expect(prDoubleDash.args).toEqual(["file1", "--force"]);
+  expect(prDoubleDash.opts.force).toBeUndefined();
+});
+
+/** Tests that options can be interleaved with optional positionals. */
+test("options interleaved with optional positionals", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "deploy",
+        description: "deploy",
+        options: [
+          {
+            name: "force",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        positionals: [
+          {
+            name: "env",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 0,
+            argMax: 1,
+          },
+          {
+            name: "target",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 0,
+            argMax: 1,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  });
+  cliValidateProgram(root);
+
+  // Interleaved between two optional positionals
+  const prBoth = postParseValidate(root, parse(root, ["deploy", "prod", "--force", "us-east"]));
+  expect(prBoth.kind).toBe(ParseKind.Ok);
+  expect(prBoth.args).toEqual(["prod", "us-east"]);
+  expect(prBoth.opts.force).toBe("1");
+
+  // Option after first optional positional when second is omitted
+  const prOne = postParseValidate(root, parse(root, ["deploy", "prod", "--force"]));
+  expect(prOne.kind).toBe(ParseKind.Ok);
+  expect(prOne.args).toEqual(["prod"]);
+  expect(prOne.opts.force).toBe("1");
+
+  // Option before optional positionals when all are omitted
+  const prNone = postParseValidate(root, parse(root, ["deploy", "--force"]));
+  expect(prNone.kind).toBe(ParseKind.Ok);
+  expect(prNone.args).toEqual([]);
+  expect(prNone.opts.force).toBe("1");
+});
+
+/** Tests that options can be interleaved between bounded positional and varargs tail. */
+test("options interleaved between bounded positional and varargs tail", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    commands: [
+      {
+        key: "upload",
+        description: "upload",
+        options: [
+          {
+            name: "json",
+            description: "",
+            kind: CliOptionKind.Presence,
+          },
+        ],
+        positionals: [
+          {
+            name: "target",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 1,
+            argMax: 1,
+          },
+          {
+            name: "files",
+            description: "",
+            kind: CliOptionKind.String,
+            argMin: 1,
+            argMax: 0,
+          },
+        ],
+        handler: () => {},
+      },
+    ],
+  });
+  cliValidateProgram(root);
+
+  // Flag between target and files does not get captured as first file
+  const pr = postParseValidate(root, parse(root, ["upload", "s3", "--json", "a.txt", "b.txt"]));
+  expect(pr.kind).toBe(ParseKind.Ok);
+  expect(pr.args).toEqual(["s3", "a.txt", "b.txt"]);
+  expect(pr.opts.json).toBe("1");
+});
+
 /** Tests that options on routing groups are rejected at schema validation. */
 test("rejects options on routing groups", () => {
   const root = testProgram({
