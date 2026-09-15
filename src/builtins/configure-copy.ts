@@ -1,19 +1,19 @@
-/** Capability-aware labels for configure builtin and docs copy. */
+/*
+This module provides capability-aware labels for the configure built-in and docs copy.
+*/
 
 import type { CliProgram } from "../core/types.ts";
 import type { CliCapabilities } from "../runtime/capabilities.ts";
 
-type Kind = "skills" | "mcp" | "config";
+type Kind = "mcp" | "config";
 
 const LABEL: Record<Kind, { prose: string; short: string }> = {
-  skills: { prose: "agent skills", short: "skills" },
   mcp: { prose: "MCP config", short: "MCP" },
   config: { prose: "app config", short: "config" },
 };
 
 function enabledKinds(program: CliProgram, caps: CliCapabilities): Kind[] {
   const kinds: Kind[] = [];
-  if (program.skill?.enabled) kinds.push("skills");
   if (caps.mcp && program.mcpServer?.enabled) kinds.push("mcp");
   if (program.appConfig && Object.keys(program.appConfig.entries).length > 0) kinds.push("config");
   return kinds;
@@ -37,13 +37,6 @@ export function needsConfigureCaveats(program: CliProgram, caps: CliCapabilities
 
 export function configureCommandDescription(program: CliProgram, caps: CliCapabilities): string {
   return `Set up ${prose(program, caps)} for this app (binary via Homebrew).`;
-}
-
-export function docsSkillTopicDescription(_program: CliProgram, caps: CliCapabilities): string {
-  if (caps.configure) {
-    return "Print a reference agent SKILL; run `configure install` to install an optimized copy.";
-  }
-  return "Print a reference agent SKILL for AI agents.";
 }
 
 export function configureCommandNotes(program: CliProgram, _caps: CliCapabilities): string {

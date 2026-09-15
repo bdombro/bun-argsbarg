@@ -1,6 +1,9 @@
-import { docsSkillTopicDescription } from "../builtins/configure-copy.ts";
+/*
+This module builds the built-in `docs` command group router.
+It registers bundled documentation topics (CLI guide, schema, MCP, HTTP) as subcommands.
+*/
+
 import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "../core/types.ts";
-import { resolveCapabilities } from "../runtime/capabilities.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
   docsEnabled,
@@ -74,7 +77,6 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
   leaves.push(
     docsLeaf(program, "cli-schema", "Print the full CLI command tree as JSON."),
     docsLeaf(program, "cli", "Print the full command reference as markdown."),
-    docsLeaf(program, "skill", docsSkillTopicDescription(program, resolveCapabilities(program))),
   );
 
   return {

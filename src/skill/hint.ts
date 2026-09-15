@@ -1,11 +1,11 @@
 /*
 This module provides HTML comment hints embedded in generated documentation
-and agent skill artifacts to mark them as machine-generated.
+and plugin artifacts to mark them as machine-generated.
 */
 
 import type { CliProgram } from "../core/types.ts";
 
-/** YAML frontmatter block at the start of SKILL.md. */
+/** YAML frontmatter block at the start of markdown files. */
 export const MARKDOWN_FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
 
 /** HTML comment marking argsbarg-generated markdown. */
@@ -22,19 +22,6 @@ export function insertGeneratedHint(content: string, hint: string, options?: { a
     }
   }
   return `${hint}${content}`;
-}
-
-/** Hint for `configure` skill output files. */
-export function skillInstallHint(program: CliProgram): string {
-  return generatedFileHtmlComment(`${program.key} configure`);
-}
-
-/** Applies install hint to SKILL.md (after frontmatter). */
-export function applySkillInstallHints(program: CliProgram, skillMd: string): { skillMd: string } {
-  const hint = skillInstallHint(program);
-  return {
-    skillMd: insertGeneratedHint(skillMd, hint, { afterFrontmatter: true }),
-  };
 }
 
 /** Hint for `mcp bundle` plugin skill output. */

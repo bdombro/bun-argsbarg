@@ -88,19 +88,19 @@ describe("detect installed", () => {
 
 /** Tests for install plan. */
 describe("install plan", () => {
-  test("buildUpdatePlan greenfield includes skill when enabled", () => {
+  test("buildUpdatePlan greenfield omits skill because skill generation is removed", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildUpdatePlan(fixture, paths, parseInstallOpts({ reinstall: "1", yes: "1" }));
     expect(plan.length).toBeGreaterThan(0);
-    expect(plan.some((a) => a.kind === "agent-skill")).toBe(true);
+    expect(plan.some((a) => a.kind === "agent-skill")).toBe(false);
     expect(plan.some((a) => a.kind === "app")).toBe(false);
   });
 
-  test("buildInstallPlan --all omits app self-install", () => {
+  test("buildInstallPlan --all omits app self-install and skill", () => {
     const paths = resolveInstallPaths(fixture);
     const plan = buildInstallPlan(fixture, paths, parseInstallOpts({ all: "1" }));
     expect(plan.some((a) => a.kind === "app")).toBe(false);
-    expect(plan.some((a) => a.kind === "agent-skill")).toBe(true);
+    expect(plan.some((a) => a.kind === "agent-skill")).toBe(false);
     expect(plan.some((a) => a.kind === "agents-mcp")).toBe(true);
   });
 

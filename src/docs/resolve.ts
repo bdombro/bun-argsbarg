@@ -1,13 +1,16 @@
+/*
+This module resolves and prints bundled documentation topics for the `docs` built-in.
+*/
+
 import { cliSchemaJson } from "../core/schema.ts";
 import type { CliDocsConfig, CliProgram } from "../core/types.ts";
 import { openApiJson } from "../http/openapi.ts";
-import { generateSkillBundle } from "../skill/generate.ts";
 import { generateCliGuide } from "./cli-guide.ts";
 import { generateHttpGuide } from "./http-guide.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 
 /** Built-in docs subcommand keys not allowed in `docs.topics`. */
-export const DOCS_BUILTIN_TOPIC_KEYS = ["http", "mcp", "all", "cli-schema", "cli", "skill", "openapi"] as const;
+export const DOCS_BUILTIN_TOPIC_KEYS = ["http", "mcp", "all", "cli-schema", "cli", "openapi"] as const;
 
 export type DocsBuiltinTopicKey = (typeof DOCS_BUILTIN_TOPIC_KEYS)[number];
 
@@ -97,9 +100,6 @@ export function docsTopicContent(program: CliProgram, topic: string): string {
   }
   if (topic === "cli") {
     return generateCliGuide(program);
-  }
-  if (topic === "skill") {
-    return `${generateSkillBundle(program).skillMd}\n`;
   }
   const text = docsTopicText(program, topic);
   return text.endsWith("\n") ? text : `${text}\n`;

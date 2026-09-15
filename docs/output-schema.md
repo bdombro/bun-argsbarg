@@ -21,7 +21,6 @@ export const status = {
 | --- | --- |
 | `myapp docs cli-schema` | Full command tree JSON export |
 | `myapp docs cli` | Markdown per-command **Output** section |
-| `myapp docs skill` | Intent-based SKILL.md router for agent skills |
 | MCP `tools/list` | Optional `outputSchema` on each tool |
 | HTTP `GET /openapi.json` | Response schema per tool |
 

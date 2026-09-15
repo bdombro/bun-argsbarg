@@ -32,8 +32,7 @@ function artifactDefaults(
   program?: Pick<CliProgram, "mcpServer" | "skill">,
 ): { enabled: boolean; includedInAll: boolean } {
   if (key === "skill") {
-    const on = program?.skill?.enabled === true;
-    return { enabled: on, includedInAll: on };
+    return { enabled: false, includedInAll: false };
   }
   if (key === "agentsMcp") {
     const on = program?.mcpServer?.enabled === true;

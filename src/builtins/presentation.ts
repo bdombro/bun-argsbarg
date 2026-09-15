@@ -77,14 +77,11 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
   };
 }
 
-/** Root help notes: consumer `program.notes` plus agent discovery when `docs` is enabled. */
-export function presentationRootNotes(program: CliProgram, caps: CliCapabilities): string | undefined {
+/** Root help notes from consumer `program.notes`. */
+export function presentationRootNotes(program: CliProgram, _caps: CliCapabilities): string | undefined {
   const parts: string[] = [];
   if ((program.notes ?? "").trim().length > 0) {
     parts.push((program.notes ?? "").trim());
-  }
-  if (caps.docs) {
-    parts.push(`For AI agents: \`${program.key} docs skill\`.`);
   }
   if (parts.length === 0) {
     return undefined;

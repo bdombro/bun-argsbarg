@@ -1,28 +1,16 @@
 /*
-This module generates Agent Skills content (SKILL.md) from a CLI schema.
-It creates an intent-based router that directs agents to specific subcommands
-and guides them to use `--help` for option and flag discovery.
+This module generates the MCP routing skill (SKILL.md) for Claude Code plugin zips.
 */
 
 import { defaultConfigEntryTitle } from "../config/entry.ts";
-import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import type { CliProgram } from "../core/types.ts";
 import {
   collectMcpTools,
   leafWireOptions,
-  type McpToolDef,
   mcpServerId,
   resolveMcpSchemaUri,
   sanitizeToolSegment,
 } from "../mcp/tools.ts";
-import { skillDirName } from "./naming.ts";
-
-/** Agent skill bundle containing the target directory name and SKILL.md router content. */
-export interface SkillBundle {
-  /** Target directory name under `~/.agents/skills/`. */
-  dirName: string;
-  /** Generated SKILL.md router content. */
-  skillMd: string;
-}
 
 /** MCP routing skill for Claude Code plugin zips (SKILL.md only). */
 export interface PluginSkillBundle {
@@ -48,165 +36,60 @@ function pluginSkillDescription(root: CliProgram): string {
   return truncate(desc, 1024);
 }
 
-/** Builds third-person skill description for YAML frontmatter. */
-function skillDescription(root: CliProgram): string {
-  const tools = collectMcpTools(root);
-  const paths = tools.map((t) => (t.path.length > 0 ? t.path.join(" ") : root.key));
-  const sample = paths.slice(0, 5).join(", ");
-  const more = paths.length > 5 ? `, and ${paths.length - 5} more` : "";
-  const desc = `Operates the ${root.key} CLI (${sample}${more}). Use when the user mentions ${root.key}${paths.length > 0 ? `, ${paths.slice(0, 3).join(", ")}` : ""}, or related tasks.`;
-  return truncate(desc, 1024);
-}
-
-/** CLI path with required single-slot positionals for the compact catalog. */
-function commandCatalogPath(root: CliProgram, tool: McpToolDef): string {
-  const base = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
-  const slots = (tool.leaf.positionals ?? [])
-    .filter((p) => (p.argMin ?? 1) > 0 && (p.argMax ?? 1) === 1)
-    .map((p) => `<${p.name}>`);
-  if (slots.length === 0) {
-    return base;
-  }
-  return `${base} ${slots.join(" ")}`;
-}
-
-/** Formats one command line for the SKILL.md router. */
-function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
-  const cliPath = commandCatalogPath(root, tool);
-  let line = `- **\`${cliPath}\`** — ${tool.leaf.description}`;
-  const opts = leafWireOptions(tool.leaf);
-  const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
-  if (flags.length > 0) {
-    line += ` (flags: ${flags.join(", ")})`;
-  }
-  const enums = opts.filter((o) => o.kind === CliOptionKind.Enum && o.choices?.length);
-  for (const e of enums) {
-    line += ` (\`--${e.name}\`: ${e.choices?.join(" | ")})`;
-  }
-  const varargs = (tool.leaf.positionals ?? []).filter((p) => (p.argMax ?? 1) === 0);
-  if (varargs.length > 0) {
-    line += ` (varargs: ${varargs.map((p) => p.name).join(", ")})`;
-  }
-  return line;
-}
-
-/** Builds configuration section for SKILL.md when appConfig entries exist. */
+/** Builds configuration section lines for YAML and markdown. */
 function buildConfigurationSection(root: CliProgram): string[] {
-  const schema = root.appConfig?.entries;
-  if (!schema || Object.keys(schema).length === 0) {
+  if (!root.appConfig || Object.keys(root.appConfig.entries).length === 0) {
     return [];
   }
-  const lines = ["## Configuration", ""];
-  for (const [key, entry] of Object.entries(schema)) {
-    const label = entry.title ?? defaultConfigEntryTitle(key);
-    const envNote = entry.env ? ` (env: \`${entry.env}\`)` : "";
-    lines.push(`- **${label}** (\`${key}\`${envNote}) — ${entry.description}`);
+  const entries = root.appConfig.entries;
+  const lines: string[] = ["## Configuration", ""];
+  for (const name of Object.keys(entries).sort()) {
+    const entry = entries[name];
+    if (!entry) continue;
+    const title = defaultConfigEntryTitle(name);
+    const envStr = entry.env ? ` (env: \`${entry.env}\`)` : "";
+    const desc = entry.description ? ` — ${entry.description}` : "";
+    lines.push(`- **${name}** (\`${title}\`${envStr})${desc}`);
   }
   lines.push("");
   return lines;
 }
 
-/** Builds SKILL.md body for the agent skill bundle as an intent-based router. */
-function buildSkillMd(root: CliProgram, dirName: string): string {
-  const name = dirName;
-  const description = skillDescription(root);
-  const tools = collectMcpTools(root);
-
+/** Builds SKILL.md for Claude Code plugin zips (MCP routing only). */
+function buildPluginSkillMd(root: CliProgram, dirName: string): string {
   const lines: string[] = [
     "---",
-    `id: ${dirName}`,
-    `name: ${name}`,
-    `description: ${description}`,
-    "enabled: true",
+    `name: ${dirName}`,
+    `description: ${pluginSkillDescription(root)}`,
     "---",
     "",
     `# ${root.key}`,
     "",
     root.description,
     "",
-    "## Execution",
+    "## MCP Tools",
     "",
-    "Invoke via shell:",
+    `Server id: \`${mcpServerId(root)}\``,
     "",
-    "```bash",
-    `${root.key} <subcommand> [options] [args]`,
-    "```",
+    "Prefer using MCP tools over terminal commands when available.",
     "",
-    "## Options & Help Discovery",
-    "",
-    `- Run \`${root.key} <subcommand> --help\` to inspect flags, choices, and positional arguments before running unfamiliar subcommands.`,
-    `- Run \`${root.key} --help\` at the root for top-level options and command routing.`,
-    "",
-    "## Commands",
+    `- Run \`tools/list\` against \`${mcpServerId(root)}\` to discover tools.`,
+    `- Read schema resource \`${resolveMcpSchemaUri(root)}\` for types.`,
     "",
   ];
 
-  if (tools.length === 0) {
-    lines.push("(No leaf commands in schema.)", "");
-  } else {
+  const tools = collectMcpTools(root);
+  if (tools.length > 0) {
+    lines.push("### Available tools", "");
     for (const tool of tools) {
-      lines.push(formatCommandEntry(root, tool));
+      const toolName = sanitizeToolSegment(tool.path.join("_"));
+      const desc = tool.leaf.description;
+      const wire = leafWireOptions(tool.leaf);
+      const flags = wire.length > 0 ? ` (flags: ${wire.map((o) => `--${o.name}`).join(", ")})` : "";
+      lines.push(`- \`${toolName}\` — ${desc}${flags}`);
     }
     lines.push("");
   }
-
-  lines.push(...buildConfigurationSection(root));
-
-  lines.push(
-    "## Workflow & Pitfalls",
-    "",
-    `- Always run \`${root.key} <subcommand> --help\` instead of guessing options or reading large doc files.`,
-    "- Pass `--` before arguments that look like flags.",
-    "- Pass `--yes` for non-interactive execution when confirmation is required.",
-    "- Pass `--json` when machine-readable structured output is supported.",
-    "",
-    "## Install location",
-    "",
-    "Install follows the https://dotagentsprotocol.com:",
-    "",
-    `- Auto-install: \`${root.key} configure install\` when \`skill.enabled\` → \`~/.agents/skills/${dirName}/\``,
-    `- Cursor and most coding agents read \`~/.agents/skills/\` natively`,
-    "",
-    "**Claude Code (manual):** symlink or copy into Claude's skill directory:",
-    "",
-    "```bash",
-    "mkdir -p ~/.claude/skills",
-    `ln -sf ~/.agents/skills/${dirName} ~/.claude/skills/${dirName}`,
-    "```",
-    "",
-    `Project override (optional): \`.agents/skills/${dirName}/\``,
-    "",
-  );
-
-  return lines.join("\n");
-}
-
-/** Builds MCP routing SKILL.md for Claude Code plugin zips. */
-function buildPluginSkillMd(root: CliProgram, dirName: string): string {
-  const name = sanitizeToolSegment(root.key);
-  const description = pluginSkillDescription(root);
-  const serverId = mcpServerId(root);
-  const schemaUri = resolveMcpSchemaUri(root);
-
-  const lines: string[] = [
-    "---",
-    `name: ${name}`,
-    `description: ${description}`,
-    "---",
-    "",
-    `# ${root.key}`,
-    "",
-    root.description,
-    "",
-    "## Execution",
-    "",
-    "This plugin bundles an MCP server. Use MCP tools to fulfill requests.",
-    "",
-    `- Server id: \`${serverId}\` (configured in plugin \`.mcp.json\`)`,
-    "- Tool names and argument shapes come from MCP `tools/list`",
-    `- Full schema: \`${schemaUri}\` (same as \`${root.key} docs cli-schema\`)`,
-    "",
-  ];
 
   lines.push(...buildConfigurationSection(root));
 
@@ -226,14 +109,5 @@ export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
   return {
     dirName,
     skillMd: buildPluginSkillMd(root, dirName),
-  };
-}
-
-/** Generates SKILL.md router content for agent skill install. */
-export function generateSkillBundle(root: CliProgram): SkillBundle {
-  const dirName = skillDirName(root.key);
-  return {
-    dirName,
-    skillMd: buildSkillMd(root, dirName),
   };
 }

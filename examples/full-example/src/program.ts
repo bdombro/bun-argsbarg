@@ -21,6 +21,5 @@ export const program = {
   key: createIdentity.key,
   mcpServer: { enabled: true },
   httpServer: { enabled: true },
-  skill: { enabled: true },
   version: "1.0.0",
 } satisfies CliProgram;

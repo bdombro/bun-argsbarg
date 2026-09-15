@@ -64,7 +64,7 @@ describe("cliResolveNotes", () => {
 });
 
 describe("cliHelpRender", () => {
-  test("docs help lists schema, cli, and skill subcommands", () => {
+  test("docs help lists schema and cli subcommands", () => {
     const root = testProgram({
       key: "app",
       version: "1.0.0",
@@ -85,8 +85,7 @@ describe("cliHelpRender", () => {
     expect(help).toContain("Print the full CLI command tree as JSON.");
     expect(help).toContain("cli");
     expect(help).toContain("markdown");
-    expect(help).toContain("skill");
-    expect(help).toContain("reference agent SKILL");
+    expect(help).not.toContain("skill");
   });
 
   test("root help omits legacy --schema flag", () => {
@@ -106,7 +105,7 @@ describe("cliHelpRender", () => {
     expect(help).not.toContain("--schema");
   });
 
-  test("root help shows agent docs hint when docs enabled", () => {
+  test("root help omits agent docs hint when docs enabled", () => {
     const root = testProgram({
       key: "myapp",
       version: "1.0.0",
@@ -117,7 +116,7 @@ describe("cliHelpRender", () => {
       commands: [{ key: "run", description: "Run.", handler: () => {} }],
     });
     const help = cliHelpRender(cliPresentationRoot(root), [], false);
-    expect(help).toContain("For AI agents: `myapp docs skill`.");
+    expect(help).not.toContain("docs skill");
     expect(help).not.toContain("install --skill");
   });
 
@@ -134,7 +133,7 @@ describe("cliHelpRender", () => {
     expect(help).not.toContain("docs skill");
   });
 
-  test("root help includes program notes and agent hint", () => {
+  test("root help includes program notes", () => {
     const root = testProgram({
       key: "myapp",
       version: "1.0.0",
@@ -147,6 +146,6 @@ describe("cliHelpRender", () => {
     });
     const help = cliHelpRender(cliPresentationRoot(root), [], false);
     expect(help).toContain("See `myapp docs readme` for the user guide.");
-    expect(help).toContain("myapp docs skill");
+    expect(help).not.toContain("docs skill");
   });
 });

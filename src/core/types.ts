@@ -404,9 +404,11 @@ export interface CliCompletionConfig {
   enabled?: boolean;
 }
 
-/** Opt-in agent skill install to `~/.agents/skills/<key>/` (default: disabled). */
+/**
+ * @deprecated Skill generation was removed; skills are authored directly in repositories under `skills/<app>/SKILL.md`.
+ */
 export interface CliSkillConfig {
-  /** When `true`, install the agent skill via `configure install`. Default false when omitted. */
+  /** @deprecated Skill generation was removed; this property has no effect. */
   enabled?: boolean;
 }
 
@@ -678,7 +680,7 @@ export type CliProgram = CliNode & {
   mcpServer?: CliMcpServerConfig;
   /** Optional readiness probe for HTTP/MCP `GET /health/readiness` only. */
   readiness?: (ctx: ReadinessContext) => boolean | Promise<boolean>;
-  /** Opt-in agent skill (`~/.agents/skills/<key>/`). Default disabled when omitted. */
+  /** @deprecated Skill generation was removed; skills are authored directly in repositories under `skills/<app>/SKILL.md`. */
   skill?: CliSkillConfig;
   /** Program version (printed by the `version` built-in and MCP serverInfo). */
   version: string;

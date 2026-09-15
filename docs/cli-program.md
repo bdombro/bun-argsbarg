@@ -1,6 +1,6 @@
 # Writing `CliProgram` and leaf commands
 
-ArgsBarg turns your schema into help, shell completions, MCP tools, and agent skills. **The same `description` fields you write for humans are the agent contract** for basic apps.
+ArgsBarg turns your schema into help, shell completions, and MCP tools. **The same `description` fields you write for humans are the agent contract** for basic apps.
 
 **Documentation map:** [docs/README.md](README.md) — which guide to read for MCP, configure, consumer docgen, and Cursor setup.
 
@@ -90,7 +90,7 @@ export const reserveCommand = {
 
 Use a **parameterized factory** only when the schema truly depends on inputs (e.g. `createUpsertCommand(deps)` for tests or injected config). A `reserveCommand()` that returns a static literal adds indirection without benefit.
 
-**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not. Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `skill`, `version`, …).
+**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not. Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `version`, …).
 
 ## Descriptions
 
@@ -99,26 +99,26 @@ Write for **what the command does**, not how the UI works:
 - **Good:** `Reserve a QA environment.`
 - **Weak:** `Opens the reservation wizard.`
 
-Option and positional `description` strings appear in `-h`, MCP `inputSchema`, and generated skills — keep them concrete (`Environment name (e.g. qa2).`).
+Option and positional `description` strings appear in `-h` and MCP `inputSchema` — keep them concrete (`Environment name (e.g. qa2).`).
 
 Use root **`notes`** for cross-cutting hints shown in help (install commands, docs topics, VPN requirements).
 
 ## Agent-friendly schema
 
-Descriptions and schemas are copied into MCP tools, HTTP OpenAPI, and generated skills — optimize for smaller, clearer agent payloads:
+Descriptions and schemas are copied into MCP tools and HTTP OpenAPI — optimize for smaller, clearer agent payloads:
 
-- **Declare options on the leaf command** that uses them — routing groups cannot declare options (program root may). Wire schemas (MCP, OpenAPI, skills) expose leaf-local options only.
+- **Declare options on the leaf command** that uses them — routing groups cannot declare options (program root may). Wire schemas (MCP, OpenAPI) expose leaf-local options only.
 - Prefer **`kind: "json"`** leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
 - For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
-- Generated **`SKILL.md`** acts as an intent-based router that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
+- Repository **`skills/<app>/SKILL.md`** acts as an intent-based router that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
 
 Validation: [json-schema-subset.md](json-schema-subset.md) (Draft-07 default; 2019-09 / 2020-12 when `$schema` is set — including Zod-generated schemas).
 
 ## Well-known option names
 
-Prefer **`yes`**, **`dry-run`**, and **`json`** when semantics match. They appear in `-h`, MCP `inputSchema`, and generated skills — write clear option `description` strings (e.g. "Skip confirmation; use for non-interactive runs.").
+Prefer **`yes`**, **`dry-run`**, and **`json`** when semantics match. They appear in `-h` and MCP `inputSchema` — write clear option `description` strings (e.g. "Skip confirmation; use for non-interactive runs.").
 
 ## When to use `mcpTool` (escape hatches only)
 
@@ -542,8 +542,7 @@ await cli.run();
 - **Strict:** unknown keys rejected on load.
 - **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** interactive `configure` runs the app config wizard; **`configure install`** refreshes agent artifacts to `~/.agents/` (see https://dotagentsprotocol.com). Optional `configure.afterInstall` / `configure.beforeUninstall` for app-specific agent setup; see [configure.md](configure.md).
-- **Agent skill:** `program.skill: { enabled: true }` installs to `~/.agents/skills/<key>/` on `configure install`; see [configure.md](configure.md) and [ai-skills.md](ai-skills.md).
+- **Configure:** interactive `configure` runs the app config wizard; **`configure install`** registers MCP in `~/.agents/mcp.json` (see https://dotagentsprotocol.com). Optional `configure.afterInstall` / `configure.beforeUninstall` for app-specific agent setup; see [configure.md](configure.md).
 - **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure install`; manual Cursor/Claude setup in [mcp.md](mcp.md).
 
 See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
@@ -583,7 +582,7 @@ If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just c
 
 3. **Optional:** add consumer-specific sections above the `<!-- argsbarg:managed -->` marker in `AGENTS.md` (project context, Ink patterns, domain notes).
 
-- **Not this file:** `myapp configure install` writes the **app** skill (`SKILL.md` under `~/.agents/skills/<key>/`) from your command schema — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
+- **Not this file:** `skills/<app>/SKILL.md` in your repository is the **app** skill — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
 
 ## See also
 
@@ -591,5 +590,5 @@ If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just c
 - [Output schemas](output-schema.md) — codegen pipeline for leaf `outputSchema`
 - [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
 - [MCP server](mcp.md) — tools, schema resource, env bootstrapping
-- [Agent skills](ai-skills.md) — `configure`
+- [Agent skills](ai-skills.md) — repository skills
 - [Bundled docs](bundled-docs.md) — `docs` topics, consumer docgen vs framework docs

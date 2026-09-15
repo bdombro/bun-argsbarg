@@ -5,7 +5,6 @@ Tests for builtins/builtins module behavior.
 import { describe, expect, test } from "bun:test";
 import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
 import type { CliProgram } from "../core/types.ts";
-import { cliBuiltinDocsGroup } from "../docs/builtin.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from ".";
 import { cliBuiltinConfigureCommand } from "./configure.ts";
@@ -41,7 +40,6 @@ const noMcp: CliProgram = {
 describe("builtins help copy", () => {
   test("configure command includes capability-aware description", () => {
     const configure = cliBuiltinConfigureCommand(fixture);
-    expect(configure.description).toContain("agent skills");
     expect(configure.description).toContain("MCP config");
     expect(configure.notes).toContain("brew upgrade");
     const commandKeys = configure.commands.map((c) => c.key);
@@ -55,7 +53,7 @@ describe("builtins help copy", () => {
 
   test("configure copy omits MCP when mcpServer unset", () => {
     const caps = resolveCapabilities(noMcp);
-    expect(configureCommandDescription(noMcp, caps)).toBe("Set up agent skills for this app (binary via Homebrew).");
+    expect(configureCommandDescription(noMcp, caps)).toBe("Set up agent artifacts for this app (binary via Homebrew).");
     expect(configureCommandDescription(noMcp, caps)).not.toContain("MCP");
     const configure = cliBuiltinConfigureCommand(noMcp);
     expect(configure.description).not.toContain("MCP");
@@ -170,24 +168,5 @@ describe("schema export builtins", () => {
   test("exportPresentationBuiltins omits hidden completion", () => {
     const builtins = exportPresentationBuiltins(fixture);
     expect(builtins.map((b) => b.key)).not.toContain("completion");
-  });
-});
-
-/** Tests for docs skill topic copy. */
-describe("docs skill topic copy", () => {
-  test("mentions configure when configure is enabled", () => {
-    const withDocs: CliProgram = {
-      ...noMcp,
-      docs: { topics: { readme: { text: "# r\n" } } },
-    };
-    const skill = cliBuiltinDocsGroup(withDocs).commands.find((c) => c.key === "skill");
-    expect(skill?.description).toContain("configure");
-
-    const configureOff: CliProgram = {
-      ...withDocs,
-      configure: { enabled: false },
-    };
-    const skillOff = cliBuiltinDocsGroup(configureOff).commands.find((c) => c.key === "skill");
-    expect(skillOff?.description).not.toContain("configure");
   });
 });

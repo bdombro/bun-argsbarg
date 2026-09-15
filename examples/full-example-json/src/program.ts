@@ -28,6 +28,5 @@ export const program = {
   key: createIdentity.key,
   mcpServer: { enabled: true },
   readiness: AppDb.checkReadiness,
-  skill: { enabled: true },
   version: "1.0.0",
 } satisfies CliProgram;

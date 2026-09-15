@@ -48,7 +48,6 @@ dev *ARGS:
 docgen:
     @just run docs cli-schema --save
     @just run docs cli --save
-    @just run docs skill --save
     @just run docs mcp --save
     @just run docs http --save
     @just run docs openapi --save

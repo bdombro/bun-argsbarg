@@ -11,7 +11,7 @@ Why ArgsBarg?
 
 *Schema-first & Auto-validated* — Define your entire command structure, options, description, and inputs once. ArgsBarg compiles this into type-safe option accessors, command-line routing, and validation schemas, keeping your code and interfaces perfectly aligned.
 
-*Automated Schemagen & Docgen* — Maintain single-source truth by decorating standard TypeScript types (`/** @sg */ interface...`) to automatically compile them into runtime validation schemas (`argsbarg schemagen`). Easily export standard-compliant API documentation, full CLI reference markdown, OpenAPI 3.1 definitions, and agent skill sheets directly from your code (`docs --save` command) using introspection.
+*Automated Schemagen & Docgen* — Maintain single-source truth by decorating standard TypeScript types (`/** @sg */ interface...`) to automatically compile them into runtime validation schemas (`argsbarg schemagen`). Easily export standard-compliant API documentation, full CLI reference markdown, and OpenAPI 3.1 definitions directly from your code (`docs --save` command) using introspection.
 
 *Production REST Server* — Instantly expose your commands as HTTP REST endpoints (`POST /v1/some-command`) with built-in Kubernetes-compliant `/health/liveness` and `/health/readiness` probes, ECS structured JSON logging to `stderr`, and auto-generated OpenAPI 3.1 specs with an interactive Swagger UI.
 
@@ -383,9 +383,9 @@ bun scripts/merge-agents-md.ts .
 
 This refreshes the argsbarg-managed section in `AGENTS.md` while preserving your app-specific prefix and `**<app> conventions:**` footer. See **Agent instructions** in [docs/cli-program.md](docs/cli-program.md).
 
-### 3. Generated Skills & Workspace Configuration
+### 3. Agent Skills & Workspace Configuration
 
-Running `myapp configure install` installs an intent-based `SKILL.md` router to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`, directing agents to run `<subcommand> --help` for just-in-time option and argument discovery.
+ArgsBarg CLIs adopt the open repository skill convention (`skills/<app>/SKILL.md`) per the standard at https://dotagentsprotocol.com/. Scaffolding via `argsbarg create` copies an initial `SKILL.md` template directing agents to run `<subcommand> --help` for just-in-time option discovery. Running `myapp configure install` registers your MCP server in `~/.agents/mcp.json` and bootstraps app configuration.
 
 See **[docs/configure.md](docs/configure.md)** and **[docs/ai-skills.md](docs/ai-skills.md)** for developer setup and automated Homebrew pipeline integration.
 

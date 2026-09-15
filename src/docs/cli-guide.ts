@@ -6,7 +6,7 @@ import { cliPositionalLabel, cliResolveNotes } from "../help.ts";
 
 /** Options for {@link generateCliGuideBody} and {@link generateCliGuide}. */
 export interface CliGuideBodyOptions {
-  /** Omit embedded outputSchema JSON; point to `docs cli-schema` instead (skill reference). */
+  /** Omit embedded outputSchema JSON; point to `docs cli-schema` instead. */
   compact?: boolean;
 }
 
@@ -72,7 +72,7 @@ function formatNotesBlockquote(notes: string, appKey: string): string {
     .join("\n");
 }
 
-/** Markdown section for leaf outputSchema (docs cli / skill reference). */
+/** Markdown section for leaf outputSchema (docs cli). */
 function formatOutputSchemaSection(schema: Record<string, unknown>): string[] {
   return [
     "#### Output",
@@ -173,7 +173,7 @@ function renderCommandNode(
   }
 }
 
-/** Command-tree markdown shared by `docs cli` and generated agent skills (no API doc header). */
+/** Command-tree markdown for `docs cli` (no API doc header). */
 export function generateCliGuideBody(program: CliProgram, opts: CliGuideBodyOptions = {}): string {
   const schema = cliSchemaExport(program);
   const lines: string[] = [];

@@ -105,7 +105,9 @@ function validateConfigureConfig(program: CliProgram): void {
   }
 
   if ("agentIntegration" in configure) {
-    throw new CliSchemaValidationError("configure.agentIntegration removed; use program.skill.enabled for skills");
+    throw new CliSchemaValidationError(
+      "configure.agentIntegration removed; skills are authored under skills/<app>/SKILL.md",
+    );
   }
 
   if (!configure.targets) return;
@@ -119,7 +121,7 @@ function validateConfigureConfig(program: CliProgram): void {
   for (const key of legacySkillKeys) {
     if (key in targets) {
       throw new CliSchemaValidationError(
-        `configure.targets.${key} removed; use program.skill.enabled for agent skill install`,
+        `configure.targets.${key} removed; skills are authored under skills/<app>/SKILL.md`,
       );
     }
   }

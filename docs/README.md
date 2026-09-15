@@ -15,7 +15,7 @@ Start here to pick the right guide.
 | **Shipping configure / agent artifacts** | [configure.md](configure.md) — Homebrew + `myapp configure install` |
 | **Homebrew tap-from-repo distribution** | [distribution-homebrew.md](distribution-homebrew.md) — formula pattern, `argsbarg create` |
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |
-| **Agent skills** | [ai-skills.md](ai-skills.md) — `configure`, `docs skill` |
+| **Agent skills** | [ai-skills.md](ai-skills.md) — repository skills (`skills/<app>/SKILL.md`) |
 | **Maintaining the argsbarg repo** | [developing.md](developing.md) — release, consumers, npm `files` |
 | **IDE agents in a consumer app** | `bunx argsbarg create` (includes `AGENTS.md`) or `bun scripts/merge-agents-md.ts .` from argsbarg checkout |
 | **Runnable examples** (shipped in npm) | [examples/](examples/) — see table below |

@@ -11,7 +11,7 @@ Reference template for argsbarg consumer docgen. Every builtin is enabled in `sr
 | **Full command tree (markdown)** | [cli.md](cli.md) — generated |
 | **Full command tree (JSON)** | [cli-schema.json](cli-schema.json) — generated |
 | **OpenAPI 3.1** | [openapi.json](openapi.json) — generated |
-| **Agent skill router** | [../skills/full-example/SKILL.md](../skills/full-example/SKILL.md) — generated |
+| **Agent skill router** | [../skills/full-example/SKILL.md](../skills/full-example/SKILL.md) — scaffolded from template |
 
 ## Framework docs vs this directory
 

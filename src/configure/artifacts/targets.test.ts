@@ -42,10 +42,10 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(t.agentsMcp.includedInAll).toBe(false);
   });
 
-  test("skill enabled via program.skill", () => {
+  test("skill disabled even when program.skill is set (skill gen removed)", () => {
     const t = resolveEffectiveInstallTargets(undefined, { skill: { enabled: true } });
-    expect(t.skill.enabled).toBe(true);
-    expect(t.skill.includedInAll).toBe(true);
+    expect(t.skill.enabled).toBe(false);
+    expect(t.skill.includedInAll).toBe(false);
   });
 
   test("agentsMcp in --all when mcpServer enabled", () => {
@@ -69,7 +69,7 @@ describe("resolveEffectiveInstallTargets", () => {
     expect(isArtifactInScope("agentsMcp", scope, effective, "install-scoped", program)).toBe(true);
   });
 
-  test("scoped --skill includes skill when program.skill.enabled", () => {
+  test("scoped --skill omits skill because skill generation is removed", () => {
     const program: CliProgram = {
       key: "app",
       version: "1",
@@ -79,6 +79,6 @@ describe("resolveEffectiveInstallTargets", () => {
     };
     const effective = resolveEffectiveInstallTargets(program.configure, program);
     const scope = { skill: true };
-    expect(isArtifactInScope("skill", scope, effective, "install-scoped", program)).toBe(true);
+    expect(isArtifactInScope("skill", scope, effective, "install-scoped", program)).toBe(false);
   });
 });

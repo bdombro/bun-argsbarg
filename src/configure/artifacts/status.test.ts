@@ -43,7 +43,7 @@ describe("resolveInstallTargetPreview", () => {
     expect(preview.skill).toEqual([]);
   });
 
-  test("skill app includes skill in all scope when enabled", () => {
+  test("skill app does not include skill in all scope (skill gen removed)", () => {
     const program: CliProgram = {
       key: "cliapp",
       version: "1",
@@ -53,8 +53,8 @@ describe("resolveInstallTargetPreview", () => {
     };
     const paths = resolveInstallPaths(program);
     const preview = resolveInstallTargetPreview(program, paths);
-    expect(preview.all).toEqual(["skill"]);
-    expect(preview.skill).toEqual(["skill"]);
+    expect(preview.all).toEqual([]);
+    expect(preview.skill).toEqual([]);
     expect(preview.mcp).toEqual([]);
   });
 });
@@ -81,8 +81,8 @@ describe("printInstallStatus json", () => {
       const parsed = JSON.parse(chunks.join("")) as {
         effective: { all: string[]; mcp: string[]; skill: string[] };
       };
-      expect(parsed.effective.all).toEqual(["skill", "agentsMcp"]);
-      expect(parsed.effective.skill).toEqual(["skill"]);
+      expect(parsed.effective.all).toEqual(["agentsMcp"]);
+      expect(parsed.effective.skill).toEqual([]);
       expect(parsed.effective.mcp).toEqual(["agentsMcp"]);
     } finally {
       process.stdout.write = orig;

@@ -2,7 +2,7 @@
 
 > This feature is experimental.
 
-The `configure` built-in manages **agent artifacts** (skills, MCP config, app config). The **binary and shell completions** ship via Homebrew — see [distribution-homebrew.md](distribution-homebrew.md).
+The `configure` built-in manages **agent artifacts** (MCP config, app config). The **binary and shell completions** ship via Homebrew — see [distribution-homebrew.md](distribution-homebrew.md).
 
 Opt out with `configure: { enabled: false }` on the program root.
 
@@ -13,7 +13,7 @@ Private GitHub release downloads require [GitHub CLI](https://cli.github.com/) a
 ```bash
 brew tap <org>/<repo> git@github.com:<org>/<repo>.git
 brew install <tap>/<key>
-<key> configure install   # skills, MCP, config bootstrap; required-config wizard on TTY
+<key> configure install   # MCP, config bootstrap; required-config wizard on TTY
 ```
 
 Upgrade with `brew upgrade <key>`, then run `<key> configure install` again. Shell completions are installed by Homebrew during `brew install`. Users must configure their shell per [Homebrew Shell Completion](https://docs.brew.sh/Shell-Completion).
@@ -34,18 +34,18 @@ just build
 just install-local    # uninstall, build, brew install, configure install (`just install` is an alias)
 ```
 
-`just install-local` runs `configure uninstall` (via `just uninstall`), installs via Homebrew, then `configure install`. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles; run `just refresh` afterward for skills/MCP.
+`just install-local` runs `configure uninstall` (via `just uninstall`), installs via Homebrew, then `configure install`. Use `just reinstall-local` to swap the binary into Cellar during tight edit cycles; run `just refresh` afterward for MCP.
 
 ## Quick reference
 
 ```bash
-# Install skills/MCP after install or upgrade (required — not run by Homebrew)
+# Install MCP config after install or upgrade (required — not run by Homebrew)
 <key> configure install
 
 # See what is installed
 <key> configure status [--json]
 
-# Remove all agent artifacts and app config (run before brew uninstall)
+# Remove agent artifacts and app config (run before brew uninstall)
 <key> configure uninstall [--yes]
 
 # Read or write app config (when program.appConfig is set)
@@ -61,7 +61,6 @@ Bare `<key> configure` (no subcommand) shows help. Use subcommands above.
 | --- | --- | --- |
 | Binary | skipped (read-only) | Homebrew formula `bin.install` |
 | Shell completions | skipped | Homebrew `generate_completions_from_executable` |
-| Agent skill | automatic | `~/.agents/skills/<key>/` when `program.skill.enabled` |
 | MCP config | automatic | `~/.agents/mcp.json` when `mcpServer.enabled` (see https://dotagentsprotocol.com) |
 | App config | bootstrap + wizard | Creates `~/.local/lib/<key>/config.json` as `{}` when missing; TTY wizard when required keys are missing |
 
@@ -70,7 +69,7 @@ Bare `<key> configure` (no subcommand) shows help. Use subcommands above.
 When **`PATH`** resolves the program key to the **running executable** (e.g. after `brew install`):
 
 - **`configure status`** shows `app: system (PATH)`
-- **`configure install`** refreshes the agent skill (when `program.skill.enabled`) and registers MCP in `~/.agents/mcp.json` (when `mcpServer.enabled`); bootstraps `config.json` when missing
+- **`configure install`** registers MCP in `~/.agents/mcp.json` (when `mcpServer.enabled`); bootstraps `config.json` when missing
 
 MCP config uses the command name on **`PATH`**, not a Cellar path. For Cursor, Claude Code, and Claude Desktop, copy the `mcpServers` entry manually — see [mcp.md](mcp.md) and `docs mcp`.
 
@@ -88,7 +87,6 @@ Optional keys are set via `configure set` or environment variables.
 Optional gates for app binary status:
 
 ```typescript
-skill: { enabled: true },
 mcpServer: { enabled: true },
 configure: {
   targets: {
@@ -142,8 +140,8 @@ Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 
 | Subcommand | Description |
 | --- | --- |
-| `install` | Install agent artifacts; bootstrap config; required-config wizard on TTY |
-| `uninstall` | Remove skill, MCP entry, and app config (`--yes` skips TTY confirm) |
+| `install` | Install agent artifacts (MCP); bootstrap config; required-config wizard on TTY |
+| `uninstall` | Remove legacy skill, MCP entry, and app config (`--yes` skips TTY confirm) |
 | `status` | Read-only inventory (`--json` for machine output) |
 | `get` / `set` | Read or write `program.appConfig` keys (when configured) |
 
@@ -159,7 +157,7 @@ If an existing entry matches, install is a no-op. If an existing entry differs, 
 
 ## Formula `caveats`
 
-Generated formulae document the two-step install when the app has skills, MCP, or `appConfig` entries. Homebrew prints `caveats` after `brew install` and in `brew info`:
+Generated formulae document the two-step install when the app has MCP or `appConfig` entries. Homebrew prints `caveats` after `brew install` and in `brew info`:
 
 ```ruby
 def caveats

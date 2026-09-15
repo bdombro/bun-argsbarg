@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.7] - 2026-09-15
+
+### Removed
+
+- **Removed all skill generation features** — completely removed the `docs skill` (and `docs skill --save`) built-in subcommands from the CLI runtime. Skill files are no longer generated from code or schemas. Skills are purely authored starter templates located at `skills/<app>/SKILL.md` (conforming to the open https://dotagentsprotocol.com standard), included with examples and scaffolded via `argsbarg create`. Removed skill bundle generation from `configure install` (uninstall continues to clean up legacy `~/.agents/skills/<key>/` directories). Deprecated `program.skill`.
+
+### Changed
+
+- **Consumer AGENTS.md scoped to app authors** — adjusted instructions in `AGENTS.md` copy templates and consumer checkouts. Removed consumer-facing discovery instructions (`--help` discovery belongs in `SKILL.md` for end-user agents) and added guidance for authoring agents to maintain `skills/<key>/SKILL.md` when adding or modifying commands.
+- **Omit skill from consumer docgen** — in consumer copy templates, `just docgen` omits skill generation so author customizations in `skills/<app>/SKILL.md` are not overwritten. Skills are included with examples and scaffolded via `argsbarg create`.
+
 ## [7.0.6] - 2026-09-15
 
 ### Changed
@@ -973,7 +984,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.6...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.7...HEAD
+[7.0.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.7
 [7.0.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.6
 [7.0.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.5
 [7.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.4

@@ -8,7 +8,8 @@
 
 - `README.md` — user-facing install/commands
 - `docs/architecture.md` — maintainer internals (create if missing)
-- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`, `skills/full-example-json/SKILL.md`
+- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
+- `skills/full-example-json/SKILL.md` — agent skill router (scaffolded from template; customize as needed)
 
 <!-- argsbarg:managed -->
 
@@ -72,8 +73,7 @@ When adding commands: `src/commands/<name>/command.ts` + `types.ts` when schemas
 - **Runtime:** Bun (`just test`, `just dev`).
 - **Tests:** colocate `*.test.ts` next to the module.
 - **Schemagen:** after changing `/** @sg */` types in `src/`, run `just schemagen` (`__generated__/` is gitignored).
-- **Agent discovery via `--help`:** Prefer running `<cli> <subcommand> --help` to inspect flags, defaults, and positionals on-the-fly. Avoid reading long API documentation files (`docs/cli.md`) into context.
-- **Agent skill:** `skills/<key>/SKILL.md` is an intent-based router. Run `configure install` to persist it to `~/.agents/skills/<key>/`.
+- **Repository skill:** When adding, renaming, or removing commands, update `skills/<key>/SKILL.md` so the intent-based router remains accurate for end-user agents. (`just docgen` updates `./docs/` only and never overwrites `skills/`).
 
 ### Abstractions
 
