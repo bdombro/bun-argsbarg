@@ -92,7 +92,7 @@ full-example mcp
 ## Exposed tools
 
 - `full-example echo` — echo — Echo a message (MCP-friendly leaf).
-- `full-example status` — status — Show app version. (flags: --json)
+- `full-example status` — status — Show app version.
 
 ## Tool arguments
 

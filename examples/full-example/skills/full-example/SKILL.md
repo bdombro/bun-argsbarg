@@ -19,18 +19,22 @@ Invoke via shell:
 full-example <subcommand> [options] [args]
 ```
 
+## Options & Help Discovery
+
+- Run `full-example <subcommand> --help` to inspect flags, choices, and positional arguments before running unfamiliar subcommands.
+- Run `full-example --help` at the root for top-level options and command routing.
+
 ## Commands
 
 - **`full-example echo`** — Echo a message (MCP-friendly leaf).
-- **`full-example status`** — Show app version. (flags: --json)
+- **`full-example status`** — Show app version.
 
-## Pitfalls
+## Workflow & Pitfalls
 
+- Always run `full-example <subcommand> --help` instead of guessing options or reading large doc files.
 - Pass `--` before arguments that look like flags.
-
-## Reference
-
-For full detail, open `reference.md` in this skill directory (same as `full-example docs cli`).
+- Pass `--yes` for non-interactive execution when confirmation is required.
+- Pass `--json` when machine-readable structured output is supported.
 
 ## Install location
 

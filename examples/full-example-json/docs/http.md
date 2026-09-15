@@ -61,7 +61,7 @@ See the argsbarg [logging guide](https://github.com/bdombro/bun-argsbarg/blob/ma
 
 - `POST /echo` (CLI: `full-example-json echo`) — Echo a message (MCP-friendly leaf).
 - `POST /render-json` (CLI: `full-example-json render-json`) — Echo a JSON message (schema-first JSON leaf demo).
-- `POST /status` (CLI: `full-example-json status`) — Show app version. (flags: --json)
+- `POST /status` (CLI: `full-example-json status`) — Show app version.
 - `GET /workspaces` (CLI: `full-example-json workspaces get`) — List workspaces.
 - `POST /workspaces` (CLI: `full-example-json workspaces post`) — Create a workspace.
 - `GET /workspaces/{id}` (CLI: `full-example-json workspaces :id get`) — Get one workspace.

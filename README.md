@@ -385,7 +385,7 @@ This refreshes the argsbarg-managed section in `AGENTS.md` while preserving your
 
 ### 3. Generated Skills & Workspace Configuration
 
-Running `myapp configure install` installs a compact `SKILL.md` index and full-reference `reference.md` to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`.
+Running `myapp configure install` installs an intent-based `SKILL.md` router to `~/.agents/skills/<key>/` when `program.skill: { enabled: true }`, directing agents to run `<subcommand> --help` for just-in-time option and argument discovery.
 
 See **[docs/configure.md](docs/configure.md)** and **[docs/ai-skills.md](docs/ai-skills.md)** for developer setup and automated Homebrew pipeline integration.
 

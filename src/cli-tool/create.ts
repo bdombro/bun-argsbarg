@@ -330,6 +330,7 @@ function listTemplateFiles(templateId: CreateTemplateId): string[] {
 }
 
 export function renderCreateTree(opts: CreateOptions): Map<string, string> {
+  const tmpl = templateIdentity(opts.templateId);
   const files = new Map<string, string>();
   for (const rel of listTemplateFiles(opts.templateId)) {
     if (rel === CREATE_IDENTITY_REL) {
@@ -338,7 +339,10 @@ export function renderCreateTree(opts: CreateOptions): Map<string, string> {
     }
     const src = join(templateDirFor(opts.templateId), rel);
     const raw = readFileSync(src, "utf8");
-    files.set(rel, substituteTemplateContent(raw, opts));
+    const targetRel = rel.startsWith(`skills/${tmpl.key}/`)
+      ? rel.replace(`skills/${tmpl.key}/`, `skills/${opts.key}/`)
+      : rel;
+    files.set(targetRel, substituteTemplateContent(raw, opts));
   }
   return files;
 }

@@ -83,6 +83,7 @@ describe("argsbarg create", () => {
     const tree = renderCreateTree(baseOpts({ key: "testapp" }));
     expect(tree.has("justfile")).toBe(true);
     expect(tree.has("scripts/create-identity.ts")).toBe(true);
+    expect(tree.has("skills/testapp/SKILL.md")).toBe(true);
     const identity = tree.get("scripts/create-identity.ts");
     expect(identity).toContain('key: "testapp"');
     expect(identity).toContain('template: "cli"');

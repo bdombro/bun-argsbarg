@@ -1,7 +1,13 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+/*
+This module persists bundled documentation topics to disk when `--save` is passed.
+It writes documentation under `./docs/` and agent skills under `./skills/<app-name>/SKILL.md`.
+*/
+
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { CliProgram } from "../core/types.ts";
 import { generatedFileHtmlComment, insertGeneratedHint } from "../skill/hint.ts";
+import { skillDirName } from "../skill/naming.ts";
 import { docsTopicContent } from "./resolve.ts";
 
 /** Relative output directory for `docs --save`. */
@@ -11,17 +17,32 @@ export const DOCS_SAVE_DIR = "docs";
 export const DOCS_GENERATED_SAVE_TOPICS = ["mcp", "cli", "skill", "http"] as const;
 
 /** Whether `--save` should prepend a generated-file hint (argsbarg writers only). */
-export function docsTopicIsGeneratedByArgsbarg(topic: string): boolean {
+export function docsTopicIsGeneratedByArgsbarg(
+  /** Topic name. */
+  topic: string,
+): boolean {
   return (DOCS_GENERATED_SAVE_TOPICS as readonly string[]).includes(topic);
 }
 
 /** HTML comment for generated markdown saved with `--save`. */
-export function docsSaveGeneratedHint(program: CliProgram, topic: string): string {
+export function docsSaveGeneratedHint(
+  /** Program definition. */
+  program: CliProgram,
+  /** Topic name. */
+  topic: string,
+): string {
   return generatedFileHtmlComment(`${program.key} docs ${topic} --save`);
 }
 
 /** Inserts save hint without breaking YAML frontmatter (`docs skill`). */
-export function applySaveGeneratedHint(program: CliProgram, topic: string, content: string): string {
+export function applySaveGeneratedHint(
+  /** Program definition. */
+  program: CliProgram,
+  /** Topic name. */
+  topic: string,
+  /** Markdown text. */
+  content: string,
+): string {
   if (!docsTopicIsGeneratedByArgsbarg(topic)) {
     return content;
   }
@@ -30,12 +51,20 @@ export function applySaveGeneratedHint(program: CliProgram, topic: string, conte
 }
 
 /** File body for `--save` (hint on argsbarg-generated markdown only). */
-export function docsTopicContentForSave(program: CliProgram, topic: string): string {
+export function docsTopicContentForSave(
+  /** Program definition. */
+  program: CliProgram,
+  /** Topic name. */
+  topic: string,
+): string {
   return applySaveGeneratedHint(program, topic, docsTopicContent(program, topic));
 }
 
 /** Filename for a saved docs topic. */
-export function docsSaveFilename(topic: string): string {
+export function docsSaveFilename(
+  /** Topic name. */
+  topic: string,
+): string {
   if (topic === "cli-schema") {
     return "cli-schema.json";
   }
@@ -45,18 +74,37 @@ export function docsSaveFilename(topic: string): string {
   return `${topic}.md`;
 }
 
-/** Relative path under cwd for a saved docs topic. */
-export function docsSaveRelativePath(topic: string): string {
+/** Relative path under cwd for a saved docs topic (or skills/<key>/SKILL.md for skill). */
+export function docsSaveRelativePath(
+  /** Topic identifier. */
+  topic: string,
+  /** Program root for resolving app-specific paths like skill directories. */
+  program?: CliProgram,
+): string {
+  if (topic === "skill" && program) {
+    return join("skills", skillDirName(program.key), "SKILL.md");
+  }
   return join(DOCS_SAVE_DIR, docsSaveFilename(topic));
 }
 
-/** Writes one docs topic under `./docs/`; returns relative path written. */
-export function saveDocsTopic(program: CliProgram, topic: string): string {
-  const dir = join(process.cwd(), DOCS_SAVE_DIR);
-  mkdirSync(dir, { recursive: true });
-
-  const rel = docsSaveRelativePath(topic);
+/** Writes one docs topic under `./docs/` or `./skills/<key>/`; returns relative path written. */
+export function saveDocsTopic(
+  /** Program definition root. */
+  program: CliProgram,
+  /** Topic identifier to save. */
+  topic: string,
+): string {
+  const rel = docsSaveRelativePath(topic, program);
   const abs = join(process.cwd(), rel);
+  mkdirSync(dirname(abs), { recursive: true });
+
+  if (topic === "skill") {
+    const legacyDoc = join(process.cwd(), DOCS_SAVE_DIR, "skill.md");
+    if (existsSync(legacyDoc)) {
+      rmSync(legacyDoc, { force: true });
+    }
+  }
+
   writeFileSync(abs, docsTopicContentForSave(program, topic), "utf8");
   return rel;
 }

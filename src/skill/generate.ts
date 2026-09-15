@@ -1,10 +1,11 @@
 /*
-This module generates Agent Skills content (SKILL.md + reference.md) from a CLI schema.
+This module generates Agent Skills content (SKILL.md) from a CLI schema.
+It creates an intent-based router that directs agents to specific subcommands
+and guides them to use `--help` for option and flag discovery.
 */
 
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
-import { generateCliGuide } from "../docs/cli-guide.ts";
 import {
   collectMcpTools,
   leafWireOptions,
@@ -15,15 +16,19 @@ import {
 } from "../mcp/tools.ts";
 import { skillDirName } from "./naming.ts";
 
+/** Agent skill bundle containing the target directory name and SKILL.md router content. */
 export interface SkillBundle {
+  /** Target directory name under `~/.agents/skills/`. */
   dirName: string;
+  /** Generated SKILL.md router content. */
   skillMd: string;
-  referenceMd: string;
 }
 
 /** MCP routing skill for Claude Code plugin zips (SKILL.md only). */
 export interface PluginSkillBundle {
+  /** Target directory name under `skills/`. */
   dirName: string;
+  /** Generated plugin SKILL.md content. */
   skillMd: string;
 }
 
@@ -65,7 +70,7 @@ function commandCatalogPath(root: CliProgram, tool: McpToolDef): string {
   return `${base} ${slots.join(" ")}`;
 }
 
-/** Formats one command line for the SKILL.md index (details live in reference.md). */
+/** Formats one command line for the SKILL.md router. */
 function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
   const cliPath = commandCatalogPath(root, tool);
   let line = `- **\`${cliPath}\`** — ${tool.leaf.description}`;
@@ -85,6 +90,7 @@ function formatCommandEntry(root: CliProgram, tool: McpToolDef): string {
   return line;
 }
 
+/** Builds configuration section for SKILL.md when appConfig entries exist. */
 function buildConfigurationSection(root: CliProgram): string[] {
   const schema = root.appConfig?.entries;
   if (!schema || Object.keys(schema).length === 0) {
@@ -100,7 +106,7 @@ function buildConfigurationSection(root: CliProgram): string[] {
   return lines;
 }
 
-/** Builds SKILL.md body for the agent skill bundle. */
+/** Builds SKILL.md body for the agent skill bundle as an intent-based router. */
 function buildSkillMd(root: CliProgram, dirName: string): string {
   const name = dirName;
   const description = skillDescription(root);
@@ -126,6 +132,11 @@ function buildSkillMd(root: CliProgram, dirName: string): string {
     `${root.key} <subcommand> [options] [args]`,
     "```",
     "",
+    "## Options & Help Discovery",
+    "",
+    `- Run \`${root.key} <subcommand> --help\` to inspect flags, choices, and positional arguments before running unfamiliar subcommands.`,
+    `- Run \`${root.key} --help\` at the root for top-level options and command routing.`,
+    "",
     "## Commands",
     "",
   ];
@@ -142,13 +153,12 @@ function buildSkillMd(root: CliProgram, dirName: string): string {
   lines.push(...buildConfigurationSection(root));
 
   lines.push(
-    "## Pitfalls",
+    "## Workflow & Pitfalls",
     "",
+    `- Always run \`${root.key} <subcommand> --help\` instead of guessing options or reading large doc files.`,
     "- Pass `--` before arguments that look like flags.",
-    "",
-    "## Reference",
-    "",
-    `For full detail, open \`reference.md\` in this skill directory (same as \`${root.key} docs cli\`).`,
+    "- Pass `--yes` for non-interactive execution when confirmation is required.",
+    "- Pass `--json` when machine-readable structured output is supported.",
     "",
     "## Install location",
     "",
@@ -169,11 +179,6 @@ function buildSkillMd(root: CliProgram, dirName: string): string {
   );
 
   return lines.join("\n");
-}
-
-/** Builds reference.md with the compact `docs cli` markdown guide. */
-function buildReferenceMd(root: CliProgram): string {
-  return generateCliGuide(root, { compact: true });
 }
 
 /** Builds MCP routing SKILL.md for Claude Code plugin zips. */
@@ -224,12 +229,11 @@ export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
   };
 }
 
-/** Generates SKILL.md and reference.md for agent skill install. */
+/** Generates SKILL.md router content for agent skill install. */
 export function generateSkillBundle(root: CliProgram): SkillBundle {
   const dirName = skillDirName(root.key);
   return {
     dirName,
     skillMd: buildSkillMd(root, dirName),
-    referenceMd: buildReferenceMd(root),
   };
 }

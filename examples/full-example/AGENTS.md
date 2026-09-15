@@ -8,7 +8,7 @@
 
 - `README.md` — user-facing install/commands
 - `docs/architecture.md` — maintainer internals (create if missing)
-- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`, `docs/skill.md`
+- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`, `skills/full-example/SKILL.md`
 
 <!-- argsbarg:managed -->
 
@@ -67,6 +67,8 @@ When adding commands: `src/commands/<name>/command.ts`; register in `program.ts`
 
 - **CLI:** `bun ./src/index.ts …` or `just run …`
 - **Tests:** `just test` (after `just check`)
+- **Agent discovery via `--help`:** Prefer running `<cli> <subcommand> --help` to inspect flags, defaults, and positionals on-the-fly. Avoid reading long API documentation files (`docs/cli.md`) into context.
+- **Agent skill:** `skills/<key>/SKILL.md` is an intent-based router. Run `configure install` to persist it to `~/.agents/skills/<key>/`.
 
 <!-- /argsbarg:managed -->
 

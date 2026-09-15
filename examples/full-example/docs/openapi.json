@@ -450,12 +450,7 @@
             "application/json; charset=utf-8": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "json": {
-                    "type": "string",
-                    "description": "Emit JSON."
-                  }
-                }
+                "properties": {}
               }
             }
           }

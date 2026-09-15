@@ -60,7 +60,7 @@ See the argsbarg [logging guide](https://github.com/bdombro/bun-argsbarg/blob/ma
 ## REST routes
 
 - `POST /echo` (CLI: `full-example echo`) — Echo a message (MCP-friendly leaf).
-- `POST /status` (CLI: `full-example status`) — Show app version. (flags: --json)
+- `POST /status` (CLI: `full-example status`) — Show app version.
 
 ## Request bodies
 

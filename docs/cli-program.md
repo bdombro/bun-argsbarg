@@ -112,7 +112,7 @@ Descriptions and schemas are copied into MCP tools, HTTP OpenAPI, and generated 
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
 - For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
-- Skill **`reference.md`** uses a compact CLI guide (no inline `outputSchema` JSON) — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
+- Generated **`SKILL.md`** acts as an intent-based router that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
 
 Validation: [json-schema-subset.md](json-schema-subset.md) (Draft-07 default; 2019-09 / 2020-12 when `$schema` is set — including Zod-generated schemas).
 
@@ -160,7 +160,7 @@ On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when
 }
 ```
 
-Exported in `docs cli-schema`, `docs cli`, skill `reference.md`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
+Exported in `docs cli-schema`, `docs cli`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
 
 For a **outputSchema codegen guidelines** (TypeScript types → JSON Schema → `outputSchema` constants), see [output-schema.md](output-schema.md).
 

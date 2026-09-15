@@ -1,3 +1,8 @@
+/*
+This module provides HTML comment hints embedded in generated documentation
+and agent skill artifacts to mark them as machine-generated.
+*/
+
 import type { CliProgram } from "../core/types.ts";
 
 /** YAML frontmatter block at the start of SKILL.md. */
@@ -24,35 +29,17 @@ export function skillInstallHint(program: CliProgram): string {
   return generatedFileHtmlComment(`${program.key} configure`);
 }
 
-/** Applies install hints to SKILL.md (after frontmatter) and reference.md. */
-export function applySkillInstallHints(
-  program: CliProgram,
-  skillMd: string,
-  referenceMd: string,
-): { skillMd: string; referenceMd: string } {
+/** Applies install hint to SKILL.md (after frontmatter). */
+export function applySkillInstallHints(program: CliProgram, skillMd: string): { skillMd: string } {
   const hint = skillInstallHint(program);
   return {
     skillMd: insertGeneratedHint(skillMd, hint, { afterFrontmatter: true }),
-    referenceMd: insertGeneratedHint(referenceMd, hint),
   };
 }
 
 /** Hint for `mcp bundle` plugin skill output. */
 export function skillBundleHint(program: CliProgram): string {
   return generatedFileHtmlComment(`${program.key} mcp bundle`);
-}
-
-/** Applies bundle hints to SKILL.md (after frontmatter) and reference.md. */
-export function applySkillBundleHints(
-  program: CliProgram,
-  skillMd: string,
-  referenceMd: string,
-): { skillMd: string; referenceMd: string } {
-  const hint = skillBundleHint(program);
-  return {
-    skillMd: insertGeneratedHint(skillMd, hint, { afterFrontmatter: true }),
-    referenceMd: insertGeneratedHint(referenceMd, hint),
-  };
 }
 
 /** Applies bundle hint to plugin SKILL.md (after frontmatter). */

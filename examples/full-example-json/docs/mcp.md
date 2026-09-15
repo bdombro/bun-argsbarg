@@ -93,13 +93,13 @@ full-example-json mcp
 
 - `full-example-json echo` — echo — Echo a message (MCP-friendly leaf).
 - `full-example-json render-json` — render-json — Echo a JSON message (schema-first JSON leaf demo).
-- `full-example-json status` — status — Show app version. (flags: --json)
+- `full-example-json status` — status — Show app version.
+- `full-example-json workspaces :id delete` — workspaces :id delete — Delete a workspace.
+- `full-example-json workspaces :id get` — workspaces :id get — Get one workspace.
+- `full-example-json workspaces :id patch` — workspaces :id patch — Patch a workspace name.
+- `full-example-json workspaces :id put` — workspaces :id put — Replace a workspace.
 - `full-example-json workspaces get` — workspaces get — List workspaces.
 - `full-example-json workspaces post` — workspaces post — Create a workspace.
-- `full-example-json workspaces :id get` — workspaces :id get — Get one workspace.
-- `full-example-json workspaces :id put` — workspaces :id put — Replace a workspace.
-- `full-example-json workspaces :id patch` — workspaces :id patch — Patch a workspace name.
-- `full-example-json workspaces :id delete` — workspaces :id delete — Delete a workspace.
 
 ## Tool arguments
 

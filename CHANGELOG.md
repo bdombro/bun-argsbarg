@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.6] - 2026-09-15
+
+### Changed
+
+- **Repository skill convention (`skills/<app>/SKILL.md`)** — `docs skill --save` now writes to `./skills/<app>/SKILL.md` instead of `./docs/skill.md`, aligning with the open skill repository standard. Automatically removes legacy `./docs/skill.md` when saving. Updated `argsbarg create` to scaffold `skills/<app>/SKILL.md`.
+- **Intent-based agent skill router** — `skill.md` / `SKILL.md` is now an intent-based router directing agents to specific subcommands and guiding them to use `<subcommand> --help` for JIT option and positional discovery. Dropped `reference.md` generation and install, preventing agent context window bloat and outdated flag hallucinations. `cliSkillInstall` automatically cleans up legacy `reference.md` when refreshing.
+- **Consumer agent instructions** — updated `AGENTS.md` managed template to instruct coding agents to use `<cli> <subcommand> --help` instead of reading large API markdown documentation files.
+
 ## [7.0.5] - 2026-09-15
 
 ### Added
@@ -965,7 +973,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.5...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.6...HEAD
+[7.0.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.6
 [7.0.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.5
 [7.0.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.4
 [7.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.3
