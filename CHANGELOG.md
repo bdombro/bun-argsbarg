@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.11] - 2026-09-16
+
+### Fixed
+
+- **Help table box sizing and wrapping** — fixed an off-by-two sizing bug in TTY help rendering where table rows wrapped their description column based on `hw - 2` instead of the inner content width `hw - 4`. This caused long table lines to exceed the terminal width and the box borders by up to 2 columns, resulting in the trailing border character `│` wrapping onto a new line in terminals matching `stdout.columns`.
+
 ## [7.0.10] - 2026-09-16
 
 ### Added
@@ -1010,7 +1016,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.10...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.11...HEAD
+[7.0.11]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.11
 [7.0.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.10
 [7.0.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.9
 [7.0.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.7

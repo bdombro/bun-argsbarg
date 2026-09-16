@@ -82,7 +82,7 @@ function isOutputTTY(useStderr: boolean): boolean {
 // ── Width Helpers ─────────────────────────────────────────────────────────────
 
 /** Counts display columns, skipping ANSI SGR sequences. */
-function visibleWidth(s: string): number {
+export function visibleWidth(s: string): number {
   let w = 0;
   let i = 0;
   while (i < s.length) {
@@ -230,19 +230,26 @@ interface HelpRow {
 }
 
 /** Renders a free-text or notes box with a Unicode border and `title` header. */
-function renderTextBox(title: string, lines: string[], hw: number, color: boolean): string[] {
+function renderTextBox(
+  /** Section title to render in the top border. */
+  title: string,
+  /** Lines of text to display inside the box. */
+  lines: string[],
+  /** Available terminal column width. */
+  hw: number,
+  /** Whether ANSI color styling is enabled. */
+  color: boolean,
+): string[] {
   if (lines.length === 0) return [];
 
   const titleLead = color
     ? style.gray(`${kBoxH} `) + style.grayBoldTitle(title) + style.gray(" ")
     : `${kBoxH} ${title} `;
 
-  let contentWidth = visibleWidth(titleLead) + 1;
+  let contentWidth = Math.max(visibleWidth(titleLead) + 1, hw - 4);
   for (const line of lines) {
     contentWidth = Math.max(contentWidth, visibleWidth(line));
   }
-  contentWidth = Math.max(hw - 2, contentWidth);
-  contentWidth = Math.min(contentWidth, hw - 4);
 
   const borderWidth = contentWidth + 2;
   const headerFill = Math.max(1, borderWidth - visibleWidth(titleLead));
@@ -265,7 +272,16 @@ function renderTextBox(title: string, lines: string[], hw: number, color: boolea
 }
 
 /** Renders a two-column label/description table in a box (options, subcommands, positionals). */
-function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boolean): string[] {
+function renderTableBox(
+  /** Section title to render in the top border. */
+  title: string,
+  /** Table rows containing labels and descriptions to format. */
+  rows: HelpRow[],
+  /** Available terminal column width. */
+  hw: number,
+  /** Whether ANSI color styling is enabled. */
+  color: boolean,
+): string[] {
   if (rows.length === 0) return [];
 
   let labelWidth = 0;
@@ -273,10 +289,15 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
     labelWidth = Math.max(labelWidth, visibleWidth(row.label));
   }
 
-  const titleChunk = `${kBoxH} ${title} `;
-  const minimumContentWidth = Math.max(visibleWidth(titleChunk) + 1, labelWidth + 2 + 18);
-  let contentWidth = Math.max(hw - 2, minimumContentWidth);
-  const descWidth = Math.max(1, contentWidth - labelWidth - 2);
+  let titleLead: string;
+  if (color) {
+    titleLead = style.gray(`${kBoxH} `) + style.grayBoldTitle(title) + style.gray(" ");
+  } else {
+    titleLead = `${kBoxH} ${title} `;
+  }
+
+  const targetContentWidth = Math.max(visibleWidth(titleLead) + 1, hw - 4);
+  const descWidth = Math.max(1, targetContentWidth - labelWidth - 2);
 
   const bodyLines: string[] = [];
   for (const row of rows) {
@@ -289,18 +310,10 @@ function renderTableBox(title: string, rows: HelpRow[], hw: number, color: boole
     }
   }
 
-  let titleLead: string;
-  if (color) {
-    titleLead = style.gray(`${kBoxH} `) + style.grayBoldTitle(title) + style.gray(" ");
-  } else {
-    titleLead = `${kBoxH} ${title} `;
-  }
-
-  contentWidth = Math.max(contentWidth, visibleWidth(titleLead) + 1);
+  let contentWidth = targetContentWidth;
   for (const line of bodyLines) {
     contentWidth = Math.max(contentWidth, visibleWidth(line));
   }
-  contentWidth = Math.min(contentWidth, hw - 4);
 
   const borderWidth = contentWidth + 2;
   const headerFill = Math.max(1, borderWidth - visibleWidth(titleLead));

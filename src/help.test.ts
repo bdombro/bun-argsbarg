@@ -12,6 +12,7 @@ import {
   cliPositionalLabel,
   cliResolveNotes,
   schemaToYamlLines,
+  visibleWidth,
 } from "./help.ts";
 import { testProgram } from "./test/fixtures.ts";
 
@@ -212,6 +213,41 @@ describe("cliHelpRender", () => {
     expect(help).toContain("╰");
     expect(help).toContain("│");
     expect(help).not.toContain("Output Schema");
+  });
+
+  /** Tests that TTY help table boxes constrain line lengths to terminal width without wrapping border characters. */
+  test("TTY help table boxes fit terminal width without overflow", () => {
+    const origColumns = process.stdout.columns;
+    try {
+      process.stdout.columns = 120;
+      const root = testProgram({
+        key: "doc",
+        version: "1.0.0",
+        description: "Test application.",
+        commands: [
+          {
+            key: "query",
+            description:
+              "Query the body tape. Prints apply-shaped YAML `{ documentId, tabs: [{ tabId, ops: [], nodes }] }` (or JSON with --json). Fill ops and pipe to apply.",
+            handler: () => {},
+          },
+          {
+            key: "markdown-insert",
+            description:
+              "Insert markdown into a Google Doc tab as native DOM elements (headings, lists, code, tables).",
+            handler: () => {},
+          },
+        ],
+      });
+      const help = cliHelpRender(cliPresentationRoot(root), [], false, { isTTY: true });
+      const boxLines = help.split("\n").filter((l) => l.includes("╭") || l.includes("│") || l.includes("╰"));
+      expect(boxLines.length).toBeGreaterThan(0);
+      for (const line of boxLines) {
+        expect(visibleWidth(line)).toBe(120);
+      }
+    } finally {
+      process.stdout.columns = origColumns;
+    }
   });
 
   /** Tests that non-TTY help automatically includes output schema in YAML by default. */
