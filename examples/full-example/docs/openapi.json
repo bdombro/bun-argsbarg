@@ -344,6 +344,7 @@
                     "description": "Text to print."
                   }
                 },
+                "additionalProperties": false,
                 "required": [
                   "message"
                 ]
@@ -450,7 +451,8 @@
             "application/json; charset=utf-8": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }

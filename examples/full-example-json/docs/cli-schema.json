@@ -13,6 +13,19 @@
           "required": true
         }
       ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Text to print."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "message"
+        ]
+      },
       "commands": [
         {
           "key": "version",
@@ -20,7 +33,7 @@
         },
         {
           "key": "configure",
-          "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+          "description": "Set up MCP config for this app (binary via Homebrew).",
           "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
           "commands": [
             {
@@ -122,17 +135,6 @@
             {
               "key": "cli",
               "description": "Print the full command reference as markdown.",
-              "options": [
-                {
-                  "name": "save",
-                  "description": "Write documentation to ./docs/.",
-                  "kind": "presence"
-                }
-              ]
-            },
-            {
-              "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -240,6 +242,21 @@
     {
       "key": "render-json",
       "description": "Echo a JSON message (schema-first JSON leaf demo).",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Message to echo back."
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false,
+        "definitions": {}
+      },
       "commands": [
         {
           "key": "version",
@@ -247,7 +264,7 @@
         },
         {
           "key": "configure",
-          "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+          "description": "Set up MCP config for this app (binary via Homebrew).",
           "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
           "commands": [
             {
@@ -349,17 +366,6 @@
             {
               "key": "cli",
               "description": "Print the full command reference as markdown.",
-              "options": [
-                {
-                  "name": "save",
-                  "description": "Write documentation to ./docs/.",
-                  "kind": "presence"
-                }
-              ]
-            },
-            {
-              "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -474,6 +480,11 @@
           "kind": "presence"
         }
       ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
       "outputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -496,7 +507,7 @@
         },
         {
           "key": "configure",
-          "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+          "description": "Set up MCP config for this app (binary via Homebrew).",
           "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
           "commands": [
             {
@@ -598,17 +609,6 @@
             {
               "key": "cli",
               "description": "Print the full command reference as markdown.",
-              "options": [
-                {
-                  "name": "save",
-                  "description": "Write documentation to ./docs/.",
-                  "kind": "presence"
-                }
-              ]
-            },
-            {
-              "key": "skill",
-              "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
               "options": [
                 {
                   "name": "save",
@@ -720,6 +720,11 @@
         {
           "key": "get",
           "description": "List workspaces.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
           "commands": [
             {
               "key": "version",
@@ -727,7 +732,7 @@
             },
             {
               "key": "configure",
-              "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+              "description": "Set up MCP config for this app (binary via Homebrew).",
               "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
               "commands": [
                 {
@@ -829,17 +834,6 @@
                 {
                   "key": "cli",
                   "description": "Print the full command reference as markdown.",
-                  "options": [
-                    {
-                      "name": "save",
-                      "description": "Write documentation to ./docs/.",
-                      "kind": "presence"
-                    }
-                  ]
-                },
-                {
-                  "key": "skill",
-                  "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                   "options": [
                     {
                       "name": "save",
@@ -947,6 +941,21 @@
         {
           "key": "post",
           "description": "Create a workspace.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Workspace display name."
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false,
+            "definitions": {}
+          },
           "commands": [
             {
               "key": "version",
@@ -954,7 +963,7 @@
             },
             {
               "key": "configure",
-              "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+              "description": "Set up MCP config for this app (binary via Homebrew).",
               "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
               "commands": [
                 {
@@ -1056,17 +1065,6 @@
                 {
                   "key": "cli",
                   "description": "Print the full command reference as markdown.",
-                  "options": [
-                    {
-                      "name": "save",
-                      "description": "Write documentation to ./docs/.",
-                      "kind": "presence"
-                    }
-                  ]
-                },
-                {
-                  "key": "skill",
-                  "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                   "options": [
                     {
                       "name": "save",
@@ -1178,6 +1176,11 @@
             {
               "key": "get",
               "description": "Get one workspace.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              },
               "commands": [
                 {
                   "key": "version",
@@ -1185,7 +1188,7 @@
                 },
                 {
                   "key": "configure",
-                  "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+                  "description": "Set up MCP config for this app (binary via Homebrew).",
                   "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
                   "commands": [
                     {
@@ -1287,17 +1290,6 @@
                     {
                       "key": "cli",
                       "description": "Print the full command reference as markdown.",
-                      "options": [
-                        {
-                          "name": "save",
-                          "description": "Write documentation to ./docs/.",
-                          "kind": "presence"
-                        }
-                      ]
-                    },
-                    {
-                      "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1405,6 +1397,21 @@
             {
               "key": "put",
               "description": "Replace a workspace.",
+              "inputSchema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Workspace display name."
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "definitions": {}
+              },
               "commands": [
                 {
                   "key": "version",
@@ -1412,7 +1419,7 @@
                 },
                 {
                   "key": "configure",
-                  "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+                  "description": "Set up MCP config for this app (binary via Homebrew).",
                   "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
                   "commands": [
                     {
@@ -1514,17 +1521,6 @@
                     {
                       "key": "cli",
                       "description": "Print the full command reference as markdown.",
-                      "options": [
-                        {
-                          "name": "save",
-                          "description": "Write documentation to ./docs/.",
-                          "kind": "presence"
-                        }
-                      ]
-                    },
-                    {
-                      "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1632,6 +1628,21 @@
             {
               "key": "patch",
               "description": "Patch a workspace name.",
+              "inputSchema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Workspace display name."
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "definitions": {}
+              },
               "commands": [
                 {
                   "key": "version",
@@ -1639,7 +1650,7 @@
                 },
                 {
                   "key": "configure",
-                  "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+                  "description": "Set up MCP config for this app (binary via Homebrew).",
                   "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
                   "commands": [
                     {
@@ -1741,17 +1752,6 @@
                     {
                       "key": "cli",
                       "description": "Print the full command reference as markdown.",
-                      "options": [
-                        {
-                          "name": "save",
-                          "description": "Write documentation to ./docs/.",
-                          "kind": "presence"
-                        }
-                      ]
-                    },
-                    {
-                      "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",
@@ -1859,6 +1859,11 @@
             {
               "key": "delete",
               "description": "Delete a workspace.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              },
               "commands": [
                 {
                   "key": "version",
@@ -1866,7 +1871,7 @@
                 },
                 {
                   "key": "configure",
-                  "description": "Set up agent skills and MCP config for this app (binary via Homebrew).",
+                  "description": "Set up MCP config for this app (binary via Homebrew).",
                   "notes": "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).\n\nHomebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.\n\nAfter install or upgrade:\n  full-example-json configure install\n\nUpgrade:\n  brew upgrade full-example-json\n  full-example-json configure install\n\nShell completions are installed by Homebrew during brew install.\nSee: https://docs.brew.sh/Shell-Completion\n\nSee what is installed:\n  full-example-json configure status\n\nUninstall:\n  full-example-json configure uninstall\n  brew uninstall <tap>/full-example-json\n\nUse `configure status --json` for machine-readable output.",
                   "commands": [
                     {
@@ -1968,17 +1973,6 @@
                     {
                       "key": "cli",
                       "description": "Print the full command reference as markdown.",
-                      "options": [
-                        {
-                          "name": "save",
-                          "description": "Write documentation to ./docs/.",
-                          "kind": "presence"
-                        }
-                      ]
-                    },
-                    {
-                      "key": "skill",
-                      "description": "Print a reference agent SKILL; run `configure install` to install an optimized copy.",
                       "options": [
                         {
                           "name": "save",

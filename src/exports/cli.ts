@@ -43,6 +43,7 @@ export {
   isDocumentLeaf,
   isJsonLeaf,
 } from "../core/types.ts";
+export { buildLeafInputSchema, leafWireOptions } from "../core/wire-schema.ts";
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "../runtime/cli.ts";
 export { cliErrWithHelp } from "../runtime/cli-errors.ts";
 export { isInteractiveTty } from "../utils.ts";

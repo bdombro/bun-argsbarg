@@ -9,6 +9,8 @@ export interface CliSchemaExport {
   key: string;
   description: string;
   notes?: string;
+  /** JSON Schema for input arguments (options, positionals, or document body) when on a leaf. */
+  inputSchema?: Record<string, unknown>;
   /** JSON Schema for structured stdout when set on the leaf. */
   outputSchema?: Record<string, unknown>;
   /** Default success Content-Type when `outputSchema` is omitted but `http.successContentType` is set. */

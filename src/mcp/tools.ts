@@ -9,28 +9,24 @@ import {
   type CliNode,
   type CliOption,
   CliOptionKind,
-  type CliPositional,
   type CliProgram,
   CliValueFormat,
   isCliLeaf,
   isDocumentLeaf,
   leafOutputSchema,
 } from "../core/types.ts";
+import { buildLeafInputSchema, leafWireOptions } from "../core/wire-schema.ts";
 import { docsMcpResources } from "../docs/mcp-resources.ts";
 import { cliResolveNotes } from "../help.ts";
 import { isMcpHidden, visibleOptions } from "../runtime/exposure.ts";
 
-const DURATION_PATTERN = "^\\d+[hdms]?$";
-
-/** Presence flags omitted from MCP wire schemas (handled by the framework on invoke). */
-const MCP_WIRE_OMIT_PRESENCE = new Set(["json", "yes", "verbose"]);
+export { buildLeafInputSchema, leafWireOptions } from "../core/wire-schema.ts";
+export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
 
 /** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
 export function defaultMcpSchemaUri(mcpId: string): string {
   return `${mcpId}://schema`;
 }
-
-export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
 
 /** Sanitizes a command key segment for MCP tool names and server identity. */
 export function sanitizeToolSegment(key: string): string {
@@ -72,61 +68,21 @@ export function mcpToolName(root: CliProgram, path: string[]): string {
   return path.map(sanitizeToolSegment).join("_");
 }
 
-/** Leaf options exposed on MCP/HTTP wire schemas (omits framework-handled presence flags). */
-export function leafWireOptions(leaf: CliLeaf): CliOption[] {
-  return visibleOptions(leaf.options).filter(
-    (opt) => !(opt.kind === CliOptionKind.Presence && MCP_WIRE_OMIT_PRESENCE.has(opt.name)),
-  );
-}
-
 /** True when the leaf declares a `yes` presence option (auto-injected on MCP invoke). */
-export function leafHasYesOption(leaf: CliLeaf): boolean {
+export function leafHasYesOption(
+  /** Leaf command node to inspect. */
+  leaf: CliLeaf,
+): boolean {
   return visibleOptions(leaf.options).some((opt) => opt.name === "yes" && opt.kind === CliOptionKind.Presence);
 }
 
-/** JSON Schema property for one option. */
-function optionProperty(opt: CliOption): Record<string, unknown> {
-  const base: Record<string, unknown> = { description: opt.description };
-  if (opt.default !== undefined) {
-    base.default = opt.default;
-  }
-  switch (opt.kind) {
-    case CliOptionKind.Presence:
-      return { type: "boolean", ...base };
-    case CliOptionKind.String: {
-      if (opt.format === CliValueFormat.CommaList) {
-        return {
-          oneOf: [
-            { type: "string", ...base },
-            { type: "array", items: { type: "string" }, ...base },
-          ],
-        };
-      }
-      const stringBase = { type: "string", ...base };
-      if (opt.format === CliValueFormat.Duration) {
-        return { ...stringBase, pattern: DURATION_PATTERN };
-      }
-      if (opt.format === CliValueFormat.Date) {
-        return { ...stringBase, format: "date" };
-      }
-      if (opt.format === CliValueFormat.DateTime) {
-        return { ...stringBase, format: "date-time" };
-      }
-      if (opt.pattern !== undefined) {
-        return { ...stringBase, pattern: opt.pattern };
-      }
-      return stringBase;
-    }
-    case CliOptionKind.Number:
-      return { type: "number", ...base };
-    case CliOptionKind.Enum:
-      return { type: "string", enum: opt.choices, ...base };
-    case CliOptionKind.Json:
-      return { type: "object", ...base };
-  }
-}
-
-export function formatMcpOptionValue(opt: CliOption, val: unknown): string | { error: string } {
+/** Formats an incoming MCP option value to an argv string. */
+export function formatMcpOptionValue(
+  /** Option definition to format the value for. */
+  opt: CliOption,
+  /** Incoming raw value from the MCP tool call. */
+  val: unknown,
+): string | { error: string } {
   if (opt.format === CliValueFormat.CommaList) {
     if (Array.isArray(val)) {
       const items = val.map(String).filter(Boolean);
@@ -141,51 +97,6 @@ export function formatMcpOptionValue(opt: CliOption, val: unknown): string | { e
     return { error: `Option --${opt.name} must be a string or array of strings` };
   }
   return String(val);
-}
-
-/** JSON Schema property for one positional slot. */
-function positionalProperty(p: CliPositional): Record<string, unknown> {
-  const base = { description: p.description };
-  const { argMax = 1 } = p;
-  if (argMax === 0) {
-    return { type: "array", items: { type: "string" }, ...base };
-  }
-  return { type: "string", ...base };
-}
-
-/** Builds inputSchema for a leaf command. */
-function buildInputSchema(leaf: CliLeaf): Record<string, unknown> {
-  if (isDocumentLeaf(leaf) && leaf.inputSchema !== undefined) {
-    return leaf.inputSchema;
-  }
-
-  const properties: Record<string, unknown> = {};
-  const required: string[] = [];
-
-  for (const opt of leafWireOptions(leaf)) {
-    properties[opt.name] = optionProperty(opt);
-    if (opt.required) {
-      required.push(opt.name);
-    }
-  }
-
-  for (const p of leaf.positionals ?? []) {
-    properties[p.name] = positionalProperty(p);
-    const { argMin = 1, argMax = 1 } = p;
-    if (argMax === 1 && argMin >= 1) {
-      required.push(p.name);
-    }
-  }
-
-  const schema: Record<string, unknown> = {
-    type: "object",
-    properties,
-    additionalProperties: false,
-  };
-  if (required.length > 0) {
-    schema.required = required;
-  }
-  return schema;
 }
 
 /** Resolves MCP tool description with optional override and leaf notes. */
@@ -251,7 +162,7 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
-        inputSchema: cmd.inputSchema ?? buildInputSchema(cmd),
+        inputSchema: buildLeafInputSchema(cmd),
         ...(outputSchema === undefined ? {} : { outputSchema }),
       });
       return;

@@ -30,7 +30,7 @@ Echo a message (MCP-friendly leaf).
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -41,7 +41,7 @@ Print the program version.
 
 #### `full-example-json echo configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -116,7 +116,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ##### `full-example-json echo docs readme`
 
@@ -171,16 +170,6 @@ Print the full CLI command tree as JSON.
 ##### `full-example-json echo docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-##### `full-example-json echo docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -258,7 +247,7 @@ Echo a JSON message (schema-first JSON leaf demo).
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -269,7 +258,7 @@ Print the program version.
 
 #### `full-example-json render-json configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -344,7 +333,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ##### `full-example-json render-json docs readme`
 
@@ -399,16 +387,6 @@ Print the full CLI command tree as JSON.
 ##### `full-example-json render-json docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-##### `full-example-json render-json docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -514,7 +492,7 @@ JSON Schema for output when/if handler emits JSON
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -525,7 +503,7 @@ Print the program version.
 
 #### `full-example-json status configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -600,7 +578,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ##### `full-example-json status docs readme`
 
@@ -655,16 +632,6 @@ Print the full CLI command tree as JSON.
 ##### `full-example-json status docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-##### `full-example-json status docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -752,7 +719,7 @@ List workspaces.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -763,7 +730,7 @@ Print the program version.
 
 ##### `full-example-json workspaces get configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -838,7 +805,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces get docs readme`
 
@@ -893,16 +859,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces get docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces get docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -980,7 +936,7 @@ Create a workspace.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -991,7 +947,7 @@ Print the program version.
 
 ##### `full-example-json workspaces post configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -1066,7 +1022,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces post docs readme`
 
@@ -1121,16 +1076,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces post docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces post docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -1219,7 +1164,7 @@ Get one workspace.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -1230,7 +1175,7 @@ Print the program version.
 
 ###### `full-example-json workspaces :id get configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -1305,7 +1250,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces :id get docs readme`
 
@@ -1360,16 +1304,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces :id get docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces :id get docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -1447,7 +1381,7 @@ Replace a workspace.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -1458,7 +1392,7 @@ Print the program version.
 
 ###### `full-example-json workspaces :id put configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -1533,7 +1467,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces :id put docs readme`
 
@@ -1588,16 +1521,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces :id put docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces :id put docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -1675,7 +1598,7 @@ Patch a workspace name.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -1686,7 +1609,7 @@ Print the program version.
 
 ###### `full-example-json workspaces :id patch configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -1761,7 +1684,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces :id patch docs readme`
 
@@ -1816,16 +1738,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces :id patch docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces :id patch docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 
@@ -1903,7 +1815,7 @@ Delete a workspace.
 #### Subcommands
 
 - `version` — Print the program version.
-- `configure` — Set up agent skills and MCP config for this app (binary via Homebrew).
+- `configure` — Set up MCP config for this app (binary via Homebrew).
 - `docs` — Print bundled CLI documentation.
 - `mcp` — MCP server and bundle tools.
 - `http` — HTTP API server for tools.
@@ -1914,7 +1826,7 @@ Print the program version.
 
 ###### `full-example-json workspaces :id delete configure`
 
-Set up agent skills and MCP config for this app (binary via Homebrew).
+Set up MCP config for this app (binary via Homebrew).
 
 > Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
 > 
@@ -1989,7 +1901,6 @@ Print bundled CLI documentation.
 - `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
 - `cli-schema` — Print the full CLI command tree as JSON.
 - `cli` — Print the full command reference as markdown.
-- `skill` — Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 ###### `full-example-json workspaces :id delete docs readme`
 
@@ -2044,16 +1955,6 @@ Print the full CLI command tree as JSON.
 ###### `full-example-json workspaces :id delete docs cli`
 
 Print the full command reference as markdown.
-
-#### Options
-
-| Option | Type | Required | Format / default | Description |
-| --- | --- | --- | --- | --- |
-| `--save` | flag | optional | — | Write documentation to ./docs/. |
-
-###### `full-example-json workspaces :id delete docs skill`
-
-Print a reference agent SKILL; run `configure install` to install an optimized copy.
 
 #### Options
 

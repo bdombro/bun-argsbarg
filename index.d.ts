@@ -864,6 +864,21 @@ export declare function readJsonOptionValue(ctx: CliContext, name: string): unkn
  * Call from {@link Cli.run} before constructing the handler context.
  */
 export declare function preloadPipableJson(program: CliProgram, commandPath: string[], opts: Record<string, string>, invocation: CliInvocation, args?: string[]): Promise<Record<string, unknown>>;
+/**
+ * Filters leaf-local options to only those exposed over wire protocols (MCP, OpenAPI, CLI schema export).
+ * Omits hidden options and framework-handled presence flags (`--json`, `--yes`, `--verbose`).
+ */
+export declare function leafWireOptions(
+/** Leaf command node to extract wire options from. */
+leaf: CliLeaf): CliOption[];
+/**
+ * Builds the canonical input JSON Schema for a leaf command.
+ * Returns `leaf.inputSchema` when explicitly defined (e.g. on document leaves or schemagen leaves);
+ * otherwise synthesizes a flat object schema from leaf-local wire options and positionals.
+ */
+export declare function buildLeafInputSchema(
+/** Leaf command node to build the input schema for. */
+leaf: CliLeaf): Record<string, unknown>;
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CliContext, "invocation">;
 /** True when `--json` was passed or the handler was invoked headlessly over MCP/HTTP. */
@@ -933,6 +948,8 @@ export interface CliSchemaExport {
 	key: string;
 	description: string;
 	notes?: string;
+	/** JSON Schema for input arguments (options, positionals, or document body) when on a leaf. */
+	inputSchema?: Record<string, unknown>;
 	/** JSON Schema for structured stdout when set on the leaf. */
 	outputSchema?: Record<string, unknown>;
 	/** Default success Content-Type when `outputSchema` is omitted but `http.successContentType` is set. */

@@ -141,3 +141,56 @@ test("generateCliGuide and cliSchemaExport include leaf outputSchema", () => {
   expect(md).toContain('"id"');
   expect(md).toContain('"type": "string"');
 });
+
+/** Tests that cliSchemaExport includes synthesized and custom inputSchema on leaf commands. */
+test("cliSchemaExport includes leaf inputSchema", () => {
+  const fixture: CliProgram = {
+    key: "myapp",
+    version: "1.0.0",
+    description: "Demo app.",
+    commands: [
+      {
+        key: "greet",
+        description: "Greet user.",
+        options: [
+          { name: "name", description: "User name", kind: CliOptionKind.String, required: true },
+          { name: "json", description: "JSON flag", kind: CliOptionKind.Presence },
+        ],
+        handler: () => {},
+      },
+      {
+        key: "deploy",
+        description: "Deploy resource.",
+        kind: "document",
+        inputSchema: {
+          type: "object",
+          properties: { target: { type: "string" } },
+          required: ["target"],
+        },
+        handler: () => {},
+      },
+    ],
+  };
+
+  const schema = cliSchemaExport(fixture);
+  const greet = schema.commands?.[0];
+  const deploy = schema.commands?.[1];
+
+  expect(greet?.inputSchema).toEqual({
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        description: "User name",
+      },
+    },
+    additionalProperties: false,
+    required: ["name"],
+  });
+
+  expect(deploy?.inputSchema).toEqual({
+    type: "object",
+    properties: { target: { type: "string" } },
+    required: ["target"],
+  });
+});

@@ -72,6 +72,7 @@ export {
   isDocumentLeaf,
   isJsonLeaf,
 } from "./core/types.ts";
+export { buildLeafInputSchema, leafWireOptions } from "./core/wire-schema.ts";
 export type { HeadlessContext } from "./headless/routing.ts";
 export {
   formatDryRunMessage,

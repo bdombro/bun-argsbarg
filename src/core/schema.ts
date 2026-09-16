@@ -6,6 +6,7 @@ import { type CliSchemaExport, exportPresentationBuiltins } from "../builtins/ex
 import { cliResolveNotes } from "../help.ts";
 import { isCliSchemaHidden, visibleOptions } from "../runtime/exposure.ts";
 import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
+import { buildLeafInputSchema } from "./wire-schema.ts";
 
 const RESERVED = new Set(["http", "completion", "configure", "docs", "mcp", "version"]);
 
@@ -32,6 +33,7 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
     if ((cmd.positionals ?? []).length > 0) {
       out.positionals = cmd.positionals;
     }
+    out.inputSchema = buildLeafInputSchema(cmd);
     const outputSchema = leafOutputSchema(cmd);
     if (outputSchema !== undefined) {
       out.outputSchema = outputSchema;

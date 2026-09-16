@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.10] - 2026-09-16
+
+### Added
+
+- **Canonical wire input schema generation (`buildLeafInputSchema`)** — unified wire input schema generation across MCP tools, OpenAPI request bodies, and CLI schema export into a single canonical helper. Synthesizes a complete JSON Schema (types, formats, enums, required properties, and positionals) from leaf-local options when `inputSchema` is not explicitly defined.
+- **Leaf `inputSchema` in `docs cli-schema`** — `cliSchemaExport` now includes `inputSchema` for every leaf command in the machine-readable command tree (and `<app>://schema` MCP resource), giving programmatic and agent callers a unified JSON Schema input specification for both flag-based and document-based commands.
+- **`buildLeafInputSchema` and `leafWireOptions` exports** — exported from framework root, CLI runtime export, and MCP tools module.
+
 ## [7.0.9] - 2026-09-16
 
 ### Added
@@ -1002,7 +1010,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.9...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.10...HEAD
+[7.0.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.10
 [7.0.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.9
 [7.0.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.7
 [7.0.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.6

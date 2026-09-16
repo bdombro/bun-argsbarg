@@ -3,8 +3,8 @@ Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
 import type { CliHttpMethod, CliNode, CliProgram } from "../core/types.ts";
-import { CliOptionKind, isCliLeaf, isDocumentLeaf } from "../core/types.ts";
-import { leafWireOptions } from "../mcp/tools.ts";
+import { isCliLeaf, isDocumentLeaf } from "../core/types.ts";
+import { buildLeafInputSchema, leafWireOptions } from "../core/wire-schema.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 
@@ -31,42 +31,6 @@ function errorResponseEntry(program: CliProgram, description: string): Record<st
         schema: errorResponseSchema(program),
       },
     },
-  };
-}
-
-function buildInputSchema(
-  _program: CliProgram,
-  route: ReturnType<typeof collectHttpRoutes>[number],
-): Record<string, unknown> {
-  const leaf = route.leaf;
-  if (leaf.inputSchema) {
-    return leaf.inputSchema;
-  }
-  const properties: Record<string, unknown> = {};
-  const required: string[] = [];
-  for (const p of route.paramNames) {
-    properties[p] = { type: "string" };
-    required.push(p);
-  }
-  for (const opt of leafWireOptions(leaf)) {
-    if (opt.kind === CliOptionKind.Json) {
-      continue;
-    }
-    properties[opt.name] = { type: "string", description: opt.description };
-    if (opt.required) {
-      required.push(opt.name);
-    }
-  }
-  for (const p of leaf.positionals ?? []) {
-    properties[p.name] = { type: "string", description: p.description };
-    if ((p.argMin ?? 1) >= 1) {
-      required.push(p.name);
-    }
-  }
-  return {
-    type: "object",
-    properties,
-    ...(required.length > 0 ? { required } : {}),
   };
 }
 
@@ -256,7 +220,7 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
         required: isDocumentLeaf(route.leaf),
         content: {
           [JSON_CONTENT_TYPE]: {
-            schema: dereferenceJsonSchema(buildInputSchema(program, route)),
+            schema: dereferenceJsonSchema(buildLeafInputSchema(route.leaf)),
           },
         },
       };
