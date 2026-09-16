@@ -17,7 +17,7 @@ import {
   CliValueFormat,
   isCliLeaf,
   isCliRouter,
-  isJsonLeaf,
+  isDocumentLeaf,
 } from "./types.ts";
 
 /** Validates `docs` configuration on the program root. */
@@ -264,15 +264,16 @@ function walkNode(node: CliNode, program: CliProgram, isRoot: boolean): void {
     if (isRoot && node.mcpTool !== undefined) {
       throw new CliSchemaValidationError("mcpTool is only supported on leaf commands");
     }
-    if (isJsonLeaf(node)) {
+    if (isDocumentLeaf(node)) {
+      const kindStr = `kind: "${node.kind ?? "document"}"`;
       if (node.inputSchema === undefined) {
-        throw new CliSchemaValidationError(`kind: "json" requires inputSchema on ${node.key}`);
+        throw new CliSchemaValidationError(`${kindStr} requires inputSchema on ${node.key}`);
       }
       if ((node.options ?? []).length > 0) {
-        throw new CliSchemaValidationError(`kind: "json" forbids options on ${node.key}`);
+        throw new CliSchemaValidationError(`${kindStr} forbids options on ${node.key}`);
       }
       if ((node.positionals ?? []).length > 0) {
-        throw new CliSchemaValidationError(`kind: "json" forbids positionals on ${node.key}`);
+        throw new CliSchemaValidationError(`${kindStr} forbids positionals on ${node.key}`);
       }
     }
     const outputSchema = node.outputSchema;

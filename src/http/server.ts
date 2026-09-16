@@ -175,7 +175,15 @@ export async function handleApiRequest(
           }
           body = parsed as Record<string, unknown>;
         } catch {
-          return finish(apiErrorResponse(400, { error: "Invalid JSON body" }));
+          try {
+            const parsed = Bun.YAML.parse(rawBody);
+            if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+              return finish(apiErrorResponse(400, { error: "Request body must be a JSON object" }));
+            }
+            body = parsed as Record<string, unknown>;
+          } catch {
+            return finish(apiErrorResponse(400, { error: "Invalid JSON body" }));
+          }
         }
       }
     }

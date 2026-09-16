@@ -500,16 +500,17 @@ export interface CliNodeBase {
   options?: CliOption[];
 }
 
-/** Leaf input mode: `json` = pure JSON body (no CLI flags). */
-export type CliLeafKind = "json";
+/** Leaf input mode: `document` (or legacy `json`) = structured JSON or YAML document body (no CLI flags). */
+export type CliLeafKind = "document" | "json";
 
 /**
  * A leaf command node with a handler and optional positionals.
  */
 export type CliLeaf = CliNodeBase & {
   /**
-   * When `"json"`, the leaf accepts a single JSON document (CLI positional or piped stdin;
-   * MCP/HTTP tool args = body). Requires `inputSchema`; forbids `options` and `positionals`.
+   * When `"document"` (or legacy `"json"`), the leaf accepts a single JSON or YAML document
+   * (CLI positional or piped stdin; MCP/HTTP tool args = body). Requires `inputSchema`;
+   * forbids `options` and `positionals`.
    */
   kind?: CliLeafKind;
   /** Handler function for leaf commands. */
@@ -691,9 +692,20 @@ export function isCliLeaf(node: CliNode): node is CliLeaf {
   return "handler" in node && typeof node.handler === "function";
 }
 
-/** True when the leaf accepts a pure JSON body (no CLI flags). */
-export function isJsonLeaf(leaf: CliLeaf): boolean {
-  return leaf.kind === "json";
+/** True when the leaf accepts a structured JSON or YAML document body (no CLI flags). */
+export function isDocumentLeaf(
+  /** Leaf command node to inspect. */
+  leaf: CliLeaf,
+): boolean {
+  return leaf.kind === "document" || leaf.kind === "json";
+}
+
+/** True when the leaf accepts a structured document body (backward-compatible alias for `isDocumentLeaf`). */
+export function isJsonLeaf(
+  /** Leaf command node to inspect. */
+  leaf: CliLeaf,
+): boolean {
+  return isDocumentLeaf(leaf);
 }
 
 /** True when the node is a router (has subcommands). */

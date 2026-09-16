@@ -19,7 +19,7 @@ import {
   type CliRouter,
   isCliLeaf,
   isCliRouter,
-  isJsonLeaf,
+  isDocumentLeaf,
 } from "./types.ts";
 
 // ── Parse Result ──────────────────────────────────────────────────────────────
@@ -292,9 +292,9 @@ export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
   return [...(node.options ?? [])];
 }
 
-/** Fills `args` for a json leaf from `startIdx` (0 or 1 JSON string positional). */
+/** Fills `args` for a document / json leaf from `startIdx` (0 or 1 JSON or YAML string positional). */
 function finishJsonLeaf(
-  _node: CliLeaf,
+  node: CliLeaf,
   startIdx: number,
   argv: string[],
   path: string[],
@@ -313,7 +313,8 @@ function finishJsonLeaf(
       return errorResult("Unexpected extra arguments", path, [], pathParams);
     }
     if (tok.startsWith("-")) {
-      return errorResult(`JSON commands do not accept options: ${tok}`, path, [], pathParams);
+      const kindLabel = node.kind === "document" ? "Document" : "JSON";
+      return errorResult(`${kindLabel} commands do not accept options: ${tok}`, path, [], pathParams);
     }
     args.push(tok);
     idx += 1;
@@ -552,7 +553,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   let node: CliNode | undefined;
 
   if (isCliLeaf(root)) {
-    if (isJsonLeaf(root)) {
+    if (isDocumentLeaf(root)) {
       return finishJsonLeaf(root, i, argv, path, opts, pathParams);
     }
     return finishLeaf(root, i, argv, path, opts, root.options ?? [], forcePositionals, pathParams);
@@ -645,7 +646,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   // Walk the command tree
   while (true) {
-    if (isCliLeaf(current) && isJsonLeaf(current)) {
+    if (isCliLeaf(current) && isDocumentLeaf(current)) {
       return finishJsonLeaf(current, i, argv, path, opts, pathParams);
     }
 

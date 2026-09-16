@@ -7,7 +7,7 @@ import { isInteractiveTty } from "../utils.ts";
 import type { CliContext, CliLeafInputs } from "./context.ts";
 import { collectOptionDefs } from "./parse.ts";
 import type { CliInvocation, CliLeaf, CliNode, CliOption, CliProgram } from "./types.ts";
-import { CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter, isJsonLeaf } from "./types.ts";
+import { type CliLeafKind, CliOptionKind, CliValueFormat, isCliLeaf, isCliRouter, isDocumentLeaf } from "./types.ts";
 
 /** Thrown when leaf input resolution or validation fails. */
 export class LeafInputError extends Error {
@@ -17,8 +17,11 @@ export class LeafInputError extends Error {
   }
 }
 
-/** Internal key for piped stdin on `kind: "json"` leaves. */
-export const JSON_LEAF_BODY_KEY = "__jsonLeafBody";
+/** Internal key for piped stdin on `kind: "document"` or `kind: "json"` leaves. */
+export const DOCUMENT_LEAF_BODY_KEY = "__documentLeafBody";
+
+/** Internal key for piped stdin on `kind: "json"` leaves (backward-compatible alias). */
+export const JSON_LEAF_BODY_KEY = DOCUMENT_LEAF_BODY_KEY;
 
 function resolveLeaf(program: CliProgram, commandPath: string[]): CliLeaf | undefined {
   let node: CliNode = program;
@@ -36,7 +39,12 @@ function leafNode(ctx: CliContext): CliLeaf | undefined {
 }
 
 /** Parses a JSON string from a `--name` flag value. */
-export function parseJsonText(raw: string, label: string): unknown {
+export function parseJsonText(
+  /** Raw text to parse as JSON. */
+  raw: string,
+  /** Field or argument label for error reporting. */
+  label: string,
+): unknown {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     throw new LeafInputError(`${label}: JSON value is empty`);
@@ -45,6 +53,31 @@ export function parseJsonText(raw: string, label: string): unknown {
     return JSON.parse(trimmed);
   } catch {
     throw new LeafInputError(`${label}: invalid JSON`);
+  }
+}
+
+/** Parses a JSON or YAML string from a command argument or document body. */
+export function parseDocumentText(
+  /** Raw text containing a JSON or YAML document. */
+  raw: string,
+  /** Field or argument label for error reporting. */
+  label: string,
+): unknown {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    throw new LeafInputError(`${label}: value is empty`);
+  }
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // Fall through to YAML if JSON parse fails
+    }
+  }
+  try {
+    return Bun.YAML.parse(trimmed);
+  } catch {
+    throw new LeafInputError(`${label}: invalid JSON or YAML`);
   }
 }
 
@@ -61,20 +94,38 @@ async function readPipedJsonStdin(): Promise<unknown> {
   }
 }
 
-function jsonLeafBodyHelp(): string {
+/** Returns the error message when document input is missing. */
+function jsonLeafBodyHelp(
+  /** Leaf kind: document or json. */
+  kind: CliLeafKind = "json",
+): string {
+  if (kind === "document") {
+    return "Missing document input: pass a JSON or YAML document as an argument or pipe to stdin";
+  }
   return "Missing JSON input: pass a JSON document as an argument or pipe to stdin";
 }
 
-async function readPipedJsonStdinForJsonLeaf(): Promise<unknown> {
+/** Reads piped stdin for a document or json leaf command. */
+async function readPipedJsonStdinForJsonLeaf(
+  /** Leaf kind: document or json. */
+  kind: CliLeafKind = "json",
+): Promise<unknown> {
   const raw = await new Response(Bun.stdin).text();
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
-    throw new LeafInputError(jsonLeafBodyHelp());
+    throw new LeafInputError(jsonLeafBodyHelp(kind));
+  }
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // Fall through to YAML
+    }
   }
   try {
-    return JSON.parse(trimmed);
+    return Bun.YAML.parse(trimmed);
   } catch {
-    throw new LeafInputError("stdin is not valid JSON");
+    throw new LeafInputError("stdin is not valid JSON or YAML");
   }
 }
 
@@ -130,8 +181,8 @@ export async function preloadPipableJson(
   }
 
   const leaf = resolveLeaf(program, commandPath);
-  if (leaf && isJsonLeaf(leaf) && args.length === 0) {
-    return { [JSON_LEAF_BODY_KEY]: await readPipedJsonStdinForJsonLeaf() };
+  if (leaf && isDocumentLeaf(leaf) && args.length === 0) {
+    return { [JSON_LEAF_BODY_KEY]: await readPipedJsonStdinForJsonLeaf(leaf.kind) };
   }
 
   for (const opt of collectOptionDefs(program, commandPath)) {
@@ -181,22 +232,26 @@ export function loadLeafInputs(ctx: CliContext): CliLeafInputs {
   const leaf = leafNode(ctx);
   if (!leaf) return {};
 
-  if (isJsonLeaf(leaf)) {
+  if (isDocumentLeaf(leaf)) {
     let body: unknown;
     if (ctx.toolArgs !== undefined) {
       body = ctx.toolArgs;
     } else if (ctx.args.length > 0) {
       const [arg0] = ctx.args;
       if (arg0 === undefined) {
-        throw new LeafInputError(jsonLeafBodyHelp());
+        throw new LeafInputError(jsonLeafBodyHelp(leaf.kind));
       }
-      body = parseJsonText(arg0, "JSON argument");
+      const label = leaf.kind === "document" ? "Document argument" : "JSON argument";
+      body = parseDocumentText(arg0, label);
     } else if (JSON_LEAF_BODY_KEY in ctx.preloadedJson) {
       body = ctx.preloadedJson[JSON_LEAF_BODY_KEY];
     } else {
-      throw new LeafInputError(jsonLeafBodyHelp());
+      throw new LeafInputError(jsonLeafBodyHelp(leaf.kind));
     }
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      if (leaf.kind === "document") {
+        throw new LeafInputError("Document input must be a JSON or YAML object");
+      }
       throw new LeafInputError("JSON input must be a JSON object");
     }
     const out = body as CliLeafInputs;

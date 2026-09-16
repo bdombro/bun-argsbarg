@@ -108,7 +108,7 @@ Use root **`notes`** for cross-cutting hints shown in help (install commands, do
 Descriptions and schemas are copied into MCP tools and HTTP OpenAPI — optimize for smaller, clearer agent payloads:
 
 - **Declare options on the leaf command** that uses them — routing groups cannot declare options (program root may). Wire schemas (MCP, OpenAPI) expose leaf-local options only.
-- Prefer **`kind: "json"`** leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
+- Prefer **`kind: "document"`** (or legacy `kind: "json"`) leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
 - For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
@@ -300,15 +300,15 @@ Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>(
 
 At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
 
-### Pure JSON leaves (`kind: "json"`)
+### Structured document leaves (`kind: "document"`)
 
-When the entire tool body is JSON (no CLI flags), set **`kind: "json"`** on the leaf with **`inputSchema`** and **no `options` or `positionals`**:
+When the entire tool body is a structured document (JSON or YAML, no CLI flags), set **`kind: "document"`** (or legacy `"json"`) on the leaf with **`inputSchema`** and **no `options` or `positionals`**:
 
 ```typescript
 {
   key: "render-invoice",
   description: "Render an invoice from template data",
-  kind: "json",
+  kind: "document",
   inputSchema,
   handler: (ctx) => {
     const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
@@ -319,10 +319,25 @@ When the entire tool body is JSON (no CLI flags), set **`kind: "json"`** on the 
 
 | Surface | How input is supplied |
 | --- | --- |
-| CLI | One JSON positional **or** pipe a JSON document to stdin |
-| MCP / HTTP | Full tool args object (`ctx.toolArgs` / POST body) |
+| CLI | One JSON or YAML positional **or** pipe a JSON/YAML document to stdin |
+| MCP / HTTP | Full tool args object (`ctx.toolArgs` / JSON or YAML request body) |
 
-Example CLI: `jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice`
+Example CLI:
+```bash
+# JSON positional or pipe
+jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice
+myapp render-invoice '{"format":"pdf","invoice":{"id":"INV-1"}}'
+
+# YAML positional or pipe
+myapp render-invoice 'format: pdf
+invoice:
+  id: INV-1'
+cat << 'EOF' | myapp render-invoice
+format: pdf
+invoice:
+  id: INV-1
+EOF
+```
 
 See [output-schema.md](output-schema.md) for schemagen `inputType`, [http-server.md](http-server.md) for HTTP tool bodies, and [json-schema-subset.md](json-schema-subset.md) for validation drafts, Zod interop, and keyword notes.
 

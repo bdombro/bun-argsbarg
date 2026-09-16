@@ -18,6 +18,7 @@ export {
 } from "./core/formats.ts";
 export {
   LeafInputError,
+  parseDocumentText,
   preloadPipableJson,
   readJsonOptionValue,
 } from "./core/leaf-inputs.ts";
@@ -68,6 +69,7 @@ export {
   CliOptionKind,
   CliSchemaValidationError,
   CliValueFormat,
+  isDocumentLeaf,
   isJsonLeaf,
 } from "./core/types.ts";
 export type { HeadlessContext } from "./headless/routing.ts";

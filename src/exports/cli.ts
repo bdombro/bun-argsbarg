@@ -40,6 +40,7 @@ export {
   CliOptionKind,
   CliSchemaValidationError,
   CliValueFormat,
+  isDocumentLeaf,
   isJsonLeaf,
 } from "../core/types.ts";
 export { Cli, type CliInvokeKind, type CliInvokeResult } from "../runtime/cli.ts";

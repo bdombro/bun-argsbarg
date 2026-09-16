@@ -448,6 +448,42 @@ describe("HTTP API routes", () => {
     expect(body).toEqual({ error: "bad input" });
   });
 
+  /** Tests that POST endpoints accept YAML request bodies. */
+  test("POST accepts YAML request body", async () => {
+    const yamlProgram = testProgram({
+      key: "app",
+      description: "Test app",
+      httpServer: { enabled: true },
+      commands: [
+        {
+          key: "create",
+          kind: "document",
+          description: "Create resource",
+          inputSchema: {
+            type: "object",
+            properties: { name: { type: "string" } },
+            required: ["name"],
+          },
+          handler: (ctx: CliContextType) => {
+            return { created: ctx.inputsAs<{ name: string }>().name };
+          },
+        },
+      ],
+    });
+    cliValidateProgram(yamlProgram);
+    const res = await apiRequest(
+      yamlProgram,
+      new Request("http://127.0.0.1/create", {
+        method: "POST",
+        headers: { "content-type": "application/yaml" },
+        body: "name: test-resource",
+      }),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toEqual({ created: "test-resource" });
+  });
+
   test("GET /openapi.json lists REST paths", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/openapi.json"));
     expect(res.status).toBe(200);

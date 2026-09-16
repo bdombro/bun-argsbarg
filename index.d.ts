@@ -618,15 +618,16 @@ export interface CliNodeBase {
 	/** Global or command-level flags/options. */
 	options?: CliOption[];
 }
-/** Leaf input mode: `json` = pure JSON body (no CLI flags). */
-export type CliLeafKind = "json";
+/** Leaf input mode: `document` (or legacy `json`) = structured JSON or YAML document body (no CLI flags). */
+export type CliLeafKind = "document" | "json";
 /**
  * A leaf command node with a handler and optional positionals.
  */
 export type CliLeaf = CliNodeBase & {
 	/**
-	 * When `"json"`, the leaf accepts a single JSON document (CLI positional or piped stdin;
-	 * MCP/HTTP tool args = body). Requires `inputSchema`; forbids `options` and `positionals`.
+	 * When `"document"` (or legacy `"json"`), the leaf accepts a single JSON or YAML document
+	 * (CLI positional or piped stdin; MCP/HTTP tool args = body). Requires `inputSchema`;
+	 * forbids `options` and `positionals`.
 	 */
 	kind?: CliLeafKind;
 	/** Handler function for leaf commands. */
@@ -814,8 +815,14 @@ export type CliProgram = CliNode & {
 	/** Program version (printed by the `version` built-in and MCP serverInfo). */
 	version: string;
 };
-/** True when the leaf accepts a pure JSON body (no CLI flags). */
-export declare function isJsonLeaf(leaf: CliLeaf): boolean;
+/** True when the leaf accepts a structured JSON or YAML document body (no CLI flags). */
+export declare function isDocumentLeaf(
+/** Leaf command node to inspect. */
+leaf: CliLeaf): boolean;
+/** True when the leaf accepts a structured document body (backward-compatible alias for `isDocumentLeaf`). */
+export declare function isJsonLeaf(
+/** Leaf command node to inspect. */
+leaf: CliLeaf): boolean;
 /**
  * Handler closure type for leaf commands.
  * Supports sync and async handlers; non-undefined return values become implicit JSON responses for headless invocations.
@@ -844,6 +851,12 @@ export declare function parseDateTime(s: string): string;
 export declare class LeafInputError extends Error {
 	constructor(message: string);
 }
+/** Parses a JSON or YAML string from a command argument or document body. */
+export declare function parseDocumentText(
+/** Raw text containing a JSON or YAML document. */
+raw: string, 
+/** Field or argument label for error reporting. */
+label: string): unknown;
 /** Resolves a Json option from argv, preloaded stdin, or toolArgs (flag wins). */
 export declare function readJsonOptionValue(ctx: CliContext, name: string): unknown | undefined;
 /**

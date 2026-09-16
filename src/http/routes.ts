@@ -8,7 +8,7 @@ import {
   type CliNode,
   type CliProgram,
   isCliLeaf,
-  isJsonLeaf,
+  isDocumentLeaf,
   CliOptionKind as OptKind,
 } from "../core/types.ts";
 import { formatMcpOptionValue, leafHasYesOption, leafWireOptions } from "../mcp/tools.ts";
@@ -252,7 +252,7 @@ export function httpRequestToArgv(
   }
 
   const leaf = route.leaf;
-  if (isJsonLeaf(leaf)) {
+  if (isDocumentLeaf(leaf)) {
     return argv;
   }
 

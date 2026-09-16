@@ -278,6 +278,46 @@ describe("cliHelpRender", () => {
     expect(help).toContain("# Generated ID.");
     expect(help).toContain("id: string");
   });
+
+  /** Tests that document leaf commands render [DOCUMENT] usage and schema sections. */
+  test("document leaf renders [DOCUMENT] usage and schemas in non-TTY mode", () => {
+    const root = testProgram({
+      key: "myapp",
+      version: "1.0.0",
+      description: "Test application.",
+      commands: [
+        {
+          key: "deploy",
+          kind: "document",
+          description: "Deploy from document.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              target: { type: "string", description: "Deployment target." },
+            },
+            required: ["target"],
+          },
+          outputSchema: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "Deployment URL." },
+            },
+            required: ["url"],
+          },
+          handler: () => {},
+        },
+      ],
+    });
+    const help = cliHelpRender(cliPresentationRoot(root), ["deploy"], false, { isTTY: false });
+    expect(help).toContain("myapp deploy [DOCUMENT]");
+    expect(help).toContain("Pass a JSON or YAML document as an argument or pipe to stdin.");
+    expect(help).toContain("Input Schema:");
+    expect(help).toContain("# Deployment target.");
+    expect(help).toContain("target: string");
+    expect(help).toContain("Output Schema (JSON):");
+    expect(help).toContain("# Deployment URL.");
+    expect(help).toContain("url: string");
+  });
 });
 
 /** Tests for converting JSON Schema to human- and agent-friendly YAML lines. */

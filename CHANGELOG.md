@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [7.0.8] - 2026-09-15
+## [7.0.9] - 2026-09-16
+
+### Added
+
+- **`kind: "document"` leaf commands with YAML and JSON support** — introduced `kind: "document"` as the primary naming for structured payload leaves, while retaining `kind: "json"` and `isJsonLeaf` as fully backward-compatible aliases. Both `"document"` and `"json"` leaves now accept YAML input in addition to JSON via command positional arguments and piped stdin.
+- **YAML request body support in HTTP server** — the HTTP API server now accepts YAML request bodies in addition to JSON for structured document endpoints.
+- **`isDocumentLeaf` and `parseDocumentText` exports** — exported `isDocumentLeaf` type guard and `parseDocumentText` utility from framework root and CLI exports.
+
+### Changed
+
+- **Help rendering for document leaves** — usage lines for `kind: "document"` leaves render `[DOCUMENT]` (retaining `[JSON]` for legacy `kind: "json"` leaves) and describe inputs as `"Pass a JSON or YAML document as an argument or pipe to stdin."`
 
 ### Added
 
@@ -992,8 +1002,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.8...HEAD
-[7.0.8]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.8
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.9...HEAD
+[7.0.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.9
 [7.0.7]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.7
 [7.0.6]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.6
 [7.0.5]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.5

@@ -16,7 +16,7 @@ import {
   type CliRouter,
   isCliLeaf,
   isCliRouter,
-  isJsonLeaf,
+  isDocumentLeaf,
 } from "./core/types.ts";
 import { visibleOptions, visibleSubcommands } from "./runtime/exposure.ts";
 
@@ -376,8 +376,9 @@ function usageLines(
   helpPath: string[],
   hasCommands: boolean,
   hasArgs: boolean,
-  jsonLeaf: boolean,
+  documentLeaf: boolean,
   color: boolean,
+  leafKind?: string,
 ): string[] {
   let fullPath = appName;
   for (const seg of helpPath) {
@@ -386,7 +387,8 @@ function usageLines(
   const usageOpts = color ? style.aquaBold("[OPTIONS]") : "[OPTIONS]";
   const usageCmd = color ? style.aquaBold("COMMAND") : "COMMAND";
   const usageArgs = color ? style.aquaBold("[ARGS]...") : "[ARGS]...";
-  const usageJson = color ? style.aquaBold("[JSON]") : "[JSON]";
+  const docTag = leafKind === "document" ? "[DOCUMENT]" : "[JSON]";
+  const usageDoc = color ? style.aquaBold(docTag) : docTag;
 
   const out: string[] = [];
   if (helpPath.length === 0) {
@@ -397,8 +399,8 @@ function usageLines(
     }
     return out;
   }
-  if (jsonLeaf) {
-    out.push(`${fullPath} ${usageJson}`);
+  if (documentLeaf) {
+    out.push(`${fullPath} ${usageDoc}`);
     return out;
   }
   out.push(`${fullPath} ${usageOpts}${hasArgs ? ` ${usageArgs}` : ""}`);
@@ -408,10 +410,11 @@ function usageLines(
   return out;
 }
 
-/** Table rows for `kind: "json"` leaf input (schema properties + stdin hint). */
-function rowsForJsonInput(inputSchema: Record<string, unknown> | undefined): HelpRow[] {
-  const hint = "Pass a JSON document as an argument or pipe to stdin.";
-  const rows: HelpRow[] = [{ label: "JSON", description: hint }];
+/** Table rows for `kind: "document"` / `kind: "json"` leaf input (schema properties + stdin hint). */
+function rowsForJsonInput(inputSchema: Record<string, unknown> | undefined, kind?: string): HelpRow[] {
+  const hint = "Pass a JSON or YAML document as an argument or pipe to stdin.";
+  const label = kind === "document" ? "DOCUMENT" : "JSON";
+  const rows: HelpRow[] = [{ label, description: hint }];
   const props = inputSchema?.properties;
   if (!props || typeof props !== "object" || Array.isArray(props)) {
     return rows;
@@ -763,7 +766,7 @@ export function cliHelpRender(
     if (isCliLeaf(schema as unknown as CliNode) && showSchema) {
       const leaf = schema as unknown as CliLeaf;
       if (leaf.outputSchema !== undefined) {
-        const title = isJsonLeaf(leaf) ? "Output Schema (JSON)" : "Output Schema (with --json)";
+        const title = isDocumentLeaf(leaf) ? "Output Schema (JSON)" : "Output Schema (with --json)";
         const yamlLines = schemaToYamlLines(leaf.outputSchema, 0);
         if (yamlLines.length > 0) {
           lines.push("");
@@ -800,14 +803,15 @@ export function cliHelpRender(
     lines.push(color ? style.white(node.description) : node.description);
     lines.push("");
   }
-  const nodeIsJsonLeaf = isCliLeaf(node) && isJsonLeaf(node);
+  const nodeIsDocumentLeaf = isCliLeaf(node) && isDocumentLeaf(node);
   const usage = usageLines(
     schema.key,
     helpPath,
     isCliRouter(node) && node.commands.length > 0,
     isCliLeaf(node) && (node.positionals ?? []).length > 0,
-    nodeIsJsonLeaf,
+    nodeIsDocumentLeaf,
     color,
+    isCliLeaf(node) ? node.kind : undefined,
   );
   if (isTTY) {
     lines.push(renderTextBox("Usage", usage, hw, color).join("\n"));
@@ -815,8 +819,8 @@ export function cliHelpRender(
     lines.push(renderPlainSection("Usage", usage).join("\n"));
   }
 
-  if (nodeIsJsonLeaf && isCliLeaf(node)) {
-    const inputRows = rowsForJsonInput(node.inputSchema);
+  if (nodeIsDocumentLeaf && isCliLeaf(node)) {
+    const inputRows = rowsForJsonInput(node.inputSchema, node.kind);
     const inputBox = isTTY ? renderTableBox("Input", inputRows, hw, color) : renderPlainTable("Input", inputRows, hw);
     if (inputBox.length > 0) {
       lines.push("");
@@ -860,7 +864,7 @@ export function cliHelpRender(
   }
 
   if (isCliLeaf(node) && node.outputSchema !== undefined && showSchema) {
-    const title = nodeIsJsonLeaf ? "Output Schema (JSON)" : "Output Schema (with --json)";
+    const title = nodeIsDocumentLeaf ? "Output Schema (JSON)" : "Output Schema (with --json)";
     const yamlLines = schemaToYamlLines(node.outputSchema, 0);
     if (yamlLines.length > 0) {
       lines.push("");

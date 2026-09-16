@@ -3,7 +3,7 @@ Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
 import type { CliHttpMethod, CliNode, CliProgram } from "../core/types.ts";
-import { CliOptionKind, isCliLeaf, isJsonLeaf } from "../core/types.ts";
+import { CliOptionKind, isCliLeaf, isDocumentLeaf } from "../core/types.ts";
 import { leafWireOptions } from "../mcp/tools.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
@@ -253,7 +253,7 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
       ];
     } else {
       op.requestBody = {
-        required: isJsonLeaf(route.leaf),
+        required: isDocumentLeaf(route.leaf),
         content: {
           [JSON_CONTENT_TYPE]: {
             schema: dereferenceJsonSchema(buildInputSchema(program, route)),
