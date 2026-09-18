@@ -1,5 +1,6 @@
 # https://github.com/casey/just — run `just` to list recipes.
 
+# bash (not sh); -e bail on errors, -u error on unset vars, pipefail fails pipelines when any stage fails
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Local argsbarg consumer repos (machine-specific).
@@ -65,6 +66,19 @@ consumers-sync:
       (cd "$dir" && bun add "argsbarg@^${latest}" && \
         bun "${root}/scripts/merge-agents-md.ts" "$dir" && \
         just build && just docgen && just install-local)
+    done
+
+# Pin consumers to ^<version> only. Does not do full upgrades.
+consumers-up:
+    #!/usr/bin/env bash
+    root="$(cd "{{justfile_directory()}}" && pwd)"
+    latest="$(bun -e "console.log(JSON.parse(require('node:fs').readFileSync('${root}/package.json','utf8')).version)")"
+    echo "argsbarg@^${latest}"
+    for path in {{consumer_apps}}; do
+      dir="${path/#\~/$HOME}"
+      dir="$(cd "$dir" && pwd)"
+      echo "==> $(basename "$dir") ($dir)"
+      (cd "$dir" && bun add "argsbarg@^${latest}")
     done
 
 # Run the full example (use the justfile in the examples/full-example directory)

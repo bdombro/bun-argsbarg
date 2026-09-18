@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-09-18
+
+### Changed
+
+- Updated copy-template READMEs (`full-example`, `full-example-json`) to be user-facing (Homebrew install via tap and simplified formula install, CLI commands, usage examples, agent/MCP integration, and documentation links) rather than template contributor guides.
+- Copy-template justfiles use hardcoded CLI/tap literals (substituted by `argsbarg create`); removed `scripts/print-identity.ts` and runtime `bun` indirection. `{tapOrg}` / `{tapRepo}` remain only for Homebrew tap paths. Comment documents `set shell`.
+- Inverted `AGENTS.md` hierarchy in copy templates and consumer sync: argsbarg managed framework baseline sits at the top (under the app title) with an explicit precedence note, and all app-specific sections (`## Tooling`, `## Documentation`, `## App conventions`, custom sections) live below `<!-- /argsbarg:managed -->` so project-specific rules override framework defaults. `merge-agents-md` automatically migrates legacy sandwich layouts to the new structure.
+
+### Added
+
+- **`mcp-plugin` copy template** (`examples/mcp-plugin/`) — Agent MCP plugin template for Cursor and Claude Code marketplaces, featuring in-repo manifests (`.cursor-plugin/plugin.json`, `mcp.json`, `.claude-plugin/plugin.json`, `.mcp.json`), a standalone bundled Node script (`scripts/mcp.mjs`), and an in-memory datastore with `@sg` schemagen.
+- Cross-runtime MCP stdio loop using `process.stdin` in `mcpServeStdioLoop` to support standalone bundled execution under Node.js as well as Bun.
+- bunfig.toml to examples so bun will auto-install deps on run
+- **`mcpServer.cursorPlugin`** — opt-in Cursor plugin zip packaging (`dist/cursor-plugin/<name>.zip`) via `mcp bundle`, generating `.cursor-plugin/plugin.json`, `mcp.json` with `${CURSOR_PLUGIN_ROOT}`, and preservation of repository skills.
+- **Plugin skill preservation** — `mcp bundle` (`claudePlugin` and `cursorPlugin`) copies repository skills (`skills/<key>/`) when present in the project, falling back to generated MCP routing stubs when absent.
+- **Extended bundle metadata** — `CliMcpBundleConfig` supports `displayName`, `homepage`, `repository`, `license`, and `skillsDir` overrides for plugin manifests.
+
 ## [7.0.11] - 2026-09-16
 
 ### Fixed
@@ -1016,7 +1033,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.0.11...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.0...HEAD
+[7.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.0
 [7.0.11]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.11
 [7.0.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.10
 [7.0.9]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.9

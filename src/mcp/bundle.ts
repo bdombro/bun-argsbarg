@@ -9,6 +9,7 @@ import { basename, join, resolve } from "node:path";
 import { buildProgramUserConfig } from "../config/manifest.ts";
 import type { CliMcpBundleConfig, CliProgram } from "../core/types.ts";
 import { packClaudePlugin } from "./claude.ts";
+import { packCursorPlugin } from "./cursor.ts";
 import { collectMcpTools, mcpServerId } from "./tools.ts";
 import { zipStore } from "./zip.ts";
 
@@ -148,10 +149,15 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
 }
 
 /** Runs `mcp bundle`: writes enabled dist artifacts; prints one path per line. */
-export function runMcpBundle(program: CliProgram): void {
+export function runMcpBundle(
+  /** CLI program schema. */
+  program: CliProgram,
+): void {
   const mcp = program.mcpServer;
-  if (!mcp?.mcpd && !mcp?.claudePlugin) {
-    throw new Error("mcp bundle: enable mcpServer.mcpd and/or mcpServer.claudePlugin on the program root.");
+  if (!mcp?.mcpd && !mcp?.claudePlugin && !mcp?.cursorPlugin) {
+    throw new Error(
+      "mcp bundle: enable mcpServer.mcpd, mcpServer.claudePlugin, and/or mcpServer.cursorPlugin on the program root.",
+    );
   }
 
   const lines: string[] = [];
@@ -160,6 +166,9 @@ export function runMcpBundle(program: CliProgram): void {
   }
   if (mcp.claudePlugin) {
     lines.push(packClaudePlugin(program));
+  }
+  if (mcp.cursorPlugin) {
+    lines.push(packCursorPlugin(program));
   }
   process.stdout.write(`${lines.join("\n")}\n`);
 }

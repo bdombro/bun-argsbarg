@@ -1,0 +1,89 @@
+# bash (not sh); -e bail on errors, -u error on unset vars, pipefail fails pipelines when any stage fails
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
+
+# List available recipes (default)
+_:
+    @just --list
+
+# Bundle the standalone Node MCP server script
+build:
+    bun build ./src/index.ts --target=node --outfile=./scripts/mcp.mjs
+
+# Run schemagen, typecheck, and format
+check: schemagen format typecheck
+
+# demo the HTTP API
+demo-http:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bun ./src/index.ts http --port 13000 &
+    trap 'kill $! 2>/dev/null || true' EXIT
+    until curl -sf http://127.0.0.1:13000/health/liveness >/dev/null; do sleep 0.1; done
+
+# demo a CLI command
+demo-cli:
+    @just run mcp-plugin status
+
+# demo a CLI command
+demo-help:
+    @just run mcp-plugin --help
+
+# Run the CLI from source with optional args; restarts on file changes
+dev *ARGS:
+    bun --watch ./src/index.ts {{ARGS}}
+
+# Regenerate consumer docs under ./docs/
+docgen: schemagen
+    @just run docs cli-schema --save
+    @just run docs cli --save
+    @just run docs mcp --save
+    @just run docs http --save
+    @just run docs openapi --save
+
+alias fmt := format
+
+# Format and lint sources (auto-fix)
+format:
+    bun run biome check ./src ./scripts --write --unsafe
+
+# Run the HTTP server
+http:
+    @just run http
+
+# Link plugin into ~/.cursor/plugins/local/mcp-plugin for local testing
+install-plugin-cursor: build
+    mkdir -p ~/.cursor/plugins/local
+    ln -sfn '{{justfile_directory()}}' ~/.cursor/plugins/local/mcp-plugin
+    @echo "Linked MCP plugin to ~/.cursor/plugins/local/mcp-plugin"
+
+# Lint sources without writing
+lint:
+    bun run biome check ./src ./scripts
+
+# Run the CLI from source once
+run *ARGS:
+    bun ./src/index.ts {{ARGS}}
+
+# Generate JSON Schema artifacts from TypeScript types
+schemagen:
+    argsbarg schemagen
+
+# Install bun/npm dependencies and generate schemas
+setup:
+    bun install
+    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg
+    just schemagen
+
+# Run unit tests (after check)
+test: check
+    bun test .
+
+# Bump version, build, publish release
+release *ARGS:
+    bun scripts/release.ts {{ARGS}}
+
+# Typecheck without emitting build artifacts
+typecheck:
+    bun run tsc --noEmit

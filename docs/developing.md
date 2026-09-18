@@ -36,15 +36,15 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; fix `.bin/argsbarg` symlink; refresh `AGENTS.md` from template (keeps app-specific prefix and conventions footer) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; fix `.bin/argsbarg` symlink; refresh `AGENTS.md` from template (preserves app-specific sections below managed block) |
 | `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge `AGENTS.md`, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
 | `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/full-example-json/AGENTS.md` into each consumer, preserving any existing prefix and `**… conventions:**` footer block.
+**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/full-example-json/AGENTS.md` into each consumer. The framework baseline is placed at the top, and all app-specific sections live below `<!-- /argsbarg:managed -->` where they take precedence over framework defaults.
 
-**Recommended in each consumer:** replace template placeholders with `**<app> conventions:**` bullets. Commit `AGENTS.md`; merges refresh the managed section, not your prefix or footer.
+**Recommended in each consumer:** replace template placeholders under `## App conventions` with project-specific bullets. Commit `AGENTS.md`; merges refresh the managed section, not your app-specific sections.
 
 ## Upgrading consumer apps to 7.0
 

@@ -343,17 +343,19 @@ When `mcpServer.enabled` is true, **`mcp bundle`** writes dist artifacts you opt
 ```bash
 just build
 ./dist/myapp mcp bundle
-# → dist/myapp.mcpb          (when mcpServer.mcpd: true)
+# → dist/myapp.mcpb               (when mcpServer.mcpd: true)
 # → dist/claude-plugin/myapp.zip  (when mcpServer.claudePlugin: true)
+# → dist/cursor-plugin/myapp.zip  (when mcpServer.cursorPlugin: true)
 ```
 
-Enable one or both flags:
+Enable any combination of packaging flags:
 
 ```typescript
 mcpServer: {
   enabled: true,
   mcpd: true,           // Claude Desktop `.mcpb`
   claudePlugin: true,   // Claude Code plugin zip
+  cursorPlugin: true,   // Cursor plugin zip
 },
 ```
 
@@ -363,8 +365,9 @@ Expects the compiled binary at **`dist/<program.key>`**. Stdout prints one path 
 | --- | --- |
 | **`dist/<key>.mcpb`** | Claude Desktop MCP Bundle — when `mcpd: true` (default **false**) |
 | **`dist/claude-plugin/<name>.zip`** | Claude Code plugin zip — when `claudePlugin: true` (default **false**) |
+| **`dist/cursor-plugin/<name>.zip`** | Cursor plugin zip — when `cursorPlugin: true` (default **false**) |
 
-Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.appConfig` user config for env-mapped entries). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `icon`, `longDescription`).
+Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.appConfig` user config for env-mapped entries). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `displayName`, `homepage`, `icon`, `license`, `longDescription`, `repository`, `skillsDir`).
 
 **Claude Code plugin zip layout** (paths at archive root):
 
@@ -372,14 +375,24 @@ Manifest metadata is generated from your schema (`mcpServerId`, tools, `program.
 .claude-plugin/plugin.json   # includes "mcpServers": ".mcp.json"
 .mcp.json
 bin/myapp                    # executable (0755 preserved in the zip)
-skills/<dirName>/SKILL.md
+skills/<dirName>/...
 ```
 
-`plugin.json` references `.mcp.json` so Claude Desktop and Claude Code load the bundled MCP server when the plugin is enabled. The plugin zip preserves the executable bit on `bin/<key>`.
+**Cursor plugin zip layout** (paths at archive root):
 
-The bundled `SKILL.md` is an **MCP routing stub** — it tells Claude to use the plugin’s MCP toolset (server id, `tools/list`, schema resource). It is not a shell CLI catalog and does not include `reference.md`. Use **`configure`** for a persisted shell-oriented skill bundle.
+```
+.cursor-plugin/plugin.json   # Cursor plugin manifest
+mcp.json                     # includes mcpServers with ${CURSOR_PLUGIN_ROOT}
+bin/myapp                    # executable (0755 preserved in the zip)
+skills/<dirName>/...
+```
 
-Load locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
+`plugin.json` and `mcp.json` configure Cursor and Claude to load the bundled MCP server when the plugin is enabled. The plugin zip preserves the executable bit on `bin/<key>`.
+
+If the repository has a skill directory under `skills/<dirName>/` (or `mcpServer.bundle.skillsDir`), the plugin bundles that repository skill. Otherwise, it falls back to a generated **MCP routing stub** telling the agent to use the plugin's MCP toolset.
+
+Load Claude plugin locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
+Unpack Cursor plugin locally into `~/.cursor/plugins/local/<name>`.
 
 Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` MCP targets and MCP hosts). Use **`configure install`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
 

@@ -1,0 +1,12 @@
+{
+  "name": "mcp-plugin",
+  "displayName": "McpPlugin",
+  "description": "Argsbarg MCP plugin template for Cursor and Claude Code marketplaces",
+  "version": "1.0.0",
+  "author": {
+    "name": "Brian Dombrowski"
+  },
+  "homepage": "https://github.com/bdombro/bun-argsbarg",
+  "repository": "https://github.com/bdombro/bun-argsbarg",
+  "skills": ["skills/mcp-plugin"]
+}

@@ -5,7 +5,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pkg from "../../package.json" with { type: "json" };
 
-export type CreateTemplateId = "cli" | "json";
+export type CreateTemplateId = "cli" | "json" | "plugin";
 
 export interface CreateTemplateSpec {
   id: CreateTemplateId;
@@ -27,9 +27,16 @@ export const CREATE_TEMPLATES: CreateTemplateSpec[] = [
     displayName: "full-example-json",
     description: "Same shell plus @sg schemagen, input/outputSchema validation, JSON HTTP leaves, and REST CRUD demo.",
   },
+  {
+    id: "plugin",
+    dirName: "mcp-plugin",
+    displayName: "mcp-plugin",
+    description: "Agent MCP plugin copy template for Cursor and Claude Code marketplaces.",
+  },
 ];
 
 export function normalizeCreateTemplateId(value: string | undefined): CreateTemplateId {
+  if (value === "plugin" || value === "mcp-plugin") return "plugin";
   return value === "json" ? "json" : "cli";
 }
 
@@ -282,6 +289,7 @@ export function substituteTemplateContent(content: string, opts: CreateOptions):
     [tmpl.desc, opts.desc],
     [tmpl.className, opts.className],
     [tmpl.key, opts.key],
+    [`## ${tmpl.key} conventions`, `## ${opts.key} conventions`],
     [`**${tmpl.key} conventions:**`, `**${opts.key} conventions:**`],
     ["**App-specific conventions:**", `**${opts.key} conventions:**`],
   ];

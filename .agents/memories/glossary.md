@@ -1,11 +1,14 @@
 # Made with /thread-memory
 
 ## Meta
-updated: 2026-09-15 21:05
+updated: 2026-09-16 13:50
 scope: src/**, docs/**, examples/**, CHANGELOG.md, .cursor/skills/**
-counts: 13 terms
+counts: 16 terms
 
 ## Terms
+buildLeafInputSchema:
+current: Canonical helper in src/core/wire-schema.ts that returns leaf.inputSchema when set, or synthesizes a JSON Schema object from leaf-local wire options and positionals for MCP tools, OpenAPI request bodies, and docs cli-schema.
+
 cliprogram-field-order:
 current: Program-root objects and CliProgram extension type fields are alphabetical. Extension order: appConfig, completion, configure, docs, hooks, httpServer, log, mcpServer, readiness, skill, version. Leaf roots: description, handler, key, notes, options, positionals, version (include only keys present).
 
@@ -19,7 +22,7 @@ configure-uninstall:
 current: `configure uninstall` (or `configure uninstall --yes`). Run before `brew uninstall` while binary is on PATH. Removes `~/.agents/skills/<skillDirName>/`, MCP entry in `~/.agents/mcp.json`, and app config. Homebrew formula does not invoke this automatically.
 
 consumer-agents-md:
-current: Managed AGENTS.md in consumer repositories targeting application authors (developers and coding agents modifying TypeScript sources), not end-user CLI consumers. Maintained across repos via `scripts/merge-agents-md.ts`.
+current: Managed AGENTS.md in consumer repositories targeting application authors (developers and coding agents modifying TypeScript sources), not end-user CLI consumers. Maintained across repos via `scripts/merge-agents-md.ts` with framework baseline at top and consumer overrides below.
 
 consumers-sync:
 current: Root justfile recipe: bun add argsbarg@^version, merge-agents-md.ts per consumer, then just build && just docgen && just install-local per consumer_apps path (sqsp-workspaces, sqsp-qa-manager-poc, sqsp-i18n-tools-poc; excludes skill repos like gws-docs-edit). install-local brew post_install runs configure install/sync on the Cellar binary.
@@ -29,14 +32,21 @@ current: Root justfile recipe: bun add argsbarg@^version, merge-agents-md.ts per
 create-templates:
 current: argsbarg create copy templates: cli (examples/full-example, default) and json (examples/full-example-json). --template cli|json; interactive A/B picker when TTY; create-identity.template for --check drift. json template runs schemagen in post-create; cli template does not.
 
+document-leaf:
+current: Leaf command with kind: "document" (or backward-compatible "json") accepting a structured JSON or YAML document body via single positional argument, piped stdin, or MCP/HTTP body. Requires inputSchema; forbids options and positionals.
+
 file-bin-shim:
 current: Bun file:../.. installs link node_modules/.bin/argsbarg to src/index.ts. Fix: ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg after bun install in example just setup and consumers-dev.
+
+in-band-schema-discovery:
+current: Non-TTY --help behavior in argsbarg >=7.0.8: unboxed plain text with in-band YAML Output Schema (and Input Schema on document leaves) rendered directly below options for zero-drift agent discovery in one turn.
 
 leaf-local-options:
 current: Breaking 8.0 rule — CLI options apply only on the command node where declared. Program root may still declare options; routing groups cannot. Parse consumes current.options per router level; MCP/HTTP/OpenAPI/skills expose leaf-local options only.
 
 leafWireOptions:
-current: Helper in src/mcp/tools.ts (and mirrored in HTTP/OpenAPI/skill generators) — leaf-local options minus framework-handled presence flags json, yes, and verbose. MCP auto-injects --yes on invoke when the leaf declares a yes option.
+current: Helper in src/core/wire-schema.ts (re-exported by src/mcp/tools.ts) — leaf-local options minus framework-handled presence flags json, yes, and verbose. MCP auto-injects --yes on invoke when the leaf declares a yes option.
+  was 2026-09-16: Helper in src/mcp/tools.ts (and mirrored in HTTP/OpenAPI/skill generators) — leaf-local options minus framework-handled presence flags json, yes, and verbose. MCP auto-injects --yes on invoke when the leaf declares a yes option.
 
 legacy-skill-paths:
 current: Pre-7.0 per-host skill dirs not managed by current configure uninstall: `~/.cursor/skills/<key>/`, `~/.claude/skills/<key>/`, `~/.codex/skills/<key>/`, `~/.config/opencode/skills/<key>/`, `~/.openclaw/skills/<key>/`. Manual removal required after migration or stale uninstall.

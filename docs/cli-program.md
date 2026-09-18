@@ -584,18 +584,16 @@ bun scripts/merge-agents-md.ts .
 
 `bunx argsbarg create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`) into new projects automatically.
 
-2. **Add an app-specific block at the bottom** (recommended). Replace the template placeholder with a heading like `**myapp conventions:**` and short bullets — shared flag modules, `read*Flags` / `resolve*` paths, Ink vs JSON-only, etc. Example:
+2. **Add app-specific sections below the managed block** (recommended). The framework baseline lives between `<!-- argsbarg:managed -->` and `<!-- /argsbarg:managed -->` at the top of the file. All application-specific sections (`## Tooling`, `## Documentation`, `## App conventions`, custom rules) live below the closing marker where they take precedence over framework defaults. Example:
 
 ```markdown
-**sqsp-qa conventions:**
+## App conventions
 
 - Shared mutator flags: `readQaMutatingFlags(ctx)` in `src/cli/shared.ts`.
 - Per command: `read*Flags` + `resolve*Input` in `commands/<name>/resolve.ts`.
 ```
 
-If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just consumers-sync` refresh the shared managed section and **keep** your prefix and conventions footer. Commit `AGENTS.md` in your repo.
-
-3. **Optional:** add consumer-specific sections above the `<!-- argsbarg:managed -->` marker in `AGENTS.md` (project context, Ink patterns, domain notes).
+If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just consumers-sync` refresh the shared managed section and **keep** all app-specific sections below it. Commit `AGENTS.md` in your repo.
 
 - **Not this file:** `skills/<app>/SKILL.md` in your repository is the **app** skill — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
 

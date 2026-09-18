@@ -8,13 +8,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CliProgram } from "../core/types.ts";
-import {
-  defaultClaudePluginPaths,
-  generatePluginManifest,
-  generatePluginMcpJson,
-  packClaudePlugin,
-  pluginName,
-} from "./claude.ts";
+import { defaultClaudePluginPaths, generatePluginManifest, generatePluginMcpJson, packClaudePlugin } from "./claude.ts";
+import { pluginName } from "./plugin-shared.ts";
 
 const configFixture: CliProgram = {
   key: "myapp",

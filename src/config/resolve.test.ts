@@ -120,9 +120,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",
@@ -146,9 +146,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",
@@ -173,9 +173,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",
@@ -199,9 +199,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",
@@ -227,9 +227,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",
@@ -258,9 +258,9 @@ describe("config/resolve", () => {
     const resolveProgram: CliProgram = {
       ...program,
       appConfig: {
-        ...program.appConfig!,
+        ...program.appConfig,
         entries: {
-          ...program.appConfig!.entries,
+          ...program.appConfig?.entries,
           apiToken: {
             description: "Token.",
             env: "API_TOKEN",

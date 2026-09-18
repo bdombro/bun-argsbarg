@@ -51,7 +51,7 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
 
   const bundle: CliLeaf = {
     key: "bundle",
-    description: "Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.",
+    description: "Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.",
     handler: () => {},
   };
 

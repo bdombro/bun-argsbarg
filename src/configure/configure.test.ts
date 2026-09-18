@@ -156,14 +156,16 @@ describe("uninstall plan", () => {
     const detected = buildDetectedSnapshot(fixture, paths);
     const ctx = buildTargetPlanContext(fixture, paths, {}, detected);
     const target = installTargetForKey("skill");
-    expect(target).toBeDefined();
-    const actions = target!.planUninstall({
+    if (!target) throw new Error("expected skill install target");
+    const actions = target.planUninstall({
       ...ctx,
       mode: "uninstall-scoped",
       include: (key) => key === "skill",
     });
     expect(actions).toHaveLength(1);
-    expect(actions[0]!.run().length).toBeGreaterThan(0);
+    const action = actions[0];
+    if (!action) throw new Error("expected uninstall action");
+    expect(action.run().length).toBeGreaterThan(0);
     expect(existsSync(paths.agentsSkillDir)).toBe(false);
   });
 });

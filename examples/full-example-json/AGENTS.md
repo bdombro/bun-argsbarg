@@ -1,17 +1,8 @@
 # full-example-json
 
-## Tooling
+<!-- argsbarg:managed — overwritten on merge; framework baseline; app-specific sections below take precedence -->
 
-- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
-
-## Documentation
-
-- `README.md` — user-facing install/commands
-- `docs/architecture.md` — maintainer internals (create if missing)
-- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
-- `skills/full-example-json/SKILL.md` — agent skill router (scaffolded from template; customize as needed)
-
-<!-- argsbarg:managed -->
+> **Baseline framework rules:** The conventions below are defaults for argsbarg projects. Project-specific sections below this managed block override these defaults.
 
 ## Argsbarg schema
 
@@ -83,6 +74,17 @@ Avoid needless extraction: keep single-use helpers in the calling file by defaul
 
 <!-- /argsbarg:managed -->
 
-**full-example-json conventions:**
+## Tooling
+
+- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
+
+## Documentation
+
+- `README.md` — user-facing install/commands
+- `docs/architecture.md` — maintainer internals (create if missing)
+- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
+- `skills/full-example-json/SKILL.md` — agent skill router (scaffolded from template; customize as needed)
+
+## App conventions
 
 Replace with app-specific bullets.

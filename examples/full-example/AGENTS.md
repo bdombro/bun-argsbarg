@@ -1,17 +1,8 @@
 # full-example
 
-## Tooling
+<!-- argsbarg:managed — overwritten on merge; framework baseline; app-specific sections below take precedence -->
 
-- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
-
-## Documentation
-
-- `README.md` — user-facing install/commands
-- `docs/architecture.md` — maintainer internals (create if missing)
-- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
-- `skills/full-example/SKILL.md` — agent skill router (scaffolded from template; customize as needed)
-
-<!-- argsbarg:managed -->
+> **Baseline framework rules:** The conventions below are defaults for argsbarg projects. Project-specific sections below this managed block override these defaults.
 
 ## Argsbarg schema
 
@@ -70,8 +61,25 @@ When adding commands: `src/commands/<name>/command.ts`; register in `program.ts`
 - **Tests:** `just test` (after `just check`)
 - **Repository skill:** When adding, renaming, or removing commands, update `skills/<key>/SKILL.md` so the intent-based router remains accurate for end-user agents. (`just docgen` updates `./docs/` only and never overwrites `skills/`).
 
+### Abstractions
+
+Avoid needless extraction: keep single-use helpers in the calling file by default. Split only when reused elsewhere, the caller is large or hard to follow, or extraction clarifies a substantial unit. Do not create tiny one-off helpers.
+- ❌ `utils/formatX.ts` — 60-line helper used by one command
+- ✅ inline helper in that command file
+
 <!-- /argsbarg:managed -->
 
-**full-example conventions:**
+## Tooling
+
+- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
+
+## Documentation
+
+- `README.md` — user-facing install/commands
+- `docs/architecture.md` — maintainer internals (create if missing)
+- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
+- `skills/full-example/SKILL.md` — agent skill router (scaffolded from template; customize as needed)
+
+## App conventions
 
 Replace with app-specific bullets.

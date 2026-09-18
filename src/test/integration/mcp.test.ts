@@ -16,7 +16,7 @@ import {
   mcpToolName,
   sanitizeToolSegment,
 } from "../../mcp/tools.ts";
-import { mcpRequest, nestedMcpFixture, testProgram } from "../fixtures.ts";
+import { mcpRequest, nestedMcpFixture, requireMcpTool, testProgram } from "../fixtures.ts";
 
 test("sanitizeToolSegment normalizes dotted app keys", () => {
   expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");
@@ -39,7 +39,7 @@ test("collectMcpTools lists user leaf commands only", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const names = tools.map((t) => t.name);
   expect(names).toContain("stat_owner_lookup");
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const lookup = requireMcpTool(tools, "stat_owner_lookup");
   expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
   expect(names).toContain("read");
   expect(names).not.toContain("hidden");
@@ -155,7 +155,7 @@ test("outputSchema must be a JSON Schema object", () => {
 
 test("collectMcpTools uses leaf-local options in inputSchema", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const lookup = requireMcpTool(tools, "stat_owner_lookup");
   const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
   expect(schema.properties.json).toBeUndefined();
   expect(schema.properties["user-name"]).toBeDefined();
@@ -193,13 +193,13 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
 
 test("collectMcpTools omits outputSchema when leaf has none", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const lookup = requireMcpTool(tools, "stat_owner_lookup");
   expect(lookup.outputSchema).toBeUndefined();
 });
 
 test("mcpToolCallToArgv builds nested lookup argv", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const lookup = tools.find((t) => t.name === "stat_owner_lookup")!;
+  const lookup = requireMcpTool(tools, "stat_owner_lookup");
   const argv = mcpToolCallToArgv(nestedMcpFixture, lookup, {
     "user-name": "alice",
     path: "./x",
@@ -209,7 +209,7 @@ test("mcpToolCallToArgv builds nested lookup argv", () => {
 
 test("mcpToolCallToArgv expands varargs positionals", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
+  const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
   expect(argv).toEqual(["read", "a", "b"]);
 });
@@ -318,7 +318,7 @@ test("buildToolCallSuccessFromResponse maps JSON object", () => {
   const result = buildToolCallSuccessFromResponse({ body: { a: 1 } });
   expect(result.isError).toBe(false);
   expect(result.structuredContent).toEqual({ a: 1 });
-  expect(result.content[0]?.text).toBe("");
+  expect(result.content[0]?.text).toBe(JSON.stringify({ a: 1 }, null, 2));
 });
 
 test("buildToolCallSuccessFromResponse maps string body", () => {
@@ -330,6 +330,7 @@ test("buildToolCallSuccessFromResponse maps string body", () => {
     content: "lookup user=x",
     contentType: "text/plain; charset=utf-8",
   });
+  expect(result.content[0]?.text).toBe("lookup user=x");
 });
 
 test("buildToolCallSuccessFromResponse maps binary body as base64", () => {

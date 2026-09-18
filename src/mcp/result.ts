@@ -38,6 +38,7 @@ export interface McpBinaryRespondContent {
 export function buildToolCallSuccessFromResponse(response: CliRespondOptions): McpToolCallSuccess {
   const { body, contentType = "application/json; charset=utf-8" } = response;
   let structuredContent: unknown;
+  let text = "";
 
   if (body instanceof Uint8Array) {
     structuredContent = {
@@ -45,17 +46,20 @@ export function buildToolCallSuccessFromResponse(response: CliRespondOptions): M
       contentType,
       encoding: "base64",
     } satisfies McpBinaryRespondContent;
+    text = `[Binary data: ${contentType}, ${body.length} bytes]`;
   } else if (typeof body === "string") {
     structuredContent = {
       content: body,
       contentType,
     } satisfies McpStringRespondContent;
+    text = body;
   } else {
     structuredContent = body;
+    text = typeof body === "object" && body !== null ? JSON.stringify(body, null, 2) : String(body ?? "");
   }
 
   return {
-    content: [{ type: "text", text: "" }],
+    content: [{ type: "text", text }],
     structuredContent,
     isError: false,
   };

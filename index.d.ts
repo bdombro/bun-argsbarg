@@ -319,10 +319,20 @@ export interface CliMcpBundleConfig {
 		email?: string;
 		url?: string;
 	};
+	/** Human-readable display name for plugin manifests. */
+	displayName?: string;
+	/** Homepage URL for plugin manifests. */
+	homepage?: string;
 	/** Repo-relative path to a PNG icon copied into the bundle. */
 	icon?: string;
+	/** Software license identifier (e.g. "MIT", "Apache-2.0"). */
+	license?: string;
 	/** Manifest `long_description` (defaults to program description). */
 	longDescription?: string;
+	/** Repository URL for plugin manifests. */
+	repository?: string;
+	/** Custom relative path to repository skills directory (defaults to `skills/<dirName>`). */
+	skillsDir?: string;
 }
 /**
  * Enables `myapp mcp` and MCP stdio server metadata (program root only).
@@ -340,6 +350,8 @@ export interface CliMcpServerConfig {
 	mcpd?: boolean;
 	/** When `true`, `mcp bundle` also writes `dist/claude-plugin/<name>.zip`. Default false. */
 	claudePlugin?: boolean;
+	/** When `true`, `mcp bundle` also writes `dist/cursor-plugin/<name>.zip`. Default false. */
+	cursorPlugin?: boolean;
 	/** Resource URI for schema export (default: `<sanitized root key>://schema`). */
 	schemaResourceUri?: string;
 	/**

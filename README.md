@@ -1,4 +1,5 @@
-Logo
+![Logo](logo.png)
+<!-- Big money NE - https://patorjk.com/software/taag/#p=testall&f=Bulbhead&t=shebangsy&x=none&v=4&h=4&w=80&we=false> -->
 
 [GitHub](https://github.com/bdombro/bun-argsbarg)
 [License: MIT](LICENSE)
@@ -381,7 +382,7 @@ ArgsBarg ships authoring docs under `node_modules/argsbarg/docs/`. Because AI ag
 bun scripts/merge-agents-md.ts .
 ```
 
-This refreshes the argsbarg-managed section in `AGENTS.md` while preserving your app-specific prefix and `**<app> conventions:**` footer. See **Agent instructions** in [docs/cli-program.md](docs/cli-program.md).
+This refreshes the argsbarg-managed section at the top of `AGENTS.md` while preserving all app-specific sections below it. See **Agent instructions** in [docs/cli-program.md](docs/cli-program.md).
 
 ### 3. Agent Skills & Workspace Configuration
 

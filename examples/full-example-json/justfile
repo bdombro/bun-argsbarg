@@ -1,24 +1,19 @@
+# bash (not sh); -e bail on errors, -u error on unset vars, pipefail fails pipelines when any stage fails
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
 
-cli_key := `bun scripts/print-identity.ts key`
-tap_org := `bun scripts/print-identity.ts tapOrg`
-tap_repo := `bun scripts/print-identity.ts tapRepo`
-tap := `bun scripts/print-identity.ts tap`
-release_repo := `bun scripts/print-identity.ts releaseRepo`
-tap_git_url := "git@github.com:" + release_repo + ".git"
 brew_prefix := `brew --prefix`
-tap_parent := brew_prefix + "/Library/Taps/" + tap_org
-tap_path := tap_parent + "/homebrew-" + tap_repo
+tap_parent := brew_prefix + "/Library/Taps/{tapOrg}"
+tap_path := tap_parent + "/homebrew-{tapRepo}"
 
 # List available recipes (default)
 _:
     @just --list
 
-# Compile the CLI binary to dist/full-example
+# Compile the CLI binary to dist/full-example-json
 build:
-    bun build ./src/index.ts --compile --outfile=dist/{{cli_key}}
+    bun build ./src/index.ts --compile --outfile=dist/full-example-json
     @rm -f .*.bun-build
 
 # Apply SQL migrations in src/db/migrations/ to a SQLite database file
@@ -44,11 +39,11 @@ demo-http:
 
 # demo a CLI command
 demo-cli:
-    @just run {{cli_key}} status
+    @just run full-example-json status
 
 # demo a CLI command
 demo-help:
-    @just run {{cli_key}} --help
+    @just run full-example-json --help
 
 # Run the CLI from source with optional args; restarts on file changes
 dev *ARGS:
@@ -80,26 +75,26 @@ install-local: uninstall build
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
     bun scripts/dev-formula.ts install
-    HOMEBREW_NO_ASK=1 brew reinstall --formula {{tap}}/{{cli_key}} || HOMEBREW_NO_ASK=1 brew install --force --formula {{tap}}/{{cli_key}}
+    HOMEBREW_NO_ASK=1 brew reinstall --formula bdombro/bun-argsbarg/full-example-json || HOMEBREW_NO_ASK=1 brew install --force --formula bdombro/bun-argsbarg/full-example-json
     bun scripts/dev-formula.ts reset
-    {{cli_key}} configure install
+    full-example-json configure install
 
 # Remove local dev install, then install from GitHub tap (requires gh auth login)
 install-production: uninstall
-    brew tap {{release_repo}} {{tap_git_url}}
-    brew install --formula {{release_repo}}/{{cli_key}}
-    {{cli_key}} configure install
+    brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
+    brew install full-example-json
+    full-example-json configure install
 
 # Alias for backward compatibility
 reinstall: reinstall-local
 
 # Rebuild binary and swap into Cellar (run install-local first; run `just refresh` for skills/MCP)
 reinstall-local: build
-    install -m 755 dist/{{cli_key}} "$(brew --prefix {{cli_key}})/bin/{{cli_key}}"
+    install -m 755 dist/full-example-json "$(brew --prefix full-example-json)/bin/full-example-json"
 
 # Refresh agent skills/MCP without reinstalling the binary
 refresh:
-    {{cli_key}} configure install
+    full-example-json configure install
 
 # Lint sources without writing
 lint:
@@ -129,12 +124,12 @@ release *ARGS:
 
 # Install release formula from tap and run formula test
 test-release:
-    HOMEBREW_NO_ASK=1 brew untap {{tap}} 2>/dev/null || true
+    HOMEBREW_NO_ASK=1 brew untap bdombro/bun-argsbarg 2>/dev/null || true
     mkdir -p {{tap_parent}}
     ln -sfn '{{justfile_directory()}}' {{tap_path}}
-    HOMEBREW_NO_ASK=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
-    brew install --formula {{tap}}/{{cli_key}}
-    brew test {{cli_key}}
+    HOMEBREW_NO_ASK=1 brew uninstall --formula bdombro/bun-argsbarg/full-example-json 2>/dev/null || true
+    brew install --formula bdombro/bun-argsbarg/full-example-json
+    brew test full-example-json
 
 # Typecheck without emitting build artifacts
 typecheck:
@@ -142,7 +137,7 @@ typecheck:
 
 # Undo dev/Homebrew install (remove agent artifacts, then keg + untap)
 uninstall:
-    @{{cli_key}} configure uninstall --yes 2>/dev/null || just run configure uninstall --yes
-    @HOMEBREW_NO_ASK=1 brew uninstall --formula {{tap}}/{{cli_key}} 2>/dev/null || true
-    @HOMEBREW_NO_ASK=1 brew uninstall --formula {{tap}}/{{cli_key}}-local 2>/dev/null || true
-    @HOMEBREW_NO_ASK=1 brew untap {{tap}} 2>/dev/null || true
+    @full-example-json configure uninstall --yes 2>/dev/null || just run configure uninstall --yes
+    @HOMEBREW_NO_ASK=1 brew uninstall --formula bdombro/bun-argsbarg/full-example-json 2>/dev/null || true
+    @HOMEBREW_NO_ASK=1 brew uninstall --formula bdombro/bun-argsbarg/full-example-json-local 2>/dev/null || true
+    @HOMEBREW_NO_ASK=1 brew untap bdombro/bun-argsbarg 2>/dev/null || true

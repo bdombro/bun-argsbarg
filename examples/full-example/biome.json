@@ -4,7 +4,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "complexity": {
+        "noStaticOnlyClass": "off"
+      }
     }
   },
   "formatter": {
@@ -14,9 +17,7 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.json"],
-      "formatter": { "enabled": false },
-      "linter": { "enabled": false }
+      "includes": ["**/*.json"]
     }
   ]
 }

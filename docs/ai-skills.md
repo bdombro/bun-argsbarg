@@ -15,9 +15,9 @@ Because developers customize `skills/<app>/SKILL.md` with domain workflows, exec
 - **Commands catalog** — compact intent-based router directing agents to the right subcommands
 - **Workflow & Pitfalls** — guidelines for automated execution (e.g. using non-interactive flags like `--yes`)
 
-## Claude Code plugin
+## Claude Code and Cursor plugins
 
-When `mcpServer.claudePlugin: true` is configured, running `myapp mcp bundle` packages `dist/claude-plugin/<name>.zip` containing an MCP pointer skill (`SKILL.md` only) that routes Claude Code to the bundled MCP server. This is a dist packaging artifact, not installed via `configure`.
+When `mcpServer.claudePlugin: true` and/or `mcpServer.cursorPlugin: true` is configured, running `myapp mcp bundle` packages plugin archives (`dist/claude-plugin/<name>.zip` and `dist/cursor-plugin/<name>.zip`). If a repository skill directory exists (`skills/<key>/`), the package bundles that custom skill; otherwise it falls back to a generated MCP pointer skill that routes agents to the bundled MCP server. These are dist packaging artifacts, not installed via `configure`.
 
 ## Uninstalling legacy skills
 

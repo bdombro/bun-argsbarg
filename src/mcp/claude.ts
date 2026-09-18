@@ -3,50 +3,29 @@ Packs a Claude Code plugin zip from a compiled CLI binary.
 Internal module — not exported from index.ts.
 */
 
-import {
-  cpSync,
-  type Dirent,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { buildPluginMcpEnvMapping, buildProgramUserConfig } from "../config/manifest.ts";
-import type { CliMcpBundleConfig, CliProgram } from "../core/types.ts";
-import { generatePluginSkillBundle } from "../skill/generate.ts";
-import { applyPluginSkillHint } from "../skill/hint.ts";
+import type { CliProgram } from "../core/types.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
+import { collectZipEntries, defaultAuthor, pluginName, stagePluginSkills } from "./plugin-shared.ts";
 import { mcpServerId } from "./tools.ts";
-import { type ZipFileEntry, zipStore } from "./zip.ts";
+import { zipStore } from "./zip.ts";
 
+/** Base distribution output directory relative to workspace root. */
 const DIST_DIR = "dist";
+
+/** Output subdirectory name under dist for Claude Code plugin archives. */
 const CLAUDE_PLUGIN_DIR = "claude-plugin";
 
-/** Kebab-case plugin name for plugin.json (Claude Code requires kebab-case). */
-export function pluginName(program: CliProgram): string {
-  return program.key
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/[^a-zA-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toLowerCase();
-}
-
-function defaultAuthor(bundle?: CliMcpBundleConfig): {
-  name: string;
-  email?: string;
-  url?: string;
-} {
-  return bundle?.author ?? { name: "Unknown" };
-}
-
 /** Default plugin zip output under cwd. */
-export function defaultClaudePluginPaths(program: CliProgram, cwd = process.cwd()) {
+export function defaultClaudePluginPaths(
+  /** CLI program schema. */
+  program: CliProgram,
+  /** Working directory (defaults to cwd). */
+  cwd = process.cwd(),
+) {
   const binaryName = program.key;
   const dist = join(cwd, DIST_DIR);
   const name = pluginName(program);
@@ -58,7 +37,12 @@ export function defaultClaudePluginPaths(program: CliProgram, cwd = process.cwd(
 }
 
 /** Generates `.claude-plugin/plugin.json` object. */
-export function generatePluginManifest(program: CliProgram, _binaryName: string): Record<string, unknown> {
+export function generatePluginManifest(
+  /** CLI program schema. */
+  program: CliProgram,
+  /** Staged executable name. */
+  _binaryName: string,
+): Record<string, unknown> {
   const bundle = program.mcpServer?.bundle;
   const manifest: Record<string, unknown> = {
     name: pluginName(program),
@@ -75,7 +59,12 @@ export function generatePluginManifest(program: CliProgram, _binaryName: string)
 }
 
 /** Generates plugin `.mcp.json` stdio server config. */
-export function generatePluginMcpJson(program: CliProgram, binaryName: string): Record<string, unknown> {
+export function generatePluginMcpJson(
+  /** CLI program schema. */
+  program: CliProgram,
+  /** Staged executable name. */
+  binaryName: string,
+): Record<string, unknown> {
   const mcp: Record<string, unknown> = {
     command: `\${CLAUDE_PLUGIN_ROOT}/bin/${binaryName}`,
     args: ["mcp"],
@@ -89,35 +78,23 @@ export function generatePluginMcpJson(program: CliProgram, binaryName: string): 
   };
 }
 
-function collectZipEntries(rootDir: string, dir = rootDir): ZipFileEntry[] {
-  const entries: ZipFileEntry[] = [];
-  for (const ent of readdirSync(dir, { withFileTypes: true }) as Dirent[]) {
-    const full = join(dir, ent.name);
-    if (ent.isDirectory()) {
-      entries.push(...collectZipEntries(rootDir, full));
-      continue;
-    }
-    if (!ent.isFile()) {
-      continue;
-    }
-    const rel = relative(rootDir, full).split("\\").join("/");
-    const stMode = statSync(full).mode;
-    const entry: ZipFileEntry = { name: rel, data: readFileSync(full) };
-    if (stMode & 0o111) {
-      entry.unixMode = stMode;
-    }
-    entries.push(entry);
-  }
-  return entries;
-}
-
-function writePluginTree(pluginRoot: string, program: CliProgram, binaryPath: string, binaryName: string): void {
-  const bundle = generatePluginSkillBundle(program);
-  const skillMd = applyPluginSkillHint(program, bundle.skillMd);
-
+/**
+ * Stages directory tree for Claude Code plugin: manifest, .mcp.json, binary, and skills.
+ */
+function writePluginTree(
+  /** Staging root directory. */
+  pluginRoot: string,
+  /** CLI program schema. */
+  program: CliProgram,
+  /** Absolute path to compiled binary. */
+  binaryPath: string,
+  /** Executable filename. */
+  binaryName: string,
+  /** Working directory containing repository sources. */
+  cwd: string,
+): void {
   mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
   mkdirSync(join(pluginRoot, "bin"), { recursive: true });
-  mkdirSync(join(pluginRoot, "skills", bundle.dirName), { recursive: true });
 
   writeFileSync(
     join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -128,14 +105,19 @@ function writePluginTree(pluginRoot: string, program: CliProgram, binaryPath: st
     `${JSON.stringify(generatePluginMcpJson(program, binaryName), null, 2)}\n`,
   );
   cpSync(binaryPath, join(pluginRoot, "bin", binaryName), { mode: 0o755 });
-  writeFileSync(join(pluginRoot, "skills", bundle.dirName, "SKILL.md"), skillMd);
+  stagePluginSkills(pluginRoot, program, cwd);
 }
 
 /**
  * Writes `dist/claude-plugin/<name>.zip` with manifests, binary, and skill bundle.
  * Requires the compiled binary to exist.
  */
-export function packClaudePlugin(program: CliProgram, opts: PackMcpBundleOpts = {}): string {
+export function packClaudePlugin(
+  /** CLI program schema. */
+  program: CliProgram,
+  /** Packaging options. */
+  opts: PackMcpBundleOpts = {},
+): string {
   const cwd = opts.cwd ?? process.cwd();
   const defaults = defaultClaudePluginPaths(program, cwd);
   const mcpDefaults = defaultMcpBundlePaths(program, cwd);
@@ -149,7 +131,7 @@ export function packClaudePlugin(program: CliProgram, opts: PackMcpBundleOpts = 
 
   const staging = mkdtempSync(join(tmpdir(), "claude-plugin-"));
   try {
-    writePluginTree(staging, program, binaryPath, binaryName);
+    writePluginTree(staging, program, binaryPath, binaryName, cwd);
     const zip = zipStore(collectZipEntries(staging));
     mkdirSync(join(pluginZipPath, ".."), { recursive: true });
     writeFileSync(pluginZipPath, zip);

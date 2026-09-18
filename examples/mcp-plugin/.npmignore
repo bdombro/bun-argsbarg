@@ -1,0 +1,5 @@
+node_modules/
+dist/
+Formula/.staging/
+.private/
+.DS_Store

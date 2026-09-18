@@ -1,8 +1,21 @@
 import type { CliProgram } from "../core/types.ts";
 import { CliFallbackMode, CliOptionKind } from "../core/types.ts";
+import type { McpToolDef } from "../mcp/tools.ts";
 
 export function testProgram(prog: Record<string, unknown> & { key: string; description: string }): CliProgram {
   return { version: "0.0.0", ...prog } as CliProgram;
+}
+
+/** MCP tool with `name` from `collectMcpTools`, or throw. */
+export function requireMcpTool(
+  /** Tools from `collectMcpTools`. */
+  tools: McpToolDef[],
+  /** MCP tool name to find. */
+  name: string,
+): McpToolDef {
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) throw new Error(`expected MCP tool ${name}`);
+  return tool;
 }
 
 export const nestedMcpFixture = testProgram({

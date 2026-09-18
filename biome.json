@@ -4,7 +4,13 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "complexity": {
+        "noStaticOnlyClass": "off"
+      },
+      "suspicious": {
+        "noTemplateCurlyInString": "off"
+      }
     }
   },
   "formatter": {
@@ -14,9 +20,7 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.json"],
-      "formatter": { "enabled": false },
-      "linter": { "enabled": false }
+      "includes": ["**/*.json"]
     },
     {
       "includes": [
@@ -26,19 +30,6 @@
       ],
       "linter": {
         "rules": {
-          "suspicious": {
-            "noTemplateCurlyInString": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["**/*.test.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noNonNullAssertion": "off"
-          },
           "suspicious": {
             "noTemplateCurlyInString": "off"
           }

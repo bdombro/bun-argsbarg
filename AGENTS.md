@@ -12,7 +12,7 @@ Always include in context before answering or making changes in this repository:
 ## Code quality
 
 - Changes must be summarized in CHANGELOG.md under the UNRELEASED section
-- JSDocs: Types, interfaces, functions (exported **and** module-private), objects, object properties, classes, class properties, module-level constants, and test `describe`/`test` blocks must have a very human-readable JSDoc directly above the symbol. No exceptions in `src/**` or `scripts/**`. When adding JSDoc to functions, favor putting a JSDoc on each arg instead of using `@param`. Skip comments on short test callbacks and pure re-export files.
+- JSDocs: Types, interfaces, functions (exported **and** module-private), objects, object properties, classes, class properties, module-level constants, and not test `describe`/`test` blocks must have a very human-readable JSDoc directly above the symbol. No exceptions in `src/**` or `scripts/**`. When adding JSDoc to functions, favor putting a JSDoc on each arg instead of using `@param`. Skip comments on short test callbacks and pure re-export files.
 - All files should start with a `/* {multi-line description} */` of why the file exists and what it does.
 - All imports must be ordered alphabetically by their source module path (the `from` clause).
 - Cross-module imports under `src/` use relative paths (`../foo/bar.ts`). Same-directory and child imports use `./`. Keep `.ts` extensions on module files.
@@ -21,6 +21,7 @@ Always include in context before answering or making changes in this repository:
 - Avoid needless extraction: keep single-use helpers in the calling file by default. Split only when reused elsewhere, the caller is large or hard to follow, or extraction clarifies a substantial unit. Do not create tiny one-off helpers.
   - ❌ `utils/formatX.ts` — 60-line helper used by one command
   - ✅ inline helper in that command file
+- When moving features in/out of import barrels, update importers instead of import+export (re-exporting) from the former barrel
 
 ## Examples sync
 

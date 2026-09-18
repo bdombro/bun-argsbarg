@@ -60,3 +60,59 @@ export function buildPluginMcpEnvMapping(program: CliProgram): Record<string, st
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
+
+/**
+ * Plugin mcp.json env mapping for Cursor from program.appConfig env entries.
+ */
+export function buildCursorPluginMcpEnvMapping(
+  /** CLI program schema. */
+  program: CliProgram,
+): Record<string, string> | undefined {
+  const appConfig = program.appConfig;
+  if (!appConfig) {
+    return undefined;
+  }
+  const out: Record<string, string> = {};
+  for (const entry of Object.values(appConfig.entries)) {
+    if (!entry.env) {
+      continue;
+    }
+    out[entry.env] = `\${${entry.env}}`;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Builds Cursor plugin variables schema from program.appConfig env-mapped entries.
+ */
+export function buildCursorPluginVariables(
+  /** CLI program schema. */
+  program: CliProgram,
+): Record<string, unknown> | undefined {
+  const appConfig = program.appConfig;
+  if (!appConfig) {
+    return undefined;
+  }
+  const properties: Record<string, unknown> = {};
+  const required: string[] = [];
+  for (const entry of Object.values(appConfig.entries)) {
+    if (!entry.env) {
+      continue;
+    }
+    properties[entry.env] = {
+      type: "string",
+      ...(entry.description ? { description: entry.description } : {}),
+    };
+    if (entry.required) {
+      required.push(entry.env);
+    }
+  }
+  if (Object.keys(properties).length === 0) {
+    return undefined;
+  }
+  return {
+    type: "object",
+    properties,
+    ...(required.length > 0 ? { required } : {}),
+  };
+}

@@ -253,8 +253,9 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
 /** Runs the MCP NDJSON read loop on stdin until EOF. */
 export async function mcpServeStdioLoop(cli: Cli): Promise<void> {
   let buffer = "";
-  for await (const chunk of Bun.stdin.stream()) {
-    buffer += new TextDecoder().decode(chunk);
+  const decoder = new TextDecoder();
+  for await (const chunk of process.stdin) {
+    buffer += typeof chunk === "string" ? chunk : decoder.decode(chunk);
     let nl = buffer.indexOf("\n");
     while (nl !== -1) {
       const line = buffer.slice(0, nl).trim();

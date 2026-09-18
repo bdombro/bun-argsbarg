@@ -15,6 +15,7 @@ import {
   enumMcpFixture,
   nestedDocsFallbackFixture,
   nestedMcpFixture,
+  requireMcpTool,
   testProgram,
   varargsReadFixture,
 } from "../test/fixtures.ts";
@@ -920,7 +921,7 @@ test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
 
 test("Enum option inputSchema includes enum array", () => {
   const tools = collectMcpTools(enumMcpFixture);
-  const run = tools.find((t) => t.name === "run")!;
+  const run = requireMcpTool(tools, "run");
   const schema = run.inputSchema as { properties: { mode: { enum?: string[] } } };
   expect(schema.properties.mode.enum).toEqual(["dev", "prod"]);
 });
@@ -1291,28 +1292,28 @@ test("varargs unknown flag errors", async () => {
 
 test("mcpToolCallToArgv rejects comma-separated string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
+  const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a,b" });
   expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
 test("mcpToolCallToArgv rejects bare string for varargs", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
+  const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: "a" });
   expect(argv).toEqual({ error: expect.stringContaining("JSON array") });
 });
 
 test("mcpToolCallToArgv array varargs unchanged", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
+  const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
   expect(argv).toEqual(["read", "a", "b"]);
 });
 
 test("mcpToolCallToArgv empty array varargs errors when required", () => {
   const tools = collectMcpTools(nestedMcpFixture);
-  const read = tools.find((t) => t.name === "read")!;
+  const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: [] });
   expect(argv).toEqual({ error: "Missing argument: files" });
 });
