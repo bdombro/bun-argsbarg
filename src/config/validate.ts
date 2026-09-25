@@ -166,12 +166,25 @@ interface UnionDiscriminator {
 /**
  * Finds a property present in every branch as a string `const` or all-string `enum`, whose value sets are
  * pairwise disjoint across branches. Prefers `kind`, then `type`, then the alphabetically first eligible name.
+ * Each branch is resolved through a bare `$ref` first — a schema built with a `definitions`/`$defs` map
+ * (e.g. ts-json-schema-generator output) typically writes `anyOf: [{ $ref: "#/definitions/A" }, …]` rather
+ * than inlining each branch, so without this every branch here would otherwise look property-less.
  */
-function unionDiscriminator(branches: unknown[]): UnionDiscriminator | undefined {
-  const objectBranches = branches.filter(
+function unionDiscriminator(branches: unknown[], root: JsonSchema): UnionDiscriminator | undefined {
+  const resolvedBranches = branches.map((b) => {
+    if (typeof b !== "object" || b === null || Array.isArray(b)) {
+      return b;
+    }
+    const ref = (b as JsonSchema).$ref;
+    if (typeof ref !== "string") {
+      return b;
+    }
+    return resolveJsonPointer(root, ref) ?? b;
+  });
+  const objectBranches = resolvedBranches.filter(
     (b): b is JsonSchema => typeof b === "object" && b !== null && !Array.isArray(b),
   );
-  if (objectBranches.length === 0 || objectBranches.length !== branches.length) {
+  if (objectBranches.length === 0 || objectBranches.length !== resolvedBranches.length) {
     return undefined;
   }
 
@@ -292,7 +305,7 @@ function narrowUnionErrors(errors: RawError[], root: JsonSchema, data: unknown):
     if (err.keyword !== "anyOf" && err.keyword !== "oneOf") continue;
     const branches = schemaAtPointer(root, err.keywordLocation);
     if (!Array.isArray(branches)) continue;
-    const discriminator = unionDiscriminator(branches);
+    const discriminator = unionDiscriminator(branches, root);
     if (!discriminator) continue;
 
     // Array items reuse one schema, so keywordLocation repeats verbatim across indices — scope by

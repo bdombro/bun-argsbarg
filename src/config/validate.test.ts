@@ -151,6 +151,36 @@ describe("config/validate", () => {
       ]);
     });
 
+    test("resolves discriminators through $ref'd branches (ts-json-schema-generator output shape)", () => {
+      // ts-json-schema-generator (and similar tools) write each anyOf branch as a bare `{ $ref }` pointing
+      // into `definitions`, rather than inlining the branch schema. This is the shape gdocsmith's real
+      // `run` tool schema uses for its 27 step kinds, and it silently defeated discriminator detection
+      // (every branch looked property-less) until unionDiscriminator started resolving branch refs.
+      const refBranchSchema = {
+        $schema: "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        properties: { steps: { type: "array", items: { anyOf: [{ $ref: "#/definitions/A" }, { $ref: "#/definitions/B" }] } } },
+        required: ["steps"],
+        additionalProperties: false,
+        definitions: {
+          A: {
+            type: "object",
+            properties: { kind: { const: "alpha" }, title: { type: "string" } },
+            required: ["kind", "title"],
+            additionalProperties: false,
+          },
+          B: {
+            type: "object",
+            properties: { kind: { const: "beta" }, count: { type: "number" } },
+            required: ["kind"],
+            additionalProperties: false,
+          },
+        },
+      };
+      const result = validateConfigDocument({ steps: [{ kind: "alfa" }] }, refBranchSchema);
+      expect(result.errors).toEqual(['steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta)']);
+    });
+
     test("caps at 10 errors plus a count of the remainder", () => {
       const manySchema = {
         type: "object",
