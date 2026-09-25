@@ -342,6 +342,13 @@ export interface CliMcpBundleConfig {
 export interface CliMcpServerConfig {
 	/** When `true`, enables the `mcp` built-in and MCP stdio server. */
 	enabled: boolean;
+	/**
+	 * Returned as `initialize.result.instructions`. Claude Code adds it to the system prompt of every
+	 * session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or
+	 * not the agent ends up using this server, so keep it to a one- or two-line pointer (e.g. when to
+	 * reach for this tool, and to read the accompanying skill first) rather than usage documentation.
+	 */
+	instructions?: string;
 	/** MCP error response defaults. */
 	errors?: CliMcpServerErrorsConfig;
 	/** Observe-only hooks for JSON-RPC messages. */
@@ -367,6 +374,24 @@ export interface CliMcpServerConfig {
 	resources?: CliMcpResource[];
 	/** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
 	bundle?: CliMcpBundleConfig;
+	/** Overrides the default startup size warnings (see {@link CliMcpSizeLimits}). */
+	sizeLimits?: CliMcpSizeLimits;
+}
+/**
+ * Size limits for one MCP tool's `description` and pretty-printed definition, and for `instructions`.
+ * Set a field to `false` to disable that check. Defaults come from two client behaviors observed in the
+ * wild, not from the MCP spec itself, so they may need retuning as those clients change:
+ * Claude Code truncates a tool's `description` past `descriptionChars`; Cursor syncs each tool's full
+ * definition (`{name, description, inputSchema, outputSchema}`, pretty-printed) to a file under
+ * `mcps/<server>/tools/<tool>.json` and its agent reads that file in chunks of at most `definitionBytes`
+ * bytes or `definitionLines` lines, whichever comes first — a tool at or beyond either limit is read
+ * incompletely on the first pass.
+ */
+export interface CliMcpSizeLimits {
+	definitionBytes?: number | false;
+	definitionLines?: number | false;
+	descriptionChars?: number | false;
+	instructionsChars?: number | false;
 }
 /** JSON Schema for structured error responses (OpenAPI + HTTP/MCP error bodies). */
 export type CliJsonSchema = Record<string, unknown>;
@@ -481,6 +506,13 @@ export interface CliMcpToolConfig {
 	 * Default: auto-generated from command path and description.
 	 */
 	description?: string;
+	/**
+	 * Overrides the leaf's `notes` in the MCP description only — CLI help always shows `notes` unchanged.
+	 * `false` omits notes from the MCP description entirely; a string replaces them. Omit to use `notes` as
+	 * given. Useful when a note only makes sense with `--help` in front of it (a CLI-only workflow tip), or
+	 * when the full CLI notes would push a definition past a size limit (see {@link CliMcpSizeLimits}).
+	 */
+	notes?: string | false;
 }
 /** Context passed to {@link CliAppConfigEntry.resolve} for one config key. */
 export interface CliAppConfigResolveContext {
@@ -950,6 +982,30 @@ export interface PackMcpBundleOpts {
  * Requires the compiled binary to exist.
  */
 export declare function packMcpBundle(program: CliProgram, opts?: PackMcpBundleOpts): string;
+/** Default {@link CliMcpSizeLimits}; see that type for what each limit approximates and why. */
+export declare const DEFAULT_MCP_SIZE_LIMITS: Required<CliMcpSizeLimits>;
+/** Measured size of one MCP tool's description and pretty-printed definition. */
+export interface McpToolSize {
+	/** Pretty-printed `{name, description, inputSchema, outputSchema}`, in UTF-8 bytes. */
+	definitionBytes: number;
+	/** Line count of the same pretty-printed definition. */
+	definitionLines: number;
+	/** Character length of `description` alone. */
+	descriptionChars: number;
+	/** MCP tool name. */
+	name: string;
+}
+/** Per-tool sizes plus any warnings past {@link CliMcpSizeLimits} (defaults or `mcpServer.sizeLimits`). */
+export interface McpSizeReport {
+	/** Character length of `mcpServer.instructions`, or 0 when unset. */
+	instructionsChars: number;
+	/** One entry per MCP tool, in `tools/list` order. */
+	tools: McpToolSize[];
+	/** Human-readable warnings for anything past its limit; empty when everything fits. */
+	warnings: string[];
+}
+/** Measures every MCP tool's description and definition size against {@link CliMcpSizeLimits}. */
+export declare function mcpSizeReport(root: CliProgram): McpSizeReport;
 /**
  * Resolves the user home directory without depending on `$HOME`.
  * This is helpful for when homebrew post-install hooks run with a temporary `$HOME`.
@@ -1056,6 +1112,12 @@ export interface ServerHandleContext {
 	mcp?: ResolvedMcpServeConfig;
 	httpHooks?: CliHttpWireHooks;
 	mcpHooks?: CliMcpWireHooks;
+	/**
+	 * The MCP protocol version negotiated with `initialize`, or the newest supported version before
+	 * `initialize` has been handled. Later requests (`tools/list`, `tools/call`) gate version-specific
+	 * response fields (e.g. `outputSchema`, `structuredContent`) on this.
+	 */
+	mcpProtocolVersion?: string;
 }
 /** Platform builtins derived from program config and runtime. */
 export interface CliCapabilities {
