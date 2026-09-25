@@ -35,9 +35,9 @@ Do not duplicate framework docs here — see [`docs/cli-program.md`](docs/cli-pr
 
 ## Memory
 
-AI chat thread context (decisions, rejected, footguns, open items) are captured in [.agents/memories/](.agents/memories/) using Brian's `/thread-memory` skill.
+Durable context (decisions, rejections, footguns, open items, glossary) is stored in SQLite via the `thread-memory` MCP plugin.
 
-- Named `YYYYMMDD-{slug}.md` — read Meta first; matching bodies only (no repo glob)
-- `glossary.md` — common terms and evolution of them
-- Save via `/thread-memory sync` (`save memory` / `save decisions`)
-- Read when changing parse/MCP/HTTP wire behavior or preparing a major release
+Before substantive work on scoped paths:
+- Call MCP `recall` with the file path (e.g. `path: "src/headless/tool-call.ts"`) or a query.
+- Review returned decisions and footguns before implementing changes.
+- If a memory proved helpful or stale, call MCP `feedback` with its `id`.

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.1] - 2026-09-25
+
+### Added
+
+- **`argsbarg create --template plugin`** — support `"plugin"` choice for scaffolding agent MCP plugins with in-repo Cursor and Claude manifests.
+
+### Changed
+
+- **AGENTS.md** — updated Memory section to use `thread-memory` MCP plugin (`recall`/`feedback`) backed by centralized SQLite store.
+
+### Fixed
+
+- Headless tool failures (MCP `tools/call` and HTTP JSON `{ "error" }`) now return the full error message (ANSI stripped, newlines preserved) instead of collapsing to the first line.
+- `packClaudePlugin`, `packCursorPlugin`, and `packMcpBundle` staged the compiled binary via `cpSync(src, dest, { mode: 0o755 })` — but `cpSync`'s `mode` option is a bitmask of copy-behavior flags (`COPYFILE_EXCL`/`FICLONE`/`FICLONE_FORCE`, valid range 0–7), not a POSIX file permission mode. `0o755` (493) was always out of range; a stricter Bun `fs.cpSync` validation now throws on it instead of silently ignoring it. Fixed by dropping the bogus `mode` option and calling `chmodSync(dest, 0o755)` after the copy, which is what the code actually intended.
+
 ## [7.1.0] - 2026-09-18
 
 ### Changed
@@ -1033,7 +1048,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.1...HEAD
+[7.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.1
 [7.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.0
 [7.0.11]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.11
 [7.0.10]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.0.10

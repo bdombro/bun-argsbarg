@@ -3,7 +3,7 @@ Packs a CLI program into an MCP Bundle (`.mcpb`) for Claude Desktop.
 Expects `dist/<program.key>` as the compiled binary input.
 */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildProgramUserConfig } from "../config/manifest.ts";
@@ -119,7 +119,8 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
   const staging = mkdtempSync(join(tmpdir(), "mcpb-"));
   try {
     const stagedBinary = join(staging, binaryName);
-    cpSync(binaryPath, stagedBinary, { mode: 0o755 });
+    cpSync(binaryPath, stagedBinary);
+    chmodSync(stagedBinary, 0o755);
 
     const manifest = generateMcpManifest(program, binaryName);
     const files: { name: string; data: Buffer }[] = [

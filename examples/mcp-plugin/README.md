@@ -11,21 +11,22 @@ Argsbarg MCP plugin template for Cursor and Claude Code marketplaces (@sg schema
 - **In-repo skills**: `skills/mcp-plugin/SKILL.md` discovered and loaded by agent platforms.
 - **Standalone runner**: `bun build --target=node src/index.ts --outfile scripts/mcp.mjs` creates an inlined, zero-npm-install script.
 
-## Development
+## Installation
+
+### Cursor
+
+Recommended: import directly from GitHub — Cursor Dashboard → **Settings → Plugins → Team Marketplaces → Import**, then enter `https://github.com/bdombro/bun-argsbarg` (subdirectory `examples/mcp-plugin` once copied to its own repo). Once published to the [official marketplace](https://cursor.com/marketplace/publish), install via `/add-plugin mcp-plugin` or the Customize sidebar.
+
+### Claude Code
+
+Recommended: add the GitHub repo as a marketplace, then install:
 
 ```bash
-# Install dependencies and generate schemas
-just setup
-
-# Build standalone MCP bundle
-just build
-
-# Test MCP server directly with node
-node ./scripts/mcp.mjs mcp
-
-# Link into local Cursor plugins for live testing
-just install-plugin-cursor
+/plugin marketplace add <owner>/<repo>
+/plugin install mcp-plugin@<repo>
 ```
+
+Once merged into [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official), install via `/plugin install mcp-plugin@claude-plugins-official`.
 
 ## Commands
 
@@ -42,23 +43,24 @@ just install-plugin-cursor
 - `mcp-plugin mcp` — Start the Model Context Protocol (stdio) server for AI coding agents.
 - `mcp-plugin version` — Display version information.
 
-## Distribution & Marketplaces
+## Contributing / Local Development
 
-### Cursor
+```bash
+git clone https://github.com/bdombro/bun-argsbarg.git
+cd bun-argsbarg/examples/mcp-plugin
 
-- **Local Development / Testing**: Run `just install-plugin-cursor` to link the repo into `~/.cursor/plugins/local/mcp-plugin`. Reload the Cursor window to activate.
-- **Team Marketplace**: In Cursor Dashboard → **Settings → Plugins → Team Marketplaces → Import**, enter your GitHub repository URL.
-- **Official Cursor Marketplace**: Submit your repository URL at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish). Once approved, users can install directly via `/add-plugin mcp-plugin` or from the Customize sidebar.
+# Install dependencies and generate schemas
+just setup
 
-### Claude Code
+# Build standalone MCP bundle
+just build
 
-- **Direct Git Install**: Users can add your repository without central registration:
-  ```bash
-  /plugin marketplace add <owner>/<repo>
-  /plugin install mcp-plugin
-  /reload-plugins
-  ```
-- **Official Directory**: Submit a pull request to [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) under `external_plugins/`. Once merged, users can install directly via `/plugin install mcp-plugin@claude-plugins-official`.
+# Test MCP server directly with node
+node ./scripts/mcp.mjs mcp
+
+# Link into local Cursor plugins for live testing
+just install-plugin-cursor
+```
 
 ## Documentation
 

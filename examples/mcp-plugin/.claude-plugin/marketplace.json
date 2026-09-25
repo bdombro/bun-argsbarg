@@ -1,0 +1,13 @@
+{
+  "name": "mcp-plugin",
+  "owner": {
+    "name": "Brian Dombrowski"
+  },
+  "plugins": [
+    {
+      "name": "mcp-plugin",
+      "source": ".",
+      "description": "Argsbarg MCP plugin template for Cursor and Claude Code marketplaces"
+    }
+  ]
+}

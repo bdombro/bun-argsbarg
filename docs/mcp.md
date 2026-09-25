@@ -196,7 +196,7 @@ On success (`isError: false`):
 - **stderr** — when non-empty, a second `content` text block with trimmed stderr (no prefix). The block’s position signals stderr; hosts may label it themselves.
 - **structuredContent** — when trimmed stdout is valid JSON, the parsed value is also returned per the [MCP tools spec](https://modelcontextprotocol.io/specification/draft/server/tools). Objects and arrays from flags like `--json` are the common case. JSON **primitives** (`true`, `42`, `"hello"`) are parsed too — a handler that prints the literal string `true` as human text would get `structuredContent: true`. Prefer objects for machine-readable output.
 
-On failure (parse error, validation error, non-zero exit, thrown error), the message is returned as text content with `isError: true`. Handler stderr is included when present.
+On failure (parse error, validation error, non-zero exit, thrown error), the **full** error message is returned as text content with `isError: true` (ANSI stripped, newlines preserved). HTTP JSON `{ "error": "…" }` uses the same full text. Do not collapse headless errors to the first line.
 
 Help and `docs cli-schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
 

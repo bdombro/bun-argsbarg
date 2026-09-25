@@ -3,7 +3,7 @@ Packs a Cursor plugin zip from a compiled CLI binary.
 Internal module — not exported from index.ts.
 */
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildCursorPluginMcpEnvMapping, buildCursorPluginVariables } from "../config/manifest.ts";
@@ -117,7 +117,9 @@ function writePluginTree(
     join(pluginRoot, "mcp.json"),
     `${JSON.stringify(generateCursorPluginMcpJson(program, binaryName), null, 2)}\n`,
   );
-  cpSync(binaryPath, join(pluginRoot, "bin", binaryName), { mode: 0o755 });
+  const stagedBinary = join(pluginRoot, "bin", binaryName);
+  cpSync(binaryPath, stagedBinary);
+  chmodSync(stagedBinary, 0o755);
   stagePluginSkills(pluginRoot, program, cwd);
 }
 

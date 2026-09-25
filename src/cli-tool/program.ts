@@ -18,7 +18,7 @@ export const program = {
           name: "template",
           description: "Template: cli (default) or json (schema-first).",
           kind: CliOptionKind.Enum,
-          choices: ["cli", "json"],
+          choices: ["cli", "json", "plugin"],
         },
         { name: "key", description: "CLI binary name.", kind: CliOptionKind.String },
         {

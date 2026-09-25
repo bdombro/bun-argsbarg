@@ -6,7 +6,7 @@ import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
 import type { CliInvocation, CliProgram, InvokeFailureKind } from "../core/types.ts";
 import { failureKindHttpStatus } from "../hooks/run.ts";
-import { apiErrorResponse, apiSuccessResponse, firstErrorLine } from "../http/result.ts";
+import { apiErrorResponse, apiSuccessResponse, stripAnsi } from "../http/result.ts";
 import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
 import { obscureUnexpectedClientMessage } from "../log/emitter.ts";
 import { buildToolCallSuccessFromResponse } from "../mcp/result.ts";
@@ -188,11 +188,7 @@ export function headlessSuccessToHttpResponse(
 /** Maps a headless failure result to a JSON HTTP error Response. */
 export function headlessFailureToHttpResponse(result: HeadlessToolCallFailure, obscureUnexpected = false): Response {
   const status = resolveHttpErrorStatus(result);
-  let message = firstErrorLine(result.message);
-  if (obscureUnexpected && result.failureKind === "unexpected") {
-    message = obscureUnexpectedClientMessage();
-  }
-  return apiErrorResponse(status, { error: message });
+  return apiErrorResponse(status, { error: formatHeadlessError(result, obscureUnexpected) });
 }
 
 function resolveHttpErrorStatus(result: HeadlessToolCallFailure): number {
@@ -212,11 +208,26 @@ function resolveHttpErrorStatus(result: HeadlessToolCallFailure): number {
 }
 
 /** Maps invoke failure kind to MCP tools/call error text (respects obscureUnexpected). */
-export function headlessFailureMcpMessage(result: HeadlessToolCallFailure, obscureUnexpected = false): string {
+export function headlessFailureMcpMessage(
+  /** Failed headless tool invocation. */
+  result: HeadlessToolCallFailure,
+  /** When true, unexpected failures return a generic client message. */
+  obscureUnexpected = false,
+): string {
+  return formatHeadlessError(result, obscureUnexpected);
+}
+
+/** Formats a headless failure for MCP text content and HTTP JSON `error` (full message, ANSI stripped). */
+function formatHeadlessError(
+  /** Failed headless tool invocation. */
+  result: HeadlessToolCallFailure,
+  /** When true, unexpected failures return a generic client message. */
+  obscureUnexpected: boolean,
+): string {
   if (obscureUnexpected && result.failureKind === "unexpected") {
     return obscureUnexpectedClientMessage();
   }
-  return firstErrorLine(result.message);
+  return stripAnsi(result.message).trim();
 }
 
 /** Missing-config lookup failures as MCP/HTTP pre-invoke errors. */
