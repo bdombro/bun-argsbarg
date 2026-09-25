@@ -280,6 +280,13 @@ test("generateMcpGuide includes schema URI and .agents install", () => {
   expect(guide).not.toContain("OpenAI Codex");
 });
 
+test("generateMcpGuide includes a Tool sizes table", () => {
+  const guide = generateMcpGuide(docsFixture(true));
+  expect(guide).toContain("## Tool sizes");
+  expect(guide).toContain("| Tool | Description (chars) | Definition (bytes) | Definition (lines) | Status |");
+  expect(guide).toMatch(/\| `run` \| \d+ \| \d+ \| \d+ \| ok \|/);
+});
+
 test("docs --save writes topic file", async () => {
   const result = await new Cli(docsFixture()).invoke(["docs", "readme", "--save"]);
   expect(result.exitCode).toBe(0);

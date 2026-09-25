@@ -219,6 +219,25 @@ export interface CliMcpServerConfig {
   resources?: CliMcpResource[];
   /** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
   bundle?: CliMcpBundleConfig;
+  /** Overrides the default startup size warnings (see {@link CliMcpSizeLimits}). */
+  sizeLimits?: CliMcpSizeLimits;
+}
+
+/**
+ * Size limits for one MCP tool's `description` and pretty-printed definition, and for `instructions`.
+ * Set a field to `false` to disable that check. Defaults come from two client behaviors observed in the
+ * wild, not from the MCP spec itself, so they may need retuning as those clients change:
+ * Claude Code truncates a tool's `description` past `descriptionChars`; Cursor syncs each tool's full
+ * definition (`{name, description, inputSchema, outputSchema}`, pretty-printed) to a file under
+ * `mcps/<server>/tools/<tool>.json` and its agent reads that file in chunks of at most `definitionBytes`
+ * bytes or `definitionLines` lines, whichever comes first — a tool at or beyond either limit is read
+ * incompletely on the first pass.
+ */
+export interface CliMcpSizeLimits {
+  definitionBytes?: number | false;
+  definitionLines?: number | false;
+  descriptionChars?: number | false;
+  instructionsChars?: number | false;
 }
 
 /** JSON Schema for structured error responses (OpenAPI + HTTP/MCP error bodies). */
@@ -341,6 +360,13 @@ export interface CliMcpToolConfig {
    * Default: auto-generated from command path and description.
    */
   description?: string;
+  /**
+   * Overrides the leaf's `notes` in the MCP description only — CLI help always shows `notes` unchanged.
+   * `false` omits notes from the MCP description entirely; a string replaces them. Omit to use `notes` as
+   * given. Useful when a note only makes sense with `--help` in front of it (a CLI-only workflow tip), or
+   * when the full CLI notes would push a definition past a size limit (see {@link CliMcpSizeLimits}).
+   */
+  notes?: string | false;
 }
 
 /**

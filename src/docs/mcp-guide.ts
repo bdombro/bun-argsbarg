@@ -3,7 +3,15 @@ import { displayAppConfigPath } from "../config/file.ts";
 import { expectedMcpEntry } from "../configure/artifacts/mcp-config.ts";
 import { resolveClaudeDesktopMcpPath, userHome } from "../configure/artifacts/paths.ts";
 import { CliOptionKind, type CliProgram } from "../core/types.ts";
-import { collectMcpTools, leafWireOptions, type McpToolDef, mcpServerId, resolveMcpSchemaUri } from "../mcp/tools.ts";
+import {
+  collectMcpTools,
+  DEFAULT_MCP_SIZE_LIMITS,
+  leafWireOptions,
+  type McpToolDef,
+  mcpServerId,
+  mcpSizeReport,
+  resolveMcpSchemaUri,
+} from "../mcp/tools.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { resolveDocsTopicResourceUri } from "./mcp-resources.ts";
 import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
@@ -173,6 +181,9 @@ export function generateMcpGuide(root: CliProgram): string {
     "| `tools/call` | Runs handlers headlessly; JSON stdout becomes `structuredContent` when valid |",
     `| Schema resource | \`${schemaUri}\` — same JSON as \`${root.key} docs cli-schema\` |`,
   );
+  if (mcp.instructions) {
+    lines.push(`| \`initialize.instructions\` | ${mcp.instructions} |`);
+  }
   if (docsEnabled(root)) {
     const docs = resolveDocsConfig(root);
     for (const key of docsUserTopicKeys(docs)) {
@@ -187,6 +198,37 @@ export function generateMcpGuide(root: CliProgram): string {
   } else {
     for (const tool of tools) {
       lines.push(formatToolLine(root, tool));
+    }
+    lines.push("");
+  }
+
+  const sizeReport = mcpSizeReport(root);
+  if (sizeReport.tools.length > 0) {
+    const limits = { ...DEFAULT_MCP_SIZE_LIMITS, ...root.mcpServer?.sizeLimits };
+    lines.push(
+      "## Tool sizes",
+      "",
+      `Clients read tool definitions with their own limits — a definition or description past those is truncated ` +
+        `or read incompletely. Default limits here: description ${limits.descriptionChars === false ? "unchecked" : `${limits.descriptionChars.toLocaleString()} chars`}, ` +
+        `definition ${limits.definitionBytes === false ? "unchecked" : `${limits.definitionBytes.toLocaleString()} bytes`} / ` +
+        `${limits.definitionLines === false ? "unchecked" : `${limits.definitionLines.toLocaleString()} lines`} (override with \`mcpServer.sizeLimits\`).`,
+      "",
+      "| Tool | Description (chars) | Definition (bytes) | Definition (lines) | Status |",
+      "| --- | --- | --- | --- | --- |",
+    );
+    for (const t of sizeReport.tools) {
+      const over: string[] = [];
+      if (limits.descriptionChars !== false && t.descriptionChars > limits.descriptionChars) over.push("description");
+      if (
+        (limits.definitionBytes !== false && t.definitionBytes > limits.definitionBytes) ||
+        (limits.definitionLines !== false && t.definitionLines > limits.definitionLines)
+      ) {
+        over.push("definition");
+      }
+      const status = over.length === 0 ? "ok" : `over: ${over.join(", ")}`;
+      lines.push(
+        `| \`${t.name}\` | ${t.descriptionChars.toLocaleString()} | ${t.definitionBytes.toLocaleString()} | ${t.definitionLines.toLocaleString()} | ${status} |`,
+      );
     }
     lines.push("");
   }

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `mcpServer.instructions` — an optional string returned as `initialize.result.instructions`. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`.
 - MCP protocol version negotiation: `initialize` now echoes a client's `2025-06-18` or `2024-11-05` `protocolVersion`, and answers `2025-06-18` (the newest) when the request omits it or asks for an unsupported version. Previously the server always claimed `2024-11-05` regardless of what the client sent or what fields it actually returned. `tools/list`'s `outputSchema` and `tools/call`'s `structuredContent` — both defined starting in `2025-06-18` — are now only sent for sessions that negotiated that version or later; a `2024-11-05` session no longer receives fields from a spec revision it never agreed to.
+- `mcpSizeReport(root)` and `mcpServer.sizeLimits` — measures every MCP tool's `description` length and pretty-printed definition (bytes and lines) against configurable limits approximating two real client behaviors (Claude Code truncates long tool descriptions; Cursor reads each tool's synced definition file in bounded chunks), and returns warnings for anything over. `serveMcp` runs this at startup and writes warnings to stderr before the "MCP ready" line; `docs mcp` now includes a `## Tool sizes` table. Set any limit to `false` to disable that check.
+- `mcpTool.notes` (`string | false`) — overrides a leaf's `notes` in the MCP tool description only; CLI `--help` continues to show the leaf's own `notes` unchanged. Useful for a note that only makes sense with `--help` in front of it, or to keep a tool's definition under a size limit.
 
 ### Changed
 

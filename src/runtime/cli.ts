@@ -34,6 +34,7 @@ import { httpServeHttp } from "../http/server.ts";
 import { LogEmitter } from "../log/emitter.ts";
 import { bootstrapMcpEnv } from "../mcp/env.ts";
 import { MCP_PROTOCOL_VERSIONS, mcpServeStdioLoop } from "../mcp/server.ts";
+import { mcpSizeReport } from "../mcp/tools.ts";
 import { createServerRuntime, type ServerHandleContext } from "../server/context.ts";
 import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
 import {
@@ -423,6 +424,9 @@ export class Cli {
       };
       process.once("SIGINT", shutdown);
       process.once("SIGTERM", shutdown);
+      for (const message of mcpSizeReport(this.program).warnings) {
+        emitter.emit({ level: "warn", message, action: "mcp.size" });
+      }
       emitter.emitLifecycle(`${this.program.key} ${this.program.version} — MCP ready (stdio)`, "mcp.server.ready");
       await mcpServeStdioLoop(this);
       process.exit(0);

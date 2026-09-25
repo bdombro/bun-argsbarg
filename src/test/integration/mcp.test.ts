@@ -394,12 +394,36 @@ test("2024-11-05 sessions omit outputSchema and structuredContent", async () => 
 });
 
 test("MCP initialize includes configured instructions", async () => {
-  const responses = await mcpRequest(
-    [{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }],
-    { script: "src/test/mcp-integration-fixture.ts" },
-  );
+  const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }], {
+    script: "src/test/mcp-integration-fixture.ts",
+  });
   const res = responses.get(1) as { result: { instructions?: string } };
   expect(res.result.instructions).toBe("Read the fixture skill.");
+});
+
+test("MCP startup warns about oversized tools on stderr", async () => {
+  const proc = Bun.spawn(["bun", "run", "src/test/mcp-size-fixture.ts", "mcp"], {
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  proc.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`);
+  proc.stdin.end();
+  const timeout = setTimeout(() => proc.kill(), 10_000);
+  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  await proc.exited;
+  clearTimeout(timeout);
+
+  expect(stderr).toContain("description is 3,");
+
+  const lines = stdout
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  expect(lines.length).toBeGreaterThan(0);
+  for (const line of lines) {
+    expect(() => JSON.parse(line)).not.toThrow();
+  }
 });
 
 test("MCP tools/list includes stat_owner_lookup", async () => {

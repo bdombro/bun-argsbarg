@@ -100,6 +100,7 @@ Set `mcpServer` on the **program root only** (the `CliProgram` passed to `new Cl
 | `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
 | `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
 | `resources` | `[]` | Custom `CliMcpResource` entries (additive; schema resource is always included) |
+| `sizeLimits` | see [Tool sizes](#tool-sizes) | Overrides the default startup size warnings for tool descriptions, definitions, and `instructions` |
 
 MCP `serverInfo.name` and the default schema URI use the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `CliProgram.version` (also used by the `version` built-in).
 
@@ -159,12 +160,14 @@ Omitted or `enabled: true` exposes the command (default). `mcpTool` is only vali
 mcpTool: {
   enabled: true,
   description: "Custom tools/list text (overrides auto-generated path + help).",
+  notes: false, // omit this leaf's `notes` from the MCP description; a string replaces them
 }
 ```
 
 Set **`outputSchema` on the leaf** (not under `mcpTool`) — see [cli-program.md — Structured stdout](cli-program.md#structured-stdout).
 
 - **`description`** — when set, replaces the auto-generated `path — help` description entirely.
+- **`notes`** — overrides the leaf's `notes` in the MCP description only; CLI `--help` always shows the leaf's own `notes` unchanged. `false` omits notes from the MCP description entirely; a string replaces them; omit `notes` to use the leaf's `notes` as given. Useful when a note only makes sense with `--help` in front of it, or to keep a tool's definition under a size limit (see [Tool sizes](#tool-sizes)).
 
 ### Tool arguments
 
@@ -200,6 +203,31 @@ On success (`isError: false`):
 On failure (parse error, validation error, non-zero exit, thrown error), the **full** error message is returned as text content with `isError: true` (ANSI stripped, newlines preserved). HTTP JSON `{ "error": "…" }` uses the same full text. Do not collapse headless errors to the first line.
 
 Help and `docs cli-schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
+
+## Tool sizes
+
+Some hosts have their own limits on how much of a tool's `description` or full definition they'll read, independent of anything the MCP spec itself defines. `mcpSizeReport(root)` (exported from `argsbarg`) measures every tool's `description` length and pretty-printed `{name, description, inputSchema, outputSchema}` definition (bytes and lines) against configurable limits, and returns human-readable warnings for anything over. `serveMcp` runs this at startup and writes any warnings to stderr (`action: "mcp.size"`) before the "MCP ready" line; `docs mcp` includes a `## Tool sizes` table with a per-tool `ok` / `over: …` status.
+
+Default limits — observed client behaviors, not MCP spec requirements, so they may need retuning as those clients change:
+
+| Limit | Default | Approximates |
+| --- | --- | --- |
+| `descriptionChars` | `2,048` | Claude Code truncates a tool's `description` past this |
+| `definitionBytes` | `51,200` | Cursor syncs each tool's full definition to a file and reads it in chunks of at most this many bytes |
+| `definitionLines` | `2,000` | Same file, read in chunks of at most this many lines (whichever limit hits first) |
+| `instructionsChars` | `2,048` | No specific client behavior modeled yet; a general "keep it short" budget |
+
+Override with `mcpServer.sizeLimits`; set any field to `false` to disable that check entirely:
+
+```typescript
+mcpServer: {
+  enabled: true,
+  sizeLimits: {
+    definitionBytes: 100_000, // this app's tools are legitimately large
+    instructionsChars: false, // don't warn on instructions length
+  },
+}
+```
 
 ## Schema and custom resources
 

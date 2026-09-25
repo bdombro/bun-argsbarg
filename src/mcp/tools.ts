@@ -6,6 +6,7 @@ flat JSON tool arguments into argv for Cli.invoke.
 import { cliSchemaJson } from "../core/schema.ts";
 import {
   type CliLeaf,
+  type CliMcpSizeLimits,
   type CliNode,
   type CliOption,
   CliOptionKind,
@@ -107,7 +108,13 @@ function resolveToolDescription(root: CliProgram, path: string[], leaf: CliLeaf)
   } else {
     desc = mcpToolDescription(path, root.key, leaf.description);
   }
-  const notes = (leaf.notes ?? "").trim();
+  // `mcpTool.notes` overrides what CLI help shows (leaf.notes) for the MCP description only:
+  // `false` omits notes entirely; a string replaces them; omitted falls through to leaf.notes.
+  const notesOverride = leaf.mcpTool?.notes;
+  if (notesOverride === false) {
+    return desc;
+  }
+  const notes = (typeof notesOverride === "string" ? notesOverride : (leaf.notes ?? "")).trim();
   if (notes.length > 0) {
     desc += `\n\n${cliResolveNotes(notes, root.key)}`;
   }
@@ -271,4 +278,90 @@ export function mcpToolCallToArgv(
   }
 
   return argv;
+}
+
+/** Default {@link CliMcpSizeLimits}; see that type for what each limit approximates and why. */
+export const DEFAULT_MCP_SIZE_LIMITS: Required<CliMcpSizeLimits> = {
+  definitionBytes: 51_200,
+  definitionLines: 2_000,
+  descriptionChars: 2_048,
+  instructionsChars: 2_048,
+};
+
+/** Measured size of one MCP tool's description and pretty-printed definition. */
+export interface McpToolSize {
+  /** Pretty-printed `{name, description, inputSchema, outputSchema}`, in UTF-8 bytes. */
+  definitionBytes: number;
+  /** Line count of the same pretty-printed definition. */
+  definitionLines: number;
+  /** Character length of `description` alone. */
+  descriptionChars: number;
+  /** MCP tool name. */
+  name: string;
+}
+
+/** Per-tool sizes plus any warnings past {@link CliMcpSizeLimits} (defaults or `mcpServer.sizeLimits`). */
+export interface McpSizeReport {
+  /** Character length of `mcpServer.instructions`, or 0 when unset. */
+  instructionsChars: number;
+  /** One entry per MCP tool, in `tools/list` order. */
+  tools: McpToolSize[];
+  /** Human-readable warnings for anything past its limit; empty when everything fits. */
+  warnings: string[];
+}
+
+/** Formats a definition's pretty-printed JSON exactly as Cursor's synced tool file would show it. */
+function mcpToolDefinitionJson(tool: McpToolDef): string {
+  return JSON.stringify(
+    {
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      ...(tool.outputSchema === undefined ? {} : { outputSchema: tool.outputSchema }),
+    },
+    null,
+    2,
+  );
+}
+
+/** Measures every MCP tool's description and definition size against {@link CliMcpSizeLimits}. */
+export function mcpSizeReport(root: CliProgram): McpSizeReport {
+  const limits = { ...DEFAULT_MCP_SIZE_LIMITS, ...root.mcpServer?.sizeLimits };
+  const warnings: string[] = [];
+
+  const tools = collectMcpTools(root).map((tool): McpToolSize => {
+    const definitionJson = mcpToolDefinitionJson(tool);
+    const definitionBytes = Buffer.byteLength(definitionJson, "utf8");
+    const definitionLines = definitionJson.split("\n").length;
+    const descriptionChars = tool.description.length;
+
+    if (limits.descriptionChars !== false && descriptionChars > limits.descriptionChars) {
+      warnings.push(
+        `MCP tool "${tool.name}" description is ${descriptionChars.toLocaleString()} chars ` +
+          `(limit ${limits.descriptionChars.toLocaleString()}; Claude Code truncates longer descriptions)`,
+      );
+    }
+    const overBytes = limits.definitionBytes !== false && definitionBytes > limits.definitionBytes;
+    const overLines = limits.definitionLines !== false && definitionLines > limits.definitionLines;
+    if (overBytes || overLines) {
+      const byteLimit = limits.definitionBytes === false ? "∞" : limits.definitionBytes.toLocaleString();
+      const lineLimit = limits.definitionLines === false ? "∞" : limits.definitionLines.toLocaleString();
+      warnings.push(
+        `MCP tool "${tool.name}" definition is ${definitionBytes.toLocaleString()} bytes / ` +
+          `${definitionLines.toLocaleString()} lines pretty-printed (limit ${byteLimit} bytes / ${lineLimit} lines; ` +
+          `Cursor reads tool definitions in chunks of at most that size)`,
+      );
+    }
+
+    return { definitionBytes, definitionLines, descriptionChars, name: tool.name };
+  });
+
+  const instructionsChars = (root.mcpServer?.instructions ?? "").length;
+  if (limits.instructionsChars !== false && instructionsChars > limits.instructionsChars) {
+    warnings.push(
+      `MCP instructions are ${instructionsChars.toLocaleString()} chars (limit ${limits.instructionsChars.toLocaleString()})`,
+    );
+  }
+
+  return { instructionsChars, tools, warnings };
 }
