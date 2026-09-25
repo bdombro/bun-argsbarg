@@ -51,6 +51,131 @@ describe("config/validate", () => {
     expect(result.valid).toBe(false);
   });
 
+  describe("discriminated unions", () => {
+    const stepSchema = {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: { steps: { type: "array", items: { $ref: "#/definitions/Step" } } },
+      required: ["steps"],
+      additionalProperties: false,
+      definitions: {
+        Step: {
+          anyOf: [
+            {
+              type: "object",
+              properties: { kind: { const: "alpha" }, title: { type: "string" } },
+              required: ["kind", "title"],
+              additionalProperties: false,
+            },
+            {
+              type: "object",
+              properties: { kind: { enum: ["beta", "bravo"] }, count: { type: "number" } },
+              required: ["kind"],
+              additionalProperties: false,
+            },
+            {
+              type: "object",
+              properties: { kind: { const: "gamma" }, flag: { type: "boolean" } },
+              required: ["kind"],
+              additionalProperties: false,
+            },
+          ],
+        },
+      },
+    };
+
+    test("valid mix of branches passes", () => {
+      const result = validateConfigDocument(
+        {
+          steps: [
+            { kind: "alpha", title: "x" },
+            { kind: "beta", count: 3 },
+          ],
+        },
+        stepSchema,
+      );
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    test("unknown property in the matched branch reports only that branch", () => {
+      const result = validateConfigDocument({ steps: [{ kind: "alpha", titel: "x" }] }, stepSchema);
+      expect(result.errors).toEqual([
+        'steps.0: missing required property "title"',
+        'steps.0: unknown property "titel" (allowed: kind, title)',
+      ]);
+    });
+
+    test("unmapped discriminator value reports one synthetic error", () => {
+      const result = validateConfigDocument({ steps: [{ kind: "alfa" }] }, stepSchema);
+      expect(result.errors).toEqual(['steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)']);
+    });
+
+    test("missing discriminator reports one synthetic error", () => {
+      const result = validateConfigDocument({ steps: [{ title: "x" }] }, stepSchema);
+      expect(result.errors).toEqual(['steps.0: missing "kind" (expected one of: alpha, beta, bravo, gamma)']);
+    });
+
+    test("non-object instance reports one synthetic error", () => {
+      const result = validateConfigDocument({ steps: ["alpha"] }, stepSchema);
+      expect(result.errors).toEqual(['steps.0: expected an object with "kind" (one of: alpha, beta, bravo, gamma)']);
+    });
+
+    test("type mismatch in the matched branch reports only that field", () => {
+      const result = validateConfigDocument({ steps: [{ kind: "beta", count: "x" }] }, stepSchema);
+      expect(result.errors).toEqual(["steps.0.count: must be number (got string)"]);
+    });
+
+    test("a non-discriminated union still reports errors from every branch", () => {
+      const nonDiscriminatedSchema = {
+        type: "object",
+        properties: {
+          x: {
+            anyOf: [
+              { type: "object", properties: { a: { type: "string" } }, required: ["a"], additionalProperties: false },
+              { type: "object", properties: { b: { type: "number" } }, required: ["b"], additionalProperties: false },
+            ],
+          },
+        },
+        additionalProperties: false,
+      };
+      const result = validateConfigDocument({ x: {} }, nonDiscriminatedSchema);
+      expect(result.errors).toEqual(['x: missing required property "a"', 'x: missing required property "b"']);
+    });
+
+    test("collects one error per bad step, in order, without cross-contamination between array indices", () => {
+      const result = validateConfigDocument({ steps: [{ kind: "alfa" }, { kind: "beta", count: "x" }] }, stepSchema);
+      expect(result.errors).toEqual([
+        'steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)',
+        "steps.1.count: must be number (got string)",
+      ]);
+    });
+
+    test("caps at 10 errors plus a count of the remainder", () => {
+      const manySchema = {
+        type: "object",
+        properties: {
+          steps: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { kind: { enum: ["a"] } },
+              required: ["kind"],
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      };
+      const result = validateConfigDocument({ steps: Array.from({ length: 12 }, () => ({})) }, manySchema);
+      expect(result.errors).toHaveLength(11);
+      expect(result.errors.slice(0, 10)).toEqual(
+        Array.from({ length: 10 }, (_, i) => `steps.${i}: missing required property "kind"`),
+      );
+      expect(result.errors[10]).toBe("…and 2 more errors");
+    });
+  });
+
   test("parseConfigSetValue coerces number and boolean", () => {
     expect(parseConfigSetValue("5", { type: "integer" }, rootSchema, false)).toBe(5);
     expect(parseConfigSetValue("true", { type: "boolean" }, rootSchema, false)).toBe(true);

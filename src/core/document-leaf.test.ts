@@ -180,6 +180,59 @@ describe("kind: document leaf", () => {
     expect(result.kind).toBe("error");
     expect(result.errorMsg).toContain("Document input must be a JSON or YAML object");
   });
+
+  /** Tests that a discriminated-union inputSchema surfaces only the matching branch's narrowed error. */
+  test("invoke surfaces a narrowed discriminated-union error end to end", async () => {
+    const stepSchema = {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: { steps: { type: "array", items: { $ref: "#/definitions/Step" } } },
+      required: ["steps"],
+      additionalProperties: false,
+      definitions: {
+        Step: {
+          anyOf: [
+            {
+              type: "object",
+              properties: { kind: { const: "alpha" }, title: { type: "string" } },
+              required: ["kind", "title"],
+              additionalProperties: false,
+            },
+            {
+              type: "object",
+              properties: { kind: { enum: ["beta", "bravo"] }, count: { type: "number" } },
+              required: ["kind"],
+              additionalProperties: false,
+            },
+            {
+              type: "object",
+              properties: { kind: { const: "gamma" }, flag: { type: "boolean" } },
+              required: ["kind"],
+              additionalProperties: false,
+            },
+          ],
+        },
+      },
+    } as const;
+    const program = {
+      key: "steptest",
+      version: "1.0.0",
+      description: "steps test",
+      commands: [
+        {
+          key: "run",
+          description: "run",
+          kind: "document",
+          inputSchema: stepSchema,
+          handler: (ctx) => ctx.inputsAs(),
+        },
+      ],
+    } satisfies CliProgram;
+    const cli = new Cli(program);
+    const result = await cli.invoke(["run", JSON.stringify({ steps: [{ kind: "alfa" }] })], { invocation: "cli" });
+    expect(result.kind).toBe("error");
+    expect(result.errorMsg).toBe('steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)');
+  });
 });
 
 /** Tests for parseDocumentText helper function. */

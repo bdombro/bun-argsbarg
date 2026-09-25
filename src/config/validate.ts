@@ -72,15 +72,347 @@ function formatInstancePath(instanceLocation: string): string {
   return instanceLocation;
 }
 
-function formatValidationErrors(errors: { instanceLocation: string; error: string }[]): string[] {
-  return errors.map(({ instanceLocation, error }) => {
-    const path = formatInstancePath(instanceLocation);
-    return `${path}: ${error}`;
-  });
-}
-
 function decodeJsonPointerSegment(segment: string): string {
   return segment.replace(/~1/g, "/").replace(/~0/g, "~");
+}
+
+/** cfworker keywords that only wrap a deeper, more specific failure — dropped when one survives underneath. */
+const WRAPPER_KEYWORDS = new Set([
+  "$ref",
+  "$recursiveRef",
+  "properties",
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "allOf",
+  "anyOf",
+  "oneOf",
+]);
+
+/** Raw cfworker validation error (the subset of `OutputUnit` this module reads). */
+interface RawError {
+  instanceLocation: string;
+  keyword: string;
+  keywordLocation: string;
+  error: string;
+}
+
+/** Walks a `keywordLocation` JSON Pointer against `root`, following `$ref` segments through `resolveJsonPointer`. */
+function schemaAtPointer(root: JsonSchema, keywordLocation: string): JsonSchema | unknown[] | undefined {
+  if (!keywordLocation.startsWith("#")) {
+    return undefined;
+  }
+  const segments = keywordLocation
+    .slice(1)
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map(decodeJsonPointerSegment);
+  let current: unknown = root;
+  for (const segment of segments) {
+    if (segment === "$ref") {
+      if (typeof current !== "object" || current === null || Array.isArray(current)) {
+        return undefined;
+      }
+      const ref = (current as JsonSchema).$ref;
+      if (typeof ref !== "string") {
+        return undefined;
+      }
+      current = resolveJsonPointer(root, ref);
+      continue;
+    }
+    if (typeof current !== "object" || current === null) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current as JsonSchema | unknown[] | undefined;
+}
+
+/** Walks an `instanceLocation` JSON Pointer against the validated payload. */
+function instanceAtPointer(data: unknown, instanceLocation: string): unknown {
+  if (!instanceLocation.startsWith("#")) {
+    return undefined;
+  }
+  const segments = instanceLocation
+    .slice(1)
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map(decodeJsonPointerSegment);
+  let current: unknown = data;
+  for (const segment of segments) {
+    if (typeof current !== "object" || current === null) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+/** The parent JSON Pointer of `location` (its last `/segment` removed), or `undefined` at the root. */
+function parentPointer(location: string): string | undefined {
+  const idx = location.lastIndexOf("/");
+  if (idx < 0) {
+    return undefined;
+  }
+  return location.slice(0, idx) || "#";
+}
+
+/** A discriminator property common to every branch, with each branch's set of accepted string values. */
+interface UnionDiscriminator {
+  prop: string;
+  valuesByBranch: string[][];
+}
+
+/**
+ * Finds a property present in every branch as a string `const` or all-string `enum`, whose value sets are
+ * pairwise disjoint across branches. Prefers `kind`, then `type`, then the alphabetically first eligible name.
+ */
+function unionDiscriminator(branches: unknown[]): UnionDiscriminator | undefined {
+  const objectBranches = branches.filter(
+    (b): b is JsonSchema => typeof b === "object" && b !== null && !Array.isArray(b),
+  );
+  if (objectBranches.length === 0 || objectBranches.length !== branches.length) {
+    return undefined;
+  }
+
+  const branchValuesFor = (prop: string): string[][] | undefined => {
+    const perBranch: string[][] = [];
+    for (const branch of objectBranches) {
+      const props = branch.properties;
+      const propSchema =
+        typeof props === "object" && props !== null && !Array.isArray(props)
+          ? (props as Record<string, JsonSchema>)[prop]
+          : undefined;
+      if (!propSchema || typeof propSchema !== "object") {
+        return undefined;
+      }
+      let values: string[] | undefined;
+      if (typeof propSchema.const === "string") {
+        values = [propSchema.const];
+      } else if (Array.isArray(propSchema.enum) && propSchema.enum.every((v) => typeof v === "string")) {
+        values = propSchema.enum as string[];
+      }
+      if (!values || values.length === 0) {
+        return undefined;
+      }
+      perBranch.push(values);
+    }
+    const seen = new Set<string>();
+    for (const values of perBranch) {
+      for (const v of values) {
+        if (seen.has(v)) return undefined;
+        seen.add(v);
+      }
+    }
+    return perBranch;
+  };
+
+  const candidateProps = new Set<string>();
+  for (const branch of objectBranches) {
+    const props = branch.properties;
+    if (typeof props === "object" && props !== null && !Array.isArray(props)) {
+      for (const key of Object.keys(props)) candidateProps.add(key);
+    }
+  }
+
+  const eligible: string[] = [];
+  for (const prop of candidateProps) {
+    if (branchValuesFor(prop)) eligible.push(prop);
+  }
+  if (eligible.length === 0) {
+    return undefined;
+  }
+  const prop = eligible.includes("kind") ? "kind" : eligible.includes("type") ? "type" : [...eligible].sort()[0]!;
+  return { prop, valuesByBranch: branchValuesFor(prop)! };
+}
+
+/** Sorted, comma-joined, unquoted list of values for error messages. */
+function joinSorted(values: Iterable<string>): string {
+  return [...new Set(values)].sort().join(", ");
+}
+
+/** Rewrites a single surviving cfworker error message into a terser, more actionable form. */
+function rewriteErrorMessage(err: RawError, root: JsonSchema): string {
+  const additionalPropsMatch = /^Property "(.+)" does not match additional properties schema\.$/.exec(err.error);
+  if (additionalPropsMatch) {
+    const name = additionalPropsMatch[1]!;
+    const parentLoc = parentPointer(err.keywordLocation);
+    const parentSchema = parentLoc ? schemaAtPointer(root, parentLoc) : undefined;
+    const props =
+      parentSchema && typeof parentSchema === "object" && !Array.isArray(parentSchema)
+        ? (parentSchema as JsonSchema).properties
+        : undefined;
+    const keys = props && typeof props === "object" && !Array.isArray(props) ? Object.keys(props as JsonSchema) : [];
+    const allowed = keys.sort().slice(0, 20).join(", ");
+    return `unknown property "${name}"${allowed ? ` (allowed: ${allowed})` : ""}`;
+  }
+
+  const requiredMatch = /^Instance does not have required property "(.+)"\.$/.exec(err.error);
+  if (requiredMatch) {
+    return `missing required property "${requiredMatch[1]}"`;
+  }
+
+  const enumMatch = /^Instance does not match any of (\[.*\])\.$/.exec(err.error);
+  if (enumMatch) {
+    try {
+      const values = JSON.parse(enumMatch[1]!) as unknown[];
+      return `must be one of: ${values.map((v) => String(v)).join(", ")}`;
+    } catch {
+      // fall through to the raw message
+    }
+  }
+
+  const typeMatch = /^Instance type "(.+)" is invalid\. Expected "(.+)"\.$/.exec(err.error);
+  if (typeMatch) {
+    return `must be ${typeMatch[2]} (got ${typeMatch[1]})`;
+  }
+
+  return err.error;
+}
+
+/** Maximum number of narrowed errors reported before collapsing the remainder into a count. */
+const MAX_NARROWED_ERRORS = 10;
+
+/**
+ * Post-processes raw cfworker errors: for each `anyOf`/`oneOf` failure with a discriminated union, keeps only
+ * the branch matching the instance's discriminator value (or reports one synthetic error naming what a valid
+ * discriminator looks like); drops wrapper keywords once a more specific error survives under them; drops the
+ * `additionalProperties`+`false` pair cfworker emits even for properties that are legitimately declared; then
+ * rewrites the remaining messages into terser, more actionable text.
+ */
+function narrowUnionErrors(errors: RawError[], root: JsonSchema, data: unknown): string[] {
+  const dropped = new Set<RawError>();
+  const synthetic: Array<{ instanceLocation: string; message: string }> = [];
+  // Locations of anyOf/oneOf errors resolved into a synthetic message rather than a kept branch — an ancestor
+  // wrapper (e.g. the `$ref` pointing at that anyOf, for the same instance) counts as "resolved deeper" too.
+  const syntheticReplacedLocations: Array<{ instanceLocation: string; keywordLocation: string }> = [];
+
+  // Stage 1: discriminated-union narrowing.
+  for (const err of errors) {
+    if (err.keyword !== "anyOf" && err.keyword !== "oneOf") continue;
+    const branches = schemaAtPointer(root, err.keywordLocation);
+    if (!Array.isArray(branches)) continue;
+    const discriminator = unionDiscriminator(branches);
+    if (!discriminator) continue;
+
+    // Array items reuse one schema, so keywordLocation repeats verbatim across indices — scope by
+    // instanceLocation too, or narrowing one item would wrongly swallow every other item's errors.
+    const under = errors.filter(
+      (e) =>
+        e !== err &&
+        e.keywordLocation.startsWith(`${err.keywordLocation}/`) &&
+        (e.instanceLocation === err.instanceLocation || e.instanceLocation.startsWith(`${err.instanceLocation}/`)),
+    );
+    const validValues = discriminator.valuesByBranch.flat();
+    const instance = instanceAtPointer(data, err.instanceLocation);
+
+    if (typeof instance !== "object" || instance === null || Array.isArray(instance)) {
+      dropped.add(err);
+      for (const e of under) dropped.add(e);
+      syntheticReplacedLocations.push({ instanceLocation: err.instanceLocation, keywordLocation: err.keywordLocation });
+      synthetic.push({
+        instanceLocation: err.instanceLocation,
+        message: `expected an object with "${discriminator.prop}" (one of: ${joinSorted(validValues)})`,
+      });
+      continue;
+    }
+
+    const propValue = (instance as Record<string, unknown>)[discriminator.prop];
+    if (propValue === undefined) {
+      dropped.add(err);
+      for (const e of under) dropped.add(e);
+      syntheticReplacedLocations.push({ instanceLocation: err.instanceLocation, keywordLocation: err.keywordLocation });
+      synthetic.push({
+        instanceLocation: err.instanceLocation,
+        message: `missing "${discriminator.prop}" (expected one of: ${joinSorted(validValues)})`,
+      });
+      continue;
+    }
+
+    const branchIndex = discriminator.valuesByBranch.findIndex(
+      (values) => typeof propValue === "string" && values.includes(propValue),
+    );
+    if (branchIndex < 0) {
+      dropped.add(err);
+      for (const e of under) dropped.add(e);
+      syntheticReplacedLocations.push({ instanceLocation: err.instanceLocation, keywordLocation: err.keywordLocation });
+      synthetic.push({
+        instanceLocation: `${err.instanceLocation}/${discriminator.prop}`,
+        message: `unknown ${discriminator.prop} "${String(propValue)}" (expected one of: ${joinSorted(validValues)})`,
+      });
+      continue;
+    }
+
+    const keepPrefix = `${err.keywordLocation}/${branchIndex}`;
+    dropped.add(err);
+    for (const e of under) {
+      if (e.keywordLocation === keepPrefix || e.keywordLocation.startsWith(`${keepPrefix}/`)) continue;
+      dropped.add(e);
+    }
+  }
+
+  // Stage 2: drop wrapper keywords once a more specific error survives under them, or once a descendant anyOf/oneOf
+  // was resolved into a synthetic message instead (which leaves no raw descendant error to detect otherwise).
+  const survivingAfterStage1 = errors.filter((e) => !dropped.has(e));
+  const nestsUnder = (candidateInstance: string, wrapperInstance: string) =>
+    candidateInstance === wrapperInstance || candidateInstance.startsWith(`${wrapperInstance}/`);
+  for (const err of survivingAfterStage1) {
+    if (!WRAPPER_KEYWORDS.has(err.keyword)) continue;
+    const prefix = `${err.keywordLocation}/`;
+    // Array items reuse one schema, so a wrapper's keywordLocation repeats across indices — scope by
+    // instanceLocation too, or one index's surviving error would mask another index's real problem.
+    const hasDeeper = survivingAfterStage1.some(
+      (other) =>
+        other !== err &&
+        !dropped.has(other) &&
+        other.keywordLocation.startsWith(prefix) &&
+        nestsUnder(other.instanceLocation, err.instanceLocation),
+    );
+    const hasSyntheticDeeper = syntheticReplacedLocations.some(
+      (s) => s.keywordLocation.startsWith(prefix) && nestsUnder(s.instanceLocation, err.instanceLocation),
+    );
+    if (hasDeeper || hasSyntheticDeeper) dropped.add(err);
+  }
+
+  // Stage 3: drop the additionalProperties+false pair cfworker emits for properties actually in `properties`.
+  const additionalPropsInstanceLocations = new Set(
+    errors.filter((e) => e.keyword === "additionalProperties").map((e) => e.instanceLocation),
+  );
+  for (const err of errors) {
+    if (dropped.has(err)) continue;
+    if (err.keyword === "additionalProperties") {
+      const match = /^Property "(.+)" does not match additional properties schema\.$/.exec(err.error);
+      const parentLoc = parentPointer(err.keywordLocation);
+      const parentSchema = parentLoc ? schemaAtPointer(root, parentLoc) : undefined;
+      const props =
+        match && parentSchema && typeof parentSchema === "object" && !Array.isArray(parentSchema)
+          ? (parentSchema as JsonSchema).properties
+          : undefined;
+      const declared =
+        match && props && typeof props === "object" && !Array.isArray(props)
+          ? Object.hasOwn(props as JsonSchema, match[1]!)
+          : false;
+      if (declared) dropped.add(err);
+      continue;
+    }
+    if (err.keyword === "false") {
+      const parent = parentPointer(err.instanceLocation);
+      if (parent !== undefined && additionalPropsInstanceLocations.has(parent)) {
+        dropped.add(err);
+      }
+    }
+  }
+
+  // Stage 4: rewrite surviving messages, merge in synthetic ones, cap the total.
+  const kept = errors
+    .filter((e) => !dropped.has(e))
+    .map((e) => `${formatInstancePath(e.instanceLocation)}: ${rewriteErrorMessage(e, root)}`);
+  const syntheticFormatted = synthetic.map((s) => `${formatInstancePath(s.instanceLocation)}: ${s.message}`);
+  const all = [...syntheticFormatted, ...kept];
+  if (all.length <= MAX_NARROWED_ERRORS) {
+    return all;
+  }
+  return [...all.slice(0, MAX_NARROWED_ERRORS), `…and ${all.length - MAX_NARROWED_ERRORS} more errors`];
 }
 
 /** Map a schema `$schema` URI to the @cfworker/json-schema draft (defaults to Draft-07). */
@@ -170,7 +502,7 @@ function validateInstance(
   if (result.valid) {
     return { valid: true, errors: [] };
   }
-  return { valid: false, errors: formatValidationErrors(result.errors) };
+  return { valid: false, errors: narrowUnionErrors(result.errors as RawError[], root, payload) };
 }
 
 function validateAgainstSchema(data: unknown, rootSchema: JsonSchema, partial: boolean): ValidateResult {

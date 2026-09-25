@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Discriminated `anyOf`/`oneOf` unions (every branch has a `properties` key with a string `const` or all-string `enum`, and the value sets are disjoint) now report only the branch matching the instance's discriminator value, instead of every branch's unrelated errors at once. A missing, non-string, or unmapped discriminator value collapses to one synthetic message naming the valid choices. Non-discriminated unions are unaffected. Along the way, two cfworker `@cfworker/json-schema` quirks are also cleaned up for every validated schema (not just discriminated unions): a spurious `additionalProperties` + `"False boolean schema."` pair it emits even for a property that's genuinely declared in `properties`, and dropping now-redundant wrapper errors (`$ref`, `properties`, `items`, `anyOf`, `oneOf`, …) once a more specific error survives underneath them.
+
 ## [7.1.1] - 2026-09-25
 
 ### Added
