@@ -159,7 +159,9 @@ describe("config/validate", () => {
       const refBranchSchema = {
         $schema: "http://json-schema.org/draft-07/schema#",
         type: "object",
-        properties: { steps: { type: "array", items: { anyOf: [{ $ref: "#/definitions/A" }, { $ref: "#/definitions/B" }] } } },
+        properties: {
+          steps: { type: "array", items: { anyOf: [{ $ref: "#/definitions/A" }, { $ref: "#/definitions/B" }] } },
+        },
         required: ["steps"],
         additionalProperties: false,
         definitions: {
