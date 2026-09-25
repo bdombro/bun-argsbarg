@@ -68,6 +68,7 @@ const program = {
   key: "mcp-test",
   mcpServer: {
     enabled: true,
+    instructions: "Read the fixture skill.",
     resources: [
       {
         uri: "test://hello",

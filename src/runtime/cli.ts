@@ -33,7 +33,7 @@ import { buildInvokeHookContext, classifyFailureKind, runErrorPipeline, runHook 
 import { httpServeHttp } from "../http/server.ts";
 import { LogEmitter } from "../log/emitter.ts";
 import { bootstrapMcpEnv } from "../mcp/env.ts";
-import { mcpServeStdioLoop } from "../mcp/server.ts";
+import { MCP_PROTOCOL_VERSIONS, mcpServeStdioLoop } from "../mcp/server.ts";
 import { createServerRuntime, type ServerHandleContext } from "../server/context.ts";
 import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
 import {
@@ -414,6 +414,7 @@ export class Cli {
         emitter,
         mcp: resolved,
         mcpHooks: this.program.mcpServer?.hooks,
+        mcpProtocolVersion: MCP_PROTOCOL_VERSIONS[0],
       };
       bootstrapAppConfig(this.program, { validateFile: "soft", runtime, emitter });
       const shutdown = () => {

@@ -187,6 +187,13 @@ export interface CliMcpBundleConfig {
 export interface CliMcpServerConfig {
   /** When `true`, enables the `mcp` built-in and MCP stdio server. */
   enabled: boolean;
+  /**
+   * Returned as `initialize.result.instructions`. Claude Code adds it to the system prompt of every
+   * session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or
+   * not the agent ends up using this server, so keep it to a one- or two-line pointer (e.g. when to
+   * reach for this tool, and to read the accompanying skill first) rather than usage documentation.
+   */
+  instructions?: string;
   /** MCP error response defaults. */
   errors?: CliMcpServerErrorsConfig;
   /** Observe-only hooks for JSON-RPC messages. */

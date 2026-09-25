@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `mcpServer.instructions` — an optional string returned as `initialize.result.instructions`. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`.
+- MCP protocol version negotiation: `initialize` now echoes a client's `2025-06-18` or `2024-11-05` `protocolVersion`, and answers `2025-06-18` (the newest) when the request omits it or asks for an unsupported version. Previously the server always claimed `2024-11-05` regardless of what the client sent or what fields it actually returned. `tools/list`'s `outputSchema` and `tools/call`'s `structuredContent` — both defined starting in `2025-06-18` — are now only sent for sessions that negotiated that version or later; a `2024-11-05` session no longer receives fields from a spec revision it never agreed to.
+
 ### Changed
 
 - Discriminated `anyOf`/`oneOf` unions (every branch has a `properties` key with a string `const` or all-string `enum`, and the value sets are disjoint) now report only the branch matching the instance's discriminator value, instead of every branch's unrelated errors at once. A missing, non-string, or unmapped discriminator value collapses to one synthetic message naming the valid choices. Non-discriminated unions are unaffected. Along the way, two cfworker `@cfworker/json-schema` quirks are also cleaned up for every validated schema (not just discriminated unions): a spurious `additionalProperties` + `"False boolean schema."` pair it emits even for a property that's genuinely declared in `properties`, and dropping now-redundant wrapper errors (`$ref`, `properties`, `items`, `anyOf`, `oneOf`, …) once a more specific error survives underneath them.

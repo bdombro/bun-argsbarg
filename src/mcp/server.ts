@@ -8,7 +8,11 @@ import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool 
 import type { Cli } from "../runtime/cli.ts";
 import { allMcpResources, collectMcpTools, resolveMcpServerInfo } from "./tools.ts";
 
-const MCP_PROTOCOL_VERSION = "2024-11-05";
+/** Protocol versions this server understands, newest first. `initialize` echoes a match or answers the first. */
+export const MCP_PROTOCOL_VERSIONS = ["2025-06-18", "2024-11-05"] as const;
+
+/** The first protocol version to define `outputSchema` (tools/list) and `structuredContent` (tools/call). */
+const MCP_STRUCTURED_OUTPUT_SINCE = "2025-06-18";
 
 /** JSON-RPC request shape from stdin. */
 interface JsonRpcRequest {
@@ -33,6 +37,13 @@ function writeError(id: string | number | null | undefined, code: number, messag
     id,
     error: { code, message },
   });
+}
+
+/** True when `version` is at or after {@link MCP_STRUCTURED_OUTPUT_SINCE} in {@link MCP_PROTOCOL_VERSIONS}. */
+function supportsStructuredOutput(version: string | undefined): boolean {
+  const idx = version ? (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(version) : -1;
+  const sinceIdx = (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(MCP_STRUCTURED_OUTPUT_SINCE);
+  return idx !== -1 && idx <= sinceIdx;
 }
 
 /** Handles one NDJSON request line. */
@@ -98,13 +109,23 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
   try {
     if (method === "initialize") {
       const info = resolveMcpServerInfo(root);
+      const requested = params.protocolVersion;
+      const negotiated =
+        typeof requested === "string" && (MCP_PROTOCOL_VERSIONS as readonly string[]).includes(requested)
+          ? requested
+          : MCP_PROTOCOL_VERSIONS[0];
+      if (cli.server) {
+        cli.server.mcpProtocolVersion = negotiated;
+      }
+      const instructions = root.mcpServer?.instructions;
       writeResponse({
         jsonrpc: "2.0",
         id,
         result: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
+          protocolVersion: negotiated,
           capabilities: { tools: {}, resources: {} },
           serverInfo: { name: info.name, version: info.version },
+          ...(instructions ? { instructions } : {}),
         },
       });
       await finish();
@@ -118,11 +139,12 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
     }
 
     if (method === "tools/list") {
+      const structured = supportsStructuredOutput(cli.server?.mcpProtocolVersion);
       const tools = collectMcpTools(root).map((t) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
-        ...(t.outputSchema === undefined ? {} : { outputSchema: t.outputSchema }),
+        ...(structured && t.outputSchema !== undefined ? { outputSchema: t.outputSchema } : {}),
       }));
       writeResponse({ jsonrpc: "2.0", id, result: { tools } });
       await finish();
@@ -168,10 +190,12 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
         { rpcMethod: method, toolName: name, requestId },
       );
       if (invokeResult.ok) {
+        const structured = supportsStructuredOutput(cli.server?.mcpProtocolVersion);
+        const { structuredContent: _structuredContent, ...rest } = invokeResult.mcpResult;
         writeResponse({
           jsonrpc: "2.0",
           id,
-          result: invokeResult.mcpResult,
+          result: structured ? invokeResult.mcpResult : rest,
         });
         await finish();
         return;

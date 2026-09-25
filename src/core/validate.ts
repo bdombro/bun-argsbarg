@@ -162,6 +162,10 @@ export function cliValidateProgram(program: CliProgram): void {
     throw new CliSchemaValidationError("mcpServer requires enabled: true; omit mcpServer to disable MCP");
   }
 
+  if (program.mcpServer?.instructions !== undefined && program.mcpServer.instructions.trim().length === 0) {
+    throw new CliSchemaValidationError("mcpServer.instructions must not be empty; omit it instead");
+  }
+
   if (program.httpServer !== undefined && program.httpServer.enabled !== true) {
     throw new CliSchemaValidationError("httpServer requires enabled: true; omit httpServer to disable HTTP API");
   }

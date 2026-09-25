@@ -14,6 +14,12 @@ export interface ServerHandleContext {
   mcp?: ResolvedMcpServeConfig;
   httpHooks?: CliHttpWireHooks;
   mcpHooks?: CliMcpWireHooks;
+  /**
+   * The MCP protocol version negotiated with `initialize`, or the newest supported version before
+   * `initialize` has been handled. Later requests (`tools/list`, `tools/call`) gate version-specific
+   * response fields (e.g. `outputSchema`, `structuredContent`) on this.
+   */
+  mcpProtocolVersion?: string;
 }
 
 /** Creates a fresh {@link ServerRuntime} for HTTP or MCP. */

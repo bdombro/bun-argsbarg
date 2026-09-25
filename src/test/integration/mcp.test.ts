@@ -353,6 +353,55 @@ test("MCP initialize returns tools and resources capabilities", async () => {
   expect(res.result.capabilities.resources).toBeDefined();
 });
 
+test("MCP initialize echoes a supported protocol version", async () => {
+  for (const version of ["2024-11-05", "2025-06-18"]) {
+    const responses = await mcpRequest([
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: version } },
+    ]);
+    const res = responses.get(1) as { result: { protocolVersion: string } };
+    expect(res.result.protocolVersion).toBe(version);
+  }
+});
+
+test("MCP initialize answers unsupported or missing versions with the newest", async () => {
+  for (const params of [{ protocolVersion: "2099-01-01" }, {}]) {
+    const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params }]);
+    const res = responses.get(1) as { result: { protocolVersion: string } };
+    expect(res.result.protocolVersion).toBe("2025-06-18");
+  }
+});
+
+test("2024-11-05 sessions omit outputSchema and structuredContent", async () => {
+  const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+  const responses = await mcpRequest([
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } },
+    { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+    {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "stat_owner_lookup", arguments: { path: readme, "user-name": "test" } },
+    },
+  ]);
+  const listRes = responses.get(2) as { result: { tools: { name: string; outputSchema?: unknown }[] } };
+  const lookup = listRes.result.tools.find((t) => t.name === "stat_owner_lookup");
+  expect(lookup).toBeDefined();
+  expect(lookup?.outputSchema).toBeUndefined();
+
+  const callRes = responses.get(3) as { result: { structuredContent?: unknown; isError: boolean } };
+  expect(callRes.result.isError).toBe(false);
+  expect(callRes.result.structuredContent).toBeUndefined();
+});
+
+test("MCP initialize includes configured instructions", async () => {
+  const responses = await mcpRequest(
+    [{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }],
+    { script: "src/test/mcp-integration-fixture.ts" },
+  );
+  const res = responses.get(1) as { result: { instructions?: string } };
+  expect(res.result.instructions).toBe("Read the fixture skill.");
+});
+
 test("MCP tools/list includes stat_owner_lookup", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }]);
   const res = responses.get(2) as {

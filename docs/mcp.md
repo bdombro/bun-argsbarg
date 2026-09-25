@@ -96,6 +96,7 @@ Set `mcpServer` on the **program root only** (the `CliProgram` passed to `new Cl
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
+| `instructions` | *(none)* | Returned as `initialize.result.instructions` for every negotiated protocol version. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or not the agent ends up using this server, so keep it to a one- or two-line pointer (when to reach for this tool, and to read the accompanying skill first), not usage docs. Must be non-empty when set. |
 | `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
 | `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
 | `resources` | `[]` | Custom `CliMcpResource` entries (additive; schema resource is always included) |
@@ -194,7 +195,7 @@ On success (`isError: false`):
 
 - **stdout** — first `content` text block with the handler’s captured stdout (raw, unchanged).
 - **stderr** — when non-empty, a second `content` text block with trimmed stderr (no prefix). The block’s position signals stderr; hosts may label it themselves.
-- **structuredContent** — when trimmed stdout is valid JSON, the parsed value is also returned per the [MCP tools spec](https://modelcontextprotocol.io/specification/draft/server/tools). Objects and arrays from flags like `--json` are the common case. JSON **primitives** (`true`, `42`, `"hello"`) are parsed too — a handler that prints the literal string `true` as human text would get `structuredContent: true`. Prefer objects for machine-readable output.
+- **structuredContent** — when trimmed stdout is valid JSON, the parsed value is also returned per the [MCP tools spec](https://modelcontextprotocol.io/specification/draft/server/tools) — only for `2025-06-18` sessions (see [Protocol](#protocol)); `2024-11-05` sessions get `content` only. Objects and arrays from flags like `--json` are the common case. JSON **primitives** (`true`, `42`, `"hello"`) are parsed too — a handler that prints the literal string `true` as human text would get `structuredContent: true`. Prefer objects for machine-readable output.
 
 On failure (parse error, validation error, non-zero exit, thrown error), the **full** error message is returned as text content with `isError: true` (ANSI stripped, newlines preserved). HTTP JSON `{ "error": "…" }` uses the same full text. Do not collapse headless errors to the first line.
 
@@ -312,16 +313,16 @@ mcpServer: {
 
 - **Transport:** stdio, newline-delimited JSON (NDJSON).
 - **JSON-RPC:** version `2.0`.
-- **MCP protocol version:** `2024-11-05` (reported in `initialize`).
+- **MCP protocol version negotiation:** the server supports `2025-06-18` and `2024-11-05`. `initialize` echoes `params.protocolVersion` when it's one of those; otherwise (unsupported, or omitted) it answers `2025-06-18`, the newest. The negotiated version is fixed for the lifetime of the stdio session (one `initialize` per connection) and gates `outputSchema` (`tools/list`) and `structuredContent` (`tools/call`): both are present only for `2025-06-18` sessions, since those fields are defined starting there. `2025-03-26` is not supported (it mandates JSON-RPC batching, which this server doesn't implement).
 
 ### Supported methods
 
 | Method | Description |
 | --- | --- |
-| `initialize` | Returns capabilities (`tools`, `resources`) and `serverInfo`. |
+| `initialize` | Negotiates protocol version, returns capabilities (`tools`, `resources`), `serverInfo`, and optional `instructions`. |
 | `notifications/initialized` | Acknowledged; no response (notification). |
 | `ping` | Returns `{}`. |
-| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and optional `outputSchema`. |
+| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and `outputSchema` (`2025-06-18` sessions only). |
 | `tools/call` | Runs a leaf handler; params: `name`, `arguments` (object). |
 | `resources/list` | Lists schema + custom resources. |
 | `resources/read` | Returns resource body; params: `uri`. |
