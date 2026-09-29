@@ -92,6 +92,12 @@ export interface StatusJsonOutput {
 }
 ```
 
+Root shapes:
+
+- **`interface`** or object type literal → object root (`type: "object"`, `additionalProperties: false`).
+- **Alias of a named type** (`export type Input = Inner`, `= Box<string>`, or an alias chain) → schemagen hoists the root `$ref` so the generated root is the object definition itself; `definitions` are kept so recursive references still resolve.
+- **Union** (`export type Input = A | B`) → `anyOf` root; no root `additionalProperties` (it would reject every property). As an MCP `inputSchema`/`outputSchema` it is wrapped as `{ input }` / `{ result }` — see [mcp.md — Object-rooted schemas and wrapping](mcp.md#object-rooted-schemas-and-wrapping).
+
 Handlers import types from the same module; leaves import schemas from `./__generated__`:
 
 ```typescript

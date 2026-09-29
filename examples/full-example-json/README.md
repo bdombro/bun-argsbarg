@@ -18,6 +18,7 @@ full-example-json configure install
 
 - `full-example-json echo` — Echo text back to stdout or inspect flags.
 - `full-example-json render-json` — Process structured JSON payloads with schema validation.
+- `full-example-json shape-area` — Discriminated-union JSON input (MCP clients see it wrapped as `{ input }`).
 - `full-example-json status` — Show application version with schemagen output schema (`--json`).
 - `full-example-json workspaces` — Manage workspace resources (REST CRUD with in-memory SQLite).
 

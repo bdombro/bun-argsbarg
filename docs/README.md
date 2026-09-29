@@ -17,7 +17,7 @@ Start here to pick the right guide.
 | **Bundling `myapp docs` topics** | [bundled-docs.md](bundled-docs.md) — consumer docgen vs framework docs |
 | **Agent skills** | [ai-skills.md](ai-skills.md) — repository skills (`skills/<app>/SKILL.md`) |
 | **Maintaining the argsbarg repo** | [developing.md](developing.md) — release, consumers, npm `files` |
-| **IDE agents in a consumer app** | `bunx argsbarg create` (includes `AGENTS.md`) or `bun scripts/merge-agents-md.ts .` from argsbarg checkout |
+| **IDE agents in a consumer app** | `bun x argsbarg@latest create` (includes `AGENTS.md`) or `bun scripts/merge-agents-md.ts .` from argsbarg checkout |
 | **Runnable examples** (shipped in npm) | [examples/](examples/) — see table below |
 
 ## Examples (agents: read these)

@@ -76,7 +76,7 @@ Avoid needless extraction: keep single-use helpers in the calling file by defaul
 
 ## Tooling
 
-- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
+- Bun only (`bun`, `bun x`, `bun test`). No Node/npm/pnpm.
 
 ## Documentation
 

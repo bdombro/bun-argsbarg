@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.3] - 2026-09-29
+
+### Added
+
+- MCP tools whose `inputSchema` or `outputSchema` root is not `type: "object"` (e.g. a discriminated-union `anyOf` from `export type Input = A | B`) are now wrapped for MCP as `{ input: <schema> }` / `{ result: <schema> }`, with `definitions` moved to the new root. MCP requires an object root, and the TypeScript SDK rejects anything else; previously these tools shipped schemas clients refused or showed no fields for. `tools/call` unwraps `input` before invoke (handlers and `inputSchema` validation still see the exact union) and wraps `structuredContent` under `result` to match. CLI and HTTP are unchanged. See `docs/mcp.md`.
+- Startup validation (MCP enabled only): every exposed MCP tool's served schemas must have resolvable local `$ref`s, and wrapped schemas must not use `$ref: "#"`.
+- `full-example-json` gains a `shape-area` union-input leaf demonstrating the MCP wrap.
+- `argsbarg create` drops template lines marked `# argsbarg-dev-only` from new projects. The in-repo examples use it for the `just setup` step that repairs `node_modules/.bin/argsbarg` for `file:../..` installs (now in all three templates); scaffolded projects never see it.
+
+### Changed
+
+- Docs now use `bun x` instead of `bunx`, and `create` examples use `bun x argsbarg@latest create` so scaffolding never runs a stale cached argsbarg (old templates, old `^` version in `package.json`). `create --check` examples keep `bun x argsbarg` so they check against the project's installed version.
+- The MCP plugin example now defaults to source-only Bun startup with inline Claude and Cursor MCP configuration, updated plugin recipes, unit/integration/agent-E2E guidance, and an optional Node distribution guide.
+
+### Fixed
+
+- schemagen now hoists a root `$ref` (from `export type Input = Inner`, generic aliases like `Box<string>`, or alias chains) to the object definition it names. Previously these roots had no `type: "object"` or `properties`, so MCP rejected the tool schema, `--help` showed no input rows, and Json-option/`properties` checks were skipped.
+- schemagen no longer adds `additionalProperties: false` to non-object roots. On a union root it rejected every property, so union-typed inputs never validated.
+- JSON Pointer `$ref` resolution (discriminated-union error reporting, OpenAPI dereferencing) now decodes percent-escaped segments such as `#/definitions/Box%3Cstring%3E`.
+- The `full-example` and `full-example-json` justfiles derive `tap_parent`/`tap_path` from a literal `tap := "org/repo"` instead of raw `{tapOrg}`/`{tapRepo}` placeholders, which only `create` filled in. Run in-repo, the Homebrew recipes targeted `Taps/{tapOrg}/homebrew-{tapRepo}`, and `create --check` reported drift. A new test runs `create --check` on every in-repo template as part of `just test`.
+- The MCP plugin example's release `--dry-run` now prints the planned actions without running checks, changing files, or publishing.
+
 ## [7.1.2] - 2026-09-25
 
 ### Added
@@ -1061,7 +1083,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.3...HEAD
+[7.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.3
 [7.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.2
 [7.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.1
 [7.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.0

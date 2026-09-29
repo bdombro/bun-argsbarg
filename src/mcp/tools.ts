@@ -49,10 +49,51 @@ export interface McpToolDef {
   path: string[];
   /** Leaf command node. */
   leaf: CliLeaf;
-  /** JSON Schema for tools/call arguments. */
+  /** JSON Schema for tools/call arguments (wrapped under {@link MCP_INPUT_WRAPPER_KEY} when not object-rooted). */
   inputSchema: Record<string, unknown>;
-  /** JSON Schema for structured tool results when set on the leaf `mcpTool`. */
+  /** True when {@link inputSchema} wraps the leaf schema; tools/call arguments are unwrapped before invoke. */
+  inputWrapped: boolean;
+  /** JSON Schema for structured tool results (wrapped under {@link MCP_OUTPUT_WRAPPER_KEY} when not object-rooted). */
   outputSchema?: Record<string, unknown>;
+  /** True when {@link outputSchema} wraps the leaf schema; `structuredContent` is wrapped to match. */
+  outputWrapped: boolean;
+}
+
+/** Property holding the leaf input when an MCP `inputSchema` is wrapped to get an object root. */
+export const MCP_INPUT_WRAPPER_KEY = "input";
+
+/** Property holding the leaf result when an MCP `outputSchema` is wrapped to get an object root. */
+export const MCP_OUTPUT_WRAPPER_KEY = "result";
+
+/**
+ * MCP requires `type: "object"` at the root of tool input and output schemas. Returns object-rooted
+ * schemas unchanged; wraps anything else (e.g. a discriminated-union `anyOf` root) as a single
+ * required property, moving `$schema`, `$id`, `definitions`, and `$defs` up so `#/definitions/…`
+ * references still resolve.
+ */
+export function wrapMcpRootSchema(
+  /** Leaf input or output schema. */
+  schema: Record<string, unknown>,
+  /** Wrapper property name ({@link MCP_INPUT_WRAPPER_KEY} or {@link MCP_OUTPUT_WRAPPER_KEY}). */
+  key: string,
+): { schema: Record<string, unknown>; wrapped: boolean } {
+  if (schema.type === "object") {
+    return { schema, wrapped: false };
+  }
+  const { $schema, $id, definitions, $defs, ...inner } = schema;
+  return {
+    schema: {
+      ...($schema === undefined ? {} : { $schema }),
+      ...($id === undefined ? {} : { $id }),
+      type: "object",
+      properties: { [key]: inner },
+      required: [key],
+      additionalProperties: false,
+      ...(definitions === undefined ? {} : { definitions }),
+      ...($defs === undefined ? {} : { $defs }),
+    },
+    wrapped: true,
+  };
 }
 
 /** Builds MCP tool description: "{cli path} — {description}". */
@@ -163,14 +204,18 @@ export function collectMcpTools(root: CliProgram): McpToolDef[] {
       if (isMcpHidden(cmd)) {
         return;
       }
-      const outputSchema = leafOutputSchema(cmd);
+      const input = wrapMcpRootSchema(buildLeafInputSchema(cmd), MCP_INPUT_WRAPPER_KEY);
+      const leafOutput = leafOutputSchema(cmd);
+      const output = leafOutput === undefined ? undefined : wrapMcpRootSchema(leafOutput, MCP_OUTPUT_WRAPPER_KEY);
       out.push({
         name: mcpToolName(root, path),
         description: resolveToolDescription(root, path, cmd),
         path,
         leaf: cmd,
-        inputSchema: buildLeafInputSchema(cmd),
-        ...(outputSchema === undefined ? {} : { outputSchema }),
+        inputSchema: input.schema,
+        inputWrapped: input.wrapped,
+        ...(output === undefined ? {} : { outputSchema: output.schema }),
+        outputWrapped: output?.wrapped ?? false,
       });
       return;
     }

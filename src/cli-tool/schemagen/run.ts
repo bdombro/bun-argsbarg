@@ -5,6 +5,7 @@ Generate JSON Schema artifacts under __generated__/ and write index.ts re-export
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { createGenerator } from "ts-json-schema-generator";
+import { resolveJsonPointer } from "../../core/json-pointer.ts";
 import { cleanStaleGenerated } from "./cleanup.ts";
 import { discoverSchemaRoots, type SchemaRoot } from "./discover-schema-roots.ts";
 import { GENERATED_DIR, schemaExportName, schemaJsonBasename, schemaJsonImportVar } from "./names.ts";
@@ -46,9 +47,47 @@ function generateJson(projectRoot: string, tsconfigPath: string, root: SchemaRoo
     jsDoc: "extended",
     additionalProperties: false,
   });
-  const schema = generator.createSchema(root.typeName) as Record<string, unknown>;
-  schema.additionalProperties = false;
+  const schema = hoistRootRef(generator.createSchema(root.typeName) as Record<string, unknown>, root.typeName);
+  // Only object roots: on a union root with no root `properties`, this would reject every property.
+  if (schema.type === "object") {
+    schema.additionalProperties = false;
+  }
   return schema;
+}
+
+/**
+ * Replaces a root `$ref` with the definition it names, following alias chains
+ * (`export type Input = Inner` emits `{ $ref: "#/definitions/Inner" }` even with `topRef: false`).
+ * Keeps `definitions` so nested and recursive references still resolve.
+ */
+function hoistRootRef(
+  /** Schema from ts-json-schema-generator. */
+  schema: Record<string, unknown>,
+  /** Root type name, for error messages. */
+  typeName: string,
+): Record<string, unknown> {
+  let target = schema;
+  const seen = new Set<string>();
+  while (typeof target.$ref === "string") {
+    const ref = target.$ref;
+    if (seen.has(ref)) {
+      throw new Error(`schemagen: ${typeName} root $ref cycle at ${ref}`);
+    }
+    seen.add(ref);
+    const next = resolveJsonPointer(schema, ref);
+    if (typeof next !== "object" || next === null || Array.isArray(next)) {
+      throw new Error(`schemagen: ${typeName} root $ref does not resolve: ${ref}`);
+    }
+    target = next as Record<string, unknown>;
+  }
+  if (target === schema) {
+    return schema;
+  }
+  return {
+    ...(schema.$schema === undefined ? {} : { $schema: schema.$schema }),
+    ...target,
+    ...(schema.definitions === undefined ? {} : { definitions: schema.definitions }),
+  };
 }
 
 function writeGeneratedIndex(generatedDir: string, roots: SchemaRoot[]): void {

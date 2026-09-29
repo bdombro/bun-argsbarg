@@ -93,6 +93,7 @@ full-example-json mcp
 
 - `full-example-json echo` — echo — Echo a message (MCP-friendly leaf).
 - `full-example-json render-json` — render-json — Echo a JSON message (schema-first JSON leaf demo).
+- `full-example-json shape-area` — shape-area — Compute the area of a circle or rectangle (union-input JSON leaf demo).
 - `full-example-json status` — status — Show app version.
 - `full-example-json workspaces :id delete` — workspaces :id delete — Delete a workspace.
 - `full-example-json workspaces :id get` — workspaces :id get — Get one workspace.
@@ -100,6 +101,23 @@ full-example-json mcp
 - `full-example-json workspaces :id put` — workspaces :id put — Replace a workspace.
 - `full-example-json workspaces get` — workspaces get — List workspaces.
 - `full-example-json workspaces post` — workspaces post — Create a workspace.
+
+## Tool sizes
+
+Clients read tool definitions with their own limits — a definition or description past those is truncated or read incompletely. Default limits here: description 2,048 chars, definition 51,200 bytes / 2,000 lines (override with `mcpServer.sizeLimits`).
+
+| Tool | Description (chars) | Definition (bytes) | Definition (lines) | Status |
+| --- | --- | --- | --- | --- |
+| `echo` | 42 | 326 | 17 | ok |
+| `render_json` | 64 | 443 | 19 | ok |
+| `shape_area` | 84 | 1,769 | 72 | ok |
+| `status` | 26 | 512 | 24 | ok |
+| `workspaces__id_delete` | 43 | 205 | 9 | ok |
+| `workspaces__id_get` | 39 | 198 | 9 | ok |
+| `workspaces__id_patch` | 46 | 430 | 19 | ok |
+| `workspaces__id_put` | 41 | 423 | 19 | ok |
+| `workspaces_get` | 33 | 188 | 9 | ok |
+| `workspaces_post` | 37 | 416 | 19 | ok |
 
 ## Tool arguments
 

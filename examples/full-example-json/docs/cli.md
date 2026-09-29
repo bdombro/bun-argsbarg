@@ -14,6 +14,7 @@ Argsbarg schema-first copy template (@sg schemagen, JSON schemas, REST CRUD)
 
 - `echo` — Echo a message (MCP-friendly leaf).
 - `render-json` — Echo a JSON message (schema-first JSON leaf demo).
+- `shape-area` — Compute the area of a circle or rectangle (union-input JSON leaf demo).
 - `status` — Show app version.
 - `workspaces` — Workspace collection and CRUD.
 
@@ -205,11 +206,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ##### `full-example-json echo mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 #### `full-example-json echo http`
 
@@ -422,13 +423,230 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ##### `full-example-json render-json mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 #### `full-example-json render-json http`
+
+HTTP API server for tools.
+
+> HTTP tool server on http://127.0.0.1:3000.
+> 
+> Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, /*
+> 
+> Configure app settings:
+> 
+>   full-example-json configure
+> 
+> Full setup guide: full-example-json docs http
+
+**Default subcommand:** `serve` (`missingOnly`)
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--host` | string | optional | — | Listen host. |
+| `--port` | number | optional | — | Listen port. |
+| `--trust-proxy` | flag | optional | — | Honor X-Forwarded-For for client IP. |
+| `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
+| `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
+| `--no-access-log` | flag | optional | — | Disable HTTP access logs. |
+| `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
+
+### `full-example-json shape-area`
+
+Compute the area of a circle or rectangle (union-input JSON leaf demo).
+
+#### Subcommands
+
+- `version` — Print the program version.
+- `configure` — Set up MCP config for this app (binary via Homebrew).
+- `docs` — Print bundled CLI documentation.
+- `mcp` — MCP server and bundle tools.
+- `http` — HTTP API server for tools.
+
+#### `full-example-json shape-area version`
+
+Print the program version.
+
+#### `full-example-json shape-area configure`
+
+Set up MCP config for this app (binary via Homebrew).
+
+> Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).
+> 
+> Homebrew installs the binary and shell completions only. Agent artifacts live under ~/.agents and are not written during brew install.
+> 
+> After install or upgrade:
+>   full-example-json configure install
+> 
+> Upgrade:
+>   brew upgrade full-example-json
+>   full-example-json configure install
+> 
+> Shell completions are installed by Homebrew during brew install.
+> See: https://docs.brew.sh/Shell-Completion
+> 
+> See what is installed:
+>   full-example-json configure status
+> 
+> Uninstall:
+>   full-example-json configure uninstall
+>   brew uninstall <tap>/full-example-json
+> 
+> Use `configure status --json` for machine-readable output.
+
+#### Subcommands
+
+- `install` — Install agent artifacts and bootstrap app config.
+- `uninstall` — Remove agent artifacts and app config.
+- `status` — Print what is currently installed (read-only).
+
+##### `full-example-json shape-area configure install`
+
+Install agent artifacts and bootstrap app config.
+
+##### `full-example-json shape-area configure uninstall`
+
+Remove agent artifacts and app config.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--yes` (`-y`) | flag | optional | — | Skip uninstall confirmation. |
+
+##### `full-example-json shape-area configure status`
+
+Print what is currently installed (read-only).
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | flag | optional | — | Print status JSON on stdout. |
+
+#### `full-example-json shape-area docs`
+
+Print bundled CLI documentation.
+
+> Topics print to stdout. Add --save to write files under ./docs/.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+#### Subcommands
+
+- `readme` — Print README (user guide).
+- `mcp` — Print MCP server setup and tool guidance.
+- `http` — Print HTTP API setup and tool guidance.
+- `openapi` — Print the HTTP OpenAPI 3.1 document as JSON.
+- `cli-schema` — Print the full CLI command tree as JSON.
+- `cli` — Print the full command reference as markdown.
+
+##### `full-example-json shape-area docs readme`
+
+Print README (user guide).
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+##### `full-example-json shape-area docs mcp`
+
+Print MCP server setup and tool guidance.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+##### `full-example-json shape-area docs http`
+
+Print HTTP API setup and tool guidance.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+##### `full-example-json shape-area docs openapi`
+
+Print the HTTP OpenAPI 3.1 document as JSON.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+##### `full-example-json shape-area docs cli-schema`
+
+Print the full CLI command tree as JSON.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+##### `full-example-json shape-area docs cli`
+
+Print the full command reference as markdown.
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--save` | flag | optional | — | Write documentation to ./docs/. |
+
+#### `full-example-json shape-area mcp`
+
+MCP server and bundle tools.
+
+> Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:
+> 
+>   command: full-example-json
+>   args: mcp
+> 
+> Or:
+> 
+>   full-example-json configure
+> 
+> Full setup guide: full-example-json docs mcp
+
+**Default subcommand:** `serve` (`missingOnly`)
+
+#### Options
+
+| Option | Type | Required | Format / default | Description |
+| --- | --- | --- | --- | --- |
+| `--obscure-errors` | flag | optional | — | Hide unexpected errors from clients. |
+| `--log-format` | enum (`json`, `text`) | optional | — | Log format: json (ECS Logging) or text. |
+| `--log-file` | string | optional | — | Append logs to this file (relative → app config dir). |
+| `--dev` | flag | optional | — | Print full stacks to stderr on errors. |
+
+#### Subcommands
+
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
+
+##### `full-example-json shape-area mcp bundle`
+
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
+
+#### `full-example-json shape-area http`
 
 HTTP API server for tools.
 
@@ -667,11 +885,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ##### `full-example-json status mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 #### `full-example-json status http`
 
@@ -894,11 +1112,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces get mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ##### `full-example-json workspaces get http`
 
@@ -1111,11 +1329,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces post mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ##### `full-example-json workspaces post http`
 
@@ -1339,11 +1557,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id get mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id get http`
 
@@ -1556,11 +1774,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id put mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id put http`
 
@@ -1773,11 +1991,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id patch mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id patch http`
 
@@ -1990,11 +2208,11 @@ MCP server and bundle tools.
 
 #### Subcommands
 
-- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+- `bundle` — Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id delete mcp bundle`
 
-Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip) from dist/<key>.
+Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.
 
 ###### `full-example-json workspaces :id delete http`
 

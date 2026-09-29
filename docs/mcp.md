@@ -192,6 +192,26 @@ This maps to argv: `stat owner lookup --json --user-name alice /path/to/file`.
 
 Tool arguments use **long option names** only (`user-name`, not `-u`). Short aliases from your schema are not accepted in MCP tool calls.
 
+#### Object-rooted schemas and wrapping
+
+MCP requires `type: "object"` at the root of every tool `inputSchema` and `outputSchema`. Object-rooted leaf schemas (every schemagen `interface`, every synthesized options/positionals schema) are served as-is. Any other root — typically a discriminated union (`anyOf`/`oneOf`) from `export type Input = A | B` — is **wrapped** under a single required property, and `$schema`, `$id`, `definitions`, and `$defs` move up to the new root so `#/definitions/…` references still resolve:
+
+```json
+{
+  "type": "object",
+  "properties": { "input": { "anyOf": [{ "$ref": "#/definitions/Circle" }, { "$ref": "#/definitions/Rect" }] } },
+  "required": ["input"],
+  "additionalProperties": false,
+  "definitions": { "Circle": { "…": "…" }, "Rect": { "…": "…" } }
+}
+```
+
+- **Arguments** — clients send `{ "input": { "kind": "circle", "radius": 1 } }`. argsbarg unwraps `input` before invoke, so handlers, `ctx.inputs`, and `inputSchema` validation see the bare object (the exact union, unchanged). Extra top-level keys or a non-object `input` fail with a validation error.
+- **Results** — a wrapped `outputSchema` nests under `result`, and `structuredContent` is wrapped to match (`{ "result": [ … ] }`).
+- **CLI and HTTP are unaffected** — only MCP `tools/list` and `tools/call` see the wrapper.
+
+When MCP is enabled, startup validation checks every exposed tool's served schemas: each local `$ref` must resolve, and a wrapped schema must not use `$ref: "#"` (after wrapping it would point at the wrapper — reference a named definition instead). See `examples/full-example-json` `shape-area` for a union-input leaf.
+
 ### Tool results
 
 On success (`isError: false`):

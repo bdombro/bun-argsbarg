@@ -10,6 +10,7 @@ import {
   applyCreate,
   type CreateOptions,
   classNameFromKey,
+  DEV_ONLY_MARKER,
   diffCreate,
   diffCreateDetails,
   renderCreateTree,
@@ -38,6 +39,19 @@ function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
 
 /** Tests for argsbarg create. */
 describe("argsbarg create", () => {
+  test("in-repo example templates match their own create output", () => {
+    for (const example of ["full-example", "full-example-json", "mcp-plugin"]) {
+      const dir = join(import.meta.dir, "../../examples", example);
+      expect({ example, drift: diffCreate(dir, { check: true }) }).toEqual({ example, drift: [] });
+    }
+  });
+
+  test("drops argsbarg-dev-only lines outside the in-repo template", () => {
+    const content = `setup:\n    bun install\n    ln -sf a b ${DEV_ONLY_MARKER}: fix link\n    just schemagen\n`;
+    expect(substituteTemplateContent(content, baseOpts())).toBe("setup:\n    bun install\n    just schemagen\n");
+    expect(substituteTemplateContent(content, baseOpts({ devTemplate: true }))).toBe(content);
+  });
+
   test("substitutes {key} tokens", () => {
     const out = substituteTemplateContent(
       "key={key} class={className} env={envPrefix}_API_TOKEN tap={tap} org={tapOrg}",

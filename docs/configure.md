@@ -177,8 +177,8 @@ Do **not** use `post_install` or `def uninstall` for agent artifacts — Homebre
 ## Bootstrapping a new CLI
 
 ```bash
-bunx argsbarg create my-cli --key my-cli --class-name MyCli --tap org/repo --yes
-bunx argsbarg create --check .
+bun x argsbarg@latest create my-cli --key my-cli --class-name MyCli --tap org/repo --yes
+bun x argsbarg create --check .
 ```
 
 See [distribution-homebrew.md](distribution-homebrew.md) and [../examples/full-example/README.md](../examples/full-example/README.md).

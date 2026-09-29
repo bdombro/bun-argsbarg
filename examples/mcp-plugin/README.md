@@ -6,12 +6,16 @@ Argsbarg MCP plugin template for Cursor and Claude Code marketplaces (@sg schema
 
 `mcp-plugin` packages an MCP server and agent skills directly for Cursor and Claude Code marketplaces:
 
-- **Cursor Plugin**: `.cursor-plugin/plugin.json` and `mcp.json` running `${CURSOR_PLUGIN_ROOT}/scripts/mcp.mjs` via `node`.
-- **Claude Code Plugin**: `.claude-plugin/plugin.json` and `.mcp.json` running `${CLAUDE_PLUGIN_ROOT}/scripts/mcp.mjs` via `node`.
+- **Cursor Plugin**: inline MCP configuration in `.cursor-plugin/plugin.json` runs `bun --cwd ${CURSOR_PLUGIN_ROOT} start`.
+- **Claude Code Plugin**: inline MCP configuration in `.claude-plugin/plugin.json` runs `bun --cwd ${CLAUDE_PLUGIN_ROOT} start`.
 - **In-repo skills**: `skills/mcp-plugin/SKILL.md` discovered and loaded by agent platforms.
-- **Standalone runner**: `bun build --target=node src/index.ts --outfile scripts/mcp.mjs` creates an inlined, zero-npm-install script.
+- **Source-only distribution**: TypeScript and `bun.lock` are shipped; dependencies and generated schemas are prepared locally. No compiled bundle is shipped.
 
 ## Installation
+
+Requires Bun >=1.3 on the host's PATH, a writable plugin directory, and network access for uncached dependencies. `bun start` installs locked dependencies and generates schemas before starting MCP. Setup output goes to stderr; stdout contains only MCP messages. Startup stops if preparation fails.
+
+The in-repo example retains its `argsbarg: file:../..` development dependency. Before distributing a standalone copy, resolve that dependency for the destination repository and regenerate its lockfile; the parent-checkout path is not portable.
 
 ### Cursor
 
@@ -23,8 +27,10 @@ Recommended: add the GitHub repo as a marketplace, then install:
 
 ```bash
 /plugin marketplace add <owner>/<repo>
-/plugin install mcp-plugin@<repo>
+/plugin install mcp-plugin@mcp-plugin
 ```
+
+The marketplace name comes from `.claude-plugin/marketplace.json`, not the repository name.
 
 Once merged into [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official), install via `/plugin install mcp-plugin@claude-plugins-official`.
 
@@ -52,15 +58,17 @@ cd bun-argsbarg/examples/mcp-plugin
 # Install dependencies and generate schemas
 just setup
 
-# Build standalone MCP bundle
-just build
-
-# Test MCP server directly with node
-node ./scripts/mcp.mjs mcp
+# Run the source-only MCP server
+bun start
 
 # Link into local Cursor plugins for live testing
-just install-plugin-cursor
+just plugin-cursor-upsert
+
+# Register this checkout as a marketplace and install in Claude Code
+just plugin-claude-install
 ```
+
+Restart Claude Code after installing. Use `bun src/index.ts <command>` for CLI commands; `bun start` is specifically the MCP entry point. In-repo development uses `just setup` to repair the local dependency's CLI executable link.
 
 ## Documentation
 
@@ -70,3 +78,4 @@ just install-plugin-cursor
 | MCP tools | [docs/mcp.md](docs/mcp.md) or `mcp-plugin docs mcp` |
 | HTTP API | [docs/http.md](docs/http.md) or `mcp-plugin docs http` |
 | OpenAPI 3.1 | [docs/openapi.json](docs/openapi.json) |
+| Optional Node distribution | [docs/node-distro.md](docs/node-distro.md) |

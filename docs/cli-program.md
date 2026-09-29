@@ -582,7 +582,7 @@ Agents do **not** discover package docs automatically. Wire them in after `bun a
 bun scripts/merge-agents-md.ts .
 ```
 
-`bunx argsbarg create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`) into new projects automatically.
+`bun x argsbarg@latest create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`) into new projects automatically.
 
 2. **Add app-specific sections below the managed block** (recommended). The framework baseline lives between `<!-- argsbarg:managed -->` and `<!-- /argsbarg:managed -->` at the top of the file. All application-specific sections (`## Tooling`, `## Documentation`, `## App conventions`, custom rules) live below the closing marker where they take precedence over framework defaults. Example:
 

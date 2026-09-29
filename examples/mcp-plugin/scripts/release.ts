@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /*
-Bump version, build standalone Node MCP server, and publish release tag.
+Bump version and publish a source-only Bun plugin release tag.
 */
 
 import * as fs from "node:fs";
@@ -76,26 +76,25 @@ async function runRelease(
   /** Parsed CLI options. */
   options: ReleaseOptions,
 ): Promise<void> {
+  const currentVersion = readCurrentVersion();
+  const newVersion = applyBump(currentVersion, bump);
+  if (options.dryRun) {
+    console.log(
+      `[dry-run] Would run checks, bump ${currentVersion} to ${newVersion}, update the changelog, regenerate docs, commit, tag v${newVersion}, push, and create a GitHub release.`,
+    );
+    return;
+  }
+
   const testResult = await $`just test`.nothrow();
   if (testResult.exitCode !== 0) process.exit(testResult.exitCode);
 
-  const currentVersion = readCurrentVersion();
-  const newVersion = applyBump(currentVersion, bump);
   console.log(`Releasing ${currentVersion} → ${newVersion}`);
 
   updateVersion(newVersion);
   updateChangelog(newVersion);
 
-  const buildResult = await $`just build`.nothrow();
-  if (buildResult.exitCode !== 0) process.exit(buildResult.exitCode);
-
   const docgenResult = await $`just docgen`.nothrow();
   if (docgenResult.exitCode !== 0) process.exit(docgenResult.exitCode);
-
-  if (options.dryRun) {
-    console.log(`[dry-run] Would commit, tag v${newVersion}, and create GitHub release.`);
-    return;
-  }
 
   await commitAndTag(newVersion);
   await createGithubRelease(`v${newVersion}`);

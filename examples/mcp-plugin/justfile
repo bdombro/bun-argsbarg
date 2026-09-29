@@ -7,10 +7,6 @@ export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
 _:
     @just --list
 
-# Bundle the standalone Node MCP server script
-build:
-    bun build ./src/index.ts --target=node --outfile=./scripts/mcp.mjs
-
 # Run schemagen, typecheck, and format
 check: schemagen format typecheck
 
@@ -52,15 +48,20 @@ format:
 http:
     @just run http
 
-# Link plugin into ~/.cursor/plugins/local/mcp-plugin for local testing
-install-plugin-cursor: build
-    mkdir -p ~/.cursor/plugins/local
-    ln -sfn '{{justfile_directory()}}' ~/.cursor/plugins/local/mcp-plugin
-    @echo "Linked MCP plugin to ~/.cursor/plugins/local/mcp-plugin"
-
 # Lint sources without writing
 lint:
     bun run biome check ./src ./scripts
+
+# Install the Claude Code plugin from this checkout (restart Claude Code afterwards)
+plugin-claude-install:
+    claude plugin marketplace add "$(pwd)"
+    claude plugin install mcp-plugin@mcp-plugin
+
+# Link plugin into ~/.cursor/plugins/local/mcp-plugin for local testing
+plugin-cursor-upsert:
+    mkdir -p ~/.cursor/plugins/local
+    ln -sfn '{{justfile_directory()}}' ~/.cursor/plugins/local/mcp-plugin
+    @echo "Linked MCP plugin to ~/.cursor/plugins/local/mcp-plugin"
 
 # Run the CLI from source once
 run *ARGS:
@@ -73,14 +74,14 @@ schemagen:
 # Install bun/npm dependencies and generate schemas
 setup:
     bun install
-    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg
+    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg # argsbarg-dev-only: fix link for file:../.. installs
     just schemagen
 
 # Run unit tests (after check)
 test: check
     bun test .
 
-# Bump version, build, publish release
+# Bump version and publish a source-only release
 release *ARGS:
     bun scripts/release.ts {{ARGS}}
 

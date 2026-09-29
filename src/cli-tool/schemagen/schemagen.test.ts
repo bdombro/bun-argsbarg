@@ -48,7 +48,12 @@ function writeSrcFile(root: string, relPath: string, body: string): void {
 describe("schemagen", () => {
   test("discovers @sg types in full-example-json", () => {
     const roots = discoverSchemaRoots(exampleRoot);
-    expect(roots.map((r) => r.typeName).sort()).toEqual(["RenderJsonInput", "StatusJsonOutput", "WorkspaceNameInput"]);
+    expect(roots.map((r) => r.typeName).sort()).toEqual([
+      "RenderJsonInput",
+      "ShapeAreaInput",
+      "StatusJsonOutput",
+      "WorkspaceNameInput",
+    ]);
   });
 
   test("maps type names to __generated__ filenames and export names", () => {
@@ -58,7 +63,7 @@ describe("schemagen", () => {
 
   test("runSchemagen writes __generated__ artifacts in full-example-json", () => {
     const counts = runSchemagen({ projectRoot: exampleRoot });
-    expect(counts).toEqual({ schemas: 3 });
+    expect(counts).toEqual({ schemas: 4 });
   });
 
   test("discovers @sg roots and writes named schema artifacts", () => {
@@ -229,5 +234,85 @@ export interface DupType {
     );
 
     expect(() => discoverSchemaRoots(root)).toThrow("duplicate schema root type DupType");
+  });
+
+  describe("root normalization", () => {
+    /** Writes one `@sg` type (plus helper types) and returns its generated schema. */
+    function generate(typeName: string, body: string): Record<string, unknown> {
+      const root = makeTempProject();
+      writeSrcFile(root, "src/commands/demo/types.ts", body);
+      runSchemagen({ projectRoot: root });
+      const path = join(root, "src/commands/demo/__generated__", schemaJsonBasename(typeName));
+      return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    }
+
+    test("hoists an alias root $ref to an object root", () => {
+      const schema = generate(
+        "AliasInput",
+        `export interface Inner {
+  name: string;
+}
+/** @sg */
+export type AliasInput = Inner;
+`,
+      );
+      expect(schema.$ref).toBeUndefined();
+      expect(schema.type).toBe("object");
+      expect(schema.properties).toEqual({ name: { type: "string" } });
+      expect(schema.additionalProperties).toBe(false);
+    });
+
+    test("follows alias chains and percent-encoded generic refs", () => {
+      const chain = generate(
+        "ChainInput",
+        `export interface Inner {
+  name: string;
+}
+export type Mid = Inner;
+/** @sg */
+export type ChainInput = Mid;
+`,
+      );
+      expect(chain.type).toBe("object");
+      expect(chain.properties).toEqual({ name: { type: "string" } });
+
+      const generic = generate(
+        "GenericInput",
+        `export interface Box<T> {
+  value: T;
+}
+/** @sg */
+export type GenericInput = Box<string>;
+`,
+      );
+      expect(generic.type).toBe("object");
+      expect(generic.properties).toEqual({ value: { type: "string" } });
+    });
+
+    test("keeps definitions so recursive references still resolve", () => {
+      const schema = generate(
+        "TreeInput",
+        `export interface Tree {
+  name: string;
+  children?: Tree[];
+}
+/** @sg */
+export type TreeInput = Tree;
+`,
+      );
+      expect(schema.type).toBe("object");
+      expect((schema.definitions as Record<string, unknown>).Tree).toBeDefined();
+    });
+
+    test("leaves union roots without a root additionalProperties", () => {
+      const schema = generate(
+        "UnionInput",
+        `/** @sg */
+export type UnionInput = { kind: "a"; a: string } | { kind: "b"; b: number };
+`,
+      );
+      expect(Array.isArray(schema.anyOf)).toBe(true);
+      expect(schema.additionalProperties).toBeUndefined();
+    });
   });
 });

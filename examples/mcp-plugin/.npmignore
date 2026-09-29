@@ -3,3 +3,4 @@ dist/
 Formula/.staging/
 .private/
 .DS_Store
+**/__generated__/

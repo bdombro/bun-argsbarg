@@ -10,7 +10,8 @@
   },
   "scripts": {
     "biome": "biome",
-    "start": "bun run src/index.ts"
+    "prestart": "bun install --frozen-lockfile 1>&2 && bun run argsbarg schemagen 1>&2",
+    "start": "bun src/index.ts mcp"
   },
   "dependencies": {
     "argsbarg": "file:../.."

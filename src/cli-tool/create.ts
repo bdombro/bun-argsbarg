@@ -263,6 +263,12 @@ function tokenMap(opts: CreateOptions): Record<string, string> {
   };
 }
 
+/**
+ * Trailing comment marking a template line that only makes sense inside the argsbarg repo (e.g. the
+ * `.bin/argsbarg` symlink fix for `file:../..` installs). `create` drops these lines from new projects.
+ */
+export const DEV_ONLY_MARKER = "# argsbarg-dev-only";
+
 /** Substitute \`{key}\`-style placeholders; also replace template identity literals. */
 export function substituteTemplateContent(content: string, opts: CreateOptions): string {
   const tmpl = templateIdentity(opts.templateId);
@@ -303,6 +309,9 @@ export function substituteTemplateContent(content: string, opts: CreateOptions):
 
   if (!opts.devTemplate) {
     out = out
+      .split("\n")
+      .filter((line) => !line.includes(DEV_ONLY_MARKER))
+      .join("\n")
       .replace(/"argsbarg":\s*"workspace:\*"/, `"argsbarg": "^${argsbargVersion}"`)
       .replace(/"argsbarg":\s*"file:\.\.\/\.\."/, `"argsbarg": "^${argsbargVersion}"`);
   }

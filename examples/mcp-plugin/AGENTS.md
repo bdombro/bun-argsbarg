@@ -76,11 +76,24 @@ Avoid needless extraction: keep single-use helpers in the calling file by defaul
 
 ## Tooling
 
-- Bun only (`bun`, `bunx`, `bun test`). No Node/npm/pnpm.
+- Use Bun for development and the default plugin runtime (`bun`, `bun x`, `bun test`).
+- `bun start` installs locked dependencies, generates schemas, then starts MCP. Keep setup output on stderr; stdout is the MCP protocol.
+- Ship source, `bun.lock`, and inline plugin manifests. Do not ship `node_modules`, generated schemas, or a compiled bundle.
+- Node distribution is an explicit alternative documented in `docs/node-distro.md`; do not change the default runtime implicitly.
+
+## Testing Boundaries
+
+- Use the cheapest test level that establishes the behavior. Reuse existing tests and helpers.
+- Unit/offline: deterministic parsing, validation, state changes, and request planning. Keep these tests independent of live services and paid agents.
+- Integration: contracts unit tests cannot establish, such as clean plugin installation, MCP startup/transport, or actual external persistence. Do not duplicate unit coverage with live calls.
+- Agent E2E: safe user-task completion and agent efficiency. Check outcomes and protected content, not exact tool-call sequences or exhaustive protocol details. Run explicitly, never as part of the default unit test command.
+- When E2E exposes a tool bug, reproduce and fix it in unit tests first; use integration only where necessary. Check verifier changes offline against retained or synthetic evidence before another paid run.
+- Attribute agent failures and recovery from observable evidence. A failed call alone does not establish task failure or a tool defect.
 
 ## Documentation
 
 - `README.md` — user-facing install/commands
+- `docs/node-distro.md` — optional conversion from source-only Bun plugins to a bundled Node MCP distribution
 - `docs/architecture.md` — maintainer internals (create if missing)
 - Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
 - `skills/mcp-plugin/SKILL.md` — agent skill router (scaffolded from template; customize as needed)

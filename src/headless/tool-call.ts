@@ -10,7 +10,13 @@ import { apiErrorResponse, apiSuccessResponse, stripAnsi } from "../http/result.
 import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
 import { obscureUnexpectedClientMessage } from "../log/emitter.ts";
 import { buildToolCallSuccessFromResponse } from "../mcp/result.ts";
-import { collectMcpTools, type McpToolDef, mcpToolCallToArgv } from "../mcp/tools.ts";
+import {
+  collectMcpTools,
+  MCP_INPUT_WRAPPER_KEY,
+  MCP_OUTPUT_WRAPPER_KEY,
+  type McpToolDef,
+  mcpToolCallToArgv,
+} from "../mcp/tools.ts";
 import type { Cli, CliInvokeResult } from "../runtime/cli.ts";
 
 /** Outcome of resolving a tool name against the program schema. */
@@ -86,8 +92,31 @@ function noResponseFailure(result: CliInvokeResult): HeadlessToolCallFailure {
   };
 }
 
+/** Pre-invoke argument failure (bad shape or argv conversion error). */
+function argvFailure(
+  /** Client-facing error message. */
+  message: string,
+): HeadlessToolCallFailure {
+  return { ok: false, kind: "argv", message, exitCode: 1, stdout: "", stderr: "", failureKind: "validation" };
+}
+
+/** Returns the leaf input from wrapped tool arguments (`{ input: {...} }`), or `undefined` when malformed. */
+function unwrapToolArgs(
+  /** Raw tools/call arguments. */
+  args: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const inner = args[MCP_INPUT_WRAPPER_KEY];
+  const onlyWrapperKey = Object.keys(args).every((key) => key === MCP_INPUT_WRAPPER_KEY);
+  if (!onlyWrapperKey || typeof inner !== "object" || inner === null || Array.isArray(inner)) {
+    return undefined;
+  }
+  return inner as Record<string, unknown>;
+}
+
 /**
  * Converts flat tool arguments to argv and invokes the leaf handler headlessly.
+ * Wrapped tools (see `wrapMcpRootSchema`) receive `{ input: {...} }`, unwrapped here, and return
+ * `structuredContent` wrapped as `{ result: ... }` to match their `outputSchema`.
  */
 export async function executeHeadlessToolCall(
   cli: Cli,
@@ -96,20 +125,19 @@ export async function executeHeadlessToolCall(
   invocation: CliInvocation,
   mcp?: { rpcMethod: string; toolName?: string; requestId: string },
 ): Promise<HeadlessToolCallResult> {
-  const argvResult = mcpToolCallToArgv(cli.program, tool, args);
-  if ("error" in argvResult) {
-    return {
-      ok: false,
-      kind: "argv",
-      message: argvResult.error,
-      exitCode: 1,
-      stdout: "",
-      stderr: "",
-      failureKind: "validation",
-    };
+  const leafArgs = tool.inputWrapped ? unwrapToolArgs(args) : args;
+  if (leafArgs === undefined) {
+    return argvFailure(
+      `Tool arguments must be an object with a single "${MCP_INPUT_WRAPPER_KEY}" object property (see inputSchema)`,
+    );
   }
 
-  const invokeResult = await cli.invoke(argvResult, { invocation, toolArgs: args, mcp });
+  const argvResult = mcpToolCallToArgv(cli.program, tool, leafArgs);
+  if ("error" in argvResult) {
+    return argvFailure(argvResult.error);
+  }
+
+  const invokeResult = await cli.invoke(argvResult, { invocation, toolArgs: leafArgs, mcp });
   if (invokeResult.kind === "help") {
     return invokeFailure(invokeResult);
   }
@@ -119,7 +147,9 @@ export async function executeHeadlessToolCall(
     return {
       ok: true,
       response: invokeResult.response,
-      mcpResult,
+      mcpResult: tool.outputWrapped
+        ? { ...mcpResult, structuredContent: { [MCP_OUTPUT_WRAPPER_KEY]: mcpResult.structuredContent } }
+        : mcpResult,
     };
   }
 
@@ -143,15 +173,7 @@ export async function executeHttpRouteCall(
 ): Promise<HeadlessToolCallResult> {
   const argvResult = httpRequestToArgv(cli.program, route, pathParams, query, body);
   if ("error" in argvResult) {
-    return {
-      ok: false,
-      kind: "argv",
-      message: argvResult.error,
-      exitCode: 1,
-      stdout: "",
-      stderr: "",
-      failureKind: "validation",
-    };
+    return argvFailure(argvResult.error);
   }
 
   const toolArgs = { ...body, ...query, ...pathParams };

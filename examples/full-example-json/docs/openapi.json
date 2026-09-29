@@ -19,6 +19,10 @@
       "description": "Echo a JSON message (schema-first JSON leaf demo)."
     },
     {
+      "name": "shape-area",
+      "description": "Compute the area of a circle or rectangle (union-input JSON leaf demo)."
+    },
+    {
       "name": "status",
       "description": "Show app version."
     },
@@ -470,6 +474,157 @@
                   "message"
                 ],
                 "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shape-area": {
+      "post": {
+        "tags": [
+          "shape-area"
+        ],
+        "operationId": "_shape-area",
+        "summary": "Compute the area of a circle or rectangle (union-input JSON leaf demo).",
+        "responses": {
+          "201": {
+            "description": "Successful invocation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid arguments or help requested",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Handler error",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready or missing required config",
+            "content": {
+              "application/json; charset=utf-8": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json; charset=utf-8": {
+              "schema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "circle",
+                        "description": "Shape discriminator."
+                      },
+                      "radius": {
+                        "type": "number",
+                        "description": "Circle radius."
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "radius"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A circle, measured by radius."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "rect",
+                        "description": "Shape discriminator."
+                      },
+                      "width": {
+                        "type": "number",
+                        "description": "Rectangle width."
+                      },
+                      "height": {
+                        "type": "number",
+                        "description": "Rectangle height."
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A rectangle, measured by width and height."
+                  }
+                ],
+                "description": "Shape to measure: a circle or a rectangle."
               }
             }
           }

@@ -5,6 +5,7 @@ CLI value coercion for configure set remains here (comma-separated arrays, boole
 
 import { format as jsonSchemaFormats, type Schema, type SchemaDraft, Validator } from "@cfworker/json-schema";
 import { parseCommaList, parseDate, parseDateTime, validateCommaList } from "../core/formats.ts";
+import { decodeJsonPointerSegment, resolveJsonPointer } from "../core/json-pointer.ts";
 import { isFrameworkConfigKey } from "./bindings.ts";
 
 type JsonSchema = Record<string, unknown>;
@@ -70,10 +71,6 @@ function formatInstancePath(instanceLocation: string): string {
     return instanceLocation.slice(2).replace(/\//g, ".");
   }
   return instanceLocation;
-}
-
-function decodeJsonPointerSegment(segment: string): string {
-  return segment.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 
 /** cfworker keywords that only wrap a deeper, more specific failure — dropped when one survives underneath. */
@@ -235,8 +232,12 @@ function unionDiscriminator(branches: unknown[], root: JsonSchema): UnionDiscrim
   if (eligible.length === 0) {
     return undefined;
   }
-  const prop = eligible.includes("kind") ? "kind" : eligible.includes("type") ? "type" : [...eligible].sort()[0]!;
-  return { prop, valuesByBranch: branchValuesFor(prop)! };
+  const prop = eligible.includes("kind") ? "kind" : eligible.includes("type") ? "type" : [...eligible].sort()[0];
+  const valuesByBranch = prop === undefined ? undefined : branchValuesFor(prop);
+  if (prop === undefined || valuesByBranch === undefined) {
+    return undefined;
+  }
+  return { prop, valuesByBranch };
 }
 
 /** Sorted, comma-joined, unquoted list of values for error messages. */
@@ -248,7 +249,7 @@ function joinSorted(values: Iterable<string>): string {
 function rewriteErrorMessage(err: RawError, root: JsonSchema): string {
   const additionalPropsMatch = /^Property "(.+)" does not match additional properties schema\.$/.exec(err.error);
   if (additionalPropsMatch) {
-    const name = additionalPropsMatch[1]!;
+    const name = additionalPropsMatch[1] ?? "";
     const parentLoc = parentPointer(err.keywordLocation);
     const parentSchema = parentLoc ? schemaAtPointer(root, parentLoc) : undefined;
     const props =
@@ -268,7 +269,7 @@ function rewriteErrorMessage(err: RawError, root: JsonSchema): string {
   const enumMatch = /^Instance does not match any of (\[.*\])\.$/.exec(err.error);
   if (enumMatch) {
     try {
-      const values = JSON.parse(enumMatch[1]!) as unknown[];
+      const values = JSON.parse(enumMatch[1] ?? "") as unknown[];
       return `must be one of: ${values.map((v) => String(v)).join(", ")}`;
     } catch {
       // fall through to the raw message
@@ -394,16 +395,16 @@ function narrowUnionErrors(errors: RawError[], root: JsonSchema, data: unknown):
   for (const err of errors) {
     if (dropped.has(err)) continue;
     if (err.keyword === "additionalProperties") {
-      const match = /^Property "(.+)" does not match additional properties schema\.$/.exec(err.error);
+      const name = /^Property "(.+)" does not match additional properties schema\.$/.exec(err.error)?.[1];
       const parentLoc = parentPointer(err.keywordLocation);
       const parentSchema = parentLoc ? schemaAtPointer(root, parentLoc) : undefined;
       const props =
-        match && parentSchema && typeof parentSchema === "object" && !Array.isArray(parentSchema)
+        name !== undefined && parentSchema && typeof parentSchema === "object" && !Array.isArray(parentSchema)
           ? (parentSchema as JsonSchema).properties
           : undefined;
       const declared =
-        match && props && typeof props === "object" && !Array.isArray(props)
-          ? Object.hasOwn(props as JsonSchema, match[1]!)
+        name !== undefined && props && typeof props === "object" && !Array.isArray(props)
+          ? Object.hasOwn(props as JsonSchema, name)
           : false;
       if (declared) dropped.add(err);
       continue;
@@ -448,25 +449,6 @@ export function resolveSchemaDraft(schema: JsonSchema): SchemaDraft {
     return "7";
   }
   return "7";
-}
-
-function resolveJsonPointer(root: JsonSchema, ref: string): unknown {
-  if (!ref.startsWith("#/")) {
-    return undefined;
-  }
-  const segments = ref
-    .slice(2)
-    .split("/")
-    .filter((segment) => segment.length > 0)
-    .map(decodeJsonPointerSegment);
-  let current: unknown = root;
-  for (const segment of segments) {
-    if (typeof current !== "object" || current === null || Array.isArray(current)) {
-      return undefined;
-    }
-    current = (current as Record<string, unknown>)[segment];
-  }
-  return current;
 }
 
 function attachRootCompanionSchemas(validator: Validator, root: JsonSchema, active: JsonSchema): void {

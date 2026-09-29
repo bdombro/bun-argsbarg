@@ -6,5 +6,11 @@
     "name": "Brian Dombrowski"
   },
   "homepage": "https://github.com/bdombro/bun-argsbarg",
-  "repository": "https://github.com/bdombro/bun-argsbarg"
+  "repository": "https://github.com/bdombro/bun-argsbarg",
+  "mcpServers": {
+    "mcp-plugin": {
+      "command": "bun",
+      "args": ["--cwd", "${CLAUDE_PLUGIN_ROOT}", "start"]
+    }
+  }
 }

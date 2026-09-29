@@ -5,9 +5,10 @@ This module validates CLI schemas before execution.
 import { reservedDocsTopicResourceUris } from "../docs/mcp-resources.ts";
 import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "../docs/resolve.ts";
 import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "../http/paths.ts";
-import { resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { collectMcpTools, resolveMcpSchemaUri } from "../mcp/tools.ts";
 import { reservedCommandNames, resolveCapabilities } from "../runtime/capabilities.ts";
 import { validateFormatValue } from "./formats.ts";
+import { resolveJsonPointer } from "./json-pointer.ts";
 import {
   type CliLeaf,
   type CliNode,
@@ -196,6 +197,68 @@ export function cliValidateProgram(program: CliProgram): void {
   }
 
   walkNode(program, program, true);
+
+  if (caps.mcp) {
+    validateMcpToolSchemas(program);
+  }
+}
+
+/** Keywords whose values are instance data, not subschemas; a `$ref` string inside them is not a reference. */
+const SCHEMA_DATA_KEYWORDS = new Set(["const", "default", "enum", "examples"]);
+
+/** Collects every `$ref` string in a schema (skipping instance-data keywords). */
+function collectSchemaRefs(
+  /** Schema fragment to walk. */
+  node: unknown,
+  /** Accumulator for found `$ref` values. */
+  out: string[],
+): string[] {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      collectSchemaRefs(item, out);
+    }
+  } else if (typeof node === "object" && node !== null) {
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "$ref" && typeof value === "string") {
+        out.push(value);
+      } else if (!SCHEMA_DATA_KEYWORDS.has(key)) {
+        collectSchemaRefs(value, out);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Checks the schemas MCP clients will see (after object-root wrapping in `collectMcpTools`):
+ * every local `$ref` must resolve, and wrapped schemas cannot use `$ref: "#"` (it would point at the wrapper).
+ */
+function validateMcpToolSchemas(
+  /** Program with `mcpServer.enabled`. */
+  program: CliProgram,
+): void {
+  for (const tool of collectMcpTools(program)) {
+    const schemas = [
+      { label: "inputSchema", schema: tool.inputSchema, wrapped: tool.inputWrapped },
+      { label: "outputSchema", schema: tool.outputSchema, wrapped: tool.outputWrapped },
+    ];
+    for (const { label, schema, wrapped } of schemas) {
+      if (schema === undefined) {
+        continue;
+      }
+      for (const ref of collectSchemaRefs(schema, [])) {
+        if (ref === "#" && wrapped) {
+          throw new CliSchemaValidationError(
+            `MCP tool "${tool.name}" ${label} uses $ref "#" but its root is not type "object", so MCP wraps it; ` +
+              "reference a named definition instead",
+          );
+        }
+        if (ref.startsWith("#/") && resolveJsonPointer(schema, ref) === undefined) {
+          throw new CliSchemaValidationError(`MCP tool "${tool.name}" ${label} has an unresolved $ref: ${ref}`);
+        }
+      }
+    }
+  }
 }
 
 const PARAM_ROUTER_KEY = /^:[a-zA-Z][a-zA-Z0-9_]*$/;

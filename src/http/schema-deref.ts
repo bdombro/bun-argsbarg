@@ -2,32 +2,10 @@
 Inline JSON Schema $ref dereferencing for OpenAPI embedding.
 */
 
-function decodeJsonPointerSegment(segment: string): string {
-  return segment.replace(/~1/g, "/").replace(/~0/g, "~");
-}
+import { resolveJsonPointer } from "../core/json-pointer.ts";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-/** Resolves a same-document JSON Pointer (`#/definitions/Foo`). */
-function resolveJsonPointer(root: Record<string, unknown>, ref: string): unknown {
-  if (!ref.startsWith("#/")) {
-    return undefined;
-  }
-  const segments = ref
-    .slice(2)
-    .split("/")
-    .filter((segment) => segment.length > 0)
-    .map(decodeJsonPointerSegment);
-  let current: unknown = root;
-  for (const segment of segments) {
-    if (!isPlainObject(current)) {
-      return undefined;
-    }
-    current = current[segment];
-  }
-  return current;
 }
 
 function derefValue(value: unknown, root: Record<string, unknown>, resolving: Set<string>): unknown {

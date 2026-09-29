@@ -4,8 +4,10 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
 
 brew_prefix := `brew --prefix`
-tap_parent := brew_prefix + "/Library/Taps/{tapOrg}"
-tap_path := tap_parent + "/homebrew-{tapRepo}"
+# Homebrew tap (org/repo); `argsbarg create` rewrites this literal to the new project's tap
+tap := "bdombro/bun-argsbarg"
+tap_parent := brew_prefix + "/Library/Taps/" + replace_regex(tap, "/.*", "")
+tap_path := tap_parent + "/homebrew-" + replace_regex(tap, ".*/", "")
 
 # List available recipes (default)
 _:
@@ -111,7 +113,7 @@ schemagen:
 # Install bun/npm dependencies and generate schemas
 setup:
     bun install
-    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg
+    test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg # argsbarg-dev-only: fix link for file:../.. installs
     just schemagen
 
 # Run unit tests (after check)

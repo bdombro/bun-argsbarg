@@ -112,10 +112,10 @@ ArgsBarg provides an interactive project generator to scaffold a new repository 
 
 ```bash
 # Interactive setup (prompts for naming and git configurations)
-bunx argsbarg create my-app
+bun x argsbarg@latest create my-app
 
 # Non-interactive / Headless setup
-bunx argsbarg create my-app \
+bun x argsbarg@latest create my-app \
   --key my-cli --release-repo org/my-cli --yes
 ```
 
@@ -136,7 +136,7 @@ Edit `scripts/create-identity.ts` in the new repository to set your description.
 | Dev tooling           | Biome (`just format` / `just lint`), TypeScript, colocated tests                         |
 | Agent instructions    | `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`)                                                 |
 
-*Tip: Verify an existing tree or template setup with `bunx argsbarg create --check .`*
+*Tip: Verify an existing tree or template setup with `bun x argsbarg create --check .`*
 
 ### Option B: Manual Installation (For Existing Projects)
 
@@ -301,13 +301,13 @@ Copy a shipped template into a new directory (`cli` default, or `json` for schem
 Interactive (TTY) — pick template A/B, then key and release repo:
 
 ```bash
-bunx argsbarg create my-cli
+bun x argsbarg@latest create my-cli
 ```
 
 Non-interactive:
 
 ```bash
-bunx argsbarg create my-cli \
+bun x argsbarg@latest create my-cli \
   --template cli \
   --key my-cli --release-repo org/my-cli --yes
 ```
@@ -315,7 +315,7 @@ bunx argsbarg create my-cli \
 Schema-first (`@sg`, JSON schemas, REST CRUD demo):
 
 ```bash
-bunx argsbarg create my-api \
+bun x argsbarg@latest create my-api \
   --template json \
   --key my-api --release-repo org/my-api --yes
 ```
@@ -326,7 +326,7 @@ Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `progra
 
 **Git bootstrap:** skipped when the target already has a `.git` directory, or when the target sits inside an existing git work tree (monorepo subfolder). Standalone new directories get an `Initial commit`.
 
-Verify an existing tree: `bunx argsbarg create --check .`
+Verify an existing tree: `bun x argsbarg create --check .`
 
 To refresh agent instructions in an existing consumer: `bun scripts/merge-agents-md.ts .` from an argsbarg checkout (or pass the npm package path to the template).
 
