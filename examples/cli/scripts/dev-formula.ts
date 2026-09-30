@@ -17,7 +17,7 @@ const stagingDir = join(root, "Formula", ".staging");
 const stagingPath = join(stagingDir, key);
 const formulaPath = join(root, "Formula", `${key}.rb`);
 const backupPath = join(stagingDir, `${key}.rb.bak`);
-const programPath = join(root, "src/program.ts");
+const programPath = join(root, "src/app.ts");
 
 type Command = "install" | "reset";
 

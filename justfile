@@ -4,7 +4,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Local argsbarg consumer repos (machine-specific).
-consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc"
+consumer_apps := "~/dev/bdombro/gdocsmith ~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc"
 
 # List available recipes (default)
 _:
@@ -57,7 +57,7 @@ consumers-sync:
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       echo "==> $(basename "$dir") ($dir)"
-      (cd "$dir" && bun add "argsbarg@^${latest}" && \
+      (cd "$dir" && rm -rf node_modules/argsbarg && bun add "argsbarg@^${latest}" && \
         bun "${root}/scripts/merge-agents-md.ts" "$dir" && \
         just build && just docgen && just install-local)
     done

@@ -20,7 +20,7 @@ interface ReleaseOptions {
 }
 
 /** Path to program entrypoint defining the version. */
-const programPath = "src/program.ts";
+const programPath = "src/app.ts";
 
 /** Path to Cursor plugin manifest. */
 const cursorManifestPath = ".cursor-plugin/plugin.json";
@@ -103,7 +103,7 @@ async function runRelease(
 }
 
 /**
- * Reads the current version string from src/program.ts.
+ * Reads the current version string from src/app.ts.
  */
 function readCurrentVersion(): string {
   const content = fs.readFileSync(programPath, "utf-8");
@@ -145,7 +145,7 @@ function applyBump(
 }
 
 /**
- * Updates version in package.json, program.ts, and plugin manifests.
+ * Updates version in package.json, app.ts, and plugin manifests.
  */
 function updateVersion(
   /** Incremented version string. */

@@ -17,7 +17,7 @@ import {
 const { key } = createIdentity;
 const formulaPath = `Formula/${key}.rb`;
 const binaryPath = `dist/${key}`;
-const programPath = "src/program.ts";
+const programPath = "src/app.ts";
 
 /** Allowed semver bump kinds for `scripts/release.ts`. */
 type Bump = "major" | "minor" | "patch";
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
 function usage(): never {
   process.stderr.write(
     "Usage:\n" +
-      "  bun scripts/release.ts <major|minor|patch> [--purge]\n" +
+      "  bun scripts/release.ts <major|minor|patch> [--purge] [--yes] [--dry-run]\n" +
       "  bun scripts/release.ts --purge [--yes] [--dry-run]\n",
   );
   process.exit(1);
@@ -71,11 +71,33 @@ function parseOptions(argv: string[]): ReleaseOptions {
 
 /** Full release pipeline for a semver bump. */
 async function runRelease(bump: Bump, options: ReleaseOptions): Promise<void> {
+  const currentVersion = readCurrentVersion();
+  const newVersion = applyBump(currentVersion, bump);
+
+  if (options.dryRun) {
+    console.log(
+      `[dry-run] Would run tests, bump ${currentVersion} → ${newVersion}, update the changelog, build, update the release formula, regenerate docs, commit, tag v${newVersion}, push, and create a GitHub release. Nothing was changed.`,
+    );
+    return;
+  }
+
+  if (!options.yes) {
+    if (!input.isTTY) {
+      process.stderr.write("Not a TTY; pass --yes to confirm the release.\n");
+      process.exit(1);
+    }
+    const rl = readline.createInterface({ input, output });
+    const answer = await rl.question(`Release v${newVersion} (commit, tag, push, GitHub release)? [y/N] `);
+    rl.close();
+    if (answer.trim().toLowerCase() !== "y") {
+      console.log("Aborted.");
+      return;
+    }
+  }
+
   const testResult = await $`just test`.nothrow();
   if (testResult.exitCode !== 0) process.exit(testResult.exitCode);
 
-  const currentVersion = readCurrentVersion();
-  const newVersion = applyBump(currentVersion, bump);
   console.log(`Releasing ${currentVersion} → ${newVersion}`);
 
   updateVersion(newVersion);
@@ -121,7 +143,7 @@ async function createGithubRelease(tag: string, archivePath: string): Promise<vo
   await $`gh release create ${tag} ${archivePath} --title ${tag} --generate-notes`;
 }
 
-/** Reads the CLI version from `src/program.ts`. */
+/** Reads the CLI version from `src/app.ts`. */
 function readCurrentVersion(): string {
   const content = fs.readFileSync(programPath, "utf-8");
   const match = /version:\s*"([^"]+)"/.exec(content);
@@ -153,7 +175,7 @@ function updateChangelog(newVersion: string): void {
   );
 }
 
-/** Overwrites the version literal in `src/program.ts`. */
+/** Overwrites the version literal in `src/app.ts`. */
 function updateVersion(newVersion: string): void {
   const content = fs.readFileSync(programPath, "utf-8");
   fs.writeFileSync(programPath, content.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`));

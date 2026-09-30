@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.0.1] - 2026-09-30
+
+
 ## [8.0.0] - 2026-09-30
 
 ### Changed (breaking)
@@ -75,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP tools under `:param` routers (e.g. `workspaces :id get`) now list each path parameter as a required argument and route calls to the given value. Previously their input schemas omitted the parameter and calls routed the literal `:id` segment, so agents could not address these routes.
 - Document leaves under `:param` routes accept HTTP and MCP calls whose body carries the path parameters (they are validated as path parameters, not body fields).
 - OpenAPI request and response schemas no longer embed a root `$schema`.
+- The `cli` and `api` templates' `scripts/release.ts` honor `--dry-run` for releases (it previously applied only to `--purge`, so a "dry run" really released) and ask for confirmation unless `--yes` is passed. Both templates now ship a `CHANGELOG.md` (the release script promotes `[Unreleased]`), and all template release scripts read the version from `src/app.ts`.
+- The `agent-plugin` template lists `argsbarg` and `zod` under `devDependencies`: they are only needed to build the committed Node bundle, which inlines them (the bundle itself is unchanged).
 - Copy templates are renamed and keyed by their directory: `examples/cli` (default; was `full-example`), `examples/api` (was `full-example-json`), and `examples/agent-plugin` (was `mcp-plugin`). `argsbarg create --template cli|api|agent-plugin` (was `cli` / `json` / `plugin`); `create-identity.ts` stores the same key. The example apps inside are `example-cli`, `example-api`, and `example-agent-plugin`. The interactive picker now lists every template (it only offered two), and `create --check` recognizes all three.
 - The mcp-plugin example's Node bundle (`dist/mcp-plugin.mjs`, which both plugin manifests run) is tracked in git; the root `.gitignore` had excluded it. `argsbarg create --template plugin` now builds `dist/<key>.mjs` (`just build`) before the initial commit.
 
@@ -1160,7 +1165,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.1...HEAD
+[8.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.1
 [8.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.0
 [7.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.4
 [7.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.3
