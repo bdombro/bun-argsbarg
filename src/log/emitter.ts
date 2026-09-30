@@ -6,7 +6,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { AppSpec, LogConfig } from "../core/types.ts";
 import type { LogEnrichContext } from "./ecs.ts";
-import { durationMsToEcsNanos, type EcsLogEvent, type EcsLogLevel, formatEcsLine } from "./ecs.ts";
+import { durationMsToEcsNanos, type EcsLogEvent, formatEcsLine } from "./ecs.ts";
 
 /** Resolved logging options for a server or invoke session. */
 export interface ResolvedLogConfig {
@@ -221,9 +221,4 @@ export class LogEmitter {
       // Best-effort file tee; stderr already has the line.
     }
   }
-}
-
-/** Maps ECS level strings for quick call sites. */
-export function ecsLevel(level: EcsLogLevel): EcsLogLevel {
-  return level;
 }

@@ -1,6 +1,7 @@
 /* Unit tests for shared headless error text (MCP and HTTP) and wrapped MCP tool calls. */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { argsbarg, type CommandContext } from "../index.ts";
 import { collectMcpTools } from "../mcp/tools.ts";
@@ -34,9 +35,9 @@ describe("headless error text", () => {
     "Google Docs REST API has no native tab duplication endpoint.";
 
   test("MCP and HTTP both keep the full multi-line error", async () => {
-    expect(headlessFailureMcpMessage(invokeFailure(multiline))).toBe(multiline);
+    assert.equal(headlessFailureMcpMessage(invokeFailure(multiline)), multiline);
     const body = (await headlessFailureToHttpResponse(invokeFailure(multiline)).json()) as { error: string };
-    expect(body.error).toBe(multiline);
+    assert.equal(body.error, multiline);
   });
 });
 
@@ -65,9 +66,9 @@ describe("wrapped MCP tools", () => {
 
   test("unwraps input and wraps structuredContent under result", async () => {
     const result = await executeHeadlessToolCall(cli, tool, { input: { kind: "append", text: "hi" } }, "mcp");
-    expect(result.ok).toBe(true);
+    assert.equal(result.ok, true);
     if (result.ok) {
-      expect(result.mcpResult.structuredContent).toEqual({ result: [{ kind: "append", text: "hi" }] });
+      assert.deepEqual(result.mcpResult.structuredContent, { result: [{ kind: "append", text: "hi" }] });
     }
   });
 
@@ -78,15 +79,15 @@ describe("wrapped MCP tools", () => {
       { input: { kind: "append", text: "hi", find: "x" } },
       "mcp",
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   test("rejects arguments that are not wrapped", async () => {
     const result = await executeHeadlessToolCall(cli, tool, { kind: "append", text: "hi" }, "mcp");
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.kind).toBe("argv");
-      expect(result.message).toContain('single "input" object property');
+      assert.equal(result.kind, "argv");
+      assert.ok(result.message.includes('single "input" object property'));
     }
   });
 });

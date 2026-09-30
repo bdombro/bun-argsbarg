@@ -2,10 +2,11 @@
 Tests for mcp/env module behavior.
 */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, test } from "node:test";
 import { applyShellEnv, bootstrapMcpEnv } from "./env.ts";
 
 const TEST_VAR = "ARGS_BARG_SHELL_ENV_TEST";
@@ -23,8 +24,8 @@ describe("mcp/env", () => {
         PATH: "/shell/bin:/host/bin",
         [TEST_VAR]: "from-shell",
       });
-      expect(process.env.PATH).toBe("/shell/bin:/host/bin");
-      expect(process.env[TEST_VAR]).toBe("from-shell");
+      assert.equal(process.env.PATH, "/shell/bin:/host/bin");
+      assert.equal(process.env[TEST_VAR], "from-shell");
     } finally {
       if (prevPath === undefined) delete process.env.PATH;
       else process.env.PATH = prevPath;
@@ -38,7 +39,7 @@ describe("mcp/env", () => {
     process.env.HOME = "/host/home";
     try {
       applyShellEnv({ HOME: "/shell/home" });
-      expect(process.env.HOME).toBe("/host/home");
+      assert.equal(process.env.HOME, "/host/home");
     } finally {
       if (prev === undefined) delete process.env.HOME;
       else process.env.HOME = prev;
@@ -79,21 +80,21 @@ fi
 
   test("defaults on when shellEnv is undefined", () => {
     bootstrapMcpEnv({});
-    expect(process.env[TEST_VAR]).toBe("from_fake_shell");
+    assert.equal(process.env[TEST_VAR], "from_fake_shell");
   });
 
   test("runs when shellEnv is true", () => {
     bootstrapMcpEnv({ shellEnv: true });
-    expect(process.env[TEST_VAR]).toBe("from_fake_shell");
+    assert.equal(process.env[TEST_VAR], "from_fake_shell");
   });
 
   test("uses explicit shell path when shellEnv is a string", () => {
     bootstrapMcpEnv({ shellEnv: fakeShell });
-    expect(process.env[TEST_VAR]).toBe("from_fake_shell");
+    assert.equal(process.env[TEST_VAR], "from_fake_shell");
   });
 
   test("skips capture when shellEnv is false", () => {
     bootstrapMcpEnv({ shellEnv: false });
-    expect(process.env[TEST_VAR]).toBeUndefined();
+    assert.equal(process.env[TEST_VAR], undefined);
   });
 });

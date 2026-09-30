@@ -6,10 +6,8 @@ import {
   OptionKind,
   type RunnableCommand,
 } from "../core/types.ts";
-import { docsEnabled } from "../docs/resolve.ts";
 import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
 import { resolveHttpListenAddress } from "../http/server.ts";
-import { resolveCapabilities } from "../runtime/capabilities.ts";
 
 const HTTP_SERVE_OPTIONS: readonly CommandOption[] = [
   { name: "host", description: "Listen host.", kind: OptionKind.String },
@@ -33,7 +31,6 @@ const HTTP_SERVE_OPTIONS: readonly CommandOption[] = [
 
 /** Built-in `http` router: bare `myapp http` runs the HTTP server (via hidden `serve` fallback). */
 export function cliBuiltinHttpCommand(program: AppSpec): CommandGroup {
-  const caps = resolveCapabilities(program);
   const { hostname, port } = resolveHttpListenAddress(program);
   const userGlob = httpUserPathGlob(resolveHttpPathPrefix(program));
   const lines = [
@@ -42,12 +39,6 @@ export function cliBuiltinHttpCommand(program: AppSpec): CommandGroup {
     `Endpoints: GET /health/liveness, GET /health/readiness, GET /openapi.json, GET /swagger, ${userGlob}`,
     "",
   ];
-  if (caps.configure) {
-    lines.push("Configure app settings:", "", "  {argsbarg:program} configure", "");
-  }
-  if (docsEnabled(program)) {
-    lines.push("Full setup guide: {argsbarg:program} docs http");
-  }
 
   const serve: RunnableCommand = {
     key: "serve",

@@ -7,14 +7,12 @@ It keeps handlers small with a typed read API for flags, strings, numbers, and c
 parsed values.
 */
 
-import type { AnyAppConfigSnapshot } from "../config/context.ts";
-import { EmptyAppConfigSnapshot } from "../config/context.ts";
-import { strictParseDouble } from "../utils.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
 import { InputError, loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
 import type { AppSpec, Command, Invocation, Locals, RespondOptions, RunnableCommand, ServerRuntime } from "./types.ts";
 import { hasHandler, hasSubcommands } from "./types.ts";
+import { strictParseDouble } from "./utils.ts";
 import { validateWithSchema } from "./zod-schema.ts";
 
 /** Coerced command inputs keyed by option and positional names. */
@@ -31,7 +29,6 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
   readonly spec: AppSpec;
   opts: Record<string, string>;
   readonly invocation: Invocation;
-  readonly appConfig: AnyAppConfigSnapshot;
   /** Original flat tool arguments for API/MCP invocations (when provided). */
   readonly toolArgs?: Record<string, unknown>;
   /** Raw `:param` segment values from command group descent (before any `pathParams` schema validation). */
@@ -57,7 +54,6 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
     opts: Record<string, string>,
     program: AppSpec,
     invocation: Invocation = "cli",
-    appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(program),
     toolArgs?: Record<string, unknown>,
     preloadedJson: Record<string, unknown> = {},
     pathParams: Record<string, string> = {},
@@ -70,7 +66,6 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
     this.opts = opts;
     this.spec = program;
     this.invocation = invocation;
-    this.appConfig = appConfig;
     this.toolArgs = toolArgs;
     this.preloadedJson = preloadedJson;
     this.rawPathParams = pathParams;

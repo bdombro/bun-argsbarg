@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { type AppSpec, argsbarg, command } from "argsbarg";
 import { renderJsonCommand, renderJsonTestSpec } from "./command.ts";
 
@@ -19,8 +20,8 @@ describe("render-json command", () => {
       invocation: "http",
       toolArgs: { message: "hello" },
     });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ message: "hello" });
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, { message: "hello" });
   });
 
   test("rejects invalid input before handler via inputSchema", async () => {
@@ -40,7 +41,7 @@ describe("render-json command", () => {
       invocation: "http",
       toolArgs: { message: 123 },
     });
-    expect(result.kind).toBe("error");
-    expect(handlerCalled).toBe(false);
+    assert.equal(result.kind, "error");
+    assert.equal(handlerCalled, false);
   });
 });

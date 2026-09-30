@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.0.2] - 2026-09-30
+
+### Removed (breaking)
+
+- The `not_ready` `InvokeFailureKind` is gone (nothing produced it once the config readiness checks were removed), and OpenAPI no longer lists a 503 response on user routes. `/health/readiness` still answers 503.
+- **App settings are no longer argsbarg's concern.** `appConfig` (config file, env bindings, precedence, setup wizard) and the `configure` built-in (`configure`, `get`, `set`, `install`, `uninstall`, `status`) are removed, along with `ctx.appConfig`, `App.appConfig`, `App.exportAppConfigSchema()`, `appConfig` on `InvokeHookContext` / `ReadinessContext`, and the `missing_config` failure kind. Setting `appConfig` or `configure` on the app root now fails at startup with a pointer here. **Migration:** keep settings in app code (env vars, or your own JSON file) and add your own command if users edit them. `configure` is an ordinary command name again.
+- **No MCP or skill install.** argsbarg no longer writes `~/.agents/mcp.json` or Codex / OpenCode / OpenClaw configs, and no longer detects or cleans up `~/.agents/skills/<app>/`. Agent plugins and `.mcpb` bundles (`mcp bundle`) are the supported MCP install path; `docs mcp` now generates plugin and manual client setup (Cursor, Claude Code, Claude Desktop, Codex, OpenCode). Plugin and bundle manifests no longer carry `userConfig` / `variables` / env mappings derived from `appConfig`.
+- **No `docs` built-in or docgen.** The `docs` command and config (`docs.topics`, `docs.enabled`), the generated `cli` / `cli-schema` / `mcp` / `http` / `openapi` docs and `--save`, the `<key>://docs/<topic>` and `<key>://schema` MCP resources, and `mcpServer.schemaResourceUri` are removed; setting `docs` on the app root fails at startup. OpenAPI is still served at `GET /openapi.json` and `/swagger`, and `generateOpenApi` / `schemaJson` remain library helpers. `docs` is an ordinary command name again. Removed exports: `DocsConfig`, `DocsTopic`, `defaultDocsTopicResourceUri`, `resolveDocsTopicResourceUri`.
+- **No generated agent skill.** `mcp bundle` plugins ship the repository skill (`skills/<key>/` or `mcpServer.bundle.skillsDir`) when present and no skill otherwise; the generated MCP pointer-skill fallback is gone.
+- **No managed `AGENTS.md`.** `scripts/merge-agents-md.ts` and the `<!-- argsbarg:managed -->` markers are removed; template `AGENTS.md` files are plain starting points that projects own. The `consumers-*` justfile recipes are removed.
+- **No self-update or binary placement** (`configure install --update`, Homebrew/`~/.local/bin` detection). Update through the package manager (`brew upgrade`, npm).
+- `GET /health/readiness` reports only the `custom` check (`config_file` and `config_required` are gone).
+- A relative `log.file` resolves against the working directory instead of the app config directory.
+- **YAML input is gone.** Document-mode arguments, document stdin, and HTTP request bodies accept JSON only (`invalid JSON` / `Invalid JSON body` otherwise). The YAML-style schema sections in help are unchanged.
+- **`OptionKind`, `ValueFormat`, `FallbackMode`, and `ParseKind` are `as const` objects plus same-named union types, not TypeScript enums** (so argsbarg runs under Node type stripping). `OptionKind.String` etc. still work and the values are unchanged; code that used them as types (`kind: OptionKind.Presence` in a type position) needs `typeof OptionKind.Presence`.
+- **The package no longer ships `src/` or the `bun` export condition.** Every runtime, Bun included, loads the compiled `dist/`. Types are `tsc`-emitted `dist/**/*.d.ts` (with declaration maps) instead of a bundled root `index.d.ts`; dts-bundle-generator is gone, and argsbarg and all four templates use TypeScript 7.
+- **`argsbarg create`:** `--class-name`, `--tap`, and `--homepage` are removed. The identity file moved to `src/create-identity.ts` and holds `key`, `releaseRepo`, `desc`, and `template`; the Homebrew template derives the formula class and homepage itself.
+- Removed exports: `userHome`, `displayAppConfigPath`, `resolveAppConfigPath`, `AnyAppConfigSnapshot`, `ResolvedConfig`, `AppConfig`, `AppConfigEntry`, `AppConfigResolveContext`, `AppConfigResolveFn`, `ConfigureConfig`, `ConfigureHookContext`, `ConfigureTargets`, `InstallTargetSpec`, `ResolvedInstallTarget`.
+
+### Added
+
+- **npm templates.** `cli` (the default), `api`, and `agent-plugin` are npm projects: `npx <key>`/`npm install -g`, justfile tasks, `tsc` build, `node --test`, a gated `just release` → `npm publish`, and docs read from the package at runtime. `api` uses `node:sqlite`. `create` runs `npm install`/`npm test` for them. `agent-plugin` bundles with esbuild and gains a CHANGELOG and a release confirmation prompt.
+- **`homebrew` template:** a minimal Bun-compiled binary with a Homebrew formula, tap, and gated GitHub release. It is the only template that uses Bun.
+- **Runs on Node ≥ 20 as well as Bun.** The package ships compiled JS in `dist/`, which every runtime loads, and the `argsbarg` bin is a Node script (`dist/cli-tool/main.js`). The HTTP server uses `node:http`; stdin and subprocesses use `node:` APIs. See "Runtime" in `docs/decisions.md`.
+
+### Fixed
+
+- HTTP and MCP servers now honor `log.enrich` and `log.serialize` (the serve config dropped them, so only direct `LogEmitter` use applied them), and a `log.file` starting with `~/` expands to the home directory instead of creating a literal `~` directory.
+- `cli.completions` (`enabled: false` / `hidden: true`) now removes a command from bash, zsh, and fish completions; it was declared but never read.
+- With `httpServer`, `mcpServer`, or `completion` off, a root command of that name is an ordinary app command, as documented: it runs (with hooks) instead of failing with "not available for this app". Apps without such a command still get that message.
+- `app.run()` now runs app `hooks` for user commands on the CLI (`beforeInvoke`, `afterInvoke`, and `formatError`/`onError` on failure), matching `app.invoke()` on HTTP/MCP. Previously `run()` skipped them, so `beforeInvoke`-attached state (e.g. the template DB) was missing on the CLI.
+
+### Changed
+
+- Internal source reorganized after the removals: `help.ts` and invoke hooks live under `src/runtime/`, completion scripts under `src/builtins/completion/`, and MCP plugin/bundle packing under `src/mcp/pack/`. The hook skip-list no longer treats `configure`/`docs` as built-ins, so hooks now run for app commands with those names. The `argsbarg` bin (`src/cli-tool/`) uses only the public API; the template capability test moved to `src/runtime/`. Unused internals were deleted (`runCreateCommand`, `parseCreateArgv`, `templateDir`, `ecsLevel`, `CliPresentationNode`). Public exports are unchanged.
+- **Help is plain text on every output:** no box borders and no color; sections start with a `── Title ───` rule sized to the terminal (80 columns when piped). TTY and piped help are identical except that schema sections show by default only when piped.
+- `completion <shell> --help` gives generic setup instructions (current session and shell rc) instead of Homebrew-specific notes.
+- Error messages on stderr are no longer colored red.
+- The top-level `examples/*.ts` scripts are now type-checked with argsbarg (Node types only, so Bun APIs fail) (`examples/nested.ts` used `Bun.file`; it now uses `node:fs/promises`).
+
 ## [8.0.1] - 2026-09-30
 
 
@@ -1165,7 +1205,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.1...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.2...HEAD
+[8.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.2
 [8.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.1
 [8.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.0
 [7.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.4

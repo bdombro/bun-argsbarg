@@ -1,14 +1,14 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 This example shows the smallest end-to-end CLI setup.
 It includes one command, a couple of options, and a direct call to the runtime so
 readers can copy the pattern into their own scripts quickly.
 
-It demonstrates the minimal Bun integration path.
+It demonstrates the minimal integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { OptionKind, argsbarg } from "../src/index";
+import { OptionKind, argsbarg } from "../src/index.ts";
 
 const app = argsbarg({
   description: "Tiny demo.",

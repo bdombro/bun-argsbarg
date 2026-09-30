@@ -7,7 +7,7 @@ enabled: true
 
 # example-api
 
-Argsbarg schema-first copy template (Zod schemas, typed commands, REST CRUD)
+Argsbarg schema-first npm template (Zod schemas, typed commands, REST CRUD)
 
 ## Execution
 
@@ -43,17 +43,5 @@ example-api <subcommand> [options] [args]
 
 ## Install location
 
-Install follows the https://dotagentsprotocol.com:
-
-- Auto-install: `example-api configure install` when `skill.enabled` → `~/.agents/skills/example-api/`
-- Cursor and most coding agents read `~/.agents/skills/` natively
-
-**Claude Code (manual):** symlink or copy into Claude's skill directory:
-
-```bash
-mkdir -p ~/.claude/skills
-ln -sf ~/.agents/skills/example-api ~/.claude/skills/example-api
-```
-
-Project override (optional): `.agents/skills/example-api/`
-
+- **Agent plugin:** plugins built with `example-api mcp bundle` ship this skill.
+- **Manual:** copy or symlink `skills/example-api/` into your agent's skill directory (for example `~/.agents/skills/example-api/` or `~/.claude/skills/example-api/`).

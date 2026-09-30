@@ -1,15 +1,22 @@
 {
   "name": "example-api",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Argsbarg schema-first npm template (Zod schemas, typed commands, REST CRUD)",
   "type": "module",
-  "module": "src/index.ts",
-  "description": "Argsbarg schema-first copy template (Zod schemas; not published to npm).",
+  "bin": {
+    "example-api": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "engines": {
-    "bun": ">=1.3"
+    "node": ">=22.13"
   },
   "scripts": {
-    "biome": "biome",
-    "start": "bun run src/index.ts"
+    "prepack": "just build"
   },
   "dependencies": {
     "argsbarg": "file:../..",
@@ -17,7 +24,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
-    "@types/bun": "^1.3.12",
-    "typescript": "^5.9.3"
+    "@types/node": "^22",
+    "typescript": "^7.0.2"
   }
 }

@@ -1,11 +1,8 @@
-import type { AppSpec, Command } from "../core/types.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
+import type { AppSpec, Command, RunnableCommand } from "../core/types.ts";
 import type { Capabilities } from "../runtime/capabilities.ts";
-import { cliBuiltinCompletionGroup } from "./completion-group.ts";
-import { cliBuiltinConfigureCommand } from "./configure.ts";
+import { cliBuiltinCompletionGroup } from "./completion/group.ts";
 import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliBuiltinVersionCommand } from "./version.ts";
 
 type BuiltinFactory = (program: AppSpec) => Command | null;
 
@@ -26,10 +23,6 @@ export function resolveBuiltins(program: AppSpec, caps: Capabilities): Command[]
     pushBuiltin(builtins, program, (p) => cliBuiltinCompletionGroup(p));
   }
   pushBuiltin(builtins, program, () => cliBuiltinVersionCommand());
-  if (caps.configure) {
-    pushBuiltin(builtins, program, (p) => cliBuiltinConfigureCommand(p));
-  }
-  pushBuiltin(builtins, program, (p) => cliBuiltinDocsGroupIfEnabled(p) ?? null);
   if (caps.mcp) {
     pushBuiltin(builtins, program, (p) => cliBuiltinMcpCommand(p));
   }
@@ -37,4 +30,13 @@ export function resolveBuiltins(program: AppSpec, caps: Capabilities): Command[]
     pushBuiltin(builtins, program, (p) => cliBuiltinHttpCommand(p));
   }
   return builtins;
+}
+
+/** Top-level `version` built-in (leaf). */
+export function cliBuiltinVersionCommand(): RunnableCommand {
+  return {
+    key: "version",
+    description: "Print the program version.",
+    handler: () => {},
+  };
 }

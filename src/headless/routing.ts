@@ -1,5 +1,5 @@
 import type { CommandContext } from "../core/context.ts";
-import { isInteractiveTty } from "../utils.ts";
+import { isInteractiveTty } from "../core/utils.ts";
 
 /** Minimal context for headless routing helpers. */
 export type HeadlessContext = Pick<CommandContext, "invocation">;

@@ -3,12 +3,13 @@ Tests for mcp/tools module: MCP tool derivation, size reporting, per-leaf MCP-on
 object-root schema wrapping, and the MCP tool schema startup check.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { OptionKind } from "../core/types.ts";
 import { cliValidateProgram } from "../core/validate.ts";
-import { cliHelpRender } from "../help.ts";
+import { cliHelpRender } from "../runtime/help.ts";
 import { requireMcpTool, testProgram } from "../test/fixtures.ts";
 import {
   collectMcpTools,
@@ -28,22 +29,22 @@ describe("mcpSizeReport", () => {
     });
     const report = mcpSizeReport(program);
     const [tool] = collectMcpTools(program);
-    expect(tool).toBeDefined();
+    assert.notEqual(tool, undefined);
 
     const expectedJson = JSON.stringify(
       { name: tool?.name, description: tool?.description, inputSchema: tool?.inputSchema },
       null,
       2,
     );
-    expect(report.tools).toHaveLength(1);
-    expect(report.tools[0]).toEqual({
+    assert.equal(report.tools.length, 1);
+    assert.deepEqual(report.tools[0], {
       name: tool?.name,
       descriptionChars: tool?.description.length,
       definitionBytes: Buffer.byteLength(expectedJson, "utf8"),
       definitionLines: expectedJson.split("\n").length,
     });
-    expect(report.warnings).toEqual([]);
-    expect(report.instructionsChars).toBe(0);
+    assert.deepEqual(report.warnings, []);
+    assert.equal(report.instructionsChars, 0);
   });
 
   test("warns past default limits for description and definition size", () => {
@@ -76,14 +77,14 @@ describe("mcpSizeReport", () => {
     const report = mcpSizeReport(program);
 
     const smallWarning = report.warnings.find((w) => w.includes('"small"'));
-    expect(smallWarning).toBeDefined();
-    expect(smallWarning).toContain("description is");
-    expect(smallWarning).toContain(`limit ${DEFAULT_MCP_SIZE_LIMITS.descriptionChars.toLocaleString()}`);
+    assert.notEqual(smallWarning, undefined);
+    assert.ok((smallWarning ?? "").includes("description is"));
+    assert.ok((smallWarning ?? "").includes(`limit ${DEFAULT_MCP_SIZE_LIMITS.descriptionChars.toLocaleString()}`));
 
     const bigWarning = report.warnings.find((w) => w.includes('"big"'));
-    expect(bigWarning).toBeDefined();
-    expect(bigWarning).toContain("definition is");
-    expect(bigWarning).toContain("pretty-printed");
+    assert.notEqual(bigWarning, undefined);
+    assert.ok((bigWarning ?? "").includes("definition is"));
+    assert.ok((bigWarning ?? "").includes("pretty-printed"));
   });
 
   test("sizeLimits overrides raise or lower the threshold", () => {
@@ -96,7 +97,10 @@ describe("mcpSizeReport", () => {
       ],
     });
     const report = mcpSizeReport(program);
-    expect(report.warnings.some((w) => w.includes("description is"))).toBe(true);
+    assert.equal(
+      report.warnings.some((w) => w.includes("description is")),
+      true,
+    );
   });
 
   test("sizeLimits: false disables a check entirely", () => {
@@ -109,7 +113,10 @@ describe("mcpSizeReport", () => {
       ],
     });
     const report = mcpSizeReport(program);
-    expect(report.warnings.some((w) => w.includes("description is"))).toBe(false);
+    assert.equal(
+      report.warnings.some((w) => w.includes("description is")),
+      false,
+    );
   });
 
   test("warns when instructions exceed the limit", () => {
@@ -120,8 +127,11 @@ describe("mcpSizeReport", () => {
       commands: [{ key: "run", description: "Run it.", handler: () => {} }],
     });
     const report = mcpSizeReport(program);
-    expect(report.instructionsChars).toBe(3_000);
-    expect(report.warnings.some((w) => w.startsWith("MCP instructions are"))).toBe(true);
+    assert.equal(report.instructionsChars, 3_000);
+    assert.equal(
+      report.warnings.some((w) => w.startsWith("MCP instructions are")),
+      true,
+    );
   });
 });
 
@@ -145,24 +155,24 @@ describe("mcpTool.notes", () => {
 
   test("false omits notes from the MCP description", () => {
     const [tool] = collectMcpTools(programWithNotesOverride(false));
-    expect(tool?.description).not.toContain("Original CLI notes.");
+    assert.ok(!(tool?.description ?? "").includes("Original CLI notes."));
   });
 
   test("a string replaces the leaf's notes in the MCP description", () => {
     const [tool] = collectMcpTools(programWithNotesOverride("Custom MCP-only note."));
-    expect(tool?.description).toContain("Custom MCP-only note.");
-    expect(tool?.description).not.toContain("Original CLI notes.");
+    assert.ok((tool?.description ?? "").includes("Custom MCP-only note."));
+    assert.ok(!(tool?.description ?? "").includes("Original CLI notes."));
   });
 
   test("omitted falls through to the leaf's own notes", () => {
     const [tool] = collectMcpTools(programWithNotesOverride(undefined));
-    expect(tool?.description).toContain("Original CLI notes.");
+    assert.ok((tool?.description ?? "").includes("Original CLI notes."));
   });
 
   test("CLI help always shows the leaf's own notes regardless of mcpTool.notes", () => {
     const program = programWithNotesOverride(false);
     const help = cliHelpRender(cliPresentationRoot(program), ["run"], false);
-    expect(help).toContain("Original CLI notes.");
+    assert.ok(help.includes("Original CLI notes."));
   });
 });
 
@@ -203,13 +213,13 @@ const recursiveInput: z.ZodType = z.lazy(() =>
 describe("MCP object-root wrapping", () => {
   test("object-rooted schemas pass through unchanged", () => {
     const schema = { type: "object", properties: { a: { type: "string" } } };
-    expect(wrapMcpRootSchema(schema, MCP_INPUT_WRAPPER_KEY)).toEqual({ schema, wrapped: false });
+    assert.deepEqual(wrapMcpRootSchema(schema, MCP_INPUT_WRAPPER_KEY), { schema, wrapped: false });
   });
 
   test("union roots wrap under input with $schema and definitions moved to the new root", () => {
     const { schema, wrapped } = wrapMcpRootSchema(unionInputJson, MCP_INPUT_WRAPPER_KEY);
-    expect(wrapped).toBe(true);
-    expect(schema).toEqual({
+    assert.equal(wrapped, true);
+    assert.deepEqual(schema, {
       $schema: unionInputJson.$schema,
       type: "object",
       properties: { input: { description: "Edit operation.", anyOf: unionInputJson.anyOf } },
@@ -238,10 +248,10 @@ describe("MCP object-root wrapping", () => {
     });
     const tools = collectMcpTools(program);
     const edit = requireMcpTool(tools, "edit");
-    expect(edit.inputWrapped).toBe(true);
-    expect(edit.inputSchema.type).toBe("object");
-    expect(edit.outputWrapped).toBe(true);
-    expect(edit.outputSchema).toEqual({
+    assert.equal(edit.inputWrapped, true);
+    assert.equal(edit.inputSchema.type, "object");
+    assert.equal(edit.outputWrapped, true);
+    assert.deepEqual(edit.outputSchema, {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
       properties: { result: { type: "array", items: { type: "string" } } },
@@ -249,8 +259,8 @@ describe("MCP object-root wrapping", () => {
       additionalProperties: false,
     });
     const plain = requireMcpTool(tools, "plain");
-    expect(plain.inputWrapped).toBe(false);
-    expect(plain.outputWrapped).toBe(false);
+    assert.equal(plain.inputWrapped, false);
+    assert.equal(plain.outputWrapped, false);
   });
 });
 
@@ -266,15 +276,18 @@ describe("MCP tool schema startup check", () => {
   }
 
   test("accepts wrapped union schemas", () => {
-    expect(() => cliValidateProgram(schemaProgram(unionInput, true))).not.toThrow();
+    assert.doesNotThrow(() => cliValidateProgram(schemaProgram(unionInput, true)));
   });
 
   test('rejects $ref "#" in a wrapped schema', () => {
-    expect(() => cliValidateProgram(schemaProgram(recursiveInput, true))).toThrow('uses $ref "#"');
+    assert.throws(
+      () => cliValidateProgram(schemaProgram(recursiveInput, true)),
+      (err: unknown) => String((err as Error)?.message ?? err).includes('uses $ref "#"'),
+    );
   });
 
   test("skips the check when MCP is disabled", () => {
-    expect(() => cliValidateProgram(schemaProgram(recursiveInput, false))).not.toThrow();
+    assert.doesNotThrow(() => cliValidateProgram(schemaProgram(recursiveInput, false)));
   });
 
   test("skips MCP-hidden leaves", () => {
@@ -293,6 +306,6 @@ describe("MCP tool schema startup check", () => {
         },
       ],
     });
-    expect(() => cliValidateProgram(program)).not.toThrow();
+    assert.doesNotThrow(() => cliValidateProgram(program));
   });
 });

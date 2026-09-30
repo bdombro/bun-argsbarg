@@ -2,9 +2,8 @@
 Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 */
 
-import pkg from "../../package.json" with { type: "json" };
 import { argsbarg, command, OptionKind } from "../index.ts";
-import { CREATE_TEMPLATES } from "./create.ts";
+import { argsbargPackageVersion, CREATE_TEMPLATES } from "./create.ts";
 import { runCreate } from "./run-create.ts";
 
 export const app = argsbarg({
@@ -21,28 +20,13 @@ export const app = argsbarg({
         },
         { name: "key", description: "CLI binary name.", kind: OptionKind.String },
         {
-          name: "class-name",
-          description: "Homebrew formula Ruby class (default: derived from --key).",
-          kind: OptionKind.String,
-        },
-        {
-          name: "tap",
-          description: "Homebrew tap (default: same as --release-repo).",
-          kind: OptionKind.String,
-        },
-        {
-          name: "homepage",
-          description: "Formula homepage (default: https://github.com/<release-repo>).",
-          kind: OptionKind.String,
-        },
-        {
           name: "release-repo",
           description: "GitHub org/repo for releases (required in non-interactive mode).",
           kind: OptionKind.String,
         },
         {
           name: "desc",
-          description: "App + formula description (default: <ClassName> CLI; stored in create-identity.ts).",
+          description: "App description (default: <key> CLI; stored in src/create-identity.ts).",
           kind: OptionKind.String,
         },
         { name: "force", description: "Overwrite existing files.", kind: OptionKind.Presence },
@@ -82,9 +66,6 @@ export const app = argsbarg({
           dir: inputs.dir,
           ...(inputs.template !== undefined ? { templateId: inputs.template } : {}),
           key: inputs.key,
-          className: inputs["class-name"],
-          tap: inputs.tap,
-          homepage: inputs.homepage,
           releaseRepo: inputs["release-repo"],
           desc: inputs.desc,
           force: inputs.force,
@@ -98,9 +79,7 @@ export const app = argsbarg({
     }),
   ],
   completion: { enabled: false },
-  configure: { enabled: false },
   description: "Argsbarg developer tools — bootstrap CLIs from copy templates.",
-  docs: { enabled: false },
   key: "argsbarg",
-  version: pkg.version,
+  version: argsbargPackageVersion(),
 });

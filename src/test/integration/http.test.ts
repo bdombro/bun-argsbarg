@@ -2,9 +2,9 @@
 HTTP API integration tests: routes, tool invocation, CORS, OpenAPI, and validation.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { join } from "node:path";
-import { $ } from "bun";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { cliValidateProgram } from "../../core/validate.ts";
 import { generateOpenApi } from "../../http/openapi.ts";
@@ -21,7 +21,7 @@ import {
 import { LogEmitter } from "../../log/emitter.ts";
 import { createServerRuntime } from "../../server/context.ts";
 import { resolveHttpServeConfig } from "../../server/overrides.ts";
-import { nestedMcpFixture, testProgram } from "../fixtures.ts";
+import { nestedMcpFixture, runNode, testProgram } from "../fixtures.ts";
 
 /** App spec with HTTP API enabled and handlers that return values. */
 function nestedApiFixture() {
@@ -146,7 +146,7 @@ describe("httpServer validation", () => {
       httpServer: {} as { enabled: boolean },
       handler: () => {},
     });
-    expect(() => cliValidateProgram(root)).toThrow(/httpServer requires enabled: true/);
+    assert.throws(() => cliValidateProgram(root), /httpServer requires enabled: true/);
   });
 
   test("rejects top-level command name http when httpServer enabled", () => {
@@ -156,7 +156,7 @@ describe("httpServer validation", () => {
       httpServer: { enabled: true },
       commands: [{ key: "http", description: "user", handler: () => {} }],
     });
-    expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: http/);
+    assert.throws(() => cliValidateProgram(root), /Reserved command name: http/);
   });
 
   test("allows top-level command name http without httpServer", () => {
@@ -165,7 +165,7 @@ describe("httpServer validation", () => {
       description: "",
       commands: [{ key: "http", description: "user", handler: () => {} }],
     });
-    expect(() => cliValidateProgram(root)).not.toThrow();
+    assert.doesNotThrow(() => cliValidateProgram(root));
   });
 
   test("rejects httpServer on non-root node", () => {
@@ -182,7 +182,7 @@ describe("httpServer validation", () => {
         },
       ],
     } as unknown as import("../../core/types.ts").AppSpec;
-    expect(() => cliValidateProgram(root)).toThrow(/httpServer is only supported on the app root/);
+    assert.throws(() => cliValidateProgram(root), /httpServer is only supported on the app root/);
   });
 
   test("rejects reserved top-level command when pathPrefix is empty", () => {
@@ -192,7 +192,7 @@ describe("httpServer validation", () => {
       httpServer: { enabled: true },
       commands: [{ key: "health", description: "user", handler: () => {} }],
     });
-    expect(() => cliValidateProgram(root)).toThrow(/Reserved HTTP command name/);
+    assert.throws(() => cliValidateProgram(root), /Reserved HTTP command name/);
   });
 
   test("rejects invalid pathPrefix", () => {
@@ -202,7 +202,7 @@ describe("httpServer validation", () => {
       httpServer: { enabled: true, pathPrefix: "api" },
       handler: () => {},
     });
-    expect(() => cliValidateProgram(root)).toThrow(/pathPrefix must start with \//);
+    assert.throws(() => cliValidateProgram(root), /pathPrefix must start with \//);
   });
 });
 
@@ -212,17 +212,17 @@ describe("HTTP API routes", () => {
 
   test("GET /health/liveness returns ok", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/health/liveness"));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true });
   });
 
   test("GET /health/readiness returns ok when healthy", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/health/readiness"), { withServer: true });
-    expect(res.status).toBe(200);
+    assert.equal(res.status, 200);
     const body = (await res.json()) as { ok: boolean; checks: Record<string, { ok: boolean }> };
-    expect(body.ok).toBe(true);
-    expect(body.checks.config_file.ok).toBe(true);
-    expect(body.checks.config_required.ok).toBe(true);
+    assert.equal(body.ok, true);
+    assert.deepEqual(Object.keys(body.checks), ["custom"]);
+    assert.equal(body.checks.custom.ok, true);
   });
 
   test("GET /health/readiness returns 503 when custom readiness fails", async () => {
@@ -236,10 +236,10 @@ describe("HTTP API routes", () => {
     });
     cliValidateProgram(failProgram);
     const res = await apiRequest(failProgram, new Request("http://127.0.0.1/health/readiness"), { withServer: true });
-    expect(res.status).toBe(503);
+    assert.equal(res.status, 503);
     const body = (await res.json()) as { ok: boolean; checks: { custom: { ok: boolean } } };
-    expect(body.ok).toBe(false);
-    expect(body.checks.custom.ok).toBe(false);
+    assert.equal(body.ok, false);
+    assert.equal(body.checks.custom.ok, false);
   });
 
   test("POST /api returns 500 for non-Error throw", async () => {
@@ -259,7 +259,7 @@ describe("HTTP API routes", () => {
     });
     cliValidateProgram(throwProgram);
     const res = await apiRequest(throwProgram, new Request("http://127.0.0.1/boom", { method: "POST", body: "{}" }));
-    expect(res.status).toBe(500);
+    assert.equal(res.status, 500);
   });
 
   test("POST /api obscures unexpected errors when configured", async () => {
@@ -290,27 +290,27 @@ describe("HTTP API routes", () => {
       new Request("http://127.0.0.1/boom", { method: "POST", body: "{}" }),
       resolved,
     );
-    expect(res.status).toBe(500);
+    assert.equal(res.status, 500);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toBe("An unexpected error occurred.");
+    assert.equal(body.error, "An unexpected error occurred.");
   });
 
   test("GET /health/liveness includes CORS headers", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/health/liveness"));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("access-control-allow-origin")).toBe("*");
-    expect(await res.json()).toEqual({ ok: true });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    assert.deepEqual(await res.json(), { ok: true });
   });
 
   test("OPTIONS returns 204 with CORS headers", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/stat/owner/lookup", { method: "OPTIONS" }));
-    expect(res.status).toBe(204);
-    expect(res.headers.get("access-control-allow-origin")).toBe("*");
-    expect(res.headers.get("access-control-allow-methods")).toContain("POST");
+    assert.equal(res.status, 204);
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    assert.ok((res.headers.get("access-control-allow-methods") ?? "").includes("POST"));
   });
 
   test("POST /api/... returns raw JSON body with 201", async () => {
-    const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+    const readme = join(import.meta.dirname, "..", "..", "..", "README.md");
     const res = await apiRequest(
       program,
       new Request("http://127.0.0.1/stat/owner/lookup", {
@@ -319,13 +319,13 @@ describe("HTTP API routes", () => {
         body: JSON.stringify({ "user-name": "alice", path: readme, json: true }),
       }),
     );
-    expect(res.status).toBe(201);
-    expect(res.headers.get("content-type")).toContain("application/json");
-    expect(await res.json()).toEqual({ user: "alice", path: readme });
+    assert.equal(res.status, 201);
+    assert.ok((res.headers.get("content-type") ?? "").includes("application/json"));
+    assert.deepEqual(await res.json(), { user: "alice", path: readme });
   });
 
   test("POST /api/... returns JSON body by default with 201", async () => {
-    const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+    const readme = join(import.meta.dirname, "..", "..", "..", "README.md");
     const res = await apiRequest(
       program,
       new Request("http://127.0.0.1/stat/owner/lookup", {
@@ -334,9 +334,9 @@ describe("HTTP API routes", () => {
         body: JSON.stringify({ "user-name": "alice", path: readme }),
       }),
     );
-    expect(res.status).toBe(201);
-    expect(res.headers.get("content-type")).toContain("application/json");
-    expect(await res.json()).toEqual({ user: "alice", path: readme });
+    assert.equal(res.status, 201);
+    assert.ok((res.headers.get("content-type") ?? "").includes("application/json"));
+    assert.deepEqual(await res.json(), { user: "alice", path: readme });
   });
 
   test("POST /tools returns 404 (legacy path removed)", async () => {
@@ -348,7 +348,7 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(404);
+    assert.equal(res.status, 404);
   });
 
   test("POST /api/pdf returns PDF bytes with 201", async () => {
@@ -360,10 +360,10 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(201);
-    expect(res.headers.get("content-type")).toBe("application/pdf");
+    assert.equal(res.status, 201);
+    assert.equal(res.headers.get("content-type"), "application/pdf");
     const bytes = new Uint8Array(await res.arrayBuffer());
-    expect(String.fromCharCode(...bytes.slice(0, 4))).toBe("%PDF");
+    assert.equal(String.fromCharCode(...bytes.slice(0, 4)), "%PDF");
   });
 
   test("POST /api/html returns HTML with 201", async () => {
@@ -374,9 +374,9 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(201);
-    expect(res.headers.get("content-type")).toContain("text/html");
-    expect(await res.text()).toContain("<!DOCTYPE html>");
+    assert.equal(res.status, 201);
+    assert.ok((res.headers.get("content-type") ?? "").includes("text/html"));
+    assert.ok((await res.text()).includes("<!DOCTYPE html>"));
   });
 
   test("POST /api/silent returns 500 when handler has no response", async () => {
@@ -387,9 +387,9 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(500);
+    assert.equal(res.status, 500);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("ctx.respond()");
+    assert.ok(body.error.includes("ctx.respond()"));
   });
 
   test("POST /api returns 404 for unknown route", async () => {
@@ -401,7 +401,7 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(404);
+    assert.equal(res.status, 404);
   });
 
   test("POST /api returns 400 for bad args", async () => {
@@ -413,11 +413,11 @@ describe("HTTP API routes", () => {
         body: JSON.stringify({ "user-name": "alice" }),
       }),
     );
-    expect(res.status).toBe(400);
+    assert.equal(res.status, 400);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Missing argument: path");
-    expect(body).not.toHaveProperty("stderr");
-    expect(body.error).not.toContain("\u001B[");
+    assert.ok(body.error.includes("Missing argument: path"));
+    assert.ok(!("stderr" in body));
+    assert.ok(!body.error.includes("\u001B["));
   });
 
   test("POST /api/... returns plain JSON validation errors", async () => {
@@ -444,13 +444,13 @@ describe("HTTP API routes", () => {
         body: "{}",
       }),
     );
-    expect(res.status).toBe(400);
+    assert.equal(res.status, 400);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toEqual({ error: "bad input" });
+    assert.deepEqual(body, { error: "bad input" });
   });
 
-  /** Tests that POST endpoints accept YAML request bodies. */
-  test("POST accepts YAML request body", async () => {
+  /** Tests that POST endpoints reject YAML request bodies (JSON only). */
+  test("POST rejects YAML request body", async () => {
     const yamlProgram = testProgram({
       key: "app",
       description: "Test app",
@@ -476,30 +476,29 @@ describe("HTTP API routes", () => {
         body: "name: test-resource",
       }),
     );
-    expect(res.status).toBe(201);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toEqual({ created: "test-resource" });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: "Invalid JSON body" });
   });
 
   test("GET /openapi.json lists REST paths", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/openapi.json"));
-    expect(res.status).toBe(200);
+    assert.equal(res.status, 200);
     const doc = (await res.json()) as { openapi: string; paths: Record<string, unknown> };
-    expect(doc.openapi).toBe("3.1.0");
-    expect(doc.paths["/stat/owner/lookup"]).toBeDefined();
-    expect(doc.paths["/health/liveness"]).toBeDefined();
-    expect(doc.paths["/health/readiness"]).toBeDefined();
-    expect(doc.paths["/health"]).toBeUndefined();
+    assert.equal(doc.openapi, "3.1.0");
+    assert.notEqual(doc.paths["/stat/owner/lookup"], undefined);
+    assert.notEqual(doc.paths["/health/liveness"], undefined);
+    assert.notEqual(doc.paths["/health/readiness"], undefined);
+    assert.equal(doc.paths["/health"], undefined);
   });
 
   test("GET /swagger returns Swagger UI HTML", async () => {
     const res = await apiRequest(program, new Request("http://127.0.0.1/swagger"));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toContain("text/html");
+    assert.equal(res.status, 200);
+    assert.ok((res.headers.get("content-type") ?? "").includes("text/html"));
     const html = await res.text();
-    expect(html).toContain("swagger-ui-dist");
-    expect(html).toContain('url: "/openapi.json"');
-    expect(html).toContain('dom_id: "#swagger-ui"');
+    assert.ok(html.includes("swagger-ui-dist"));
+    assert.ok(html.includes('url: "/openapi.json"'));
+    assert.ok(html.includes('dom_id: "#swagger-ui"'));
   });
 });
 
@@ -524,17 +523,20 @@ test("generateOpenApi includes health probe paths", () => {
       }
     >;
   };
-  expect(doc.tags.some((t) => t.name === "health")).toBe(true);
-  expect(doc.paths["/health"]).toBeUndefined();
-  expect(doc.paths["/health/liveness"]?.get.tags).toContain("health");
-  expect(doc.paths["/health/liveness"]?.get.summary).toBe("Liveness probe");
-  expect(doc.paths["/health/readiness"]?.get.summary).toBe("Readiness probe");
-  expect(doc.paths["/health/liveness"]?.get.responses["200"]).toBeDefined();
-  expect(doc.paths["/health/readiness"]?.get.responses["200"]).toBeDefined();
-  expect(doc.paths["/health/readiness"]?.get.responses["503"]).toBeDefined();
+  assert.equal(
+    doc.tags.some((t) => t.name === "health"),
+    true,
+  );
+  assert.equal(doc.paths["/health"], undefined);
+  assert.ok((doc.paths["/health/liveness"]?.get.tags ?? []).includes("health"));
+  assert.equal(doc.paths["/health/liveness"]?.get.summary, "Liveness probe");
+  assert.equal(doc.paths["/health/readiness"]?.get.summary, "Readiness probe");
+  assert.notEqual(doc.paths["/health/liveness"]?.get.responses["200"], undefined);
+  assert.notEqual(doc.paths["/health/readiness"]?.get.responses["200"], undefined);
+  assert.notEqual(doc.paths["/health/readiness"]?.get.responses["503"], undefined);
   const readySchema = doc.paths["/health/readiness"]?.get.responses["200"].content["application/json; charset=utf-8"]
     .schema as { properties?: { checks?: unknown } };
-  expect(readySchema.properties?.checks).toBeDefined();
+  assert.notEqual(readySchema.properties?.checks, undefined);
 });
 
 test("generateOpenApi omits health paths when httpServer disabled", () => {
@@ -545,7 +547,7 @@ test("generateOpenApi omits health paths when httpServer disabled", () => {
   });
   cliValidateProgram(program);
   const doc = generateOpenApi(program) as { paths: Record<string, unknown> };
-  expect(doc.paths["/health"]).toBeUndefined();
+  assert.equal(doc.paths["/health"], undefined);
 });
 
 test("generateOpenApi groups routes by top-level command tag", () => {
@@ -556,13 +558,13 @@ test("generateOpenApi groups routes by top-level command tag", () => {
     paths: Record<string, { post?: { tags: string[] }; get?: { tags: string[] } }>;
   };
   const tagNames = doc.tags.map((t) => t.name);
-  expect(tagNames).toContain("health");
-  expect(tagNames).toContain("stat");
-  expect(tagNames).toContain("pdf");
-  expect(doc.tags.find((t) => t.name === "stat")?.description).toBe("File metadata.");
-  expect(doc.paths["/stat/owner/lookup"]?.post?.tags).toEqual(["stat"]);
-  expect(doc.paths["/pdf"]?.post?.tags).toEqual(["pdf"]);
-  expect(doc.paths["/read"]?.post?.tags).toEqual(["read"]);
+  assert.ok(tagNames.includes("health"));
+  assert.ok(tagNames.includes("stat"));
+  assert.ok(tagNames.includes("pdf"));
+  assert.equal(doc.tags.find((t) => t.name === "stat")?.description, "File metadata.");
+  assert.deepEqual(doc.paths["/stat/owner/lookup"]?.post?.tags, ["stat"]);
+  assert.deepEqual(doc.paths["/pdf"]?.post?.tags, ["pdf"]);
+  assert.deepEqual(doc.paths["/read"]?.post?.tags, ["read"]);
 });
 
 test("generateOpenApi honors httpServer.pathPrefix", () => {
@@ -574,8 +576,8 @@ test("generateOpenApi honors httpServer.pathPrefix", () => {
   });
   cliValidateProgram(program);
   const doc = generateOpenApi(program) as { paths: Record<string, unknown> };
-  expect(doc.paths["/api/echo"]).toBeDefined();
-  expect(doc.paths["/echo"]).toBeUndefined();
+  assert.notEqual(doc.paths["/api/echo"], undefined);
+  assert.equal(doc.paths["/echo"], undefined);
 });
 
 test("generateOpenApi maps binary content types", () => {
@@ -586,7 +588,7 @@ test("generateOpenApi maps binary content types", () => {
   const pdf = doc.paths["/pdf"]?.post.responses["201"].content["application/pdf"] as {
     schema: { format: string };
   };
-  expect(pdf.schema.format).toBe("binary");
+  assert.equal(pdf.schema.format, "binary");
 });
 
 test("generateOpenApi dereferences nested inputSchema definitions", () => {
@@ -619,8 +621,8 @@ test("generateOpenApi dereferences nested inputSchema definitions", () => {
     >;
   };
   const schema = doc.paths["/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
-  expect(JSON.stringify(schema)).not.toContain("$ref");
-  expect(schema.properties.invoice).toMatchObject({
+  assert.ok(!JSON.stringify(schema).includes("$ref"));
+  assert.partialDeepStrictEqual(schema.properties.invoice, {
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],
@@ -657,10 +659,10 @@ test("generateOpenApi generates requestBody for kind: document leaves", () => {
     >;
   };
   const op = doc.paths["/render-invoice"]?.post;
-  expect(op).toBeDefined();
-  expect(op.requestBody).toBeDefined();
-  expect(op.requestBody.required).toBe(true);
-  expect(op.requestBody.content["application/json; charset=utf-8"].schema).toEqual({
+  assert.notEqual(op, undefined);
+  assert.notEqual(op.requestBody, undefined);
+  assert.equal(op.requestBody.required, true);
+  assert.deepEqual(op.requestBody.content["application/json; charset=utf-8"].schema, {
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],
@@ -675,11 +677,11 @@ test("ctx.respond throws when called twice", () => {
   });
   const context = new CommandContext("app", [], [], {}, program, "http");
   context.respond({ body: { ok: true } });
-  expect(() => context.respond({ body: { ok: true } })).toThrow(/already called/);
+  assert.throws(() => context.respond({ body: { ok: true } }), /already called/);
 });
 
 test("API_CORS_HEADERS are wide open", () => {
-  expect(API_CORS_HEADERS["access-control-allow-origin"]).toBe("*");
+  assert.equal(API_CORS_HEADERS["access-control-allow-origin"], "*");
 });
 
 test("ctx.invocation is http via App.invoke", async () => {
@@ -694,13 +696,13 @@ test("ctx.invocation is http via App.invoke", async () => {
   });
   cliValidateProgram(root);
   const result = await argsbarg(root).invoke([], { invocation: "http" });
-  expect(result.kind).toBe("ok");
-  expect(seen).toBe("http");
-  expect(result.response?.body).toEqual({ invocation: "http" });
+  assert.equal(result.kind, "ok");
+  assert.equal(seen, "http");
+  assert.deepEqual(result.response?.body, { invocation: "http" });
 });
 
 test("minimal.ts http without opt-in fails", async () => {
-  const { stderr, exitCode } = await $`bun run examples/minimal.ts http`.nothrow().quiet();
-  expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("HTTP API is not available");
+  const { stderr, exitCode } = runNode(["examples/minimal.ts", "http"]);
+  assert.equal(exitCode, 1);
+  assert.ok(stderr.toString().includes("HTTP API is not available"));
 });

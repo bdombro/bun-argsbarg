@@ -2,32 +2,33 @@
 Tests for formats module behavior.
 */
 
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs, validateFormatValue } from "./formats.ts";
 import { ValueFormat } from "./types.ts";
 
 test("parseDurationMs parses minutes and hours", () => {
-  expect(parseDurationMs("30s")).toBe(30_000);
-  expect(parseDurationMs("5m")).toBe(5 * 60 * 1000);
-  expect(parseDurationMs("2h")).toBe(2 * 60 * 60 * 1000);
-  expect(parseDurationMs("1d")).toBe(24 * 60 * 60 * 1000);
+  assert.equal(parseDurationMs("30s"), 30_000);
+  assert.equal(parseDurationMs("5m"), 5 * 60 * 1000);
+  assert.equal(parseDurationMs("2h"), 2 * 60 * 60 * 1000);
+  assert.equal(parseDurationMs("1d"), 24 * 60 * 60 * 1000);
 });
 
 test("parseCommaList splits and trims", () => {
-  expect(parseCommaList("a,b")).toEqual(["a", "b"]);
-  expect(parseCommaList(" a , b , ")).toEqual(["a", "b"]);
+  assert.deepEqual(parseCommaList("a,b"), ["a", "b"]);
+  assert.deepEqual(parseCommaList(" a , b , "), ["a", "b"]);
 });
 
 test("parseDate validates calendar dates", () => {
-  expect(parseDate("2026-06-22")).toBe("2026-06-22");
-  expect(() => parseDate("2026-02-30")).toThrow();
+  assert.equal(parseDate("2026-06-22"), "2026-06-22");
+  assert.throws(() => parseDate("2026-02-30"));
 });
 
 test("parseDateTime normalizes to UTC ISO", () => {
-  expect(parseDateTime("2026-06-22T15:00:00Z")).toBe("2026-06-22T15:00:00.000Z");
-  expect(() => parseDateTime("2026-06-22")).toThrow();
+  assert.equal(parseDateTime("2026-06-22T15:00:00Z"), "2026-06-22T15:00:00.000Z");
+  assert.throws(() => parseDateTime("2026-06-22"));
 });
 
 test("validateFormatValue rejects invalid duration", () => {
-  expect(() => validateFormatValue("nope", ValueFormat.Duration)).toThrow();
+  assert.throws(() => validateFormatValue("nope", ValueFormat.Duration));
 });

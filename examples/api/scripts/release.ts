@@ -1,127 +1,49 @@
-#!/usr/bin/env bun
-/** Bump version, build, publish zip release; optional `--purge` to drop stale GitHub releases. */
+/*
+Release script (`just release <major|minor|patch> [--yes] [--dry-run]`).
+Runs tests, bumps `package.json`, promotes the changelog, commits, tags, pushes, and runs
+`npm publish`. `--dry-run` prints the plan and changes nothing; without `--yes` it asks before touching anything.
+*/
 
-import * as fs from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import { stdin as input, stdout as output } from "node:process";
 import * as readline from "node:readline/promises";
-import { $ } from "bun";
-import { createIdentity } from "./create-identity.ts";
-import {
-  buildReleaseArchive,
-  type ReleaseTag,
-  releaseRepoSlug,
-  renderReleaseFormula,
-  selectStaleReleaseTags,
-} from "./formula-shared.ts";
 
-const { key } = createIdentity;
-const formulaPath = `Formula/${key}.rb`;
-const binaryPath = `dist/${key}`;
-const programPath = "src/app.ts";
-
-/** Allowed semver bump kinds for `scripts/release.ts`. */
+/** Allowed semver bump kinds. */
 type Bump = "major" | "minor" | "patch";
 
+/** Parsed command-line options. */
 interface ReleaseOptions {
-  bump?: Bump;
-  purge: boolean;
+  /** Which semver component to bump. */
+  bump: Bump;
+  /** Skip the confirmation prompt. */
   yes: boolean;
+  /** Print the plan without changing anything. */
   dryRun: boolean;
 }
 
-/** Entry point: release bump, purge-only, or release then purge. */
-async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
-  if (options.purge && !options.bump) {
-    await purgeStaleReleases(options);
-    return;
-  }
-  if (!options.bump) {
-    usage();
-  }
-  await runRelease(options.bump, options);
+/** Runs a command with inherited stdio; exits the script when it fails. */
+function run(
+  /** Executable name. */
+  cmd: string,
+  /** Arguments. */
+  args: string[],
+): void {
+  execFileSync(cmd, args, { stdio: "inherit" });
 }
 
-/** Prints usage and exits. */
-function usage(): never {
-  process.stderr.write(
-    "Usage:\n" +
-      "  bun scripts/release.ts <major|minor|patch> [--purge] [--yes] [--dry-run]\n" +
-      "  bun scripts/release.ts --purge [--yes] [--dry-run]\n",
-  );
-  process.exit(1);
-}
-
-/** Parses argv into release options. */
+/** Parses argv into release options, or prints usage and exits. */
 function parseOptions(argv: string[]): ReleaseOptions {
-  const yes = argv.includes("--yes");
-  const dryRun = argv.includes("--dry-run");
-  const purge = argv.includes("--purge");
   const bump = argv.find((a): a is Bump => a === "major" || a === "minor" || a === "patch");
-  for (const arg of argv) {
-    if (arg.startsWith("--") && arg !== "--purge" && arg !== "--yes" && arg !== "--dry-run") {
-      usage();
-    }
+  const unknown = argv.filter((a) => a.startsWith("--") && a !== "--yes" && a !== "--dry-run");
+  if (!bump || unknown.length > 0) {
+    process.stderr.write("Usage: just release <major|minor|patch> [--yes] [--dry-run]\n");
+    process.exit(1);
   }
-  if (!purge && !bump) {
-    usage();
-  }
-  return { bump, purge, yes, dryRun };
+  return { bump, yes: argv.includes("--yes"), dryRun: argv.includes("--dry-run") };
 }
 
-/** Full release pipeline for a semver bump. */
-async function runRelease(bump: Bump, options: ReleaseOptions): Promise<void> {
-  const currentVersion = readCurrentVersion();
-  const newVersion = applyBump(currentVersion, bump);
-
-  if (options.dryRun) {
-    console.log(
-      `[dry-run] Would run tests, bump ${currentVersion} → ${newVersion}, update the changelog, build, update the release formula, regenerate docs, commit, tag v${newVersion}, push, and create a GitHub release. Nothing was changed.`,
-    );
-    return;
-  }
-
-  if (!options.yes) {
-    if (!input.isTTY) {
-      process.stderr.write("Not a TTY; pass --yes to confirm the release.\n");
-      process.exit(1);
-    }
-    const rl = readline.createInterface({ input, output });
-    const answer = await rl.question(`Release v${newVersion} (commit, tag, push, GitHub release)? [y/N] `);
-    rl.close();
-    if (answer.trim().toLowerCase() !== "y") {
-      console.log("Aborted.");
-      return;
-    }
-  }
-
-  const testResult = await $`just test`.nothrow();
-  if (testResult.exitCode !== 0) process.exit(testResult.exitCode);
-
-  console.log(`Releasing ${currentVersion} → ${newVersion}`);
-
-  updateVersion(newVersion);
-  updateChangelog(newVersion);
-
-  const buildResult = await $`just build`.nothrow();
-  if (buildResult.exitCode !== 0) process.exit(buildResult.exitCode);
-
-  const archivePath = await updateReleaseFormula(newVersion);
-
-  const docgenResult = await $`just docgen`.nothrow();
-  if (docgenResult.exitCode !== 0) process.exit(docgenResult.exitCode);
-
-  await commitAndTag(newVersion);
-  await createGithubRelease(`v${newVersion}`, archivePath);
-
-  console.log(`Released v${newVersion}`);
-
-  if (options.purge) {
-    await purgeStaleReleases(options);
-  }
-}
-
-/** Applies a semver bump to `current` and returns the new version string. */
+/** Applies a semver bump to `current`. */
 function applyBump(current: string, bump: Bump): string {
   const [major, minor, patch] = current.split(".").map(Number) as [number, number, number];
   if (bump === "major") return `${major + 1}.0.0`;
@@ -129,106 +51,47 @@ function applyBump(current: string, bump: Bump): string {
   return `${major}.${minor}.${patch + 1}`;
 }
 
-/** Commits all staged changes, creates an annotated tag, and pushes both to origin. */
-async function commitAndTag(newVersion: string): Promise<void> {
-  await $`git add -A`;
-  await $`git commit -m ${`chore: release v${newVersion}`}`;
-  await $`git tag v${newVersion}`;
-  await $`git push`;
-  await $`git push origin v${newVersion}`;
-}
-
-/** Creates a GitHub release for `tag` with the zip archive attached. */
-async function createGithubRelease(tag: string, archivePath: string): Promise<void> {
-  await $`gh release create ${tag} ${archivePath} --title ${tag} --generate-notes`;
-}
-
-/** Reads the CLI version from `src/app.ts`. */
-function readCurrentVersion(): string {
-  const content = fs.readFileSync(programPath, "utf-8");
-  const match = /version:\s*"([^"]+)"/.exec(content);
-  if (!match) {
-    process.stderr.write(`Could not read version from ${programPath}\n`);
+/** Asks for confirmation on a TTY; exits when not confirmed or when stdin is not a TTY. */
+async function confirm(question: string): Promise<void> {
+  if (!input.isTTY) {
+    process.stderr.write("Not a TTY; pass --yes to confirm the release.\n");
     process.exit(1);
   }
-  const version = match[1];
-  if (!version) {
-    process.stderr.write(`Could not read version from ${programPath}\n`);
-    process.exit(1);
+  const rl = readline.createInterface({ input, output });
+  const answer = await rl.question(`${question} [y/N] `);
+  rl.close();
+  if (answer.trim().toLowerCase() !== "y") {
+    console.log("Aborted.");
+    process.exit(0);
   }
-  const parts = version.split(".").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) {
-    process.stderr.write(`Invalid semver in ${programPath}: ${version}\n`);
-    process.exit(1);
-  }
-  return version;
 }
 
-/** Promotes `[Unreleased]` to a dated version section in `CHANGELOG.md`. */
-function updateChangelog(newVersion: string): void {
-  const changelogPath = "CHANGELOG.md";
-  const content = fs.readFileSync(changelogPath, "utf-8");
-  const date = new Date().toISOString().slice(0, 10);
-  fs.writeFileSync(
-    changelogPath,
-    content.replace(/^## \[Unreleased\]/m, `## [Unreleased]\n\n## [${newVersion}] - ${date}`),
+const options = parseOptions(process.argv.slice(2));
+const pkgPath = "package.json";
+const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { name: string; version: string };
+const next = applyBump(pkg.version, options.bump);
+
+if (options.dryRun) {
+  console.log(
+    `[dry-run] Would run tests, bump ${pkg.version} → ${next}, update the changelog, build, commit, tag v${next}, push, and npm publish ${pkg.name}@${next}. Nothing was changed.`,
   );
+  process.exit(0);
+}
+if (!options.yes) {
+  await confirm(`Release ${pkg.name}@${next} (commit, tag, push, npm publish)?`);
 }
 
-/** Overwrites the version literal in `src/app.ts`. */
-function updateVersion(newVersion: string): void {
-  const content = fs.readFileSync(programPath, "utf-8");
-  fs.writeFileSync(programPath, content.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`));
-}
-
-/** Writes the release formula with zip URL and archive sha256; returns the archive path. */
-async function updateReleaseFormula(version: string): Promise<string> {
-  const { archivePath, sha256 } = await buildReleaseArchive(binaryPath);
-  fs.writeFileSync(formulaPath, renderReleaseFormula(version, sha256));
-  return archivePath;
-}
-
-/** Deletes all GitHub releases except the most recent. */
-async function purgeStaleReleases(options: ReleaseOptions): Promise<void> {
-  const list = await $`gh release list -R ${releaseRepoSlug} --json tagName,publishedAt`.nothrow();
-  if (list.exitCode !== 0) process.exit(list.exitCode);
-
-  const releases = JSON.parse(list.stdout.toString()) as ReleaseTag[];
-  const toDelete = selectStaleReleaseTags(releases);
-
-  if (toDelete.length === 0) {
-    console.log("No stale releases to delete.");
-    return;
-  }
-
-  console.log(`Will delete ${toDelete.length} release(s):`);
-  for (const tag of toDelete) {
-    console.log(`  ${tag}`);
-  }
-
-  if (options.dryRun) {
-    return;
-  }
-
-  if (!options.yes) {
-    if (!input.isTTY) {
-      process.stderr.write("Not a TTY; pass --yes to confirm purge.\n");
-      process.exit(1);
-    }
-    const rl = readline.createInterface({ input, output });
-    const answer = await rl.question("Delete these releases? [y/N] ");
-    rl.close();
-    if (answer.trim().toLowerCase() !== "y") {
-      console.log("Aborted.");
-      return;
-    }
-  }
-
-  for (const tag of toDelete) {
-    const del = await $`gh release delete ${tag} -R ${releaseRepoSlug} --yes`.nothrow();
-    if (del.exitCode !== 0) process.exit(del.exitCode);
-    console.log(`Deleted ${tag}`);
-  }
-}
-
-await main();
+run("just", ["test"]);
+pkg.version = next;
+writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+const changelog = readFileSync("CHANGELOG.md", "utf8");
+const date = new Date().toISOString().slice(0, 10);
+writeFileSync("CHANGELOG.md", changelog.replace(/^## \[Unreleased\]/m, `## [Unreleased]\n\n## [${next}] - ${date}`));
+run("just", ["build"]);
+run("git", ["add", "-A"]);
+run("git", ["commit", "-m", `chore: release v${next}`]);
+run("git", ["tag", `v${next}`]);
+run("git", ["push"]);
+run("git", ["push", "origin", `v${next}`]);
+run("npm", ["publish"]);
+console.log(`Released ${pkg.name}@${next}`);

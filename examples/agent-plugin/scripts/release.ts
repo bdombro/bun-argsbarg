@@ -1,212 +1,80 @@
-#!/usr/bin/env bun
 /*
-Bump version, rebuild the committed Node bundle, and publish a plugin release tag.
+Plugin release script (`just release <major|minor|patch> [--yes] [--dry-run]`).
+Runs tests, bumps the version in `package.json` and both plugin manifests, promotes the changelog, rebuilds the committed bundle, commits, tags, pushes, and creates a GitHub release. `--dry-run` prints the
+plan and changes nothing; without `--yes` it asks before touching anything.
 */
 
-import * as fs from "node:fs";
-import { $ } from "bun";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { stdin as input, stdout as output } from "node:process";
+import * as readline from "node:readline/promises";
 
-/** Allowed semver bump kinds for `scripts/release.ts`. */
+/** Allowed semver bump kinds. */
 type Bump = "major" | "minor" | "patch";
 
-/** Parsed command-line options for release. */
-interface ReleaseOptions {
-  /** Semver segment to increment. */
-  bump?: Bump;
-  /** Whether running in dry-run mode. */
-  dryRun: boolean;
-  /** Whether confirmation is skipped. */
-  yes: boolean;
+/** Files whose `"version"` field is bumped together. */
+const VERSIONED_FILES = ["package.json", ".cursor-plugin/plugin.json", ".claude-plugin/plugin.json"];
+
+/** Runs a command with inherited stdio; throws (ending the script) when it fails. */
+function run(
+  /** Executable name. */
+  cmd: string,
+  /** Arguments. */
+  args: string[],
+): void {
+  execFileSync(cmd, args, { stdio: "inherit" });
 }
 
-/** Path to program entrypoint defining the version. */
-const programPath = "src/app.ts";
-
-/** Path to Cursor plugin manifest. */
-const cursorManifestPath = ".cursor-plugin/plugin.json";
-
-/** Path to Claude Code plugin manifest. */
-const claudeManifestPath = ".claude-plugin/plugin.json";
-
-/** Entry point: release bump. */
-async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
-  if (!options.bump) {
-    usage();
-  }
-  await runRelease(options.bump, options);
+/** Applies a semver bump to `current`. */
+function applyBump(current: string, bump: Bump): string {
+  const [major, minor, patch] = current.split(".").map(Number) as [number, number, number];
+  if (bump === "major") return `${major + 1}.0.0`;
+  if (bump === "minor") return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
 }
 
-/** Prints usage and exits. */
-function usage(): never {
-  process.stderr.write("Usage:\n" + "  bun scripts/release.ts <major|minor|patch> [--yes] [--dry-run]\n");
+const argv = process.argv.slice(2);
+const bump = argv.find((a): a is Bump => a === "major" || a === "minor" || a === "patch");
+if (!bump || argv.some((a) => a.startsWith("--") && a !== "--yes" && a !== "--dry-run")) {
+  process.stderr.write("Usage: just release <major|minor|patch> [--yes] [--dry-run]\n");
   process.exit(1);
 }
+const current = (JSON.parse(readFileSync("package.json", "utf8")) as { version: string }).version;
+const next = applyBump(current, bump);
 
-/**
- * Parses argv into release options.
- */
-function parseOptions(
-  /** Command line arguments. */
-  argv: string[],
-): ReleaseOptions {
-  const yes = argv.includes("--yes");
-  const dryRun = argv.includes("--dry-run");
-  const bump = argv.find((a): a is Bump => a === "major" || a === "minor" || a === "patch");
-  for (const arg of argv) {
-    if (arg.startsWith("--") && arg !== "--yes" && arg !== "--dry-run") {
-      usage();
-    }
-  }
-  if (!bump) {
-    usage();
-  }
-  return { bump, dryRun, yes };
-}
-
-/**
- * Full release pipeline for a semver bump.
- */
-async function runRelease(
-  /** Increment segment. */
-  bump: Bump,
-  /** Parsed CLI options. */
-  options: ReleaseOptions,
-): Promise<void> {
-  const currentVersion = readCurrentVersion();
-  const newVersion = applyBump(currentVersion, bump);
-  if (options.dryRun) {
-    console.log(
-      `[dry-run] Would run checks, bump ${currentVersion} to ${newVersion}, update the changelog, regenerate docs, rebuild the bundle, commit, tag v${newVersion}, push, and create a GitHub release.`,
-    );
-    return;
-  }
-
-  const testResult = await $`just test`.nothrow();
-  if (testResult.exitCode !== 0) process.exit(testResult.exitCode);
-
-  console.log(`Releasing ${currentVersion} → ${newVersion}`);
-
-  updateVersion(newVersion);
-  updateChangelog(newVersion);
-
-  const docgenResult = await $`just docgen`.nothrow();
-  if (docgenResult.exitCode !== 0) process.exit(docgenResult.exitCode);
-
-  const buildResult = await $`just build`.nothrow();
-  if (buildResult.exitCode !== 0) process.exit(buildResult.exitCode);
-
-  await commitAndTag(newVersion);
-  await createGithubRelease(`v${newVersion}`);
-
-  console.log(`Released v${newVersion}`);
-}
-
-/**
- * Reads the current version string from src/app.ts.
- */
-function readCurrentVersion(): string {
-  const content = fs.readFileSync(programPath, "utf-8");
-  const match = /version:\s*"([^"]+)"/.exec(content);
-  if (!match) {
-    process.stderr.write(`Could not read version from ${programPath}\n`);
-    process.exit(1);
-  }
-  const version = match[1];
-  if (!version) {
-    process.stderr.write(`Could not read version from ${programPath}\n`);
-    process.exit(1);
-  }
-  const parts = version.split(".").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) {
-    process.stderr.write(`Invalid semver in ${programPath}: ${version}\n`);
-    process.exit(1);
-  }
-  return version;
-}
-
-/**
- * Increments semver according to the specified bump level.
- */
-function applyBump(
-  /** Existing version string. */
-  version: string,
-  /** Semver segment to increment. */
-  bump: Bump,
-): string {
-  const parts = version.split(".").map(Number) as [number, number, number];
-  if (bump === "major") {
-    return `${parts[0] + 1}.0.0`;
-  }
-  if (bump === "minor") {
-    return `${parts[0]}.${parts[1] + 1}.0`;
-  }
-  return `${parts[0]}.${parts[1]}.${parts[2] + 1}`;
-}
-
-/**
- * Updates version in package.json, app.ts, and plugin manifests.
- */
-function updateVersion(
-  /** Incremented version string. */
-  newVersion: string,
-): void {
-  const pkgPath = "package.json";
-  const pkgContent = fs.readFileSync(pkgPath, "utf-8");
-  fs.writeFileSync(pkgPath, pkgContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
-
-  const progContent = fs.readFileSync(programPath, "utf-8");
-  fs.writeFileSync(programPath, progContent.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`));
-
-  if (fs.existsSync(cursorManifestPath)) {
-    const cursorContent = fs.readFileSync(cursorManifestPath, "utf-8");
-    fs.writeFileSync(cursorManifestPath, cursorContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
-  }
-
-  if (fs.existsSync(claudeManifestPath)) {
-    const claudeContent = fs.readFileSync(claudeManifestPath, "utf-8");
-    fs.writeFileSync(claudeManifestPath, claudeContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
-  }
-}
-
-/**
- * Prepends the new release section with date under [Unreleased] in CHANGELOG.md.
- */
-function updateChangelog(
-  /** Incremented version string. */
-  newVersion: string,
-): void {
-  const changelogPath = "CHANGELOG.md";
-  const content = fs.readFileSync(changelogPath, "utf-8");
-  const date = new Date().toISOString().slice(0, 10);
-  fs.writeFileSync(
-    changelogPath,
-    content.replace(/^## \[Unreleased\]/m, `## [Unreleased]\n\n## [${newVersion}] - ${date}`),
+if (argv.includes("--dry-run")) {
+  console.log(
+    `[dry-run] Would run tests, bump ${current} → ${next} (package.json + plugin manifests), update the changelog, rebuild the bundle, commit, tag v${next}, push, and create a GitHub release. Nothing was changed.`,
   );
+  process.exit(0);
+}
+if (!argv.includes("--yes")) {
+  if (!input.isTTY) {
+    process.stderr.write("Not a TTY; pass --yes to confirm the release.\n");
+    process.exit(1);
+  }
+  const rl = readline.createInterface({ input, output });
+  const answer = await rl.question(`Release v${next} (commit, tag, push, GitHub release)? [y/N] `);
+  rl.close();
+  if (answer.trim().toLowerCase() !== "y") {
+    console.log("Aborted.");
+    process.exit(0);
+  }
 }
 
-/**
- * Stages all changes, creates a release commit, tags it, and pushes to remote.
- */
-async function commitAndTag(
-  /** Incremented version string. */
-  newVersion: string,
-): Promise<void> {
-  await $`git add -A`;
-  await $`git commit -m ${`chore: release v${newVersion}`}`;
-  await $`git tag v${newVersion}`;
-  await $`git push`;
-  await $`git push origin v${newVersion}`;
+run("just", ["test"]);
+for (const path of VERSIONED_FILES) {
+  if (!existsSync(path)) continue;
+  writeFileSync(path, readFileSync(path, "utf8").replace(/"version":\s*"[^"]+"/, `"version": "${next}"`));
 }
-
-/**
- * Creates a release on GitHub.
- */
-async function createGithubRelease(
-  /** Git release tag. */
-  tag: string,
-): Promise<void> {
-  await $`gh release create ${tag} --title ${tag} --generate-notes`;
-}
-
-await main();
+const changelog = readFileSync("CHANGELOG.md", "utf8");
+const date = new Date().toISOString().slice(0, 10);
+writeFileSync("CHANGELOG.md", changelog.replace(/^## \[Unreleased\]/m, `## [Unreleased]\n\n## [${next}] - ${date}`));
+run("just", ["build"]);
+run("git", ["add", "-A"]);
+run("git", ["commit", "-m", `chore: release v${next}`]);
+run("git", ["tag", `v${next}`]);
+run("git", ["push"]);
+run("git", ["push", "origin", `v${next}`]);
+run("gh", ["release", "create", `v${next}`, "--title", `v${next}`, "--generate-notes"]);
+console.log(`Released v${next}`);

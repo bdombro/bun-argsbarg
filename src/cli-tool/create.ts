@@ -3,10 +3,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import pkg from "../../package.json" with { type: "json" };
 
 /** Template key: the template's directory under `examples/` (also its example app key). */
-export type CreateTemplateId = "cli" | "api" | "agent-plugin";
+export type CreateTemplateId = "cli" | "api" | "agent-plugin" | "homebrew";
 
 /** Default template for `argsbarg create`. */
 export const DEFAULT_CREATE_TEMPLATE: CreateTemplateId = "cli";
@@ -19,24 +18,36 @@ export interface CreateTemplateSpec {
   summary: string;
   /** One-line description for the interactive picker. */
   description: string;
+  /** Package manager post-create runs (`npm` templates need only Node; `bun` for the Homebrew template). */
+  packageManager: "npm" | "bun";
 }
 
+/** Copy templates shipped under `examples/`, in picker order. */
 export const CREATE_TEMPLATES: CreateTemplateSpec[] = [
   {
     id: "cli",
-    summary: "options/flags",
-    description: "Production CLI with MCP, HTTP, configure, and skills. Options and flags only; no schemas.",
+    summary: "npm/npx CLI",
+    description: "npm/npx CLI with MCP and HTTP. Options and flags only; no schemas. Needs only Node.",
+    packageManager: "npm",
   },
   {
     id: "api",
     summary: "Zod schemas, REST CRUD",
     description:
-      "Same shell plus Zod inputSchema/outputSchema, typed command inputs, JSON HTTP commands, and a REST CRUD demo.",
+      "Same npm shell plus Zod inputSchema/outputSchema, typed command inputs, JSON HTTP commands, and a REST CRUD demo.",
+    packageManager: "npm",
   },
   {
     id: "agent-plugin",
     summary: "MCP plugin",
-    description: "Agent MCP plugin copy template for Cursor and Claude Code marketplaces.",
+    description: "Agent MCP plugin for Cursor and Claude Code marketplaces, with a committed Node bundle.",
+    packageManager: "npm",
+  },
+  {
+    id: "homebrew",
+    summary: "Homebrew binary",
+    description: "Minimal Bun-compiled binary distributed through a Homebrew formula and tap.",
+    packageManager: "bun",
   },
 ];
 
@@ -56,9 +67,6 @@ export function templateDirFor(templateId: CreateTemplateId): string {
 export interface CreateOptions {
   templateId: CreateTemplateId;
   key: string;
-  className: string;
-  tap: string;
-  homepage: string;
   releaseRepo: string;
   desc: string;
   force: boolean;
@@ -70,16 +78,20 @@ export interface CreateOptions {
   devTemplate: boolean;
 }
 
-const CREATE_IDENTITY_REL = "scripts/create-identity.ts";
+/** Identity file every template ships (key, release repo, description, template id). */
+const CREATE_IDENTITY_REL = "src/create-identity.ts";
 
-const EXCLUDE_REL = new Set(["bun.lock", "HOMEBREW-SCAFFOLD.md", "node_modules", "dist"]);
+/** Paths never copied from a template (lockfiles, installs, and build output). */
+const EXCLUDE_REL = new Set(["bun.lock", "package-lock.json", "node_modules", "dist"]);
 
+/** Argsbarg package root (two levels above this file in both `src/` and the compiled `dist/`). */
 export function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 }
 
-export function templateDir(templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE): string {
-  return templateDirFor(templateId);
+/** Argsbarg package version, read from `package.json` at the package root. */
+export function argsbargPackageVersion(): string {
+  return (JSON.parse(readFileSync(join(packageRoot(), "package.json"), "utf8")) as { version: string }).version;
 }
 
 export function devTemplateIdForDir(baseDir: string): CreateTemplateId | undefined {
@@ -99,14 +111,10 @@ export function isDevTemplateDir(baseDir: string, templateId?: CreateTemplateId)
   return devTemplateIdForDir(baseDir) !== undefined;
 }
 
-export function keyToEnvPrefix(key: string): string {
-  return key
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .toUpperCase();
-}
-
-/** PascalCase Homebrew formula class from CLI key; prefix `App` when Ruby constant rules require it. */
+/**
+ * PascalCase Homebrew formula class from a CLI key (prefix `App` when Ruby constant rules require it). Only used to
+ * rewrite the Homebrew template's committed formula; the template derives it the same way in `scripts/formula-shared.ts`.
+ */
 export function classNameFromKey(key: string): string {
   const name = key
     .split(/[-_]/)
@@ -122,73 +130,47 @@ export function classNameFromKey(key: string): string {
   return name;
 }
 
-function tapLibraryParts(tap: string): { org: string; repo: string } {
-  const slash = tap.indexOf("/");
-  if (slash === -1) throw new Error(`Invalid tap (expected org/repo): ${tap}`);
-  return {
-    org: tap.slice(0, slash),
-    repo: tap.slice(slash + 1),
-  };
-}
-
-/** Parse `scripts/create-identity.ts` for inference and template defaults. */
-export function parseCreateIdentityFile(
-  path: string,
-): Partial<CreateOptions> & { envPrefix?: string; template?: string } {
+/** Parse `src/create-identity.ts` for inference and template defaults. */
+export function parseCreateIdentityFile(path: string): Partial<CreateOptions> & { template?: string } {
   if (!existsSync(path)) return {};
   const text = readFileSync(path, "utf8");
   const pick = (field: string) => text.match(new RegExp(`${field}:\\s*"([^"]*)"`))?.[1];
   const templateRaw = text.match(/template:\s*"([a-z-]+)"/)?.[1];
   return {
     key: pick("key"),
-    className: pick("className"),
-    tap: pick("tap"),
-    homepage: pick("homepage"),
     releaseRepo: pick("releaseRepo"),
     desc: pick("desc"),
-    envPrefix: pick("envPrefix"),
     template: templateRaw,
     templateId: templateRaw ? normalizeCreateTemplateId(templateRaw) : undefined,
   };
 }
 
+/** Identity literals of a shipped template (what `create` rewrites in copied files). */
 export function templateIdentity(templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE): {
   templateId: CreateTemplateId;
   key: string;
-  className: string;
-  tap: string;
-  homepage: string;
   releaseRepo: string;
   desc: string;
-  envPrefix: string;
 } {
   const parsed = parseCreateIdentityFile(join(templateDirFor(templateId), CREATE_IDENTITY_REL));
-  const key = parsed.key ?? templateId;
   return {
     templateId,
-    key,
-    className: parsed.className ?? classNameFromKey(key),
-    tap: parsed.tap ?? `local/${key}`,
-    homepage: parsed.homepage ?? "https://github.com/bdombro/bun-argsbarg",
+    key: parsed.key ?? templateId,
     releaseRepo: parsed.releaseRepo ?? "bdombro/bun-argsbarg",
     desc: parsed.desc ?? "Argsbarg copy template",
-    envPrefix: parsed.envPrefix ?? keyToEnvPrefix(key),
   };
 }
 
 export function inferCreateOptions(baseDir: string, partial: Partial<CreateOptions>): Partial<CreateOptions> {
-  if (partial.key && partial.className && partial.homepage && partial.releaseRepo && partial.desc && partial.tap) {
+  if (partial.key && partial.releaseRepo && partial.desc) {
     return partial;
   }
   const fromIdentity = parseCreateIdentityFile(join(baseDir, CREATE_IDENTITY_REL));
   return {
     templateId: partial.templateId ?? fromIdentity.templateId,
     key: partial.key ?? fromIdentity.key,
-    className: partial.className ?? fromIdentity.className,
     desc: partial.desc ?? fromIdentity.desc,
-    homepage: partial.homepage ?? fromIdentity.homepage,
     releaseRepo: partial.releaseRepo ?? fromIdentity.releaseRepo,
-    tap: partial.tap ?? fromIdentity.tap,
     force: partial.force,
     dryRun: partial.dryRun,
     check: partial.check,
@@ -211,7 +193,6 @@ export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: 
   );
   const tmpl = templateIdentity(templateId);
   const key = merged.key ?? tmpl.key ?? "cli";
-  const className = merged.className ?? classNameFromKey(key);
   const releaseRepo = merged.releaseRepo;
   if (!releaseRepo) {
     throw new Error("GitHub release repo (org/repo) is required. Pass --release-repo or use the interactive wizard.");
@@ -221,11 +202,8 @@ export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: 
   return {
     templateId,
     key,
-    className,
-    tap: merged.tap ?? releaseRepo,
-    homepage: merged.homepage ?? `https://github.com/${releaseRepo}`,
     releaseRepo,
-    desc: merged.desc ?? `${className} CLI`,
+    desc: merged.desc ?? `${key} CLI`,
     force: merged.force ?? false,
     dryRun: merged.dryRun ?? false,
     check: merged.check ?? false,
@@ -235,37 +213,17 @@ export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: 
   };
 }
 
+/** Renders `src/create-identity.ts` for a new project. */
 export function renderCreateIdentitySource(opts: CreateOptions): string {
-  const envPrefix = keyToEnvPrefix(opts.key);
   return `/** CLI identity — substituted by \`argsbarg create\`. */
 
 export const createIdentity = {
   key: "${opts.key}",
-  className: "${opts.className}",
-  tap: "${opts.tap}",
-  homepage: "${opts.homepage}",
   releaseRepo: "${opts.releaseRepo}",
   desc: "${opts.desc}",
-  envPrefix: "${envPrefix}",
   template: "${opts.templateId}",
 } as const;
 `;
-}
-
-function tokenMap(opts: CreateOptions): Record<string, string> {
-  const { org: tapOrg, repo: tapRepo } = tapLibraryParts(opts.tap);
-  const envPrefix = keyToEnvPrefix(opts.key);
-  return {
-    key: opts.key,
-    className: opts.className,
-    envPrefix,
-    tap: opts.tap,
-    tapOrg,
-    tapRepo,
-    homepage: opts.homepage,
-    releaseRepo: opts.releaseRepo,
-    desc: opts.desc,
-  };
 }
 
 /**
@@ -277,8 +235,8 @@ export const DEV_ONLY_MARKER = "# argsbarg-dev-only";
 /** Substitute \`{key}\`-style placeholders; also replace template identity literals. */
 export function substituteTemplateContent(content: string, opts: CreateOptions): string {
   const tmpl = templateIdentity(opts.templateId);
-  const tokens = tokenMap(opts);
-  const argsbargVersion = pkg.version;
+  const tokens: Record<string, string> = { key: opts.key, releaseRepo: opts.releaseRepo, desc: opts.desc };
+  const argsbargVersion = argsbargPackageVersion();
 
   const protectedSpans: string[] = [];
   let out = content.replace(/\$\{[^}]+\}/g, (span) => {
@@ -287,18 +245,12 @@ export function substituteTemplateContent(content: string, opts: CreateOptions):
     return `@@PROTECT${idx}@@`;
   });
 
-  out = out.replace(
-    /(?<!\{)\{(key|className|envPrefix|tap|tapOrg|tapRepo|homepage|releaseRepo|desc)\}(?!\})/g,
-    (_, name: string) => tokens[name] ?? `{${name}}`,
-  );
+  out = out.replace(/(?<!\{)\{(key|releaseRepo|desc)\}(?!\})/g, (_, name: string) => tokens[name] ?? `{${name}}`);
 
   const literalPairs: [string, string][] = [
-    [tmpl.envPrefix, tokens.envPrefix],
-    [tmpl.tap, opts.tap],
     [tmpl.releaseRepo, opts.releaseRepo],
-    [tmpl.homepage, opts.homepage],
     [tmpl.desc, opts.desc],
-    [tmpl.className, opts.className],
+    [classNameFromKey(tmpl.key), classNameFromKey(opts.key)],
     [tmpl.key, opts.key],
     [`## ${tmpl.key} conventions`, `## ${opts.key} conventions`],
     [`**${tmpl.key} conventions:**`, `**${opts.key} conventions:**`],
@@ -363,7 +315,9 @@ export function renderCreateTree(opts: CreateOptions): Map<string, string> {
     const raw = readFileSync(src, "utf8");
     const targetRel = rel.startsWith(`skills/${tmpl.key}/`)
       ? rel.replace(`skills/${tmpl.key}/`, `skills/${opts.key}/`)
-      : rel;
+      : rel === `Formula/${tmpl.key}.rb`
+        ? `Formula/${opts.key}.rb`
+        : rel;
     files.set(targetRel, substituteTemplateContent(raw, opts));
   }
   return files;
@@ -442,36 +396,4 @@ export function printCreateDiffs(drifts: CreateDrift[], baseDir: string): void {
       process.stderr.write(`  … (${relative(baseDir, join(baseDir, relPath))})\n`);
     }
   }
-}
-
-export interface ParsedCreateArgv {
-  dir: string;
-  opts: Partial<CreateOptions>;
-}
-
-export function parseCreateArgv(rest: string[]): ParsedCreateArgv {
-  const opts: Partial<CreateOptions> = {};
-  const positional: string[] = [];
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
-    if (a === "--check") opts.check = true;
-    else if (a === "--diff") opts.diff = true;
-    else if (a === "--force") opts.force = true;
-    else if (a === "--dry-run") opts.dryRun = true;
-    else if (a === "--yes") opts.yes = true;
-    else if (a === "--key" && rest[i + 1]) opts.key = rest[++i];
-    else if (a === "--class-name" && rest[i + 1]) opts.className = rest[++i];
-    else if (a === "--tap" && rest[i + 1]) opts.tap = rest[++i];
-    else if (a === "--homepage" && rest[i + 1]) opts.homepage = rest[++i];
-    else if (a === "--release-repo" && rest[i + 1]) opts.releaseRepo = rest[++i];
-    else if (a === "--desc" && rest[i + 1]) opts.desc = rest[++i];
-    else if (a === "--template" && rest[i + 1]) opts.templateId = normalizeCreateTemplateId(rest[++i]);
-    else if (a?.startsWith("--")) {
-      throw new Error(`Unknown option: ${a}`);
-    } else if (a) {
-      positional.push(a);
-    }
-  }
-  const dir = positional[0] ?? ".";
-  return { dir, opts };
 }

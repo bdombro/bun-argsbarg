@@ -2,7 +2,7 @@
 App-wide in-memory SQLite database.
 */
 
-import { Database } from "bun:sqlite";
+import { DatabaseSync } from "node:sqlite";
 import type { InvokeHookContext, ReadinessContext } from "argsbarg";
 import { migrate } from "./migrate.ts";
 import { WorkspacesTable } from "./tables/workspaces.ts";
@@ -21,15 +21,19 @@ export class AppDb {
   /** Workspace rows and queries for this connection. */
   readonly workspaces: WorkspacesTable;
 
-  constructor(readonly sqlite: Database) {
+  /** Underlying `node:sqlite` connection. */
+  readonly sqlite: DatabaseSync;
+
+  constructor(sqlite: DatabaseSync) {
+    this.sqlite = sqlite;
     migrate(sqlite);
     this.workspaces = new WorkspacesTable(sqlite);
   }
 
   /** Open a fresh in-memory database with foreign keys enabled. */
   static open(): AppDb {
-    const sqlite = new Database(":memory:", { create: true });
-    sqlite.run("PRAGMA foreign_keys = ON");
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec("PRAGMA foreign_keys = ON");
     return new AppDb(sqlite);
   }
 
@@ -43,7 +47,7 @@ export class AppDb {
         return appDb;
       } catch {
         attempt++;
-        Bun.sleepSync(Math.min(delayMs * attempt, MAX_RETRY_DELAY_MS));
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(delayMs * attempt, MAX_RETRY_DELAY_MS));
       }
     }
   }
@@ -91,7 +95,7 @@ export class AppDb {
 
   /** Verify SQLite responds to a trivial query. */
   ping(): void {
-    this.sqlite.query("SELECT 1 AS ok").get();
+    this.sqlite.prepare("SELECT 1 AS ok").get();
   }
 
   /** Close the underlying database handle. */

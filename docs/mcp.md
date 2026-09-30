@@ -2,7 +2,7 @@
 
 > This feature is experimental.
 
-ArgsBarg can expose your CLI to AI agents through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Each **command with a handler** becomes an MCP tool; the full command tree is available as a schema resource. The server speaks JSON-RPC over stdio — one JSON object per line on stdin and stdout.
+ArgsBarg can expose your CLI to AI agents through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Each **command with a handler** becomes an MCP tool. The server speaks JSON-RPC over stdio — one JSON object per line on stdin and stdout.
 
 MCP is **opt-in**. Apps that do not set `mcpServer` on the app root behave exactly as before.
 
@@ -34,27 +34,23 @@ The process reads NDJSON requests from stdin and writes NDJSON responses to stdo
 
 3. Point your MCP client at that command. See [Client setup](#client-setup).
 
-Optionally install an agent skill for discovery without MCP: see [docs/ai-skills.md](ai-skills.md).
+Templates ship an agent skill at `skills/<key>/SKILL.md` (authored, not generated); `mcp bundle` packs it into plugins (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
 
 The `examples/nested.ts` demo enables MCP — try:
 
 ```bash
-bun run examples/nested.ts mcp
+node examples/nested.ts mcp
 ```
 
 ## Client setup
 
-### `.agents` auto-install
+### Agent plugin (recommended)
 
-When `mcpServer.enabled` is set, `configure install` merges a `mcpServers` entry into `~/.agents/mcp.json` per the https://dotagentsprotocol.com:
-
-```bash
-myapp configure install
-```
+Ship the app as an agent plugin (Claude Code, Cursor) or `.mcpb` bundle (Claude Desktop) with **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)). The plugin launches the server and bundles the app's skill. argsbarg does not write MCP client config files; clients without plugin support use the manual setup below.
 
 ### Manual client setup
 
-Many clients do not read `~/.agents/mcp.json` yet. Copy the `mcpServers` entry from that file, or add:
+Install the CLI so `myapp` is on your PATH, then add:
 
 ```json
 {
@@ -70,7 +66,7 @@ Many clients do not read `~/.agents/mcp.json` yet. Copy the `mcpServers` entry f
 | Client | Config file |
 | --- | --- |
 | **Cursor** | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) |
-| **Claude Code** | `~/.claude.json` under `mcpServers`, or project `.mcp.json` |
+| **Claude Code** | `claude mcp add`, or project `.mcp.json` |
 | **Claude Desktop** | See platform paths below |
 
 Restart Cursor or reload MCP after editing. Restart Claude Desktop after config changes.
@@ -85,9 +81,23 @@ Restart Cursor or reload MCP after editing. Restart Claude Desktop after config 
 
 You can also install a **`.mcpb`** bundle via **`mcp bundle`** (see [MCP Bundle](#mcp-bundle-mcp-bundle)).
 
+**Codex** (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.myapp]
+command = "myapp"
+args = ["mcp"]
+```
+
+**OpenCode** (`opencode.json`):
+
+```json
+{ "mcp": { "myapp": { "type": "local", "command": ["myapp", "mcp"] } } }
+```
+
 ### Other MCP hosts
 
-Copy the `mcpServers` entry from `~/.agents/mcp.json` into the host's native MCP config. Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
+Add the same command to the host's native MCP config. Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
 
 ## Configuration
 
@@ -97,12 +107,15 @@ Set `mcpServer` on the **app root only** (the object passed to `argsbarg({ … }
 | --- | --- | --- |
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
 | `instructions` | *(none)* | Returned as `initialize.result.instructions` for every negotiated protocol version. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or not the agent ends up using this server, so keep it to a one- or two-line pointer (when to reach for this tool, and to read the accompanying skill first), not usage docs. Must be non-empty when set. |
-| `schemaResourceUri` | `<sanitized root key>://schema` | URI for the built-in schema resource |
 | `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
-| `resources` | `[]` | Custom `McpResource` entries (additive; schema resource is always included) |
+| `resources` | `[]` | Custom `McpResource` entries (argsbarg adds none of its own) |
+| `errors.errorSchema` | `{ error: string }` | Error body shape for tool errors |
+| `errors.obscureUnexpected` | `false` | Hide unexpected error messages from the client (logs keep them) |
+| `hooks` | — | Wire hooks per JSON-RPC message: `onRequest` (awaited before dispatch, so it can gate calls), `onResponse`, `onError` |
+| `mcpd`, `claudePlugin`, `cursorPlugin`, `bundle` | off | Packaging for `mcp bundle` (see [MCP Bundle](#mcp-bundle-mcp-bundle)) |
 | `sizeLimits` | see [Tool sizes](#tool-sizes) | Overrides the default startup size warnings for tool descriptions, definitions, and `instructions` |
 
-MCP `serverInfo.name` and the default schema URI use the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `Program.version` (also used by the `version` built-in).
+MCP `serverInfo.name` uses the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `Program.version` (also used by the `version` built-in).
 
 Example with optional fields:
 
@@ -115,7 +128,7 @@ mcpServer: {
 
 ## Tools
 
-Every **user-defined command with a handler** in your schema becomes one MCP tool. Built-ins (`completion`, `version`, `install`, `mcp`) are not exposed as tools.
+Every **user-defined command with a handler** in your schema becomes one MCP tool. Built-ins (`completion`, `version`, `mcp`, `http`) are not exposed as tools.
 
 ### Tool names
 
@@ -139,7 +152,7 @@ Each tool’s `description` includes the human CLI path and the command’s help
 
 ### Per-command visibility
 
-Set `mcpTool: { enabled: false }` on a **command with a handler** to hide it from `tools/list` while keeping it in the CLI and in `docs cli-schema` output:
+Set `mcpTool: { enabled: false }` on a **command with a handler** to hide it from `tools/list` while keeping it in the CLI:
 
 ```typescript
 {
@@ -226,11 +239,11 @@ On success (`isError: false`):
 
 On failure (parse error, validation error, non-zero exit, thrown error), the **full** error message is returned as text content with `isError: true` (ANSI stripped, newlines preserved). HTTP JSON `{ "error": "…" }` uses the same full text. Do not collapse headless errors to the first line.
 
-Help and `docs cli-schema` are not available through tool calls; use the schema resource or run the CLI directly for those.
+Help is not available through tool calls; tool schemas come from `tools/list`.
 
 ## Tool sizes
 
-Some hosts have their own limits on how much of a tool's `description` or full definition they'll read, independent of anything the MCP spec itself defines. `mcpSizeReport(root)` (exported from `argsbarg`) measures every tool's `description` length and pretty-printed `{name, description, inputSchema, outputSchema}` definition (bytes and lines) against configurable limits, and returns human-readable warnings for anything over. `serveMcp` runs this at startup and writes any warnings to stderr (`action: "mcp.size"`) before the "MCP ready" line; `docs mcp` includes a `## Tool sizes` table with a per-tool `ok` / `over: …` status.
+Some hosts have their own limits on how much of a tool's `description` or full definition they'll read, independent of anything the MCP spec itself defines. `mcpSizeReport(root)` (exported from `argsbarg`) measures every tool's `description` length and pretty-printed `{name, description, inputSchema, outputSchema}` definition (bytes and lines) against configurable limits, and returns human-readable warnings for anything over. `serveMcp` runs this at startup and writes any warnings to stderr (`action: "mcp.size"`) before the "MCP ready" line; `mcpSizeReport(app.spec)` returns the same per-tool `ok` / `over: …` status.
 
 Default limits — observed client behaviors, not MCP spec requirements, so they may need retuning as those clients change:
 
@@ -253,31 +266,9 @@ mcpServer: {
 }
 ```
 
-## Schema and custom resources
+## Custom resources
 
-The built-in schema resource (default URI `<sanitized-key>://schema`, e.g. `nested.ts` → `nested_ts://schema`) exposes your full CLI tree as JSON — the same output as `myapp docs cli-schema`. Override with `schemaResourceUri` if needed.
-
-| Property | Value |
-| --- | --- |
-| Default URI | `<sanitized root key>://schema` |
-| MIME type | `application/json` |
-| Contents | `schemaJson(root)` — handlers omitted, built-ins excluded |
-
-### Auto docs topic resources
-
-When docs is enabled (default) and **`mcpServer.enabled`** is true, each user key in **`docs.topics`** is also exposed as an MCP resource:
-
-| Property | Value |
-| --- | --- |
-| URI | `<sanitized root key>://docs/<topicKey>` (e.g. `myapp://docs/readme`) |
-| MIME type | `text/markdown` |
-| Contents | Same body as `myapp docs <topicKey>` |
-
-Built-in docs subcommands (`schema`, `api`, `skill`, `mcp`) are **not** auto-exposed — use the schema resource, `configure`, or CLI `docs` instead. `docs` subcommands remain hidden from MCP `tools/list`.
-
-Custom `mcpServer.resources` URIs must not collide with the schema URI or any auto docs topic URI (validated at program compile time).
-
-Add custom resources on the app root:
+Argsbarg exposes no resources of its own. Add custom resources on the app root:
 
 ```typescript
 mcpServer: {
@@ -294,11 +285,11 @@ mcpServer: {
 },
 ```
 
-URIs must be unique and must not equal `schemaResourceUri` or any auto docs topic URI (`<mcpId>://docs/<topicKey>`). `load()` runs synchronously at `resources/read` time.
+URIs must be unique. `load()` runs synchronously at `resources/read` time.
 
 ## Invocation context
 
-Handlers receive `ctx.invocation`: `"cli"` for normal `app.run()` dispatch, `"mcp"` for MCP `tools/call`.
+Handlers receive `ctx.invocation`: `"cli"` for `app.run()`, `"http"` for the HTTP server, `"mcp"` for MCP `tools/call`.
 
 MCP is always non-interactive. Commands that can mount Ink or prompts should implement a **headless fast path** (same path as non-TTY CLI with `--yes` / `--json`) — see [cli-program.md — Headless-capable handlers](cli-program.md#headless-capable-handlers).
 
@@ -306,15 +297,14 @@ Use `ctx.invocation` to branch subprocess behavior — MCP stdout is the JSON-RP
 
 ```typescript
 handler: async (ctx) => {
-  const proc = Bun.spawn(["my-tool", ...ctx.args], {
-    stdout: ctx.invocation === "mcp" ? "pipe" : "inherit",
-    stderr: "inherit",
+  const proc = spawn("my-tool", ctx.args, {
+    stdio: ["ignore", ctx.invocation === "mcp" ? "pipe" : "inherit", "inherit"],
   });
   // capture proc.stdout when piping…
 };
 ```
 
-`Bun.spawn({ stdout: "inherit" })` under MCP corrupts the wire. Prefer `"pipe"` and let argsbarg return captured handler stdout in the tool result.
+Inheriting stdout (`stdio: "inherit"`) under MCP corrupts the wire. Prefer `"pipe"` and let argsbarg return captured handler stdout in the tool result.
 
 ### `app.invoke` (public API)
 
@@ -331,7 +321,6 @@ At server start (`app.serveMcp()`), before the NDJSON loop:
 | Order | Source | Behavior |
 | --- | --- | --- |
 | 1 | `shellEnv` | Spawns `$SHELL -l -c env`; merges into `process.env` |
-| 2 | App config file | Loads `appConfig` keys from flat JSON when unset in host env |
 
 **`shellEnv` merge rules:**
 
@@ -339,27 +328,7 @@ At server start (`app.serveMcp()`), before the NDJSON loop:
 - **Other vars** — set only when absent from the host environment (host wins).
 - On failure — one-line warning on **stderr**; server continues.
 
-**App config (`appConfig`):**
-
-- Default path: `~/.local/lib/<sanitized-key>/config`.
-- JSON shape: flat object keyed by schema names — `{ "apiToken": "…" }`. Unknown keys rejected on load.
-- Loaded at MCP startup; host `process.env` wins for mapped env vars already set.
-- Missing required config does **not** exit the MCP server — enforced at `tools/call` with a helpful error.
-- Configure interactively: `myapp configure` (see [configure.md](configure.md)).
-- Built-in `configure get` / `configure set` when `appConfig.commands` is enabled (default). Hosts inject `user_config` → env at spawn; they never write the argsbarg config file.
-
-Example:
-
-```typescript
-appConfig: {
-  entries: {
-    apiToken: { description: "Create at https://example.com/settings/tokens", env: "API_TOKEN", sensitive: true },
-  },
-},
-mcpServer: {
-  enabled: true,
-},
-```
+argsbarg does not manage app settings. Read credentials from `process.env` (hosts and plugins inject env at spawn) or your own config file.
 
 ## Protocol
 
@@ -376,7 +345,7 @@ mcpServer: {
 | `ping` | Returns `{}`. |
 | `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and `outputSchema` (`2025-06-18` sessions only). |
 | `tools/call` | Runs a command handler; params: `name`, `arguments` (object). |
-| `resources/list` | Lists schema + custom resources. |
+| `resources/list` | Lists custom resources (`mcpServer.resources`). |
 | `resources/read` | Returns resource body; params: `uri`. |
 
 Requests without an `id` are treated as notifications and do not receive a response (except `notifications/initialized`, which is ignored after parsing).
@@ -384,7 +353,7 @@ Requests without an `id` are treated as notifications and do not receive a respo
 ### Manual smoke test
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bun run examples/nested.ts mcp
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | node examples/nested.ts mcp
 ```
 
 You should get one JSON line on stdout with `result.capabilities` and `result.serverInfo`.
@@ -394,8 +363,7 @@ You should get one JSON line on stdout with `result.capabilities` and `result.se
 When `mcpServer.enabled` is true, **`mcp bundle`** writes dist artifacts you opt into on the app root:
 
 ```bash
-just build
-./dist/myapp mcp bundle
+myapp mcp bundle
 # → dist/myapp.mcpb               (when mcpServer.mcpd: true)
 # → dist/claude-plugin/myapp.zip  (when mcpServer.claudePlugin: true)
 # → dist/cursor-plugin/myapp.zip  (when mcpServer.cursorPlugin: true)
@@ -412,7 +380,7 @@ mcpServer: {
 },
 ```
 
-Expects the compiled binary at **`dist/<program.key>`**. Stdout prints one path per artifact produced.
+Expects an executable at **`dist/<program.key>`** (for example a compiled binary) and packs it as `bin/<key>`. Stdout prints one path per artifact produced.
 
 | Output | Purpose |
 | --- | --- |
@@ -420,7 +388,7 @@ Expects the compiled binary at **`dist/<program.key>`**. Stdout prints one path 
 | **`dist/claude-plugin/<name>.zip`** | Claude Code plugin zip — when `claudePlugin: true` (default **false**) |
 | **`dist/cursor-plugin/<name>.zip`** | Cursor plugin zip — when `cursorPlugin: true` (default **false**) |
 
-Manifest metadata is generated from your schema (`mcpServerId`, tools, `appConfig` user config for env-mapped entries). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `displayName`, `homepage`, `icon`, `license`, `longDescription`, `repository`, `skillsDir`).
+Manifest metadata is generated from your schema (`mcpServerId`, tools). Optional pack-time fields live under **`mcpServer.bundle`** (`author`, `displayName`, `homepage`, `icon`, `license`, `longDescription`, `repository`, `skillsDir`).
 
 **Claude Code plugin zip layout** (paths at archive root):
 
@@ -442,24 +410,20 @@ skills/<dirName>/...
 
 `plugin.json` and `mcp.json` configure Cursor and Claude to load the bundled MCP server when the plugin is enabled. The plugin zip preserves the executable bit on `bin/<key>`.
 
-If the repository has a skill directory under `skills/<dirName>/` (or `mcpServer.bundle.skillsDir`), the plugin bundles that repository skill. Otherwise, it falls back to a generated **MCP routing stub** telling the agent to use the plugin's MCP toolset.
+If the repository has a skill directory under `skills/<dirName>/` (or `mcpServer.bundle.skillsDir`), the plugin bundles that repository skill. Otherwise the plugin ships no skill.
 
 Load Claude plugin locally with `claude --plugin-dir ./dist/claude-plugin/myapp.zip`.
 Unpack Cursor plugin locally into `~/.cursor/plugins/local/<name>`.
 
-Bare **`myapp mcp`** still runs the stdio MCP server (unchanged for `configure` MCP targets and MCP hosts). Use **`configure install`** for Cursor, Claude Code, Claude Desktop, and OpenCode JSON config.
+Bare **`myapp mcp`** still runs the stdio MCP server for hosts configured by hand (see [Manual client setup](#manual-client-setup)).
 
 ## Hidden commands and options
 
-Set **`hidden: true`** on a command or option to omit it from help listings, `docs cli-schema` / `docs cli`, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
+Set **`hidden: true`** on a command or option to omit it from help listings, schema export, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
 
 ## Reserved names
 
-When MCP is enabled:
-
-- Do not declare top-level commands named **`completion`** or **`mcp`** — reserved for platform builtins.
-
-Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1).
+When MCP is enabled, `mcp` is reserved at the root (as are `completion` and `version` always). Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1).
 
 ## Design notes
 
@@ -468,4 +432,3 @@ Running `myapp mcp` without `mcpServer` on the root fails with an error (exit 1)
 - **User schema only** — tool dispatch uses your app root, not merged presentation builtins.
 - **Buffered output** — MCP tool results are sent after the handler finishes. Incremental stdout (log tail, progress) is not streamed; a future release may add MCP progress notifications.
 
-For the `docs cli-schema` export used by the resource, see [docs/bundled-docs.md](bundled-docs.md).

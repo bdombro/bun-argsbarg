@@ -2,10 +2,10 @@
 CLI flag and programmatic overrides merged into HTTP/MCP server runtime config.
 */
 
-import { join } from "node:path";
-import { resolveAppConfigDir } from "../config/file.ts";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import type { AppSpec } from "../core/types.ts";
-import type { ResolvedLogConfig } from "../log/emitter.ts";
+import { type ResolvedLogConfig, resolveLogConfig } from "../log/emitter.ts";
 
 /** Overrides from `myapp http` / `serveHttp()` flags and embedders. */
 export interface ServeOverrides {
@@ -34,14 +34,14 @@ export interface ResolvedMcpServeConfig {
   log: ResolvedLogConfig;
 }
 
-function resolveLogFile(program: AppSpec, logFile: string | undefined): string | undefined {
+function resolveLogFile(logFile: string | undefined): string | undefined {
   if (!logFile) {
     return undefined;
   }
-  if (logFile.startsWith("/") || logFile.startsWith("~")) {
-    return logFile;
+  if (logFile === "~" || logFile.startsWith("~/")) {
+    return join(homedir(), logFile.slice(1));
   }
-  return join(resolveAppConfigDir(program), logFile);
+  return resolve(logFile);
 }
 
 /** Builds resolved HTTP server config (CLI flags > program schema). */
@@ -53,13 +53,12 @@ export function resolveHttpServeConfig(program: AppSpec, overrides: ServeOverrid
     port: overrides.port ?? http?.port ?? 3000,
     trustProxy: overrides.trustProxy ?? http?.trustProxy ?? false,
     obscureUnexpected,
-    log: {
-      format: overrides.logFormat ?? program.log?.format ?? "json",
-      file: resolveLogFile(program, overrides.logFile ?? program.log?.file),
-      access: overrides.noAccessLog ? false : (program.log?.access ?? true),
-      errors: program.log?.errors ?? true,
-      dev: overrides.dev ?? false,
-    },
+    log: resolveLogConfig(program, {
+      format: overrides.logFormat,
+      file: resolveLogFile(overrides.logFile ?? program.log?.file),
+      access: overrides.noAccessLog ? false : undefined,
+      dev: overrides.dev,
+    }),
   };
 }
 
@@ -68,13 +67,11 @@ export function resolveMcpServeConfig(program: AppSpec, overrides: ServeOverride
   const mcp = program.mcpServer;
   return {
     obscureUnexpected: overrides.obscureErrors ?? mcp?.errors?.obscureUnexpected ?? false,
-    log: {
-      format: overrides.logFormat ?? program.log?.format ?? "json",
-      file: resolveLogFile(program, overrides.logFile ?? program.log?.file),
-      access: program.log?.access ?? true,
-      errors: program.log?.errors ?? true,
-      dev: overrides.dev ?? false,
-    },
+    log: resolveLogConfig(program, {
+      format: overrides.logFormat,
+      file: resolveLogFile(overrides.logFile ?? program.log?.file),
+      dev: overrides.dev,
+    }),
   };
 }
 

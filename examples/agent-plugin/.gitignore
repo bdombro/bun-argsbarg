@@ -1,7 +1,4 @@
 node_modules/
 dist/*
 !dist/example-agent-plugin.mjs
-Formula/.staging/
-workspaces.db
 .DS_Store
-

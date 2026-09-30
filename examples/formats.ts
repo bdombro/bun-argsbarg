@@ -1,12 +1,12 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
  * Value formats demo: duration, comma-list, date, default, and ctx.inputs.
- * Run: bun ./examples/app.ts run --tags alpha,beta --on 2026-06-22
+ * Run: node ./examples/formats.ts run --tags alpha,beta --on 2026-06-22
  * MCP: pass comma-list as string or array; varargs N/A on this leaf.
  */
 
 import pkg from "../package.json" with { type: "json" };
-import { FallbackMode, OptionKind, ValueFormat, command, argsbarg } from "../src/index";
+import { FallbackMode, OptionKind, ValueFormat, command, argsbarg } from "../src/index.ts";
 
 const app = argsbarg({
   commands: [

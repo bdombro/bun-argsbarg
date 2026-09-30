@@ -2,11 +2,13 @@
 Ordered SQL migrations for the example-api SQLite database.
 */
 
-import type { Database } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 
-const MIGRATIONS_DIR = join(import.meta.dir, "migrations");
+/** `migrations/` next to this module (`npm run build` copies it into `dist/db/`). */
+const MIGRATIONS_DIR = fileURLToPath(new URL("./migrations", import.meta.url));
 
 const SCHEMA_MIGRATIONS_DDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
@@ -39,30 +41,33 @@ export function listMigrationFiles(dir = MIGRATIONS_DIR): MigrationFile[] {
 }
 
 /** Highest applied migration version, or 0 when schema_migrations is empty. */
-export function appliedMigrationVersion(db: Database): number {
-  db.run(SCHEMA_MIGRATIONS_DDL);
-  const row = db.query("SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations").get() as {
+export function appliedMigrationVersion(db: DatabaseSync): number {
+  db.exec(SCHEMA_MIGRATIONS_DDL);
+  const row = db.prepare("SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations").get() as {
     version: number;
   };
   return row.version;
 }
 
 /** Apply pending migrations; returns how many files were applied. */
-export function migrate(db: Database, dir = MIGRATIONS_DIR): number {
-  db.run(SCHEMA_MIGRATIONS_DDL);
+export function migrate(db: DatabaseSync, dir = MIGRATIONS_DIR): number {
+  db.exec(SCHEMA_MIGRATIONS_DDL);
   let applied = 0;
   for (const migration of listMigrationFiles(dir)) {
-    const seen = db.query("SELECT 1 AS ok FROM schema_migrations WHERE version = ?").get(migration.version) as {
-      ok: number;
-    } | null;
+    const seen = db.prepare("SELECT 1 AS ok FROM schema_migrations WHERE version = ?").get(migration.version);
     if (seen) {
       continue;
     }
     const sql = readFileSync(migration.path, "utf8");
-    db.transaction(() => {
-      db.run(sql);
-      db.run("INSERT INTO schema_migrations (version, name) VALUES (?, ?)", [migration.version, migration.name]);
-    })();
+    db.exec("BEGIN");
+    try {
+      db.exec(sql);
+      db.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)").run(migration.version, migration.name);
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
     applied++;
   }
   return applied;

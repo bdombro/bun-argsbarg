@@ -8,9 +8,6 @@ module layout. It is the package's only entry point: every public type is export
 */
 
 export type { SchemaExport } from "./builtins/export.ts";
-export type { AnyAppConfigSnapshot } from "./config/context.ts";
-export { displayAppConfigPath, resolveAppConfigPath } from "./config/file.ts";
-export type { ResolvedConfig } from "./config/resolve.ts";
 export type { CommandInputs } from "./core/context.ts";
 export { CommandContext } from "./core/context.ts";
 export {
@@ -27,10 +24,6 @@ export {
 } from "./core/leaf-inputs.ts";
 export type { SchemaRootExport } from "./core/schema.ts";
 export type {
-  AppConfig,
-  AppConfigEntry,
-  AppConfigResolveContext,
-  AppConfigResolveFn,
   AppHooks,
   AppSpec,
   AppSpecFields,
@@ -50,11 +43,6 @@ export type {
   CommandPositionalInputs,
   CommandResultOf,
   CompletionConfig,
-  ConfigureConfig,
-  ConfigureHookContext,
-  ConfigureTargets,
-  DocsConfig,
-  DocsTopic,
   ErrorHookContext,
   HttpExposureConfig,
   HttpMethod,
@@ -62,7 +50,6 @@ export type {
   HttpServerConfig,
   HttpWireContext,
   HttpWireHooks,
-  InstallTargetSpec,
   Invocation,
   InvokeFailureKind,
   InvokeHookContext,
@@ -79,7 +66,6 @@ export type {
   McpWireContext,
   McpWireHooks,
   ReadinessContext,
-  ResolvedInstallTarget,
   RespondBody,
   RespondOptions,
   RunnableCommand,
@@ -94,6 +80,7 @@ export {
   SchemaValidationError,
   ValueFormat,
 } from "./core/types.ts";
+export { isInteractiveTty } from "./core/utils.ts";
 export { schemaStrictnessWarnings } from "./core/validate.ts";
 export { buildCommandInputSchema, commandWireOptions } from "./core/wire-schema.ts";
 export type { HeadlessContext } from "./headless/routing.ts";
@@ -110,26 +97,23 @@ export { handleApiRequest, httpServeHttp, resolveHttpListenAddress } from "./htt
 export type { EcsLogEvent, EcsLogLevel, EcsServiceFields, FormatEcsLineOpts, LogEnrichContext } from "./log/ecs.ts";
 export { ECS_VERSION, formatEcsLine } from "./log/ecs.ts";
 export type { LogEmitterOpts, ResolvedLogConfig } from "./log/emitter.ts";
-export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
-export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/pack/bundle.ts";
+export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/pack/bundle.ts";
 export {
   defaultClaudePluginPaths,
   generatePluginManifest,
   generatePluginMcpJson,
   packClaudePlugin,
-} from "./mcp/claude.ts";
+} from "./mcp/pack/claude.ts";
 export {
   defaultCursorPluginPaths,
   generateCursorPluginManifest,
   generateCursorPluginMcpJson,
   packCursorPlugin,
-} from "./mcp/cursor.ts";
+} from "./mcp/pack/cursor.ts";
 export type { McpSizeReport, McpToolSize } from "./mcp/tools.ts";
 export { DEFAULT_MCP_SIZE_LIMITS, mcpSizeReport } from "./mcp/tools.ts";
-export { userHome } from "./paths/host.ts";
 export type { Capabilities } from "./runtime/capabilities.ts";
-export { type App, argsbarg, type InvokeKind, type InvokeResult } from "./runtime/cli.ts";
-export { cliErrWithHelp } from "./runtime/cli-errors.ts";
+export { type App, argsbarg, cliErrWithHelp, type InvokeKind, type InvokeResult } from "./runtime/cli.ts";
 export type { ServerHandleContext } from "./server/context.ts";
 export type { ResolvedHttpServeConfig, ResolvedMcpServeConfig, ServeOverrides } from "./server/overrides.ts";
-export { isInteractiveTty } from "./utils.ts";

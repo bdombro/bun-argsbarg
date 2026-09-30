@@ -3,7 +3,6 @@ This module maps AppSpec leaf nodes to MCP tool definitions and converts
 flat JSON tool arguments into argv for App.invoke.
 */
 
-import { schemaJson } from "../core/schema.ts";
 import {
   type AppSpec,
   type Command,
@@ -18,17 +17,10 @@ import {
 } from "../core/types.ts";
 import { buildCommandInputSchema, commandWireOptions } from "../core/wire-schema.ts";
 import { toJsonSchema } from "../core/zod-schema.ts";
-import { docsMcpResources } from "../docs/mcp-resources.ts";
-import { cliResolveNotes } from "../help.ts";
 import { isMcpHidden, visibleOptions } from "../runtime/exposure.ts";
+import { cliResolveNotes } from "../runtime/help.ts";
 
 export { buildCommandInputSchema, commandWireOptions } from "../core/wire-schema.ts";
-export { defaultDocsTopicResourceUri, resolveDocsTopicResourceUri } from "../docs/mcp-resources.ts";
-
-/** Default URI pattern for the CLI schema MCP resource (`<mcpId>://schema`). */
-export function defaultMcpSchemaUri(mcpId: string): string {
-  return `${mcpId}://schema`;
-}
 
 /** Sanitizes a command key segment for MCP tool names and server identity. */
 export function sanitizeToolSegment(key: string): string {
@@ -203,24 +195,15 @@ export interface McpResourceEntry {
   load: () => string;
 }
 
-/** Returns built-in schema resource plus user mcpServer.resources. */
+/** Returns the app's `mcpServer.resources`. */
 export function allMcpResources(root: AppSpec): McpResourceEntry[] {
-  const schemaUri = resolveMcpSchemaUri(root);
-  const builtIn: McpResourceEntry = {
-    uri: schemaUri,
-    name: "cli-schema",
-    description: "Full CLI command tree (same as docs cli-schema).",
-    mimeType: "application/json",
-    load: () => schemaJson(root),
-  };
-  const user = (root.mcpServer?.resources ?? []).map((r) => ({
+  return (root.mcpServer?.resources ?? []).map((r) => ({
     uri: r.uri,
     name: r.name,
     description: r.description,
     mimeType: r.mimeType ?? "text/plain",
     load: r.load,
   }));
-  return [builtIn, ...docsMcpResources(root), ...user];
 }
 
 /** Recursively collects MCP tool definitions from user commands with a handler. */
@@ -230,7 +213,7 @@ export function collectMcpTools(root: AppSpec): McpToolDef[] {
   /** Walks the command tree and appends leaf tools. */
   function walk(cmd: Command, path: string[]): void {
     if (hasHandler(cmd)) {
-      if (cmd.key === "completion" || cmd.key === "configure" || cmd.key === "mcp" || cmd.key === "version") {
+      if (cmd.key === "completion" || cmd.key === "mcp" || cmd.key === "version") {
         return;
       }
       if (isMcpHidden(cmd)) {
@@ -275,14 +258,6 @@ export function resolveMcpServerInfo(root: AppSpec): { name: string; version: st
     name: mcpServerId(root),
     version: root.version,
   };
-}
-
-/** Resolves the schema resource URI for this app. */
-export function resolveMcpSchemaUri(root: AppSpec): string {
-  if (root.mcpServer?.schemaResourceUri) {
-    return root.mcpServer.schemaResourceUri;
-  }
-  return defaultMcpSchemaUri(mcpServerId(root));
 }
 
 /** Converts flat MCP tool arguments to argv for App.invoke. */

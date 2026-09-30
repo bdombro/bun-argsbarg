@@ -2,13 +2,14 @@
 Unit tests for W3C Trace Context parsing and formatting.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { extractTraceContext, formatTraceparent, parseTraceparent, randomSpanId } from "./trace.ts";
 
 describe("parseTraceparent", () => {
   test("parses valid traceparent", () => {
     const parsed = parseTraceparent("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
-    expect(parsed).toEqual({
+    assert.deepEqual(parsed, {
       traceId: "0af7651916cd43dd8448eb211c80319c",
       spanId: "b7ad6b7169203331",
       sampled: true,
@@ -16,20 +17,21 @@ describe("parseTraceparent", () => {
   });
 
   test("returns undefined for invalid header", () => {
-    expect(parseTraceparent("not-a-traceparent")).toBeUndefined();
-    expect(parseTraceparent("")).toBeUndefined();
+    assert.equal(parseTraceparent("not-a-traceparent"), undefined);
+    assert.equal(parseTraceparent(""), undefined);
   });
 });
 
 describe("formatTraceparent", () => {
   test("formats traceparent with sampled flag", () => {
-    expect(
+    assert.equal(
       formatTraceparent({
         traceId: "0af7651916cd43dd8448eb211c80319c",
         spanId: "b7ad6b7169203331",
         sampled: true,
       }),
-    ).toBe("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+      "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+    );
   });
 });
 
@@ -41,20 +43,20 @@ describe("extractTraceContext", () => {
       },
     });
     const ctx = extractTraceContext(request);
-    expect(ctx?.traceId).toBe("0af7651916cd43dd8448eb211c80319c");
-    expect(ctx?.parentSpanId).toBe("b7ad6b7169203331");
-    expect(ctx?.spanId).toHaveLength(16);
-    expect(ctx?.spanId).not.toBe("b7ad6b7169203331");
+    assert.equal(ctx?.traceId, "0af7651916cd43dd8448eb211c80319c");
+    assert.equal(ctx?.parentSpanId, "b7ad6b7169203331");
+    assert.equal((ctx?.spanId ?? "").length, 16);
+    assert.notEqual(ctx?.spanId, "b7ad6b7169203331");
   });
 
   test("returns undefined when header is missing", () => {
     const request = new Request("http://localhost/workspaces");
-    expect(extractTraceContext(request)).toBeUndefined();
+    assert.equal(extractTraceContext(request), undefined);
   });
 });
 
 describe("randomSpanId", () => {
   test("returns 16 hex chars", () => {
-    expect(randomSpanId()).toMatch(/^[0-9a-f]{16}$/);
+    assert.match(randomSpanId(), /^[0-9a-f]{16}$/);
   });
 });

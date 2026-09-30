@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { type AppSpec, argsbarg } from "argsbarg";
 import { shapeAreaTestSpec } from "./command.ts";
 
@@ -18,10 +19,10 @@ describe("shape-area command", () => {
       invocation: "http",
       toolArgs: { kind: "rect", width: 2, height: 3 },
     });
-    expect(rect.response?.body).toEqual({ area: 6 });
+    assert.deepEqual(rect.response?.body, { area: 6 });
 
     const circle = await cli.invoke(["shape-area"], { invocation: "http", toolArgs: { kind: "circle", radius: 1 } });
-    expect(circle.response?.body).toEqual({ area: Math.PI });
+    assert.deepEqual(circle.response?.body, { area: Math.PI });
   });
 
   test("rejects fields from the wrong branch via inputSchema", async () => {
@@ -29,6 +30,6 @@ describe("shape-area command", () => {
       invocation: "http",
       toolArgs: { kind: "circle", radius: 1, width: 2 },
     });
-    expect(result.kind).toBe("error");
+    assert.equal(result.kind, "error");
   });
 });

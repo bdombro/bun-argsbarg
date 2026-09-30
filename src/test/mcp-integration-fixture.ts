@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 MCP integration test fixture for subprocess tests (not a public example).
 */
@@ -6,14 +6,6 @@ MCP integration test fixture for subprocess tests (not a public example).
 import { type AppSpec, argsbarg, OptionKind } from "../index.ts";
 
 const program = {
-  appConfig: {
-    entries: {
-      argsTestSecret: {
-        description: "Test secret for integration tests.",
-        env: "ARGS_TEST_SECRET",
-      },
-    },
-  },
   commands: [
     {
       key: "echo-env",
@@ -60,11 +52,6 @@ const program = {
     },
   ],
   description: "MCP integration test fixture.",
-  docs: {
-    topics: {
-      readme: { text: "# MCP test readme\n" },
-    },
-  },
   key: "mcp-test",
   mcpServer: {
     enabled: true,

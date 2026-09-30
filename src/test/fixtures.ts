@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import type { AppSpec } from "../core/types.ts";
 import { FallbackMode, OptionKind } from "../core/types.ts";
 import type { McpToolDef } from "../mcp/tools.ts";
@@ -80,27 +81,40 @@ export const nestedMcpFixture = testProgram({
   fallbackMode: FallbackMode.MissingOrUnknown,
 });
 
+/** Output of a finished child process. */
+export interface RunResult {
+  /** Captured stdout. */
+  stdout: string;
+  /** Captured stderr. */
+  stderr: string;
+  /** Exit code (1 when the process could not start or was killed). */
+  exitCode: number;
+}
+
+/** Runs `node <args>` from the repo root (10s timeout) and captures output. */
+export function runNode(
+  /** Script path and arguments. */
+  args: string[],
+  /** Extra environment and stdin text. */
+  opts?: { env?: Record<string, string>; input?: string },
+): RunResult {
+  const proc = spawnSync(process.execPath, args, {
+    encoding: "utf8",
+    env: opts?.env ? { ...process.env, ...opts.env } : process.env,
+    input: opts?.input,
+    timeout: 10_000,
+  });
+  return { stdout: proc.stdout ?? "", stderr: proc.stderr ?? "", exitCode: proc.status ?? 1 };
+}
+
 /** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
 export async function mcpRequest(
   requests: object[],
   opts?: { script?: string; env?: Record<string, string> },
 ): Promise<Map<string | number, object>> {
   const script = opts?.script ?? "examples/nested.ts";
-  const proc = Bun.spawn(["bun", "run", script, "mcp"], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "pipe",
-    env: opts?.env ? { ...process.env, ...opts.env } : process.env,
-  });
-
   const input = requests.map((r) => `${JSON.stringify(r)}\n`).join("");
-  proc.stdin.write(input);
-  proc.stdin.end();
-
-  const timeout = setTimeout(() => proc.kill(), 10_000);
-  const stdout = await new Response(proc.stdout).text();
-  await proc.exited;
-  clearTimeout(timeout);
+  const { stdout } = runNode([script, "mcp"], { env: opts?.env, input });
 
   const byId = new Map<string | number, object>();
   for (const line of stdout.split("\n")) {
@@ -172,7 +186,6 @@ export function nestedDocsFallbackFixture(): AppSpec {
   return testProgram({
     key: "app",
     description: "",
-    docs: { enabled: false },
     commands: [
       {
         key: "docs",

@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 This example shows nested routing with groups and fallback behavior.
 It adds a deeper command tree so readers can see how grouped routing, leaf handlers,
@@ -7,8 +7,9 @@ and fallback commands fit together in one schema.
 It demonstrates how the schema scales beyond one command.
 */
 
+import { readFile } from "node:fs/promises";
 import pkg from "../package.json" with { type: "json" };
-import { FallbackMode, OptionKind, wantsExplicitJson, command, argsbarg } from "../src/index";
+import { FallbackMode, OptionKind, wantsExplicitJson, command, argsbarg } from "../src/index.ts";
 
 const app = argsbarg({
   commands: [
@@ -89,8 +90,7 @@ const app = argsbarg({
         }
         for (const path of ctx.args) {
           try {
-            const file = Bun.file(path);
-            const text = await file.text();
+            const text = await readFile(path, "utf8");
             const firstLine = text.split("\n")[0];
             console.log(`${path}: ${firstLine}`);
           } catch {
@@ -100,13 +100,7 @@ const app = argsbarg({
       },
     }),
   ],
-  configure: {},
   description: "Nested groups demo.",
-  docs: {
-    topics: {
-      readme: { text: "# app.ts\n\nNested groups demo.\n" },
-    },
-  },
   fallbackCommand: "read",
   fallbackMode: FallbackMode.MissingOrUnknown,
   key: "nested.ts",

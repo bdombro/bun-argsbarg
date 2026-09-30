@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 Thin CLI entry — delegates to argsbarg runtime.
 */

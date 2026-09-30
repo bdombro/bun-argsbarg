@@ -1,4 +1,5 @@
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 
 test("dereferenceJsonSchema inlines nested definitions", () => {
@@ -16,14 +17,14 @@ test("dereferenceJsonSchema inlines nested definitions", () => {
     },
   };
   const out = dereferenceJsonSchema(schema);
-  expect(out.properties).toEqual({
+  assert.deepEqual(out.properties, {
     invoice: {
       type: "object",
       properties: { id: { type: "string" } },
       required: ["id"],
     },
   });
-  expect(out.definitions).toBeUndefined();
+  assert.equal(out.definitions, undefined);
 });
 
 test("dereferenceJsonSchema supports $defs", () => {
@@ -37,8 +38,8 @@ test("dereferenceJsonSchema supports $defs", () => {
     },
   };
   const out = dereferenceJsonSchema(schema);
-  expect(out.properties).toEqual({ item: { type: "string" } });
-  expect(out.$defs).toBeUndefined();
+  assert.deepEqual(out.properties, { item: { type: "string" } });
+  assert.equal(out.$defs, undefined);
 });
 
 test("dereferenceJsonSchema merges $ref siblings", () => {
@@ -57,7 +58,7 @@ test("dereferenceJsonSchema merges $ref siblings", () => {
   const out = dereferenceJsonSchema(schema) as {
     properties: { invoice: { type: string; description: string } };
   };
-  expect(out.properties.invoice).toEqual({
+  assert.deepEqual(out.properties.invoice, {
     type: "object",
     description: "Invoice payload",
   });
@@ -81,8 +82,8 @@ test("dereferenceJsonSchema ignores circular refs", () => {
   const out = dereferenceJsonSchema(schema) as {
     properties: { self: { type: string; properties: { again: { $ref: string } } } };
   };
-  expect(out.properties.self.type).toBe("object");
-  expect(out.properties.self.properties.again).toEqual({ $ref: "#/definitions/Node" });
+  assert.equal(out.properties.self.type, "object");
+  assert.deepEqual(out.properties.self.properties.again, { $ref: "#/definitions/Node" });
 });
 
 test("dereferenceJsonSchema leaves external refs unchanged", () => {
@@ -93,7 +94,7 @@ test("dereferenceJsonSchema leaves external refs unchanged", () => {
     },
   };
   const out = dereferenceJsonSchema(schema);
-  expect(out.properties).toEqual({
+  assert.deepEqual(out.properties, {
     remote: { $ref: "https://example.com/schema.json" },
   });
 });

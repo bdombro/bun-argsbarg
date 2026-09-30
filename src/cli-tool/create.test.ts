@@ -2,10 +2,11 @@
 Tests for cli-tool/create module behavior.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, test } from "node:test";
 import {
   applyCreate,
   type CreateOptions,
@@ -22,9 +23,6 @@ function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
   return {
     templateId: "cli",
     key: "testapp",
-    className: "Testapp",
-    tap: "local/testapp",
-    homepage: "https://example.com",
     releaseRepo: "example/testapp",
     desc: "Test",
     force: false,
@@ -40,88 +38,81 @@ function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
 /** Tests for argsbarg create. */
 describe("argsbarg create", () => {
   test("in-repo example templates match their own create output", () => {
-    for (const example of ["cli", "api", "agent-plugin"]) {
-      const dir = join(import.meta.dir, "../../examples", example);
-      expect({ example, drift: diffCreate(dir, { check: true }) }).toEqual({ example, drift: [] });
+    for (const example of ["cli", "api", "agent-plugin", "homebrew"]) {
+      const dir = join(import.meta.dirname, "../../examples", example);
+      assert.deepEqual({ example, drift: diffCreate(dir, { check: true }) }, { example, drift: [] });
     }
   });
 
   test("drops argsbarg-dev-only lines outside the in-repo template", () => {
     const content = `setup:\n    bun install\n    ln -sf a b ${DEV_ONLY_MARKER}: fix link\n    just check\n`;
-    expect(substituteTemplateContent(content, baseOpts())).toBe("setup:\n    bun install\n    just check\n");
-    expect(substituteTemplateContent(content, baseOpts({ devTemplate: true }))).toBe(content);
+    assert.equal(substituteTemplateContent(content, baseOpts()), "setup:\n    bun install\n    just check\n");
+    assert.equal(substituteTemplateContent(content, baseOpts({ devTemplate: true })), content);
   });
 
   test("substitutes {key} tokens", () => {
-    const out = substituteTemplateContent(
-      "key={key} class={className} env={envPrefix}_API_TOKEN tap={tap} org={tapOrg}",
-      {
-        ...baseOpts({
-          key: "my-cli",
-          className: "MyCli",
-          tap: "org/my-cli",
-          homepage: "https://github.com/org/my-cli",
-          releaseRepo: "org/my-cli",
-          desc: "My CLI",
-        }),
-      },
-    );
-    expect(out).toContain("my-cli");
-    expect(out).toContain("MyCli");
-    expect(out).toContain("MY_CLI_API_TOKEN");
-    expect(out).toContain("org/my-cli");
-    expect(out).not.toContain("{key}");
+    const out = substituteTemplateContent("key={key} repo={releaseRepo} desc={desc}", {
+      ...baseOpts({ key: "my-cli", releaseRepo: "org/my-cli", desc: "My CLI" }),
+    });
+    assert.equal(out, "key=my-cli repo=org/my-cli desc=My CLI");
   });
 
   test("classNameFromKey", () => {
-    expect(classNameFromKey("sqsp-i18n")).toBe("SqspI18n");
-    expect(classNameFromKey("at1")).toBe("At1");
-    expect(classNameFromKey("1password")).toBe("App1password");
+    assert.equal(classNameFromKey("sqsp-i18n"), "SqspI18n");
+    assert.equal(classNameFromKey("at1"), "At1");
+    assert.equal(classNameFromKey("1password"), "App1password");
   });
 
   test("resolveCreateOptions derives identity defaults from key", () => {
-    expect(resolveCreateOptions({ key: "1password", releaseRepo: "org/1password" }).className).toBe("App1password");
-    expect(resolveCreateOptions({ key: "my-cli", className: "Custom", releaseRepo: "org/my-cli" }).className).toBe(
-      "Custom",
-    );
     const opts = resolveCreateOptions({ key: "at1", releaseRepo: "bdombro/at1" });
-    expect(opts.tap).toBe("bdombro/at1");
-    expect(opts.templateId).toBe("cli");
+    assert.equal(opts.desc, "at1 CLI");
+    assert.equal(opts.templateId, "cli");
   });
 
   test("resolveCreateOptions requires release repo", () => {
-    expect(() => resolveCreateOptions({ key: "at1" })).toThrow(/release repo/i);
+    assert.throws(() => resolveCreateOptions({ key: "at1" }), /release repo/i);
   });
 
-  test("renderCreateTree includes justfile and create-identity for cli template", () => {
+  test("renderCreateTree for the npm cli template has a justfile and no Homebrew files", () => {
     const tree = renderCreateTree(baseOpts({ key: "testapp" }));
-    expect(tree.has("justfile")).toBe(true);
-    expect(tree.has("scripts/create-identity.ts")).toBe(true);
-    expect(tree.has("scripts/print-identity.ts")).toBe(false);
-    expect(tree.has("skills/testapp/SKILL.md")).toBe(true);
-    const identity = tree.get("scripts/create-identity.ts");
-    expect(identity).toContain('key: "testapp"');
-    expect(identity).toContain('template: "cli"');
-    const justfile = tree.get("justfile") ?? "";
-    expect(justfile).not.toContain("print-identity");
-    expect(justfile).toContain("testapp");
-    expect(justfile).toContain("local/testapp/testapp");
-    expect(tree.has("src/commands/render-json/command.ts")).toBe(false);
+    assert.equal(tree.has("src/create-identity.ts"), true);
+    assert.equal(tree.has("skills/testapp/SKILL.md"), true);
+    assert.ok(tree.has("justfile"));
+    assert.equal(
+      [...tree.keys()].some((rel) => rel.startsWith("Formula/")),
+      false,
+    );
+    const identity = tree.get("src/create-identity.ts");
+    assert.ok((identity ?? "").includes('key: "testapp"'));
+    assert.ok((identity ?? "").includes('template: "cli"'));
+    const pkg = JSON.parse(tree.get("package.json") ?? "{}") as { name: string; bin: Record<string, string> };
+    assert.equal(pkg.name, "testapp");
+    assert.deepEqual(pkg.bin, { testapp: "dist/index.js" });
+    assert.ok(!(tree.get("package.json") ?? "").includes("file:../.."));
+    assert.equal(tree.has("src/commands/render-json/command.ts"), false);
+  });
+
+  test("renderCreateTree for the homebrew template renames the formula and its class", () => {
+    const tree = renderCreateTree(baseOpts({ templateId: "homebrew", key: "my-tool", releaseRepo: "org/my-tool" }));
+    const formula = tree.get("Formula/my-tool.rb");
+    assert.ok((formula ?? "").includes("class MyTool < Formula"));
+    assert.equal(tree.has("Formula/example-homebrew.rb"), false);
+    assert.ok((tree.get("justfile") ?? "").includes("org/my-tool"));
   });
 
   test("renderCreateTree json template includes schema demo commands", () => {
     const tree = renderCreateTree(baseOpts({ templateId: "api", key: "testapp" }));
-    expect(tree.has("src/commands/render-json/command.ts")).toBe(true);
-    expect(tree.has("src/db/index.ts")).toBe(true);
-    const identity = tree.get("scripts/create-identity.ts");
-    expect(identity).toContain('template: "api"');
+    assert.equal(tree.has("src/commands/render-json/command.ts"), true);
+    assert.equal(tree.has("src/db/index.ts"), true);
+    const identity = tree.get("src/create-identity.ts");
+    assert.ok((identity ?? "").includes('template: "api"'));
   });
 
   test("--check detects drift", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
       applyCreate(dir, baseOpts({ force: true }));
-      expect(diffCreate(dir, { key: "testapp", className: "Testapp", templateId: "cli" })).toEqual([]);
+      assert.deepEqual(diffCreate(dir, { key: "testapp", templateId: "cli" }), []);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -131,7 +122,7 @@ describe("argsbarg create", () => {
     const dir = mkdtempSync(join(tmpdir(), "argsbarg-create-"));
     try {
       applyCreate(dir, baseOpts({ force: true }));
-      expect(diffCreate(dir, { check: true })).toEqual([]);
+      assert.deepEqual(diffCreate(dir, { check: true }), []);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -139,6 +130,6 @@ describe("argsbarg create", () => {
 
   test("--diff captures drift details", () => {
     const drifts = diffCreateDetails("/nonexistent", { key: "x", releaseRepo: "org/x" });
-    expect(drifts.length).toBeGreaterThan(0);
+    assert.ok(drifts.length > 0);
   });
 });

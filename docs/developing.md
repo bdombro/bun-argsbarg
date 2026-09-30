@@ -1,19 +1,21 @@
 # Developing argsbarg
 
-Notes for maintainers of this repository. Also shipped under `node_modules/argsbarg/docs/` for fork maintainers.
+Notes for maintainers of this repository.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) ≥ 1.3
+- [Node](https://nodejs.org) ≥ 22.18 and npm (tests run type-stripped `.ts` with `node --test`)
+- [Bun](https://bun.sh) only for the `homebrew` template
 - [just](https://github.com/casey/just) — `just` lists recipes
 - `gh` and `npm` logged in for release
 
 ## Day-to-day
 
 ```bash
-just check    # typecheck + format
-just test     # check + unit tests
-just typegen  # regenerate index.d.ts
+just setup    # npm install
+just check    # format + tsc (argsbarg and every template; needs `just examples-install`)
+just test     # check + node --test
+just build    # tsc → dist/ (JS + .d.ts)
 ```
 
 ## Release
@@ -32,18 +34,24 @@ Copy templates and the argsbarg repo root include `.cursor/hooks.json` plus `.cu
 
 ## Local consumer apps
 
-Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_apps` variable, e.g. `~/dev/ss/sqsp-workspaces`):
+To try unreleased argsbarg in another app, run `just build` here, then in the app `npm install --install-links <path to this checkout>`. Reinstall after argsbarg changes, and don't commit the `file:` dependency.
 
-| Recipe | When | Effect |
-| --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | Clears `examples/*/node_modules`, then per consumer: `bun add argsbarg@file:<relative> --force`, `bun add zod@^4`, removes the nested dev `zod`, fixes `.bin/argsbarg`, refreshes `AGENTS.md` from the template (preserves app-specific sections). Run `just examples-install` afterwards. |
-| `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge `AGENTS.md`, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
+## Upgrading consumer apps past 8.0 (unreleased)
 
-`consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
+Breaking changes; see the Unreleased section of [CHANGELOG.md](../CHANGELOG.md).
 
-**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/api/AGENTS.md` into each consumer. The framework baseline is placed at the top, and all app-specific sections live below `<!-- /argsbarg:managed -->` where they take precedence over framework defaults.
-
-**Recommended in each consumer:** replace template placeholders under `## App conventions` with project-specific bullets. Commit `AGENTS.md`; merges refresh the managed section, not your app-specific sections.
+1. **Settings:** remove `appConfig` and `configure` from the app root (startup now rejects them). Move settings into app code (env vars or your own JSON file) and add your own command if users edit them. `ctx.appConfig`, `App.appConfig`, `exportAppConfigSchema()`, `ReadinessContext.appConfig`, and `InvokeHookContext.appConfig` are gone.
+2. **Docs:** remove `docs` from the app root (startup rejects it). The `docs` command, generated `cli`/`cli-schema`/`mcp`/`http`/`openapi` docs, `--save`, the `<key>://docs/*` and `<key>://schema` MCP resources, and `schemaResourceUri` are gone. OpenAPI is still served at `GET /openapi.json`. Delete committed generated `docs/*` files and `docgen` recipes.
+3. **Install:** `configure install|uninstall|status` and self-update are gone. Ship MCP as an agent plugin or `.mcpb` (`mcp bundle`); document manual client setup (see `docs/mcp.md`).
+4. **Readiness:** `GET /health/readiness` reports only the `custom` check (no `config_file` / `config_required`).
+5. **Log files:** a relative `log.file` resolves against the working directory, not the app config dir.
+6. **Enums:** `OptionKind` / `ValueFormat` / `FallbackMode` / `ParseKind` are `as const` objects; replace type-position uses like `kind: OptionKind.Presence` with `typeof OptionKind.Presence`. Values and `OptionKind.String`-style access are unchanged.
+7. **Runtime files:** the package loads `dist/` everywhere (no `bun` export condition, no `src/` in the tarball). For local `file:` development, run `just build` in argsbarg first (npm consumers: `npm install --install-links`).
+8. **Removed exports:** `userHome`, `displayAppConfigPath`, `resolveAppConfigPath`, and the `AppConfig*` / `Configure*` / `InstallTarget*` types.
+9. **JSON only:** document arguments, document stdin, and HTTP bodies no longer accept YAML.
+10. **Skills and `AGENTS.md`:** plugins bundle only the repository skill (`skills/<key>/`); no pointer skill is generated. The `<!-- argsbarg:managed -->` markers and the merge script are gone; your `AGENTS.md` is yours.
+11. **Hooks on the CLI:** `app.run()` now calls `hooks.beforeInvoke` / `afterInvoke` / `formatError` / `onError`, as HTTP and MCP already did. Check that CLI commands are fine with what those hooks do.
+12. **Help:** plain text with no color or boxes; schemas are printed only when output is piped. Update snapshot tests of help output.
 
 ## Upgrading consumer apps to 8.0
 
@@ -55,58 +63,51 @@ Breaking changes; see [CHANGELOG.md](../CHANGELOG.md) for the full migration not
 4. **Config:** `appConfig.jsonSchema` → `appConfig.schema` (a Zod object schema).
 5. **Imports:** subpath exports (`argsbarg/cli`, `/http`, `/mcp`, `/headless`, `/schemagen`) are removed; import from `"argsbarg"`.
 6. **Cleanup:** delete `__generated__/` directories, `schemagen` justfile recipes (and `setup` / `docgen` / `check` dependencies on them), and the `**/__generated__/` gitignore rule. Remove `@cfworker/json-schema` if it was only used alongside argsbarg.
-7. **Verify:** `just test`, `just docgen`, and compare `docs/cli-schema.json` before and after. Every description should survive.
+7. **Verify:** `just test`, and compare piped `--help` output (it prints the schemas) before and after. Every description should survive.
 
-## Upgrading consumer apps to 7.0
-
-Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unreleased]`.
-
-1. **Schemagen:** replace `export type configType|inputType|outputType` with `/** @sg */` immediately above `export interface` / `export type` (no blank line).
-2. **Imports:** `configSchema` → `{AppConfig}Schema` (type name + `Schema`); same for leaf `inputSchema` / `outputSchema` imports (`StatusJsonOutputSchema`, etc.).
-3. **Run** `argsbarg schemagen` (or `just schemagen`) after every type change.
-4. **HTTP:** use `/api/...` REST routes only (`POST /tools/*` removed).
-5. **Hooks:** remove manual `ctx.locals.requestId` in `beforeInvoke` — framework seeds it.
-6. **Exports:** stop importing `loadLeafInputs` / `CliHttpResponseConfig` from `argsbarg` (use `ctx.inputs`, leaf `http.successContentType`).
-7. **Agent instructions:** `just consumers-dev` merges `AGENTS.md` + `CLAUDE.md` (includes **Abstractions** needless-extraction rule).
-8. **Verify:** `just test` and `just docgen` in each consumer repo.
-
-**Consumer app skill** — `just install-local` in each consumer (part of `consumers-sync`) runs Homebrew dev install then `myapp configure install`, which updates `~/.agents/skills/<app>/` when `program.skill.enabled` — not the argsbarg framework rule.
+Upgrade notes for 7.x and earlier are in [CHANGELOG.md](../CHANGELOG.md).
 
 ## npm package contents
 
 `npm publish` does **not** honor `.gitignore`. Only paths listed in `package.json` `files` are included in the tarball (plus always-excluded defaults like `node_modules`).
 
-When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`docs/`, `examples/`, `src/`, etc.).
+When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`dist/`, `docs/`, `examples/`, etc.). `src/` is not published; every runtime loads `dist/`.
 
-Exclude `examples/cli/node_modules/` and `examples/api/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
+`files` excludes `examples/**/node_modules` and `examples/**/package-lock.json` with `!` entries (npm ignores the root `.npmignore` when `files` is set).
 
 ## Copy templates
 
-Both [`examples/cli/`](../examples/cli/) (CLI) and [`examples/api/`](../examples/api/) (schema-first) use `argsbarg: file:../..` in-repo; `just setup` fixes the Bun `.bin/argsbarg` symlink. They must enable every builtin (`capabilities.test.ts`). Bun installs `file:` dependencies as per-file symlinks (edits show up live) from a cached snapshot, so after adding, deleting, or renaming argsbarg files — or after `just consumers-dev` / gdocsmith's `just argsbarg-local`, which clear them — run **`just examples-install`**. It reinstalls all three examples with `--force` (a stale cache fails with `ENOENT … failed copying files from cache`) and removes the nested copies a `file:` install drags along (other examples' `node_modules`, argsbarg's dev `zod`). After builtin or schema doc changes:
+The npm templates ([`examples/cli/`](../examples/cli/), [`examples/api/`](../examples/api/), [`examples/agent-plugin/`](../examples/agent-plugin/)) and the Bun [`examples/homebrew/`](../examples/homebrew/) template use `argsbarg: file:../..` in-repo. `cli` and `api` must enable every builtin (`template-capabilities.test.ts`). **`just examples-install`** builds `dist/` and reinstalls them: the npm templates with `npm install --install-links` (argsbarg is packed and installed like a published package, so each example has its own zod), the Homebrew template with `bun install --force`. Rerun it after argsbarg changes; the installed copies don't update live. `just examples-test` runs each template's own suite. After builtin or schema doc changes:
 
 ```bash
 just example-full-check
 just test
 ```
 
-See [docs/README.md](README.md) for the full documentation map.
+See the [documentation map](../README.md#documentation).
 
 ## Imports and tooling
 
-The package has a single entry point: import everything from `"argsbarg"`. Public types ship in the bundled `index.d.ts` (`just typegen`, via dts-bundle-generator), so consumers never type-check argsbarg's source. dts-bundle-generator 9.5.1 crashes on TypeScript 7, so keep argsbarg's own `typescript` devDependency on `^5.9`. Consumers can use any TypeScript version.
+The package has a single entry point: import everything from `"argsbarg"`. `just build` emits the JS and per-file declarations (`dist/**/*.d.ts`, with declaration maps) from `src/`; consumers only ever see `.d.ts` files, and `exports` exposes only `"."`.
 
 ## Module boundaries
 
-| Layer | Role |
+| Path | Role |
 | --- | --- |
-| `schema.ts`, `parse.ts`, `context.ts` | Transport-agnostic CLI core |
-| `http/` | HTTP tool server (`httpServer` capability) |
-| `mcp/` | MCP stdio server and bundle (`mcpServer` capability) |
-| `configure/artifacts/` | Agent artifact install/refresh (`configure` capability) |
-| `docs/` | Built-in documentation generators |
+| `src/index.ts` | The only entry point; every public export |
+| `src/core/` | Types, argv parsing, validation, `CommandContext`, value formats, the Zod adapter, wire schemas |
+| `src/runtime/` | `argsbarg()` / `App` (`run`, `invoke`, serve), capabilities, hooks, help rendering |
+| `src/builtins/` | Built-in commands (`version`, `http`, `mcp`) and their dispatch; `completion/` holds the shell scripts |
+| `src/headless/` | Headless routing helpers and MCP/HTTP tool-call → argv |
+| `src/http/` | HTTP server, routes, OpenAPI, readiness |
+| `src/mcp/` | MCP stdio server and tools; `pack/` builds `.mcpb` and plugin zips |
+| `src/server/` | Serve config shared by HTTP and MCP |
+| `src/log/` | ECS log lines, emitter, trace headers |
+| `src/cli-tool/` | The `argsbarg` bin (`create`); uses only the public API (`../index.ts`), like any consumer |
+| `src/test/` | Shared fixtures and integration suites |
 
-Capabilities are declared on `Program`; builtins wire them in [`src/builtins/`](../src/builtins/).
+Capabilities are declared on the app root; builtins wire them in `src/builtins/`.
 
 ## Docs
 
-See [README.md](README.md) for the documentation map. Framework authoring guide: [cli-program.md](cli-program.md).
+See the [documentation map](../README.md#documentation). Framework authoring guide: [cli-program.md](cli-program.md).

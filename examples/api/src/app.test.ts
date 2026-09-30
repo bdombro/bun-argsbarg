@@ -1,11 +1,12 @@
 /* App-level schema checks: every input and config object rejects unknown keys (z.strictObject). */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { schemaStrictnessWarnings } from "argsbarg";
 import { app } from "./app.ts";
 
 describe("fullExampleJson schemas", () => {
   test("input and config schemas are strict", () => {
-    expect(schemaStrictnessWarnings(app.spec)).toEqual([]);
+    assert.deepEqual(schemaStrictnessWarnings(app.spec), []);
   });
 });

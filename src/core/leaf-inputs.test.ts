@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { argsbarg, CommandContext, OptionKind } from "../index.ts";
 import { InputError, loadLeafInputs } from "./leaf-inputs.ts";
@@ -49,9 +50,9 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },
     });
-    expect(result.kind).toBe("ok");
-    expect(result.exitCode).toBe(0);
-    expect(result.response?.body).toEqual({
+    assert.equal(result.kind, "ok");
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(result.response?.body, {
       format: "pdf",
       invoice: { id: "INV-1" },
     });
@@ -63,8 +64,8 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "from-tool-args" } },
     });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, {
       format: "pdf",
       invoice: { id: "from-flag" },
     });
@@ -72,19 +73,11 @@ describe("loadLeafInputs / jsonOpt", () => {
 
   test("jsonOpt reads from preloadedJson", () => {
     const program = renderProgram();
-    const ctx = new CommandContext(
-      "json-pipe-test",
-      ["render"],
-      [],
-      { format: "pdf" },
-      program,
-      "cli",
-      undefined,
-      undefined,
-      { invoice: { id: "piped" } },
-    );
-    expect(ctx.jsonOpt("invoice")).toEqual({ id: "piped" });
-    expect(ctx.inputs).toEqual({ format: "pdf", invoice: { id: "piped" } });
+    const ctx = new CommandContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "cli", undefined, {
+      invoice: { id: "piped" },
+    });
+    assert.deepEqual(ctx.jsonOpt("invoice"), { id: "piped" });
+    assert.deepEqual(ctx.inputs, { format: "pdf", invoice: { id: "piped" } });
   });
 
   test("inputs returns the parsed inputs", () => {
@@ -93,7 +86,7 @@ describe("loadLeafInputs / jsonOpt", () => {
       format: "pdf",
       invoice: { id: "INV-1" },
     });
-    expect(ctx.inputs).toEqual({ format: "pdf", invoice: { id: "INV-1" } });
+    assert.deepEqual(ctx.inputs, { format: "pdf", invoice: { id: "INV-1" } });
   });
 
   test("rejects invalid Json flag at parse time", async () => {
@@ -102,8 +95,8 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: {},
     });
-    expect(result.kind).toBe("error");
-    expect(result.errorMsg).toContain("Invalid JSON");
+    assert.equal(result.kind, "error");
+    assert.ok((result.errorMsg ?? "").includes("Invalid JSON"));
   });
 
   test("validates merged inputs against inputSchema", async () => {
@@ -112,8 +105,8 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: 123 } },
     });
-    expect(result.kind).toBe("error");
-    expect(result.stderr).toContain("invoice.id");
+    assert.equal(result.kind, "error");
+    assert.ok(result.stderr.includes("invoice.id"));
   });
 
   test("validates inputSchema before handler runs", async () => {
@@ -155,8 +148,8 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: 123 } },
     });
-    expect(result.kind).toBe("error");
-    expect(handlerCalled).toBe(false);
+    assert.equal(result.kind, "error");
+    assert.equal(handlerCalled, false);
   });
 
   test("inputs returns cached inputs after pre-handler validation", async () => {
@@ -197,14 +190,14 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },
     });
-    expect(inputs).toHaveLength(2);
-    expect(inputs[0]).toEqual(inputs[1]);
+    assert.equal(inputs.length, 2);
+    assert.deepEqual(inputs[0], inputs[1]);
   });
 
   test("loadLeafInputs throws InputError when required Json is missing", () => {
     const program = renderProgram();
     const ctx = new CommandContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "mcp", undefined, {});
-    expect(() => loadLeafInputs(ctx)).toThrow(InputError);
+    assert.throws(() => loadLeafInputs(ctx), InputError);
   });
 
   test("omits undefined optional properties before inputSchema validation", async () => {
@@ -252,7 +245,7 @@ describe("loadLeafInputs / jsonOpt", () => {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },
     });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ format: "pdf", invoice: { id: "INV-1" } });
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, { format: "pdf", invoice: { id: "INV-1" } });
   });
 });

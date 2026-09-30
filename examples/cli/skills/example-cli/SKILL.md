@@ -7,7 +7,7 @@ enabled: true
 
 # example-cli
 
-Argsbarg CLI copy template (MCP, HTTP, configure, skills; options and flags only)
+Argsbarg npm CLI template (npx, MCP, HTTP; options and flags only)
 
 ## Execution
 
@@ -36,17 +36,5 @@ example-cli <subcommand> [options] [args]
 
 ## Install location
 
-Install follows the https://dotagentsprotocol.com:
-
-- Auto-install: `example-cli configure install` when `skill.enabled` → `~/.agents/skills/example-cli/`
-- Cursor and most coding agents read `~/.agents/skills/` natively
-
-**Claude Code (manual):** symlink or copy into Claude's skill directory:
-
-```bash
-mkdir -p ~/.claude/skills
-ln -sf ~/.agents/skills/example-cli ~/.claude/skills/example-cli
-```
-
-Project override (optional): `.agents/skills/example-cli/`
-
+- **Agent plugin:** plugins built with `example-cli mcp bundle` ship this skill.
+- **Manual:** copy or symlink `skills/example-cli/` into your agent's skill directory (for example `~/.agents/skills/example-cli/` or `~/.claude/skills/example-cli/`).

@@ -1,5 +1,9 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /* Cursor stop hook: run `just test` on agent completion; follow up if it fails. */
+
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { text } from "node:stream/consumers";
 
 try {
   const empty = () => {
@@ -7,7 +11,7 @@ try {
     process.exit(0);
   };
 
-  const input = JSON.parse(await Bun.stdin.text()) as {
+  const input = JSON.parse(await text(process.stdin)) as {
     status?: string;
     loop_count?: number;
     workspace_roots?: string[];
@@ -16,31 +20,20 @@ try {
   if (input.status !== "completed") empty();
 
   const cwd = input.workspace_roots?.[0] ?? process.cwd();
-  if (!(await Bun.file(`${cwd}/justfile`).exists())) empty();
+  if (!existsSync(`${cwd}/justfile`)) empty();
 
-  const diff = Bun.spawnSync(["git", "diff", "--name-only", "HEAD"], { cwd, stdout: "pipe" });
+  const diff = spawnSync("git", ["diff", "--name-only", "HEAD"], { cwd, encoding: "utf8" });
   const CODE_FILE = /\.(t|j)sx?$/i;
   const SKIP_PREFIX = /^(node_modules|dist|\.cursor)\//;
-  const changed = new TextDecoder()
-    .decode(diff.stdout)
+  const changed = (diff.stdout ?? "")
     .split("\n")
-    .some(
-      (path) =>
-        path &&
-        (path === "justfile" || (CODE_FILE.test(path) && !SKIP_PREFIX.test(path))),
-    );
+    .some((path) => path && (path === "justfile" || (CODE_FILE.test(path) && !SKIP_PREFIX.test(path))));
   if (!changed) empty();
 
-  const proc = Bun.spawnSync(["just", "test"], {
-    cwd,
-    env: { ...process.env, FORCE_COLOR: "0" },
-    stderr: "pipe",
-    stdout: "pipe",
-  });
-  const output =
-    new TextDecoder().decode(proc.stdout) + new TextDecoder().decode(proc.stderr);
+  const proc = spawnSync("just", ["test"], { cwd, env: { ...process.env, FORCE_COLOR: "0" }, encoding: "utf8" });
+  const output = (proc.stdout ?? "") + (proc.stderr ?? "");
 
-  if (proc.exitCode === 0) empty();
+  if (proc.status === 0) empty();
 
   const lines = output.trimEnd().split("\n");
   const tail = lines.length > 80 ? lines.slice(-80).join("\n") : output.trimEnd();
@@ -48,7 +41,7 @@ try {
 
   console.log(
     JSON.stringify({
-      followup_message: `Tests failed (auto-retry ${n}/20). Fix and ensure \`just test\` passes.\n\n\`\`\`\n${tail}\n\`\`\``,
+      followup_message: `Tests failed (auto-retry ${n}/20). Fix and ensure \`npm test\` passes.\n\n\`\`\`\n${tail}\n\`\`\``,
     }),
   );
 } catch {

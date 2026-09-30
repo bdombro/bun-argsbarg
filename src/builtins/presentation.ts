@@ -1,4 +1,4 @@
-import type { AppSpec, Command, CommandGroup, RunnableCommand } from "../core/types.ts";
+import type { AppSpec, Command, CommandGroup } from "../core/types.ts";
 import { hasHandler } from "../core/types.ts";
 import type { Capabilities } from "../runtime/capabilities.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
@@ -88,6 +88,3 @@ export function presentationRootNotes(program: AppSpec, _caps: Capabilities): st
   }
   return parts.join("\n\n");
 }
-
-/** Presentation tree may include builtin leaf stubs. */
-export type CliPresentationNode = Command | RunnableCommand;

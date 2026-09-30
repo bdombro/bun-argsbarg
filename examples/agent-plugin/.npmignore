@@ -1,6 +1,0 @@
-node_modules/
-dist/*
-!dist/example-agent-plugin.mjs
-Formula/.staging/
-.private/
-.DS_Store

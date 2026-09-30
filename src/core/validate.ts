@@ -3,10 +3,8 @@ This module validates CLI schemas before execution.
 */
 
 import type { z } from "zod";
-import { reservedDocsTopicResourceUris } from "../docs/mcp-resources.ts";
-import { DOCS_BUILTIN_TOPIC_KEYS, docsEnabled } from "../docs/resolve.ts";
 import { HTTP_RESERVED_TOP_LEVEL_SEGMENTS } from "../http/paths.ts";
-import { collectMcpTools, resolveMcpSchemaUri } from "../mcp/tools.ts";
+import { collectMcpTools } from "../mcp/tools.ts";
 import { reservedCommandNames, resolveCapabilities } from "../runtime/capabilities.ts";
 import { validateFormatValue } from "./formats.ts";
 import { resolveJsonPointer } from "./json-pointer.ts";
@@ -24,74 +22,22 @@ import {
 } from "./types.ts";
 import { isZodObjectSchema, isZodSchema, type SchemaIo, toJsonSchema } from "./zod-schema.ts";
 
-/** Validates `docs` configuration on the app root. */
-function validateDocsConfig(docs: import("./types.ts").DocsConfig): void {
-  const topics = docs.topics ?? {};
-  const keys = Object.keys(topics);
-  for (const reserved of DOCS_BUILTIN_TOPIC_KEYS) {
-    if (reserved in topics) {
-      throw new SchemaValidationError(`docs.topics key '${reserved}' is reserved for the docs built-in`);
-    }
-  }
-  for (const key of keys) {
-    const text = topics[key]?.text;
-    if (text === undefined || text.length === 0) {
-      throw new SchemaValidationError(`docs.topics['${key}'].text must be non-empty`);
-    }
-  }
-}
+/** Root fields removed after argsbarg 8.0, with the reason shown in the startup error. */
+const REMOVED_ROOT_FIELDS: Record<string, string> = {
+  appConfig: "argsbarg no longer manages app settings; keep them in app code",
+  configure: "the configure built-in (install, uninstall, status, config wizard) was removed",
+  docs: "the docs built-in (bundled topics, generated cli/mcp/http/openapi docs, and their MCP resources) was removed",
+};
 
-/** Validates `appConfig` on the app root. */
-function validateConfigBlock(appConfigBlock: import("./types.ts").AppConfig): void {
-  const entries = appConfigBlock.entries;
-  if (typeof entries !== "object" || entries === null || Array.isArray(entries)) {
-    throw new SchemaValidationError("appConfig.entries must be an object");
-  }
-
-  const envNames = new Set<string>();
-  for (const [key, entry] of Object.entries(entries)) {
-    if (key.length === 0) {
-      throw new SchemaValidationError("appConfig.entries keys must be non-empty strings");
+/** Rejects root fields removed after argsbarg 8.0, pointing at the CHANGELOG migration notes. */
+function rejectRemovedRootFields(
+  /** App spec to check. */
+  program: AppSpec,
+): void {
+  for (const [field, reason] of Object.entries(REMOVED_ROOT_FIELDS)) {
+    if (field in program) {
+      throw new SchemaValidationError(`${field} is no longer supported: ${reason}; see the CHANGELOG migration notes`);
     }
-    if (entry === undefined || typeof entry !== "object") {
-      throw new SchemaValidationError(`appConfig.entries['${key}'] must be an object`);
-    }
-    const description = entry.description;
-    if (typeof description !== "string" || description.trim().length === 0) {
-      throw new SchemaValidationError(`appConfig.entries['${key}'].description must be a non-empty string`);
-    }
-    if (entry.env !== undefined) {
-      if (typeof entry.env !== "string" || entry.env.length === 0) {
-        throw new SchemaValidationError(`appConfig.entries['${key}'].env must be a non-empty string when set`);
-      }
-      if (envNames.has(entry.env)) {
-        throw new SchemaValidationError(`Duplicate appConfig env mapping: ${entry.env}`);
-      }
-      envNames.add(entry.env);
-    }
-    if (entry.resolve !== undefined && typeof entry.resolve !== "function") {
-      throw new SchemaValidationError(`appConfig.entries['${key}'].resolve must be a function when set`);
-    }
-  }
-
-  if ("jsonSchema" in appConfigBlock) {
-    throw new SchemaValidationError(
-      `appConfig.jsonSchema was replaced by appConfig.schema (a Zod object schema) in argsbarg 8; ${MIGRATION_HINT}`,
-    );
-  }
-  const schema = appConfigBlock.schema;
-  if (schema !== undefined) {
-    if (!isZodObjectSchema(schema)) {
-      throw new SchemaValidationError(
-        `appConfig.schema must be a Zod object schema (z.strictObject / z.object); ${MIGRATION_HINT}`,
-      );
-    }
-    for (const key of Object.keys(entries)) {
-      if (!(key in schema.shape)) {
-        throw new SchemaValidationError(`appConfig.entries key '${key}' is missing from schema.shape`);
-      }
-    }
-    emitOrThrow(schema, "input", "appConfig.schema");
   }
 }
 
@@ -129,24 +75,10 @@ function emitOrThrow(
   }
 }
 
-/** Validates `configure` targets. */
-function validateConfigureConfig(program: AppSpec): void {
-  const configure = program.configure;
-  if (!configure) return;
-
-  if (!configure.targets) return;
-
-  const targets = configure.targets;
-  const allowedKeys = new Set(["app", "configure"]);
-  for (const key of Object.keys(targets)) {
-    if (!allowedKeys.has(key)) {
-      throw new SchemaValidationError(`configure.targets.${key} is not a valid target key`);
-    }
-  }
-}
-
 /** Validates a program schema. */
 export function cliValidateProgram(program: AppSpec): void {
+  rejectRemovedRootFields(program);
+
   if (!program.version || program.version.trim().length === 0) {
     throw new SchemaValidationError("version is required");
   }
@@ -165,14 +97,6 @@ export function cliValidateProgram(program: AppSpec): void {
 
   validateHttpPathPrefix(program);
 
-  if (docsEnabled(program) && program.docs?.topics !== undefined) {
-    validateDocsConfig(program.docs);
-  }
-
-  if (program.appConfig !== undefined) {
-    validateConfigBlock(program.appConfig);
-  }
-
   for (const [label, errorSchema] of [
     ["httpServer.errors.errorSchema", program.httpServer?.errors?.errorSchema],
     ["mcpServer.errors.errorSchema", program.mcpServer?.errors?.errorSchema],
@@ -181,10 +105,6 @@ export function cliValidateProgram(program: AppSpec): void {
       assertZodSchema(errorSchema, label);
       emitOrThrow(errorSchema, "output", label);
     }
-  }
-
-  if (program.configure !== undefined) {
-    validateConfigureConfig(program);
   }
 
   const caps = resolveCapabilities(program);
@@ -317,15 +237,6 @@ function walkNode(node: Command, program: AppSpec, isRoot: boolean): void {
     if (rogue.httpServer !== undefined) {
       throw new SchemaValidationError(`httpServer is only supported on the app root (not on ${node.key})`);
     }
-    if (rogue.configure !== undefined) {
-      throw new SchemaValidationError(`configure is only supported on the app root (not on ${node.key})`);
-    }
-    if (rogue.docs !== undefined) {
-      throw new SchemaValidationError(`docs is only supported on the app root (not on ${node.key})`);
-    }
-    if (rogue.appConfig !== undefined) {
-      throw new SchemaValidationError(`appConfig is only supported on the app root (not on ${node.key})`);
-    }
   }
 
   if (hasHandler(node)) {
@@ -381,15 +292,7 @@ function walkNode(node: Command, program: AppSpec, isRoot: boolean): void {
   }
 
   if (isRoot && program.mcpServer?.enabled === true && program.mcpServer.resources) {
-    const schemaUri = resolveMcpSchemaUri(program);
-    const reserved = new Set([schemaUri, ...reservedDocsTopicResourceUris(program)]);
     const uris = program.mcpServer.resources.map((r) => r.uri);
-    for (const uri of uris) {
-      if (reserved.has(uri)) {
-        const kind = uri === schemaUri ? "built-in schema resource" : "auto docs topic resource";
-        throw new SchemaValidationError(`mcpServer.resources URI '${uri}' conflicts with ${kind}`);
-      }
-    }
     if (new Set(uris).size !== uris.length) {
       throw new SchemaValidationError("mcpServer.resources URIs must be unique");
     }
@@ -648,9 +551,6 @@ export function schemaStrictnessWarnings(
     }
   };
   visit(program, []);
-  if (program.appConfig?.schema !== undefined) {
-    check("appConfig.schema", toJsonSchema(program.appConfig.schema, "input"));
-  }
   return warnings;
 }
 

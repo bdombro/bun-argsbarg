@@ -1,7 +1,15 @@
 /** Interactive prompts for `argsbarg create`. */
 
-import { readPromptLine as readStdinLine } from "../prompt.ts";
+import { readSync } from "node:fs";
+
 import { CREATE_TEMPLATES, type CreateTemplateId } from "./create.ts";
+
+/** Reads one line from stdin (no masking). */
+function readStdinLine(): string {
+  const buf = Buffer.alloc(4096);
+  const n = readSync(0, buf, { length: 4096 });
+  return buf.toString("utf8", 0, n).replace(/\r?\n$/, "");
+}
 
 export function readPromptLine(prompt: string): string {
   process.stderr.write(prompt);

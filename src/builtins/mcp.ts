@@ -6,8 +6,6 @@ import {
   OptionKind,
   type RunnableCommand,
 } from "../core/types.ts";
-import { docsEnabled } from "../docs/resolve.ts";
-import { resolveCapabilities } from "../runtime/capabilities.ts";
 
 const MCP_SERVE_OPTIONS: readonly CommandOption[] = [
   { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: OptionKind.Presence },
@@ -26,8 +24,7 @@ const MCP_SERVE_OPTIONS: readonly CommandOption[] = [
 ];
 
 /** Built-in `mcp` router: bare `myapp mcp` runs stdio (via hidden `serve` fallback); `mcp bundle` packs `.mcpb`. */
-export function cliBuiltinMcpCommand(program: AppSpec): CommandGroup {
-  const caps = resolveCapabilities(program);
+export function cliBuiltinMcpCommand(_program: AppSpec): CommandGroup {
   const lines = [
     "Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:",
     "",
@@ -35,12 +32,6 @@ export function cliBuiltinMcpCommand(program: AppSpec): CommandGroup {
     "  args: mcp",
     "",
   ];
-  if (caps.configure) {
-    lines.push("Or:", "", "  {argsbarg:program} configure", "");
-  }
-  if (docsEnabled(program)) {
-    lines.push("Full setup guide: {argsbarg:program} docs mcp");
-  }
 
   const serve: RunnableCommand = {
     key: "serve",

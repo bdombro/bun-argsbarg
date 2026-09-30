@@ -3,8 +3,8 @@ This module serializes the CLI schema tree to JSON for machine-readable introspe
 */
 
 import { exportPresentationBuiltins, type SchemaExport } from "../builtins/export.ts";
-import { cliResolveNotes } from "../help.ts";
 import { isCliSchemaHidden, visibleOptions } from "../runtime/exposure.ts";
+import { cliResolveNotes } from "../runtime/help.ts";
 import { type AppSpec, type Command, hasHandler, hasSubcommands, leafOutputSchema } from "./types.ts";
 import { buildCommandInputSchema } from "./wire-schema.ts";
 import { toJsonSchema } from "./zod-schema.ts";

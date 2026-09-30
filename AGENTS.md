@@ -27,9 +27,9 @@ Always include in context before answering or making changes in this repository:
 
 When changing argsbarg **builtins**, **capabilities**, or **schemagen documentation**:
 
-1. Update **`examples/cli/`** and **`examples/api/`** so they still enable every capability (`completion`, `version`, `configure`, `docs`, `mcp`, `http`).
-2. Run **`just example-full-check`** from the argsbarg repo root (schemagen + schema git diff + `create --check`).
-3. Run **`just test`** — includes `src/cli-tool/template-capabilities.test.ts`.
+1. Update **`examples/cli/`** and **`examples/api/`** so they still enable every capability (`completion`, `version`, `mcp`, `http`).
+2. Run **`just example-full-check`** from the argsbarg repo root (`create --check` for every template), and **`just examples-test`** for the templates' own suites.
+3. Run **`just test`** — includes `src/runtime/template-capabilities.test.ts`.
 
 Do not duplicate framework docs here — see [`docs/cli-program.md`](docs/cli-program.md) and consumer [`AGENTS.md`](examples/api/AGENTS.md).
 

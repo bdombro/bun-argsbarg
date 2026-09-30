@@ -1,6 +1,6 @@
 # HTTP API server
 
-ArgsBarg can expose your CLI as an HTTP REST server. Each **command with a handler** becomes a route — nested command paths, HTTP verbs, and `:param` command groups are reflected in the URL. By default routes sit at the server root (e.g. `GET /workspaces`). The server uses Bun's built-in HTTP stack and binds to **localhost by default**.
+ArgsBarg can expose your CLI as an HTTP REST server. Each **command with a handler** becomes a route — nested command paths, HTTP verbs, and `:param` command groups are reflected in the URL. By default routes sit at the server root (e.g. `GET /workspaces`). The server runs on `node:http` and binds to **localhost by default**.
 
 The HTTP API is **opt-in**. Apps that do not set `httpServer` on the app root behave exactly as before.
 
@@ -42,10 +42,10 @@ Set `httpServer` on the **app root only**. Validation rejects `httpServer` on ne
 | `host` | `127.0.0.1` | Listen address |
 | `port` | `3000` | Listen port |
 | `pathPrefix` | `""` | URL prefix for user routes (e.g. `"/api"` → `/api/workspaces`; empty → `/workspaces`) |
-| `trustProxy` | `false` | Honor `X-Forwarded-For` in hooks and access logs |
+| `trustProxy` | `false` | Honor `X-Forwarded-For` for the client IP (hooks and access logs) |
 | `errors.errorSchema` | `{ error: string }` | OpenAPI + default error body shape |
 | `errors.obscureUnexpected` | `false` | Client sees generic message on 500; ECS logs real stack |
-| `hooks` | — | Observe-only wire hooks (`onRequest`, `onResponse`, `onError`) |
+| `hooks` | — | Wire hooks per request: `onRequest` (awaited before routing), `onResponse`, `onError` |
 
 `httpServer` and `mcpServer` are independent — enable either or both.
 
@@ -79,13 +79,11 @@ Per-surface exposure: `http.enabled: false` removes a command from the route tab
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health/liveness` | Liveness — server is online and accepting requests |
-| `GET` | `/health/readiness` | Readiness — online plus config and optional `readiness` checks passed |
+| `GET` | `/health/readiness` | Readiness — online and the optional app `readiness` check passed |
 | `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and user routes) |
 | `GET` | `/swagger` | Interactive Swagger UI API reference (CDN) |
 | `*` | `/{command}/...` | Invoke user commands (method per route; optional `pathPrefix`) |
 | `OPTIONS` | `*` | CORS preflight (`GET, POST, PUT, PATCH, DELETE`) |
-
-`POST /tools/*` was removed in 7.0.
 
 ## Examples
 
@@ -101,7 +99,7 @@ curl -s -X POST http://127.0.0.1:3000/workspaces \
 curl -s http://127.0.0.1:3000/workspaces/{id}
 ```
 
-Discover paths and request shapes from `openapi.json` or `myapp docs openapi`.
+Discover paths and request shapes from `GET /openapi.json` (or `/swagger`).
 
 ## Handler responses (`ctx.respond()`)
 
@@ -148,16 +146,17 @@ http?: {
 
 | Situation | Status |
 | --- | --- |
-| Validation / help | 400 |
+| Validation / help, or the handler throws an `Error` (its message is returned) | 400 |
 | Unknown route | 404 |
-| Thrown handler / missing `ctx.respond()` | 500 |
-| Missing required config | 503 |
+| The handler throws a non-`Error` value, or never responds | 500 (`errors.obscureUnexpected` hides the message) |
+
+`GET /health/readiness` answers 503 when not ready.
 
 Tool invocations are **not** gated on `/health/readiness`; readiness is for orchestrators only.
 
 ## Hooks and runtime
 
-`hooks` (`beforeInvoke`, `afterInvoke`, `formatError`, `onError`) run for user commands on CLI, HTTP, and MCP — **not** for builtins.
+App `hooks` (`beforeInvoke`, `afterInvoke`, `formatError`, `onError`) run for user commands on every surface — see [cli-program.md — Hooks](cli-program.md#hooks).
 
 - `ctx.locals` — per-request bag (fresh each invoke); framework sets `requestId` before `beforeInvoke` (HTTP/MCP wire id when present, else a new UUID)
 - `ctx.runtime` — shared `ServerRuntime.state` on HTTP/MCP server sessions
@@ -167,11 +166,11 @@ Error order: `formatError` → `onError` → ECS log → client response.
 
 ## CORS
 
-All responses include wide-open CORS headers (`Access-Control-Allow-Origin: *`). Not configurable in v1.
+All responses include wide-open CORS headers (`Access-Control-Allow-Origin: *`). Not configurable.
 
 ## OpenAPI
 
-Call `generateOpenApi(program)` from `argsbarg`, fetch `GET /openapi.json`, or run `myapp docs openapi --save`. Nested `$ref` in input/output schemas are dereferenced in the spec.
+Call `generateOpenApi(app.spec)` from `argsbarg` or fetch `GET /openapi.json`; argsbarg doesn't write the spec to disk. Nested `$ref` in input/output schemas are dereferenced in the spec.
 
 ## Complex tool inputs
 

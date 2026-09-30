@@ -7,10 +7,6 @@ import { format } from "node:util";
 import type { z } from "zod";
 import { builtinInterceptRoot, dispatchBuiltin } from "../builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "../builtins/presentation.ts";
-import { bootstrapAppConfig, type EnsureAppConfigOpts, ensureAppConfig } from "../config/bootstrap.ts";
-import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "../config/context.ts";
-import { readAppConfigFileRaw, resolveAppConfigPath } from "../config/file.ts";
-import { effectiveJsonSchema } from "../config/schema.ts";
 import { CommandContext } from "../core/context.ts";
 import { InputError, preloadPipableJson } from "../core/leaf-inputs.ts";
 import { ParseKind, type ParseResult, parse, postParseValidate } from "../core/parse.ts";
@@ -25,16 +21,12 @@ import type {
   CommandPositional,
   Invocation,
   InvokeFailureKind,
-  JsonSchema,
   Locals,
   RespondOptions,
   RunnableCommand,
 } from "../core/types.ts";
 import { hasHandler, hasSubcommands } from "../core/types.ts";
 import { cliValidateProgram, schemaStrictnessWarnings } from "../core/validate.ts";
-import { cliHelpRender } from "../help.ts";
-import { isBuiltinInvokePath } from "../hooks/builtin.ts";
-import { buildInvokeHookContext, classifyFailureKind, runErrorPipeline, runHook } from "../hooks/run.ts";
 import { httpServeHttp } from "../http/server.ts";
 import { LogEmitter } from "../log/emitter.ts";
 import { bootstrapMcpEnv } from "../mcp/env.ts";
@@ -42,12 +34,15 @@ import { MCP_PROTOCOL_VERSIONS, mcpServeStdioLoop } from "../mcp/server.ts";
 import { mcpSizeReport } from "../mcp/tools.ts";
 import { createServerRuntime, type ServerHandleContext } from "../server/context.ts";
 import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
+import { assertBuiltinAllowed, type Capabilities, resolveCapabilities } from "./capabilities.ts";
+import { cliHelpRender } from "./help.ts";
 import {
-  assertBuiltinAllowed,
-  type Capabilities,
-  resolveCapabilities,
-  skipsRequiredAppConfigExit,
-} from "./capabilities.ts";
+  buildInvokeHookContext,
+  classifyFailureKind,
+  isBuiltinInvokePath,
+  runErrorPipeline,
+  runHook,
+} from "./hooks.ts";
 
 /** Outcome of a non-exiting CLI invocation. */
 export type InvokeKind = "ok" | "help" | "error";
@@ -118,7 +113,6 @@ export class App {
   readonly caps: Capabilities;
   private readonly parseRootMerged: CommandGroup;
   private readonly presentationRoot: CommandGroup;
-  private _appConfig?: AnyAppConfigSnapshot;
   /** Active HTTP/MCP server handle (set during serve). */
   server?: ServerHandleContext;
 
@@ -131,26 +125,12 @@ export class App {
     this.presentationRoot = cliPresentationRoot(program);
   }
 
-  get appConfig(): AnyAppConfigSnapshot {
-    if (this._appConfig === undefined) {
-      this._appConfig = this.buildAppConfigSnapshot({
-        exitOnMissing: false,
-        interactive: false,
-      });
-    }
-    return this._appConfig;
-  }
-
   exportCommandSchema(): SchemaRootExport {
     return schemaExport(this.spec);
   }
 
-  exportAppConfigSchema(): JsonSchema | undefined {
-    return effectiveJsonSchema(this.spec);
-  }
-
   async run(argv: string[] = process.argv.slice(2)): Promise<never> {
-    assertBuiltinAllowed(argv, this.caps);
+    assertBuiltinAllowed(argv, this.caps, this.spec);
 
     const prep = this.prepareDispatch(argv);
     if ("error" in prep) {
@@ -158,9 +138,7 @@ export class App {
         process.stdout.write(cliHelpRender(this.parseRootMerged, prep.error.helpPath, false));
         process.exit(prep.error.helpExplicit ? 0 : 1);
       }
-      const color = process.stderr.isTTY;
-      const msg = color ? `\u001B[31m${prep.error.errorMsg}\u001B[0m` : prep.error.errorMsg;
-      process.stderr.write(`${msg}\n`);
+      process.stderr.write(`${prep.error.errorMsg}\n`);
       process.stderr.write(cliHelpRender(this.presentationRoot, prep.error.errorHelpPath, true));
       process.exit(1);
     }
@@ -174,12 +152,6 @@ export class App {
       });
     }
 
-    const skipRequiredConfig = skipsRequiredAppConfigExit(pr.path, this.caps);
-    const snapshot = this.buildAppConfigSnapshot({
-      interactive: !skipRequiredConfig && !!process.stdin.isTTY,
-      exitOnMissing: !skipRequiredConfig,
-    });
-
     let preloadedJson: Record<string, unknown> = {};
     try {
       preloadedJson = await preloadPipableJson(this.spec, pr.path, pr.opts, "cli", pr.args);
@@ -188,8 +160,7 @@ export class App {
         this.exitLeafInputError(err, pr.path);
       }
       const msg = err instanceof Error ? err.message : String(err);
-      const color = process.stderr.isTTY;
-      process.stderr.write(color ? `\u001B[31m${msg}\u001B[0m\n` : `${msg}\n`);
+      process.stderr.write(`${msg}\n`);
       process.exit(1);
     }
 
@@ -200,27 +171,34 @@ export class App {
       pr.opts,
       this.spec,
       "cli",
-      snapshot,
       undefined,
       preloadedJson,
       pr.pathParams,
       { requestId: randomUUID() } as Locals,
     );
+    const hooks = isBuiltinInvokePath(pr.path, this.caps) ? undefined : this.spec.hooks;
+    const hookCtx = () => buildInvokeHookContext(ctx, { path: pr.path });
     try {
+      await runHook(() => hooks?.beforeInvoke?.(hookCtx()), "beforeInvoke");
       this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {
         ctx.respond({ body: handlerResult as RespondOptions["body"] });
       }
+      await runHook(() => hooks?.afterInvoke?.({ ...hookCtx(), result: { kind: "ok", exitCode: 0 } }), "afterInvoke");
       process.exit(0);
     } catch (err) {
-      if (err instanceof InputError) {
+      const piped = await runErrorPipeline(hookCtx(), err, classifyFailureKind(err, {}), hooks, undefined, false).catch(
+        (hookErr: unknown) => {
+          const errorMsg = hookErr instanceof Error ? hookErr.message : String(hookErr);
+          return { errorMsg, clientError: { message: errorMsg, exitCode: 1 } };
+        },
+      );
+      if (err instanceof InputError && piped.errorMsg === err.message) {
         this.exitLeafInputError(err, pr.path);
       }
-      if (err instanceof Error) {
-        process.stderr.write(`${err.message}\n`);
-      }
-      process.exit(1);
+      process.stderr.write(`${piped.errorMsg}\n`);
+      process.exit(piped.clientError.exitCode ?? 1);
     }
   }
 
@@ -258,10 +236,6 @@ export class App {
     }
 
     const { pr, completionParseRoot, isLeafCompletionIntercept, leaf } = prep;
-    const snapshot = this.buildAppConfigSnapshot({
-      interactive: false,
-      exitOnMissing: false,
-    });
 
     const runtime = this.server?.runtime;
     const requestId = opts?.requestId ?? opts?.http?.requestId ?? opts?.mcp?.requestId ?? randomUUID();
@@ -272,7 +246,6 @@ export class App {
       pr.opts,
       this.spec,
       invocation,
-      snapshot,
       opts?.toolArgs,
       {},
       pr.pathParams,
@@ -280,7 +253,7 @@ export class App {
       runtime,
     );
 
-    const skipHooks = isBuiltinInvokePath(pr.path);
+    const skipHooks = isBuiltinInvokePath(pr.path, this.caps);
     const hooks = this.spec.hooks;
     const obscureUnexpected =
       invocation === "http"
@@ -451,7 +424,6 @@ export class App {
         mcpHooks: this.spec.mcpServer?.hooks,
         mcpProtocolVersion: MCP_PROTOCOL_VERSIONS[0],
       };
-      bootstrapAppConfig(this.spec, { validateFile: "soft", runtime, emitter });
       const shutdown = () => {
         emitter.emit({ level: "info", message: "server stopping", action: "server.stop" });
         process.exit(0);
@@ -488,7 +460,6 @@ export class App {
         http: resolved,
         httpHooks: this.spec.httpServer?.hooks,
       };
-      bootstrapAppConfig(this.spec, { validateFile: "soft", runtime, emitter });
       const shutdown = () => {
         emitter.emit({ level: "info", message: "server stopping", action: "server.stop" });
         process.exit(0);
@@ -517,9 +488,7 @@ export class App {
   }
 
   private exitLeafInputError(err: InputError, helpPath: string[]): never {
-    const color = process.stderr.isTTY;
-    const msg = color ? `\u001B[31m${err.message}\u001B[0m` : err.message;
-    process.stderr.write(`${msg}\n`);
+    process.stderr.write(`${err.message}\n`);
     process.stderr.write(cliHelpRender(this.presentationRoot, helpPath, true));
     process.exit(1);
   }
@@ -620,13 +589,14 @@ export class App {
       leaf: current,
     };
   }
+}
 
-  private buildAppConfigSnapshot(opts: EnsureAppConfigOpts): AnyAppConfigSnapshot {
-    const bootstrap = ensureAppConfig(this.spec, opts);
-    const snapshot = bootstrap
-      ? createAppConfigSnapshot(this.spec, bootstrap.fileData, bootstrap.resolved)
-      : createAppConfigSnapshot(this.spec, readAppConfigFileRaw(resolveAppConfigPath(this.spec)), {});
-    this._appConfig = snapshot;
-    return snapshot;
+/** Throws on HTTP/MCP; on the CLI prints `msg` plus contextual help to stderr and exits 1. */
+export function cliErrWithHelp(ctx: CommandContext, msg: string): never {
+  if (ctx.invocation === "http" || ctx.invocation === "mcp") {
+    throw new Error(msg);
   }
+  process.stderr.write(`${msg}\n`);
+  process.stderr.write(cliHelpRender(cliPresentationRoot(ctx.spec), ctx.commandPath, true));
+  process.exit(1);
 }

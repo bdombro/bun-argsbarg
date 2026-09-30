@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 MCP size-warning integration test fixture (not a public example). One leaf with oversized notes,
 triggering the "description" startup size warning on stderr.

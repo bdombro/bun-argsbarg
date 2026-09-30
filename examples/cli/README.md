@@ -1,18 +1,22 @@
 # example-cli
 
-Argsbarg CLI copy template (MCP, HTTP, configure, skills; options and flags only).
+Argsbarg npm CLI template (npx, MCP, HTTP; options and flags only).
 
 ## Installation
 
-Install via Homebrew:
+Run without installing:
 
 ```bash
-brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
-brew install example-cli
-example-cli configure install
+npx example-cli --help
 ```
 
-`example-cli configure install` sets up shell completions, agent skills, and MCP configuration.
+Or install globally:
+
+```bash
+npm install -g example-cli
+```
+
+Shell completions: `example-cli completion zsh --help` (also bash and fish).
 
 ## Commands
 
@@ -21,49 +25,33 @@ example-cli configure install
 
 ### Built-in commands
 
-- `example-cli completion` — Install or inspect shell tab completions (bash, zsh, fish).
-- `example-cli configure` — Manage agent artifacts (skills, MCP, application configuration).
-- `example-cli docs` — Browse bundled documentation topics (`cli`, `mcp`, `http`, `readme`).
+- `example-cli completion` — Print shell tab-completion scripts (bash, zsh, fish).
 - `example-cli mcp` — Start the Model Context Protocol (stdio) server for AI coding agents.
+- `example-cli http` — Start the HTTP API server.
 - `example-cli version` — Display version information.
 
 ## Usage
 
 ```bash
-# Print a message
-example-cli echo "Hello, world!"
-
-# Inspect JSON status
+example-cli echo --message "Hello, world!"
 example-cli status --json
-
-# Start the MCP server for AI agents
 example-cli mcp
 ```
 
 ## AI Agent & MCP Integration
 
-`example-cli` includes an integrated MCP server and agent skills out of the box:
+- **MCP server**: add `{ "command": "npx", "args": ["-y", "example-cli", "mcp"] }` to your client's MCP config.
+- **Agent skill**: `skills/example-cli/SKILL.md`; copy it into your agent's skill directory.
 
-- **MCP server**: Run `example-cli mcp` or register via `example-cli configure install`.
-- **Agent skill**: See `skills/example-cli/SKILL.md` for agent command group instructions.
-
-## Documentation
-
-| Need | Resource |
-| --- | --- |
-| CLI reference | [docs/cli.md](docs/cli.md) or `example-cli docs cli` |
-| MCP tools | [docs/mcp.md](docs/mcp.md) or `example-cli docs mcp` |
-| HTTP API | [docs/http.md](docs/http.md) or `example-cli docs http` |
-| Agent skill command group | [skills/example-cli/SKILL.md](skills/example-cli/SKILL.md) |
-| CLI schema (JSON) | [docs/cli-schema.json](docs/cli-schema.json) |
 
 ## Development
 
-Requires [Homebrew](https://brew.sh), [just](https://just.systems), and [Bun](https://bun.sh):
+Requires Node ≥ 22.18 and [just](https://just.systems):
 
 ```bash
-brew install just bun
-just setup
-just check
-just test
+just setup             # npm install
+just test              # Biome, tsc, node --test
+just run --help        # from source
+just build             # tsc → dist/
+just release patch --dry-run
 ```

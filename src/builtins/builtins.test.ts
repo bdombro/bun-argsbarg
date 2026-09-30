@@ -2,16 +2,14 @@
 Tests for builtins/builtins module behavior.
 */
 
-import { describe, expect, test } from "bun:test";
-import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import type { AppSpec } from "../core/types.ts";
-import { resolveCapabilities } from "../runtime/capabilities.ts";
-import { completionBashScript, completionFishScript, completionZshScript } from ".";
-import { cliBuiltinConfigureCommand } from "./configure.ts";
-import { configureCommandDescription } from "./configure-copy.ts";
+import { resolveHttpServeConfig, resolveMcpServeConfig } from "../server/overrides.ts";
 import { exportPresentationBuiltins } from "./export.ts";
+import { completionBashScript, completionFishScript, completionZshScript } from "./index.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
-import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
+import { cliPresentationRoot } from "./presentation.ts";
 
 const fixture: AppSpec = {
   key: "myapp",
@@ -27,87 +25,30 @@ const fixture: AppSpec = {
   ],
 };
 
-const noMcp: AppSpec = {
-  key: "skillonly",
-  version: "0.0.0",
-  description: "Skills only.",
-  commands: [{ key: "ping", description: "Ping.", handler: () => {} }],
-};
-
 /** Tests for builtins help copy. */
 describe("builtins help copy", () => {
-  test("configure command includes capability-aware description", () => {
-    const configure = cliBuiltinConfigureCommand(fixture);
-    expect(configure.description).toContain("MCP config");
-    expect(configure.notes).toContain("brew upgrade");
-    const commandKeys = configure.commands.map((c) => c.key);
-    expect(commandKeys).toContain("install");
-    expect(commandKeys).toContain("uninstall");
-    expect(commandKeys).toContain("status");
-    const uninstall = configure.commands.find((c) => c.key === "uninstall");
-    const yesOpt = uninstall?.options?.find((o) => o.name === "yes");
-    expect(yesOpt?.shortName).toBe("y");
-  });
-
-  test("configure copy omits MCP when mcpServer unset", () => {
-    const caps = resolveCapabilities(noMcp);
-    expect(configureCommandDescription(noMcp, caps)).toBe("Set up agent artifacts for this app (binary via Homebrew).");
-    expect(configureCommandDescription(noMcp, caps)).not.toContain("MCP");
-    const configure = cliBuiltinConfigureCommand(noMcp);
-    expect(configure.description).not.toContain("MCP");
-  });
-
-  test("configure notes mention brew upgrade and two-step install", () => {
-    const configure = cliBuiltinConfigureCommand(fixture);
-    expect(configure.notes).toContain("brew upgrade");
-    expect(configure.notes).toContain("configure install");
-    expect(configure.notes).toContain("configure uninstall");
-    expect(configure.notes).not.toContain("post_install");
-    expect(configure.notes).not.toContain("uninstall hook");
-    expect(configure.notes).toContain(`${fixture.key} configure`);
-  });
-
-  test("configure uninstall -y parses as --yes", () => {
-    const root = cliParseRoot(fixture);
-    const pr = postParseValidate(root, parse(root, ["configure", "uninstall", "-y"]));
-    expect(pr.kind).toBe(ParseKind.Ok);
-    if (pr.kind === ParseKind.Ok) {
-      expect(pr.opts.yes).toBe("1");
-    }
-  });
-
   test("mcp builtin description is user-facing", () => {
-    const withDocs: AppSpec = {
-      ...fixture,
-      docs: { topics: { readme: { text: "# r\n" } } },
-    };
-    const mcp = cliBuiltinMcpCommand(withDocs);
-    expect(mcp.description).toContain("MCP server");
-    expect(mcp.notes).toContain("configure");
-    expect(mcp.notes).toContain("docs mcp");
+    const mcp = cliBuiltinMcpCommand(fixture);
+    assert.ok(mcp.description.includes("MCP server"));
+    assert.ok(!(mcp.notes ?? "").includes("configure"));
+    assert.ok(!(mcp.notes ?? "").includes("docs mcp"));
   });
 });
 
 /** Tests for presentation root. */
 describe("presentation root", () => {
-  test("includes mcp and configure when enabled", () => {
+  test("includes mcp and omits removed builtins", () => {
     const root = cliPresentationRoot(fixture);
     const keys = root.commands?.map((c) => c.key) ?? [];
-    expect(keys).toContain("mcp");
-    expect(keys).toContain("configure");
-    expect(keys).not.toContain("completion");
-    expect(keys).not.toContain("install");
-  });
-
-  test("omits configure when configure.enabled is false", () => {
-    const disabled: AppSpec = { ...fixture, configure: { enabled: false } };
-    const root = cliPresentationRoot(disabled);
-    expect(root.commands?.map((c) => c.key)).not.toContain("configure");
+    assert.ok(keys.includes("mcp"));
+    assert.ok(!keys.includes("configure"));
+    assert.ok(!keys.includes("completion"));
+    assert.ok(!keys.includes("install"));
   });
 
   test("includes version builtin", () => {
     const root = cliPresentationRoot(fixture);
-    expect(root.commands?.map((c) => c.key)).toContain("version");
+    assert.ok((root.commands?.map((c) => c.key) ?? []).includes("version"));
   });
 });
 
@@ -116,16 +57,15 @@ describe("completion emitters", () => {
   test("fish script references app key and subcommands", () => {
     const schema = cliPresentationRoot(fixture);
     const fish = completionFishScript(schema);
-    expect(fish).toContain("complete -c myapp");
-    expect(fish).toContain("hello");
-    expect(fish).toContain("configure");
+    assert.ok(fish.includes("complete -c myapp"));
+    assert.ok(fish.includes("hello"));
   });
 
-  test("bash script includes configure subcommands", () => {
+  test("bash script includes app commands", () => {
     const schema = cliPresentationRoot(fixture);
     const bash = completionBashScript(schema);
-    expect(bash).toContain("hello");
-    expect(bash).toContain("install");
+    assert.ok(bash.includes("hello"));
+    assert.ok(bash.includes("mcp"));
   });
 
   test("zsh script registers compdef", () => {
@@ -136,35 +76,54 @@ describe("completion emitters", () => {
       handler: () => {},
     });
     const zsh = completionZshScript(schema);
-    expect(zsh).toContain("#compdef zapp");
-    expect(zsh).toContain("compdef _zapp zapp");
+    assert.ok(zsh.includes("#compdef zapp"));
+    assert.ok(zsh.includes("compdef _zapp zapp"));
   });
 });
 
 /** Tests for schema export builtins. */
 describe("schema export builtins", () => {
-  test("exportPresentationBuiltins nests configure get/set when appConfig set", () => {
-    const withConfig: AppSpec = {
-      ...fixture,
-      appConfig: {
-        entries: {
-          apiToken: { description: "Token.", env: "API_TOKEN" },
-        },
-      },
-    };
-    const builtins = exportPresentationBuiltins(withConfig);
-    expect(builtins.map((b) => b.key)).toContain("configure");
-    expect(builtins.map((b) => b.key)).not.toContain("config");
-    const configureNode = builtins.find((b) => b.key === "configure");
-    expect(configureNode && "commands" in configureNode).toBe(true);
-    if (configureNode && "commands" in configureNode) {
-      const keys = configureNode.commands?.map((c) => c.key) ?? [];
-      expect(keys).toEqual(expect.arrayContaining(["get", "set", "install", "uninstall", "status"]));
-    }
-  });
-
   test("exportPresentationBuiltins omits hidden completion", () => {
     const builtins = exportPresentationBuiltins(fixture);
-    expect(builtins.map((b) => b.key)).not.toContain("completion");
+    assert.ok(!builtins.map((b) => b.key).includes("completion"));
   });
+});
+
+/** Verifies `cli.completions` hides a command from every shell's completion script but not from help. */
+test("cli.completions hides commands from completions", () => {
+  const spec: AppSpec = {
+    key: "myapp",
+    version: "0.0.0",
+    description: "Demo app.",
+    commands: [
+      { key: "visible", description: "Shown.", handler: () => {} },
+      { key: "secretcmd", description: "Not completed.", cli: { completions: { hidden: true } }, handler: () => {} },
+    ],
+  };
+  const root = cliPresentationRoot(spec);
+  for (const script of [completionBashScript(root), completionZshScript(root), completionFishScript(root)]) {
+    assert.ok(script.includes("visible"));
+    assert.ok(!script.includes("secretcmd"));
+  }
+});
+
+/** Verifies HTTP and MCP serve configs keep `log.enrich` / `log.serialize` and expand `~` in `log.file`. */
+test("serve configs keep log hooks and expand ~ in log.file", () => {
+  const enrich = () => ({ team: "qa" });
+  const serialize = () => "line";
+  const spec: AppSpec = {
+    key: "myapp",
+    version: "0.0.0",
+    description: "Demo app.",
+    httpServer: { enabled: true },
+    mcpServer: { enabled: true },
+    log: { enrich, serialize, file: "~/logs/app.log" },
+    commands: [{ key: "hello", description: "Hi.", handler: () => {} }],
+  };
+  for (const log of [resolveHttpServeConfig(spec).log, resolveMcpServeConfig(spec).log]) {
+    assert.equal(log.enrich, enrich);
+    assert.equal(log.serialize, serialize);
+    assert.ok(log.file && !log.file.startsWith("~") && log.file.endsWith("/logs/app.log"));
+  }
+  assert.equal(resolveHttpServeConfig(spec, { noAccessLog: true }).log.access, false);
 });

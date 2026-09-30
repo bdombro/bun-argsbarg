@@ -43,17 +43,5 @@ example-agent-plugin <subcommand> [options] [args]
 
 ## Install location
 
-Install follows the https://dotagentsprotocol.com:
-
-- Auto-install: `example-agent-plugin configure install` when `skill.enabled` → `~/.agents/skills/example-agent-plugin/`
-- Cursor and most coding agents read `~/.agents/skills/` natively
-
-**Claude Code (manual):** symlink or copy into Claude's skill directory:
-
-```bash
-mkdir -p ~/.claude/skills
-ln -sf ~/.agents/skills/example-agent-plugin ~/.claude/skills/example-agent-plugin
-```
-
-Project override (optional): `.agents/skills/example-agent-plugin/`
-
+- **Agent plugin:** plugins built with `example-agent-plugin mcp bundle` ship this skill.
+- **Manual:** copy or symlink `skills/example-agent-plugin/` into your agent's skill directory (for example `~/.agents/skills/example-agent-plugin/` or `~/.claude/skills/example-agent-plugin/`).

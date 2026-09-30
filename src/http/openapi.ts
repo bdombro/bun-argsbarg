@@ -139,7 +139,7 @@ function buildHealthPaths(): Record<string, unknown> {
         operationId: "health_readiness",
         summary: "Readiness probe",
         description:
-          "Returns 200 when the server is online and all readiness checks pass (config file, required app config, and optional program.readiness). Returns 503 when any check fails — use for orchestrator readiness probes before routing traffic.",
+          "Returns 200 when the server is online and the optional program.readiness check passes. Returns 503 when any check fails — use for orchestrator readiness probes before routing traffic.",
         responses: {
           "200": jsonResponseEntry("Online and ready to serve traffic", readinessResponseSchema),
           "503": jsonResponseEntry("Online but not ready (one or more checks failed)", readinessResponseSchema),
@@ -191,7 +191,6 @@ export function generateOpenApi(program: AppSpec): Record<string, unknown> {
         "400": errorResponseEntry(program, "Invalid arguments or help requested"),
         "404": errorResponseEntry(program, "Not found"),
         "500": errorResponseEntry(program, "Handler error"),
-        "503": errorResponseEntry(program, "Not ready or missing required config"),
       },
     };
 

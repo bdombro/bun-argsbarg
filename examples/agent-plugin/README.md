@@ -13,7 +13,7 @@ Argsbarg MCP plugin template for Cursor and Claude Code marketplaces (Zod schema
 
 ## Installation
 
-Requires Node >=20 on the host's PATH. Nothing is installed at startup; stdout contains only MCP messages. Maintainers need Bun to develop and rebuild the bundle (`just check`).
+Requires Node >=20 on the host's PATH. Nothing is installed at startup; stdout contains only MCP messages. Maintainers develop, test, and bundle (esbuild) with Node ≥ 22.18, npm, and [just](https://just.systems); no Bun required.
 
 The in-repo example retains its `argsbarg: file:../..` development dependency. Before distributing a standalone copy, resolve that dependency for the destination repository and regenerate its lockfile; the parent-checkout path is not portable.
 
@@ -43,9 +43,7 @@ Once merged into [anthropics/claude-plugins-official](https://github.com/anthrop
 
 ### Built-in commands
 
-- `example-agent-plugin completion` — Install or inspect shell tab completions (bash, zsh, fish).
-- `example-agent-plugin configure` — Manage agent artifacts (skills, MCP, application configuration).
-- `example-agent-plugin docs` — Browse bundled documentation topics (`cli`, `mcp`, `http`, `readme`).
+- `example-agent-plugin completion` — Print shell tab-completion scripts (bash, zsh, fish).
 - `example-agent-plugin mcp` — Start the Model Context Protocol (stdio) server for AI coding agents.
 - `example-agent-plugin version` — Display version information.
 
@@ -55,8 +53,8 @@ Once merged into [anthropics/claude-plugins-official](https://github.com/anthrop
 git clone https://github.com/bdombro/bun-argsbarg.git
 cd bun-argsbarg/examples/agent-plugin
 
-# Install dependencies and generate schemas
 just setup
+just test
 
 # Rebuild the committed Node bundle and run the MCP server from it
 just build
@@ -69,13 +67,5 @@ just plugin-cursor-upsert
 just plugin-claude-install
 ```
 
-Restart Claude Code after installing. Use `bun src/index.ts <command>` for CLI commands from source. Commit `dist/example-agent-plugin.mjs` whenever source changes; `just check` rebuilds it. In-repo development uses `just setup` to repair the local dependency's CLI executable link.
+Restart Claude Code after installing. Use `node src/index.ts <command>` for CLI commands from source. Commit `dist/example-agent-plugin.mjs` whenever source changes (`just build`). Release with `just release <major|minor|patch>` (asks first; `--dry-run` changes nothing).
 
-## Documentation
-
-| Need | Resource |
-| --- | --- |
-| CLI reference | [docs/cli.md](docs/cli.md) or `example-agent-plugin docs cli` |
-| MCP tools | [docs/mcp.md](docs/mcp.md) or `example-agent-plugin docs mcp` |
-| HTTP API | [docs/http.md](docs/http.md) or `example-agent-plugin docs http` |
-| OpenAPI 3.1 | [docs/openapi.json](docs/openapi.json) |

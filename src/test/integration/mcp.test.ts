@@ -2,9 +2,9 @@
 Domain-specific regression tests (split from index.test.ts).
 */
 
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { join } from "node:path";
-import { $ } from "bun";
+import { test } from "node:test";
 import { z } from "zod";
 import { schemaExport } from "../../core/schema.ts";
 import { cliValidateProgram } from "../../core/validate.ts";
@@ -17,36 +17,37 @@ import {
   mcpToolName,
   sanitizeToolSegment,
 } from "../../mcp/tools.ts";
-import { mcpRequest, nestedMcpFixture, requireMcpTool, testProgram } from "../fixtures.ts";
+import { mcpRequest, nestedMcpFixture, requireMcpTool, runNode, testProgram } from "../fixtures.ts";
 
 test("sanitizeToolSegment normalizes dotted app keys", () => {
-  expect(sanitizeToolSegment("minimal.ts")).toBe("minimal_ts");
+  assert.equal(sanitizeToolSegment("minimal.ts"), "minimal_ts");
 });
 
 test("mcpToolDescription formats CLI path and root-leaf prefix", () => {
-  expect(mcpToolDescription(["stat", "owner", "lookup"], "nested.ts", "Resolve owner info.")).toBe(
+  assert.equal(
+    mcpToolDescription(["stat", "owner", "lookup"], "nested.ts", "Resolve owner info."),
     "stat owner lookup — Resolve owner info.",
   );
-  expect(mcpToolDescription(["read"], "nested.ts", "Print files.")).toBe("read — Print files.");
-  expect(mcpToolDescription([], "helloapp", "Tiny demo.")).toBe("helloapp — Tiny demo.");
+  assert.equal(mcpToolDescription(["read"], "nested.ts", "Print files."), "read — Print files.");
+  assert.equal(mcpToolDescription([], "helloapp", "Tiny demo."), "helloapp — Tiny demo.");
 });
 
 test("mcpToolName sanitizes path segments to underscores", () => {
-  expect(mcpToolName(nestedMcpFixture, ["stat", "owner", "lookup"])).toBe("stat_owner_lookup");
-  expect(mcpToolName(nestedMcpFixture, ["render-invoice"])).toBe("render_invoice");
+  assert.equal(mcpToolName(nestedMcpFixture, ["stat", "owner", "lookup"]), "stat_owner_lookup");
+  assert.equal(mcpToolName(nestedMcpFixture, ["render-invoice"]), "render_invoice");
 });
 
 test("collectMcpTools lists user commands with a handler only", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const names = tools.map((t) => t.name);
-  expect(names).toContain("stat_owner_lookup");
+  assert.ok(names.includes("stat_owner_lookup"));
   const lookup = requireMcpTool(tools, "stat_owner_lookup");
-  expect(lookup.description).toBe("stat owner lookup — Resolve owner info.");
-  expect(names).toContain("read");
-  expect(names).not.toContain("hidden");
-  expect(names).not.toContain("configure");
-  expect(names).not.toContain("mcp");
-  expect(names).not.toContain("completion");
+  assert.equal(lookup.description, "stat owner lookup — Resolve owner info.");
+  assert.ok(names.includes("read"));
+  assert.ok(!names.includes("hidden"));
+  assert.ok(!names.includes("configure"));
+  assert.ok(!names.includes("mcp"));
+  assert.ok(!names.includes("completion"));
 });
 
 /** Tests that collectMcpTools appends leaf notes to MCP tool description. */
@@ -66,7 +67,7 @@ test("collectMcpTools appends leaf notes to MCP tool description", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toBe("run — Run.\n\nUse `--json` for structured output.");
+  assert.equal(tools[0]?.description, "run — Run.\n\nUse `--json` for structured output.");
 });
 
 /** Tests that collectMcpTools appends notes after mcpTool.description override. */
@@ -87,7 +88,7 @@ test("collectMcpTools appends notes after mcpTool.description override", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toBe("Custom MCP text.\n\nOperational hint.");
+  assert.equal(tools[0]?.description, "Custom MCP text.\n\nOperational hint.");
 });
 
 /** Tests that collectMcpTools resolves {argsbarg:program} in appended notes. */
@@ -107,7 +108,7 @@ test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools[0]?.description).toContain("See `myapp docs cli`.");
+  assert.ok((tools[0]?.description ?? "").includes("See `myapp docs cli`."));
 });
 
 /** SchemaExport includes leaf outputSchema. */
@@ -127,7 +128,7 @@ test("schemaExport includes leaf outputSchema", () => {
     ],
   });
   const schema = schemaExport(root);
-  expect(schema.commands?.[0]?.outputSchema).toMatchObject({
+  assert.partialDeepStrictEqual(schema.commands?.[0]?.outputSchema, {
     type: "object",
     properties: { ok: { type: "boolean" } },
   });
@@ -148,16 +149,16 @@ test("outputSchema must be a Zod schema", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/outputSchema on run must be a Zod schema/);
+  assert.throws(() => cliValidateProgram(root), /outputSchema on run must be a Zod schema/);
 });
 
 test("collectMcpTools uses leaf-local options in inputSchema", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = requireMcpTool(tools, "stat_owner_lookup");
   const schema = lookup.inputSchema as { properties: Record<string, unknown>; required?: string[] };
-  expect(schema.properties.json).toBeUndefined();
-  expect(schema.properties["user-name"]).toBeDefined();
-  expect(schema.required).toContain("path");
+  assert.equal(schema.properties.json, undefined);
+  assert.notEqual(schema.properties["user-name"], undefined);
+  assert.ok((schema.required ?? []).includes("path"));
 });
 
 /** Tests that collectMcpTools includes outputSchema when set on leaf. */
@@ -177,8 +178,8 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
     ],
   });
   const tools = collectMcpTools(root);
-  expect(tools).toHaveLength(1);
-  expect(tools[0]?.outputSchema).toMatchObject({
+  assert.equal(tools.length, 1);
+  assert.partialDeepStrictEqual(tools[0]?.outputSchema, {
     type: "object",
     properties: { ok: { type: "boolean" } },
     required: ["ok"],
@@ -188,7 +189,7 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
 test("collectMcpTools omits outputSchema when leaf has none", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const lookup = requireMcpTool(tools, "stat_owner_lookup");
-  expect(lookup.outputSchema).toBeUndefined();
+  assert.equal(lookup.outputSchema, undefined);
 });
 
 test("mcpToolCallToArgv builds nested lookup argv", () => {
@@ -198,18 +199,18 @@ test("mcpToolCallToArgv builds nested lookup argv", () => {
     "user-name": "alice",
     path: "./x",
   });
-  expect(argv).toEqual(["stat", "owner", "lookup", "--user-name", "alice", "./x"]);
+  assert.deepEqual(argv, ["stat", "owner", "lookup", "--user-name", "alice", "./x"]);
 });
 
 test("mcpToolCallToArgv expands varargs positionals", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const read = requireMcpTool(tools, "read");
   const argv = mcpToolCallToArgv(nestedMcpFixture, read, { files: ["a", "b"] });
-  expect(argv).toEqual(["read", "a", "b"]);
+  assert.deepEqual(argv, ["read", "a", "b"]);
 });
 
-/** Tests that reserved command name configure is rejected. */
-test("reserved command name configure is rejected", () => {
+/** Tests that `configure` is an ordinary command name (no longer a built-in). */
+test("command name configure is allowed", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -221,7 +222,7 @@ test("reserved command name configure is rejected", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: configure/);
+  assert.doesNotThrow(() => cliValidateProgram(root));
 });
 
 /** Tests that top-level command name mcp is allowed without mcpServer. */
@@ -237,7 +238,7 @@ test("top-level command name mcp is allowed without mcpServer", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).not.toThrow();
+  assert.doesNotThrow(() => cliValidateProgram(root));
 });
 
 /** Tests that top-level command name mcp is rejected when mcpServer is enabled. */
@@ -254,7 +255,7 @@ test("top-level command name mcp is rejected when mcpServer is enabled", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/Reserved command name: mcp/);
+  assert.throws(() => cliValidateProgram(root), /Reserved command name: mcp/);
 });
 
 /** McpServer on non-root node is rejected. */
@@ -272,7 +273,7 @@ test("mcpServer on non-root node is rejected", () => {
       },
     ],
   } as unknown as AppSpec;
-  expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the app root/);
+  assert.throws(() => cliValidateProgram(root), /mcpServer is only supported on the app root/);
 });
 
 test("mcpTool on root is rejected", () => {
@@ -282,7 +283,7 @@ test("mcpTool on root is rejected", () => {
     mcpTool: { enabled: false },
     handler: () => {},
   });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on commands with a handler/);
+  assert.throws(() => cliValidateProgram(root), /mcpTool is only supported on commands with a handler/);
 });
 
 /** McpTool on routing node is rejected. */
@@ -305,14 +306,14 @@ test("mcpTool on routing node is rejected", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on commands with a handler/);
+  assert.throws(() => cliValidateProgram(root), /mcpTool is only supported on commands with a handler/);
 });
 
 test("buildToolCallSuccessFromResponse maps JSON object", () => {
   const result = buildToolCallSuccessFromResponse({ body: { a: 1 } });
-  expect(result.isError).toBe(false);
-  expect(result.structuredContent).toEqual({ a: 1 });
-  expect(result.content[0]?.text).toBe(JSON.stringify({ a: 1 }, null, 2));
+  assert.equal(result.isError, false);
+  assert.deepEqual(result.structuredContent, { a: 1 });
+  assert.equal(result.content[0]?.text, JSON.stringify({ a: 1 }, null, 2));
 });
 
 test("buildToolCallSuccessFromResponse maps string body", () => {
@@ -320,11 +321,11 @@ test("buildToolCallSuccessFromResponse maps string body", () => {
     body: "lookup user=x",
     contentType: "text/plain; charset=utf-8",
   });
-  expect(result.structuredContent).toEqual({
+  assert.deepEqual(result.structuredContent, {
     content: "lookup user=x",
     contentType: "text/plain; charset=utf-8",
   });
-  expect(result.content[0]?.text).toBe("lookup user=x");
+  assert.equal(result.content[0]?.text, "lookup user=x");
 });
 
 test("buildToolCallSuccessFromResponse maps binary body as base64", () => {
@@ -333,7 +334,7 @@ test("buildToolCallSuccessFromResponse maps binary body as base64", () => {
     body: bytes,
     contentType: "application/pdf",
   });
-  expect(result.structuredContent).toEqual({
+  assert.deepEqual(result.structuredContent, {
     data: "JVBERg==",
     contentType: "application/pdf",
     encoding: "base64",
@@ -343,8 +344,8 @@ test("buildToolCallSuccessFromResponse maps binary body as base64", () => {
 test("MCP initialize returns tools and resources capabilities", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }]);
   const res = responses.get(1) as { result: { capabilities: Record<string, unknown> } };
-  expect(res.result.capabilities.tools).toBeDefined();
-  expect(res.result.capabilities.resources).toBeDefined();
+  assert.notEqual(res.result.capabilities.tools, undefined);
+  assert.notEqual(res.result.capabilities.resources, undefined);
 });
 
 test("MCP initialize echoes a supported protocol version", async () => {
@@ -353,7 +354,7 @@ test("MCP initialize echoes a supported protocol version", async () => {
       { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: version } },
     ]);
     const res = responses.get(1) as { result: { protocolVersion: string } };
-    expect(res.result.protocolVersion).toBe(version);
+    assert.equal(res.result.protocolVersion, version);
   }
 });
 
@@ -361,12 +362,12 @@ test("MCP initialize answers unsupported or missing versions with the newest", a
   for (const params of [{ protocolVersion: "2099-01-01" }, {}]) {
     const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params }]);
     const res = responses.get(1) as { result: { protocolVersion: string } };
-    expect(res.result.protocolVersion).toBe("2025-06-18");
+    assert.equal(res.result.protocolVersion, "2025-06-18");
   }
 });
 
 test("2024-11-05 sessions omit outputSchema and structuredContent", async () => {
-  const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+  const readme = join(import.meta.dirname, "..", "..", "..", "README.md");
   const responses = await mcpRequest([
     { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } },
     { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
@@ -379,12 +380,12 @@ test("2024-11-05 sessions omit outputSchema and structuredContent", async () => 
   ]);
   const listRes = responses.get(2) as { result: { tools: { name: string; outputSchema?: unknown }[] } };
   const lookup = listRes.result.tools.find((t) => t.name === "stat_owner_lookup");
-  expect(lookup).toBeDefined();
-  expect(lookup?.outputSchema).toBeUndefined();
+  assert.notEqual(lookup, undefined);
+  assert.equal(lookup?.outputSchema, undefined);
 
   const callRes = responses.get(3) as { result: { structuredContent?: unknown; isError: boolean } };
-  expect(callRes.result.isError).toBe(false);
-  expect(callRes.result.structuredContent).toBeUndefined();
+  assert.equal(callRes.result.isError, false);
+  assert.equal(callRes.result.structuredContent, undefined);
 });
 
 test("MCP initialize includes configured instructions", async () => {
@@ -392,31 +393,23 @@ test("MCP initialize includes configured instructions", async () => {
     script: "src/test/mcp-integration-fixture.ts",
   });
   const res = responses.get(1) as { result: { instructions?: string } };
-  expect(res.result.instructions).toBe("Read the fixture skill.");
+  assert.equal(res.result.instructions, "Read the fixture skill.");
 });
 
 test("MCP startup warns about oversized tools on stderr", async () => {
-  const proc = Bun.spawn(["bun", "run", "src/test/mcp-size-fixture.ts", "mcp"], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "pipe",
+  const { stdout, stderr } = runNode(["src/test/mcp-size-fixture.ts", "mcp"], {
+    input: `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`,
   });
-  proc.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`);
-  proc.stdin.end();
-  const timeout = setTimeout(() => proc.kill(), 10_000);
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-  await proc.exited;
-  clearTimeout(timeout);
 
-  expect(stderr).toContain("description is 3,");
+  assert.ok(stderr.includes("description is 3,"));
 
   const lines = stdout
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
-  expect(lines.length).toBeGreaterThan(0);
+  assert.ok(lines.length > 0);
   for (const line of lines) {
-    expect(() => JSON.parse(line)).not.toThrow();
+    assert.doesNotThrow(() => JSON.parse(line));
   }
 });
 
@@ -426,22 +419,13 @@ test("MCP tools/list includes stat_owner_lookup", async () => {
     result: { tools: { name: string; inputSchema: { required?: string[] } }[] };
   };
   const lookup = res.result.tools.find((t) => t.name === "stat_owner_lookup");
-  expect(lookup).toBeDefined();
-  expect(lookup?.inputSchema.required).toContain("path");
-});
-
-test("MCP resources/read returns schema JSON", async () => {
-  const responses = await mcpRequest([
-    { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "nested_ts://schema" } },
-  ]);
-  const res = responses.get(3) as { result: { contents: { text: string }[] } };
-  const schema = JSON.parse(res.result.contents[0]?.text);
-  expect(schema.key).toBe("nested.ts");
+  assert.notEqual(lookup, undefined);
+  assert.ok((lookup?.inputSchema.required ?? []).includes("path"));
 });
 
 /** MCP tools/call runs stat_owner_lookup. */
 test("MCP tools/call runs stat_owner_lookup", async () => {
-  const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+  const readme = join(import.meta.dirname, "..", "..", "..", "README.md");
   const responses = await mcpRequest([
     {
       jsonrpc: "2.0",
@@ -456,13 +440,13 @@ test("MCP tools/call runs stat_owner_lookup", async () => {
   const res = responses.get(4) as {
     result: { content: { text: string }[]; structuredContent?: { user: string; path: string }; isError: boolean };
   };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
+  assert.equal(res.result.isError, false);
+  assert.deepEqual(res.result.structuredContent, { user: "test", path: readme });
 });
 
 /** MCP tools/call returns structuredContent for JSON stdout. */
 test("MCP tools/call returns structuredContent for JSON stdout", async () => {
-  const readme = join(import.meta.dir, "..", "..", "..", "README.md");
+  const readme = join(import.meta.dirname, "..", "..", "..", "README.md");
   const responses = await mcpRequest([
     {
       jsonrpc: "2.0",
@@ -481,8 +465,8 @@ test("MCP tools/call returns structuredContent for JSON stdout", async () => {
       isError: boolean;
     };
   };
-  expect(res.result.isError).toBe(false);
-  expect(res.result.structuredContent).toEqual({ user: "test", path: readme });
+  assert.equal(res.result.isError, false);
+  assert.deepEqual(res.result.structuredContent, { user: "test", path: readme });
 });
 
 /** MCP tools/call errors on missing required positional. */
@@ -496,20 +480,20 @@ test("MCP tools/call errors on missing required positional", async () => {
     },
   ]);
   const res = responses.get(5) as { result: { isError: boolean; content: { text: string }[] } };
-  expect(res.result.isError).toBe(true);
-  expect(res.result.content[0]?.text).toContain("Missing argument: path");
+  assert.equal(res.result.isError, true);
+  assert.ok((res.result.content[0]?.text ?? "").includes("Missing argument: path"));
 });
 
 test("MCP ping returns empty result", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 99, method: "ping", params: {} }]);
   const res = responses.get(99) as { result: Record<string, never> };
-  expect(res.result).toEqual({});
+  assert.deepEqual(res.result, {});
 });
 
 test("minimal.ts mcp without opt-in fails", async () => {
-  const { stderr, exitCode } = await $`bun run examples/minimal.ts mcp`.nothrow().quiet();
-  expect(exitCode).toBe(1);
-  expect(stderr.toString()).toContain("MCP is not available");
+  const { stderr, exitCode } = runNode(["examples/minimal.ts", "mcp"]);
+  assert.equal(exitCode, 1);
+  assert.ok(stderr.toString().includes("MCP is not available"));
 });
 
 test("MCP resources/list includes custom resource", async () => {
@@ -518,26 +502,7 @@ test("MCP resources/list includes custom resource", async () => {
   });
   const res = responses.get(10) as { result: { resources: { uri: string }[] } };
   const uris = res.result.resources.map((r) => r.uri);
-  expect(uris).toContain("mcp_test://schema");
-  expect(uris).toContain("mcp_test://docs/readme");
-  expect(uris).toContain("test://hello");
-});
-
-/** MCP resources/read returns docs topic resource body. */
-test("MCP resources/read returns docs topic resource body", async () => {
-  const responses = await mcpRequest(
-    [
-      {
-        jsonrpc: "2.0",
-        id: 13,
-        method: "resources/read",
-        params: { uri: "mcp_test://docs/readme" },
-      },
-    ],
-    { script: "src/test/mcp-integration-fixture.ts" },
-  );
-  const res = responses.get(13) as { result: { contents: { text: string }[] } };
-  expect(res.result.contents[0]?.text).toBe("# MCP test readme\n");
+  assert.deepEqual(uris, ["test://hello"]);
 });
 
 test("MCP resources/read returns custom resource body", async () => {
@@ -546,7 +511,7 @@ test("MCP resources/read returns custom resource body", async () => {
     { script: "src/test/mcp-integration-fixture.ts" },
   );
   const res = responses.get(11) as { result: { contents: { text: string }[] } };
-  expect(res.result.contents[0]?.text).toBe("hello resource");
+  assert.equal(res.result.contents[0]?.text, "hello resource");
 });
 
 test("MCP resources/read unknown URI returns error", async () => {
@@ -555,5 +520,5 @@ test("MCP resources/read unknown URI returns error", async () => {
     { script: "src/test/mcp-integration-fixture.ts" },
   );
   const res = responses.get(12) as { error: { code: number } };
-  expect(res.error.code).toBe(-32602);
+  assert.equal(res.error.code, -32602);
 });

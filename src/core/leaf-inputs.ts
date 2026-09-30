@@ -4,11 +4,11 @@ With an inputSchema, the schema's parsed output becomes ctx.inputs.
 */
 
 import type { z } from "zod";
-import { isInteractiveTty } from "../utils.ts";
 import type { CommandContext, CommandInputs } from "./context.ts";
 import { collectOptionDefs } from "./parse.ts";
 import type { AppSpec, Command, CommandOption, Invocation, RunnableCommand } from "./types.ts";
 import { hasHandler, hasSubcommands, isDocumentCommand, OptionKind, ValueFormat } from "./types.ts";
+import { isInteractiveTty } from "./utils.ts";
 import { toJsonSchema, validateWithSchema } from "./zod-schema.ts";
 
 /** Thrown when leaf input resolution or validation fails. */
@@ -55,9 +55,9 @@ export function parseJsonText(
   }
 }
 
-/** Parses a JSON or YAML string from a command argument or document body. */
+/** Parses a JSON string from a command argument or document body. */
 export function parseDocumentText(
-  /** Raw text containing a JSON or YAML document. */
+  /** Raw text containing a JSON document. */
   raw: string,
   /** Field or argument label for error reporting. */
   label: string,
@@ -66,23 +66,25 @@ export function parseDocumentText(
   if (trimmed.length === 0) {
     throw new InputError(`${label}: value is empty`);
   }
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      // Fall through to YAML if JSON parse fails
-    }
-  }
   try {
-    return Bun.YAML.parse(trimmed);
+    return JSON.parse(trimmed);
   } catch {
-    throw new InputError(`${label}: invalid JSON or YAML`);
+    throw new InputError(`${label}: invalid JSON`);
   }
 }
 
+/** Reads all of piped stdin as UTF-8 text. */
+async function readStdinText(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+/** Reads piped stdin as a JSON value for a pipable Json option. */
 async function readPipedJsonStdin(): Promise<unknown> {
-  const raw = await new Response(Bun.stdin).text();
-  const trimmed = raw.trim();
+  const trimmed = (await readStdinText()).trim();
   if (trimmed.length === 0) {
     throw new InputError("stdin is empty; pass JSON via the option flag or pipe a JSON document to stdin");
   }
@@ -94,26 +96,18 @@ async function readPipedJsonStdin(): Promise<unknown> {
 }
 
 /** Error message when a document leaf gets no input. */
-const DOCUMENT_BODY_HELP = "Missing document input: pass a JSON or YAML document as an argument or pipe to stdin";
+const DOCUMENT_BODY_HELP = "Missing document input: pass a JSON document as an argument or pipe to stdin";
 
 /** Reads piped stdin for a document command with a handler. */
 async function readPipedDocumentStdin(): Promise<unknown> {
-  const raw = await new Response(Bun.stdin).text();
-  const trimmed = raw.trim();
+  const trimmed = (await readStdinText()).trim();
   if (trimmed.length === 0) {
     throw new InputError(DOCUMENT_BODY_HELP);
   }
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      // Fall through to YAML
-    }
-  }
   try {
-    return Bun.YAML.parse(trimmed);
+    return JSON.parse(trimmed);
   } catch {
-    throw new InputError("stdin is not valid JSON or YAML");
+    throw new InputError("stdin is not valid JSON");
   }
 }
 
@@ -243,7 +237,7 @@ export function loadLeafInputs(ctx: CommandContext): unknown {
       throw new InputError(DOCUMENT_BODY_HELP);
     }
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
-      throw new InputError("Document input must be a JSON or YAML object");
+      throw new InputError("Document input must be a JSON object");
     }
     const out = body as CommandInputs;
     if (leaf.inputSchema !== undefined) {

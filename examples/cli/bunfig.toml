@@ -1,3 +1,0 @@
-[install]
-# fetch package.json deps on first `bun src/index.ts` without manual `bun install`.
-auto = "fallback"

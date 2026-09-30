@@ -1,8 +1,9 @@
 /*
-Tests for structured document leaves (kind: "document") supporting JSON and YAML document input.
+Tests for structured document leaves (kind: "document") with JSON document input.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { argsbarg } from "../index.ts";
 import { InputError, parseDocumentText } from "./leaf-inputs.ts";
@@ -38,79 +39,80 @@ function documentLeafProgram() {
 describe("kind: document leaf", () => {
   /** Tests validation rules for document leaves. */
   test("validate requires inputSchema and forbids options/positionals", () => {
-    expect(() =>
-      cliValidateProgram({
-        key: "bad",
-        version: "1",
-        description: "bad",
-        commands: [{ key: "x", description: "x", kind: "document", handler: () => {} }],
-      }),
-    ).toThrow(SchemaValidationError);
+    assert.throws(
+      () =>
+        cliValidateProgram({
+          key: "bad",
+          version: "1",
+          description: "bad",
+          commands: [{ key: "x", description: "x", kind: "document", handler: () => {} }],
+        }),
+      SchemaValidationError,
+    );
 
-    expect(() =>
-      cliValidateProgram({
-        key: "bad",
-        version: "1",
-        description: "bad",
-        commands: [
-          {
-            key: "x",
-            description: "x",
-            kind: "document",
-            inputSchema: deploySchema,
-            options: [{ name: "f", description: "f", kind: OptionKind.String }],
-            handler: () => {},
-          },
-        ],
-      }),
-    ).toThrow(SchemaValidationError);
+    assert.throws(
+      () =>
+        cliValidateProgram({
+          key: "bad",
+          version: "1",
+          description: "bad",
+          commands: [
+            {
+              key: "x",
+              description: "x",
+              kind: "document",
+              inputSchema: deploySchema,
+              options: [{ name: "f", description: "f", kind: OptionKind.String }],
+              handler: () => {},
+            },
+          ],
+        }),
+      SchemaValidationError,
+    );
 
-    expect(() =>
-      cliValidateProgram({
-        key: "bad",
-        version: "1",
-        description: "bad",
-        commands: [
-          {
-            key: "x",
-            description: "x",
-            kind: "document",
-            inputSchema: deploySchema,
-            positionals: [{ name: "file", description: "file", kind: OptionKind.String }],
-            handler: () => {},
-          },
-        ],
-      }),
-    ).toThrow(SchemaValidationError);
+    assert.throws(
+      () =>
+        cliValidateProgram({
+          key: "bad",
+          version: "1",
+          description: "bad",
+          commands: [
+            {
+              key: "x",
+              description: "x",
+              kind: "document",
+              inputSchema: deploySchema,
+              positionals: [{ name: "file", description: "file", kind: OptionKind.String }],
+              handler: () => {},
+            },
+          ],
+        }),
+      SchemaValidationError,
+    );
   });
 
   /** Tests that flags on document leaves are rejected. */
   test("parse rejects CLI flags on document leaf", () => {
     const root = documentLeafProgram();
     const pr = parse(root, ["deploy", "--target", "staging"]);
-    expect(pr.kind).toBe(ParseKind.Error);
-    expect(pr.errorMsg).toContain("Document commands do not accept options");
+    assert.equal(pr.kind, ParseKind.Error);
+    assert.ok(pr.errorMsg.includes("Document commands do not accept options"));
   });
 
   /** Tests that document leaf accepts positional argument tokens. */
   test("parse accepts document positional token", () => {
     const root = documentLeafProgram();
     const pr = parse(root, ["deploy", "target: staging"]);
-    expect(pr.kind).toBe(ParseKind.Ok);
-    expect(pr.args).toEqual(["target: staging"]);
+    assert.equal(pr.kind, ParseKind.Ok);
+    assert.deepEqual(pr.args, ["target: staging"]);
   });
 
-  /** Tests reading body from YAML positional argv. */
-  test("invoke reads body from YAML positional argv", async () => {
+  /** Tests that YAML positional argv is rejected (JSON only). */
+  test("invoke rejects YAML positional argv", async () => {
     const cli = argsbarg(documentLeafProgram());
-    const yaml = "target: staging\nconfig:\n  replicas: 3";
-    const result = await cli.invoke(["deploy", yaml], { invocation: "mcp" });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ target: "staging", config: { replicas: 3 } });
-
-    const cliResult = await cli.invoke(["deploy", yaml], { invocation: "cli" });
-    expect(cliResult.kind).toBe("ok");
-    expect(JSON.parse(cliResult.stdout)).toEqual({ target: "staging", config: { replicas: 3 } });
+    const result = await cli.invoke(["deploy", "target: staging\nconfig:\n  replicas: 3"], { invocation: "mcp" });
+    assert.equal(result.kind, "error");
+    assert.ok((result.errorMsg ?? "").includes("invalid JSON"));
   });
 
   /** Tests reading body from JSON positional argv. */
@@ -118,8 +120,8 @@ describe("kind: document leaf", () => {
     const cli = argsbarg(documentLeafProgram());
     const json = '{"target":"production","config":{"replicas":5}}';
     const result = await cli.invoke(["deploy", json], { invocation: "mcp" });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ target: "production", config: { replicas: 5 } });
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, { target: "production", config: { replicas: 5 } });
   });
 
   /** Tests reading body from toolArgs. */
@@ -129,16 +131,16 @@ describe("kind: document leaf", () => {
       invocation: "http",
       toolArgs: { target: "production", config: { replicas: 10 } },
     });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ target: "production", config: { replicas: 10 } });
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, { target: "production", config: { replicas: 10 } });
   });
 
   /** Tests error message when document body is missing. */
   test("invoke errors when body is missing", async () => {
     const cli = argsbarg(documentLeafProgram());
     const result = await cli.invoke(["deploy"], { invocation: "cli" });
-    expect(result.kind).toBe("error");
-    expect(result.errorMsg).toContain("Missing document input");
+    assert.equal(result.kind, "error");
+    assert.ok((result.errorMsg ?? "").includes("Missing document input"));
   });
 
   /** Tests inputSchema validation error handling. */
@@ -160,16 +162,16 @@ describe("kind: document leaf", () => {
     const result = await cli.invoke(["deploy", "target: invalid-target\nconfig:\n  replicas: 1"], {
       invocation: "cli",
     });
-    expect(result.kind).toBe("error");
-    expect(handlerRan).toBe(false);
+    assert.equal(result.kind, "error");
+    assert.equal(handlerRan, false);
   });
 
   /** Tests non-object document body returns error. */
   test("non-object document body returns error", async () => {
     const cli = argsbarg(documentLeafProgram());
     const result = await cli.invoke(["deploy", '"just-a-string"'], { invocation: "cli" });
-    expect(result.kind).toBe("error");
-    expect(result.errorMsg).toContain("Document input must be a JSON or YAML object");
+    assert.equal(result.kind, "error");
+    assert.ok((result.errorMsg ?? "").includes("Document input must be a JSON object"));
   });
 
   /** Tests that a discriminated-union inputSchema surfaces one precise discriminator error. */
@@ -199,8 +201,8 @@ describe("kind: document leaf", () => {
     } satisfies AppSpec;
     const cli = argsbarg(program);
     const result = await cli.invoke(["run", JSON.stringify({ steps: [{ kind: "alfa" }] })], { invocation: "cli" });
-    expect(result.kind).toBe("error");
-    expect(result.errorMsg).toStartWith("steps.0.kind: Invalid discriminator value");
+    assert.equal(result.kind, "error");
+    assert.ok((result.errorMsg ?? "").startsWith("steps.0.kind: Invalid discriminator value"));
   });
 });
 
@@ -209,22 +211,21 @@ describe("parseDocumentText", () => {
   /** Tests parsing valid JSON. */
   test("parses valid JSON object", () => {
     const parsed = parseDocumentText('{"key":"value"}', "test");
-    expect(parsed).toEqual({ key: "value" });
+    assert.deepEqual(parsed, { key: "value" });
   });
 
-  /** Tests parsing valid YAML. */
-  test("parses valid YAML object", () => {
-    const parsed = parseDocumentText("key: value\nnested:\n  count: 2", "test");
-    expect(parsed).toEqual({ key: "value", nested: { count: 2 } });
+  /** Tests that YAML text is rejected. */
+  test("rejects YAML text", () => {
+    assert.throws(() => parseDocumentText("key: value\nnested:\n  count: 2", "test"), /invalid JSON/);
   });
 
   /** Tests empty string throws error. */
   test("throws on empty string", () => {
-    expect(() => parseDocumentText("   ", "test")).toThrow(InputError);
+    assert.throws(() => parseDocumentText("   ", "test"), InputError);
   });
 
   /** Tests invalid syntax throws error. */
   test("throws on invalid syntax", () => {
-    expect(() => parseDocumentText("{bad json", "test")).toThrow(InputError);
+    assert.throws(() => parseDocumentText("{bad json", "test"), InputError);
   });
 });

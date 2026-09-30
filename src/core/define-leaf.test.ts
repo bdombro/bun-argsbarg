@@ -3,7 +3,8 @@ Type-level and runtime tests for command's option/positional inference: ctx.inpu
 option and positional literals (no inputSchema), and the runtime values match those types.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { argsbarg } from "../index.ts";
 import { type AppSpec, command, OptionKind, ValueFormat } from "./types.ts";
@@ -52,8 +53,8 @@ describe("command option inference", () => {
       ["run", "--limit", "3", "--env", "prod", "--timeout", "2m", "--tags", "a,b", "--verbose", "t", "x.txt"],
       { invocation: "mcp" },
     );
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, {
       verbose: true,
       limit: 3,
       env: "prod",
@@ -91,7 +92,7 @@ describe("argsbarg", () => {
       },
     });
     const result = await app.invoke([], { invocation: "mcp" });
-    expect(result.response?.body).toBe("hello world");
+    assert.equal(result.response?.body, "hello world");
   });
 
   test("a grouping root builds an app whose spec is the definition", () => {
@@ -101,6 +102,6 @@ describe("argsbarg", () => {
       description: "App.",
       commands: [command({ key: "run", description: "Run.", handler: () => 1 })],
     });
-    expect(app.spec.key).toBe("app");
+    assert.equal(app.spec.key, "app");
   });
 });

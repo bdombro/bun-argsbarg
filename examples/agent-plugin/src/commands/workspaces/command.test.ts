@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { beforeEach, describe, test } from "node:test";
 import { type AppSpec, argsbarg } from "argsbarg";
-import { AppDb } from "../../db";
+import { AppDb } from "../../db/index.ts";
 import { workspacesTestSpec } from "./command.ts";
 
 const baseSpec: AppSpec = {
@@ -24,8 +25,8 @@ describe("workspaces command", () => {
 
   test("GET workspaces lists empty collection", async () => {
     const result = await cli.invoke(["workspaces", "get"], { invocation: "http" });
-    expect(result.kind).toBe("ok");
-    expect(result.response?.body).toEqual({ workspaces: [] });
+    assert.equal(result.kind, "ok");
+    assert.deepEqual(result.response?.body, { workspaces: [] });
   });
 
   test("POST workspaces creates resource", async () => {
@@ -33,14 +34,14 @@ describe("workspaces command", () => {
       invocation: "http",
       toolArgs: { name: "qa2" },
     });
-    expect(created.kind).toBe("ok");
+    assert.equal(created.kind, "ok");
     const body = created.response?.body as { id: string; name: string };
-    expect(body.name).toBe("qa2");
-    expect(body.id.length).toBeGreaterThan(0);
+    assert.equal(body.name, "qa2");
+    assert.ok(body.id.length > 0);
 
     const got = await cli.invoke(["workspaces", body.id, "get"], { invocation: "http" });
-    expect(got.kind).toBe("ok");
-    expect(got.response?.body).toEqual(body);
+    assert.equal(got.kind, "ok");
+    assert.deepEqual(got.response?.body, body);
   });
 
   test("CLI workspaces :id get resolves path param", async () => {
@@ -48,11 +49,11 @@ describe("workspaces command", () => {
       invocation: "http",
       toolArgs: { name: "cli-ws" },
     });
-    expect(created.kind).toBe("ok");
-    const id = (created.response?.body as { id: string }).id;
+    assert.equal(created.kind, "ok");
+    const id = (created.response?.body as { id: string } | undefined)?.id ?? "";
 
     const got = await cli.invoke(["workspaces", id, "get"], { invocation: "http" });
-    expect(got.kind).toBe("ok");
-    expect(got.response?.body).toEqual({ id, name: "cli-ws" });
+    assert.equal(got.kind, "ok");
+    assert.deepEqual(got.response?.body, { id, name: "cli-ws" });
   });
 });

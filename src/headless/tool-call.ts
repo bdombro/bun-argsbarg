@@ -1,11 +1,8 @@
 /*
-Shared headless tool dispatch for MCP and HTTP: config bootstrap, argv conversion, and invoke.
+Shared headless tool dispatch for MCP and HTTP: tool lookup, argv conversion, and invoke.
 */
 
-import { bootstrapAppConfig } from "../config/bootstrap.ts";
-import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
 import type { AppSpec, Invocation, InvokeFailureKind } from "../core/types.ts";
-import { failureKindHttpStatus } from "../hooks/run.ts";
 import { apiErrorResponse, apiSuccessResponse, stripAnsi } from "../http/result.ts";
 import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
 import { obscureUnexpectedClientMessage } from "../log/emitter.ts";
@@ -18,12 +15,10 @@ import {
   mcpToolCallToArgv,
 } from "../mcp/tools.ts";
 import type { App, InvokeResult } from "../runtime/cli.ts";
+import { failureKindHttpStatus } from "../runtime/hooks.ts";
 
 /** Outcome of resolving a tool name against the program schema. */
-export type ToolLookupResult =
-  | { ok: true; tool: McpToolDef }
-  | { ok: false; kind: "unknown"; message: string }
-  | { ok: false; kind: "missing_config"; message: string };
+export type ToolLookupResult = { ok: true; tool: McpToolDef } | { ok: false; kind: "unknown"; message: string };
 
 /** Successful headless tool invocation payload shared by MCP and HTTP. */
 export interface HeadlessToolCallSuccess {
@@ -52,15 +47,6 @@ export function lookupHeadlessTool(program: AppSpec, toolName: string): ToolLook
   const tool = tools.find((t) => t.name === toolName);
   if (!tool) {
     return { ok: false, kind: "unknown", message: `Unknown tool: ${toolName}` };
-  }
-  const { resolved } = bootstrapAppConfig(program, { validateFile: false });
-  const missingConfig = missingRequiredConfig(program, resolved);
-  if (missingConfig.length > 0) {
-    return {
-      ok: false,
-      kind: "missing_config",
-      message: formatMcpMissingConfigMessage(program, missingConfig),
-    };
   }
   return { ok: true, tool };
 }
@@ -260,9 +246,4 @@ function formatHeadlessError(
     return obscureUnexpectedClientMessage();
   }
   return stripAnsi(result.message).trim();
-}
-
-/** Missing-config lookup failures as MCP/HTTP pre-invoke errors. */
-export function missingConfigFailureKind(): InvokeFailureKind {
-  return "missing_config";
 }

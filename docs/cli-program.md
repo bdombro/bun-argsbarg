@@ -2,7 +2,7 @@
 
 ArgsBarg turns your schema into help, shell completions, and MCP tools. **The same `description` fields you write for humans are the agent contract** for basic apps.
 
-**Documentation map:** [docs/README.md](README.md) — which guide to read for MCP, configure, consumer docgen, and Cursor setup.
+**Documentation map:** [README.md](../README.md#documentation).
 
 ## Minimal app (MCP is free)
 
@@ -33,7 +33,7 @@ No `mcpTool` blocks required. Every command becomes an MCP tool; `inputSchema` c
 const app = argsbarg({
   commands: [/* ... */],
   description: "One-line summary of what the CLI does.",
-  httpServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
+  httpServer: { enabled: true }, // myapp http → http://127.0.0.1:3000
   key: "myapp",
   version: "1.0.0",
 });
@@ -71,7 +71,6 @@ ArgsBarg is **schema-first** — the program tree is the product. **Keep `Progra
 | Shared option objects (`DRY_RUN_OPTION`, `JSON_OPTION`) | Identical flag reused on many commands |
 | Shared spreads (`...MCP_TOOL_MUTATOR`) | Same `mcpTool` metadata on a family of commands |
 | `commands/<name>/command.tsx` module | Entry file is large; handler/body is substantial (Ink page, headless dispatch) |
-| `docs.topics` text imports | Compile-time markdown bundling — not schema shape |
 
 **Avoid extracting** thin indirection: a file that only re-exports `{ key, description, options }` with no logic, or splitting every command into its own module when the handler is a few lines. If extraction does not reduce duplication or file size materially, keep it inline.
 
@@ -90,7 +89,7 @@ export const reserveCommand = command({
 
 Use a **parameterized factory** only when the schema truly depends on inputs (e.g. `createUpsertCommand(deps)` for tests or injected config). A `reserveCommand()` that returns a static literal adds indirection without benefit.
 
-Build the app with **`argsbarg({ … })`** and declare every command with **`command({ … })`** — inline or in their own modules — so handlers get typed `ctx.inputs` / `ctx.pathParams`. Extracted command groups can use `satisfies CommandGroup` (command groups have nothing to infer). Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `version`, …).
+Build the app with **`argsbarg({ … })`** and declare every command with **`command({ … })`** — inline or in their own modules — so handlers get typed `ctx.inputs` / `ctx.pathParams`. Extracted command groups can use `satisfies CommandGroup` (command groups have nothing to infer). Keep **program-root fields in alphabetical order** (`commands`, `description`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `version`, …).
 
 ## Descriptions
 
@@ -101,7 +100,7 @@ Write for **what the command does**, not how the UI works:
 
 Option and positional `description` strings appear in `-h` and MCP `inputSchema` — keep them concrete (`Environment name (e.g. qa2).`).
 
-Use root **`notes`** for cross-cutting hints shown in help (install commands, docs topics, VPN requirements).
+Use root **`notes`** for cross-cutting hints shown in help (install commands, VPN requirements).
 
 ## Agent-friendly schema
 
@@ -111,10 +110,10 @@ Descriptions and schemas are copied into MCP tools and HTTP OpenAPI — optimize
 - Prefer **`kind: "document"`** commands with a Zod `inputSchema` for complex tool bodies (one nested object beats many flat flags). Put agent-facing documentation in `.describe()` on every field.
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
-- For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
-- Repository **`skills/<app>/SKILL.md`** acts as an intent-based command group that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
+- For shape discovery: HTTP agents load `GET /openapi.json`; MCP agents use `tools/list`; CLI agents use `--help` (non-TTY help includes the schemas).
+- Repository **`skills/<app>/SKILL.md`** acts as an intent-based command group that directs agents to `<subcommand> --help`
 
-Schemas: [json-schema-subset.md](json-schema-subset.md) (Zod 4 authoring; emitted as JSON Schema 2020-12).
+Schemas: [schemas.md](schemas.md) (Zod 4 authoring; emitted as JSON Schema 2020-12).
 
 ## Well-known option names
 
@@ -145,24 +144,21 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 
 ### Structured stdout
 
-On **commands with a handler**, set `outputSchema` to a JSON Schema describing stdout when the handler emits JSON (typically with `--json`, or via MCP on the headless path):
+On **commands with a handler**, set `outputSchema` to a Zod schema describing stdout when the handler emits JSON (typically with `--json`, or via MCP on the headless path):
 
 ```typescript
-{
+command({
   key: "lookup",
   description: "Resolve owner info.",
-  outputSchema: {
-    type: "object",
-    properties: { user: { type: "string" }, path: { type: "string" } },
-    required: ["user", "path"],
-  },
-  handler: (ctx) => { /* ... */ },
-}
+  outputSchema: z.strictObject({
+    user: z.string().describe("Owner login."),
+    path: z.string().describe("Resolved file path."),
+  }),
+  handler: (ctx) => ({ user: "alice", path: ctx.args[0] ?? "." }), // typed against outputSchema
+})
 ```
 
-Exported in `docs cli-schema`, `docs cli`, and MCP `tools/list`. Not validated at runtime yet. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`.
-
-For a **outputSchema codegen guidelines** (TypeScript types → JSON Schema → `outputSchema` constants), see [output-schema.md](output-schema.md).
+Exported in MCP `tools/list`, OpenAPI, and piped `--help`. Not validated at runtime. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`. See [schemas.md](schemas.md#output-schemas).
 
 Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard flag names, or handlers that only work interactively — fix those instead.
 
@@ -259,7 +255,7 @@ export const renderInvoice = command({
 | `format: date-time` | `string` (normalized UTC ISO) |
 | Single positional | `string` or `undefined` |
 | Varargs positional | `string[]` or `undefined` |
-| `kind: json` | parsed object/array or `undefined` (`ctx.jsonOpt(name)`; piped stdin preloaded before handler) |
+| `Json` option | parsed object/array or `undefined` (`ctx.jsonOpt(name)`; piped stdin preloaded before handler) |
 
 Omitted options appear as `undefined` (not absent keys). Options with `default` are filled in post-parse before handlers run, so `ctx.inputs` and `durationOpt` see defaults. **`ctx.opts` always holds raw strings** — use typed accessors or `ctx.inputs` for coerced values.
 
@@ -295,6 +291,19 @@ handler: (ctx) => ctx.locals.db.workspaces.list(),
 
 Use **`Locals`** for handler-facing per-request state (`ctx.locals.db`). Use **`ServerState`** for cross-request server resources (`ctx.runtime.state.db`). Populate both in `beforeInvoke` when needed.
 
+### Hooks
+
+`hooks` on the app root run around **user commands** on every surface (`app.run()` on the CLI, and `app.invoke()` for HTTP and MCP) — never for built-ins.
+
+| Hook | Runs | Use for |
+| --- | --- | --- |
+| `beforeInvoke(ctx)` | Before input validation and the handler; may throw | Attaching `ctx.locals` (DB handles, auth) |
+| `afterInvoke({ …ctx, result })` | After a successful handler | Metrics, cleanup |
+| `formatError(ctx)` | On failure; return `{ message, exitCode? }` to change what the client sees | Mapping domain errors |
+| `onError(ctx)` | On failure, after `formatError`; observe only | Reporting |
+
+The framework seeds `ctx.locals.requestId` before `beforeInvoke`. A handler that calls `process.exit()` itself skips `afterInvoke` on the CLI. `httpServer.hooks` and `mcpServer.hooks` are separate wire-level hooks (`onRequest`, `onResponse`, `onError`) — see [http-server.md](http-server.md) and [mcp.md](mcp.md).
+
 ### Json options and piped stdin
 
 For nested tool bodies (e.g. invoice template data), declare a matching property in the command's Zod `inputSchema` and add a **`kind: Json`** option with the same name:
@@ -322,7 +331,7 @@ At most one `pipable` Json option per command. Json option names must be propert
 
 ### Structured document commands (`kind: "document"`)
 
-When the entire tool body is a structured document (JSON or YAML, no CLI flags), set **`kind: "document"`** on the command with **`inputSchema`** and **no `options` or `positionals`**:
+When the entire tool body is a structured JSON document (no CLI flags), set **`kind: "document"`** on the command with **`inputSchema`** and **no `options` or `positionals`**:
 
 ```typescript
 command({
@@ -339,27 +348,17 @@ command({
 
 | Surface | How input is supplied |
 | --- | --- |
-| CLI | One JSON or YAML positional **or** pipe a JSON/YAML document to stdin |
-| MCP / HTTP | Full tool args object (`ctx.toolArgs` / JSON or YAML request body) |
+| CLI | One JSON positional **or** pipe a JSON document to stdin |
+| MCP / HTTP | Full tool args object (`ctx.toolArgs` / JSON request body) |
 
 Example CLI:
 ```bash
 # JSON positional or pipe
 jq '{format:"pdf", invoice:.}' data.json | myapp render-invoice
 myapp render-invoice '{"format":"pdf","invoice":{"id":"INV-1"}}'
-
-# YAML positional or pipe
-myapp render-invoice 'format: pdf
-invoice:
-  id: INV-1'
-cat << 'EOF' | myapp render-invoice
-format: pdf
-invoice:
-  id: INV-1
-EOF
 ```
 
-See [json-schema-subset.md](json-schema-subset.md) for authoring schemas in Zod, [output-schema.md](output-schema.md) for `outputSchema`, and [http-server.md](http-server.md) for HTTP tool bodies.
+See [schemas.md](schemas.md) for authoring input and output schemas in Zod, and [http-server.md](http-server.md) for HTTP tool bodies.
 
 `CommandInputs` (commands without an `inputSchema`) is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct), or give the command a Zod `inputSchema` and declare it with `command`.
 
@@ -419,30 +418,6 @@ handler: async (ctx) => {
 ```
 
 **JSON-only CLIs** — a single `readCommandOptions(ctx)` wrapping `ctx.inputs` per shared option set is usually enough; full `resolve*` layering is optional.
-
-## Upgrading to 3.6+
-
-### MCP varargs (breaking)
-
-Varargs positionals (`argMax: 0`) must be a **JSON array** in `tools/call` — comma-separated strings are no longer accepted.
-
-```json
-// before (removed)
-{ "uids": "a,b,c" }
-
-// after
-{ "uids": ["a", "b", "c"] }
-```
-
-CLI argv is unchanged: space-separated words. Use `format: comma-list` on an **option** when a single flag should accept `a,b` or `["a","b"]` over MCP.
-
-### Value formats (optional)
-
-Add `format`, `default`, or `pattern` on string **options**; read with `ctx.durationOpt`, `ctx.commaListOpt`, `ctx.inputs`, etc. Replace hand-rolled `split(",")` / `parseDurationMs` try/catch where the schema can declare the shape.
-
-### Handler layering (optional)
-
-Ink + headless + MCP apps benefit from `read*Flags(ctx)` + `resolve*Input(flags)` — see above.
 
 ## Headless-capable handlers
 
@@ -519,88 +494,22 @@ handler: async (ctx) => {
 
 Basic synchronous handlers do not need this structure — only commands with an interactive branch.
 
-## Configuration (`appConfig`)
+## App settings
 
-Declare app configuration on the **app root** (not on commands). Values persist in a flat JSON file; handlers read resolved values via `ctx.appConfig`.
-
-```typescript
-import { argsbarg } from "argsbarg";
-import { Settings } from "./config/types.ts"; // Zod object schema
-
-const app = argsbarg({
-  key: "myapp",
-  version: "1.0.0",
-  description: "…",
-  appConfig: {
-    schema: Settings, // optional; omit for all-string mode
-    entries: {
-      apiToken: {
-        description: "Create at https://example.com/settings/tokens",
-        env: "API_TOKEN",
-        sensitive: true,
-      },
-      defaultRegion: {
-        title: "Default region",
-        description: "AWS region (default us-east-1).",
-        required: false,
-      },
-      maxRetries: { description: "Retry count." },
-    },
-  },
-  handler: (ctx) => {
-    const token = ctx.appConfig.require("apiToken");
-    const region = ctx.appConfig.get("defaultRegion");
-  },
-});
-
-await app.run();
-```
-
-| Field | Default | Purpose |
-| --- | --- | --- |
-| `description` | *(required)* | Shown in prompts, `configure get`, and bundle manifests |
-| `title` | config key | Short label in interactive `configure` |
-| `default` | — | Used when `schema` omitted (all-string mode) |
-| `required` | `true` | When `false`, optional unless required by `schema` |
-| `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `configure get`, and status |
-| `env` | — | When set: non-empty host env overrides file; consulted again after `resolve` when `resolve` returns `undefined`; exported to `process.env` after resolve |
-| `resolve` | — | Optional fallback after file; return `undefined` to fall back to `env` (if set) and defaults |
-
-**Config file** (created on demand):
-
-- Default: `$XDG_CONFIG_HOME/<sanitized-key>/config` or `%APPDATA%/<key>/config`.
-- JSON: flat object keyed by schema names — `{ "apiToken": "…", "maxRetries": 5 }`.
-- **Strict:** unknown keys rejected on load.
-- **CLI:** missing required config exits 1 before the command handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
-- **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
-- **Configure:** interactive `configure` runs the app config wizard; **`configure install`** registers MCP in `~/.agents/mcp.json` (see https://dotagentsprotocol.com). Optional `configure.afterInstall` / `configure.beforeUninstall` for app-specific agent setup; see [configure.md](configure.md).
-- **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure install`; manual Cursor/Claude setup in [mcp.md](mcp.md).
-
-See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
-
-**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` (schema-aware, resolved values); `getUnsafe`, `setUnsafe`, `readUnsafe` (raw file, works without `appConfig`); `path`, `dir`. Prefer `get`/`set` when `appConfig` is declared. Env export remains for subprocess inheritance. `path` is `~/.local/lib/<key>/config.json`; `dir` is its parent.
-
-**`_bindings`:** reserved metadata for per-key intent (`env`, `file`, `skip`). Set by the wizard, `configure set --from-env`, or `ctx.appConfig.set`. Does not change resolve order (env still wins when set).
+argsbarg does not manage app settings (config files, env bindings, setup wizards). Keep them in app code — read `process.env`, or a small JSON file under `$XDG_CONFIG_HOME/<app>/` — and expose your own commands if users need to change them.
 
 ## Reserved names
 
-Do not declare user commands named `completion`, `configure`, `mcp`, `version`, or `docs` at the root — ArgsBarg injects these when configured. App config uses `configure get` / `configure set` subcommands (not a top-level `config` command).
+Do not declare user commands named `completion`, `mcp`, `http`, or `version` at the root — ArgsBarg injects these when configured.
 
 ## Agent instructions for consumer repos
 
 Argsbarg ships framework docs under `node_modules/argsbarg/docs/` (same files as this repo’s `docs/`). **This file is the authoritative guide** — `AGENTS.md` inlines the tripwire rules that tell agents when to read it.
 
-Agents do **not** discover package docs automatically. Wire them in after `bun add argsbarg`:
+Agents do **not** discover package docs automatically. Wire them in after `npm install argsbarg`:
 
-1. **Use the copy template `AGENTS.md`** (recommended):
-
-```bash
-bun scripts/merge-agents-md.ts .
-```
-
-`bun x argsbarg@latest create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`) into new projects automatically.
-
-2. **Add app-specific sections below the managed block** (recommended). The framework baseline lives between `<!-- argsbarg:managed -->` and `<!-- /argsbarg:managed -->` at the top of the file. All application-specific sections (`## Tooling`, `## Documentation`, `## App conventions`, custom rules) live below the closing marker where they take precedence over framework defaults. Example:
+1. **New projects:** `npx argsbarg@latest create` copies `AGENTS.md` and `CLAUDE.md` (`@AGENTS.md`).
+2. **Existing apps:** copy `node_modules/argsbarg/examples/api/AGENTS.md` (or another template's) into your repo and edit it. It is yours from then on; argsbarg doesn't manage or merge it. Add app-specific sections such as:
 
 ```markdown
 ## App conventions
@@ -609,15 +518,11 @@ bun scripts/merge-agents-md.ts .
 - Per command: `read*Flags` + `resolve*Input` in `commands/<name>/resolve.ts`.
 ```
 
-If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just consumers-sync` refresh the shared managed section and **keep** all app-specific sections below it. Commit `AGENTS.md` in your repo.
-
 - **Not this file:** `skills/<app>/SKILL.md` in your repository is the **app** skill — how to *invoke* the CLI. `AGENTS.md` is for *authoring* argsbarg schema.
 
 ## See also
 
-- [Documentation map](README.md) — which doc to read when
-- [Output schemas](output-schema.md) — codegen pipeline for command `outputSchema`
-- [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
-- [MCP server](mcp.md) — tools, schema resource, env bootstrapping
-- [Agent skills](ai-skills.md) — repository skills
-- [Bundled docs](bundled-docs.md) — `docs` topics, consumer docgen vs framework docs
+- [Documentation map](../README.md#documentation) — which doc to read when
+- [Schemas](schemas.md) — Zod input and output schemas
+- [Developing argsbarg](developing.md) — tooling, release, upgrade notes
+- [MCP server](mcp.md) — tools, plugins and bundles, env bootstrapping

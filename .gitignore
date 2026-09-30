@@ -4,3 +4,5 @@ node_modules
 dist
 # The agent-plugin example commits its Node bundle (see examples/agent-plugin/.gitignore)
 !examples/agent-plugin/dist/
+# Template lockfiles are generated per project (create never copies them)
+examples/*/package-lock.json

@@ -2,7 +2,8 @@
 Tests for headless module behavior.
 */
 
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
   formatDryRunMessage,
   requireYesInNonTty,
@@ -13,37 +14,38 @@ import {
 } from "./routing.ts";
 
 test("wantsExplicitJson includes MCP and API invocation", () => {
-  expect(wantsExplicitJson({ invocation: "cli" }, false)).toBe(false);
-  expect(wantsExplicitJson({ invocation: "mcp" }, false)).toBe(true);
-  expect(wantsExplicitJson({ invocation: "http" }, false)).toBe(true);
-  expect(wantsExplicitJson({ invocation: "cli" }, true)).toBe(true);
+  assert.equal(wantsExplicitJson({ invocation: "cli" }, false), false);
+  assert.equal(wantsExplicitJson({ invocation: "mcp" }, false), true);
+  assert.equal(wantsExplicitJson({ invocation: "http" }, false), true);
+  assert.equal(wantsExplicitJson({ invocation: "cli" }, true), true);
 });
 
 test("shouldRunHeadless is true for MCP, API, and json", () => {
-  expect(shouldRunHeadless({ invocation: "mcp" }, false)).toBe(true);
-  expect(shouldRunHeadless({ invocation: "http" }, false)).toBe(true);
-  expect(shouldRunHeadless({ invocation: "cli" }, true)).toBe(true);
-  expect(shouldRunHeadless({ invocation: "cli" }, false, true)).toBe(true);
-  expect(shouldRunHeadless({ invocation: "cli" }, false, false, false)).toBe(true);
+  assert.equal(shouldRunHeadless({ invocation: "mcp" }, false), true);
+  assert.equal(shouldRunHeadless({ invocation: "http" }, false), true);
+  assert.equal(shouldRunHeadless({ invocation: "cli" }, true), true);
+  assert.equal(shouldRunHeadless({ invocation: "cli" }, false, true), true);
+  assert.equal(shouldRunHeadless({ invocation: "cli" }, false, false, false), true);
 });
 
 test("shouldRunHeadlessWithPositionals requires positionals in non-tty", () => {
-  expect(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, [], false, false)).toBe(false);
-  expect(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, ["a"], false, false)).toBe(true);
+  assert.equal(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, [], false, false), false);
+  assert.equal(shouldRunHeadlessWithPositionals({ invocation: "cli" }, false, ["a"], false, false), true);
 });
 
 /** Tests that shouldRunHeadlessWithYes requires yes in non-tty. */
 test("shouldRunHeadlessWithYes requires yes in non-tty", () => {
-  expect(shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: true, hasRequiredArgs: true }, false)).toBe(true);
-  expect(shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: false, hasRequiredArgs: true }, false)).toBe(false);
-  expect(
+  assert.equal(shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: true, hasRequiredArgs: true }, false), true);
+  assert.equal(shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: false, hasRequiredArgs: true }, false), false);
+  assert.equal(
     shouldRunHeadlessWithYes({ invocation: "cli" }, { yes: false, hasRequiredArgs: true, dryRun: true }, false),
-  ).toBe(true);
+    true,
+  );
 });
 
 test("formatDryRunMessage prefixes dry-run output", () => {
-  expect(formatDryRunMessage("hello", false)).toBe("hello");
-  expect(formatDryRunMessage("hello", true)).toBe("[DRY RUN] hello");
+  assert.equal(formatDryRunMessage("hello", false), "hello");
+  assert.equal(formatDryRunMessage("hello", true), "[DRY RUN] hello");
 });
 
 /** Tests that requireYesInNonTty exits without yes in non-tty. */
@@ -56,10 +58,13 @@ test("requireYesInNonTty exits without yes in non-tty", () => {
   }) as typeof process.exit;
 
   try {
-    expect(() => {
-      requireYesInNonTty(false, "hint", false, false);
-    }).toThrow("exit");
-    expect(code).toBe(1);
+    assert.throws(
+      () => {
+        requireYesInNonTty(false, "hint", false, false);
+      },
+      (err: unknown) => String((err as Error)?.message ?? err).includes("exit"),
+    );
+    assert.equal(code, 1);
     requireYesInNonTty(false, "hint", true, false);
     requireYesInNonTty(true, "hint", false, false);
   } finally {

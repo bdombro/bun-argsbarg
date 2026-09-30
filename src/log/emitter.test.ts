@@ -2,7 +2,8 @@
 Unit tests for LogEmitter enrich and serialize hooks.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import type { AppSpec } from "../core/types.ts";
 import type { LogEnrichContext } from "./ecs.ts";
 import { LogEmitter } from "./emitter.ts";
@@ -38,9 +39,9 @@ describe("LogEmitter hooks", () => {
     });
     const out = captureStderr(() => emitter.emit({ level: "info", message: "hello" }));
     const parsed = JSON.parse(out.trim()) as Record<string, unknown>;
-    expect(parsed.custom).toBe(true);
-    expect(parsed.msg).toBe("hello");
-    expect(parsed["ecs.version"]).toBeUndefined();
+    assert.equal(parsed.custom, true);
+    assert.equal(parsed.msg, "hello");
+    assert.equal(parsed["ecs.version"], undefined);
   });
 
   test("enrich adds fields to access logs", () => {
@@ -60,10 +61,10 @@ describe("LogEmitter hooks", () => {
       }),
     );
     const parsed = JSON.parse(out.trim()) as Record<string, unknown>;
-    expect(parsed["http.request.method"]).toBe("GET");
-    expect(parsed["url.path"]).toBe("/workspaces");
-    expect(parsed["labels.team"]).toBe("payments");
-    expect(parsed["ecs.version"]).toBeDefined();
+    assert.equal(parsed["http.request.method"], "GET");
+    assert.equal(parsed["url.path"], "/workspaces");
+    assert.equal(parsed["labels.team"], "payments");
+    assert.notEqual(parsed["ecs.version"], undefined);
   });
 
   test("enrich receives http on access logs", () => {
@@ -84,7 +85,7 @@ describe("LogEmitter hooks", () => {
         durationMs: 12,
       }),
     );
-    expect(seen?.http).toEqual({
+    assert.deepEqual(seen?.http, {
       method: "GET",
       path: "/workspaces",
       status: 200,

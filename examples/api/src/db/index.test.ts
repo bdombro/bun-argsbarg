@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { afterEach, beforeEach, describe, test } from "node:test";
 import type { ReadinessContext } from "argsbarg";
-import { AppDb } from ".";
+import { AppDb } from "./index.ts";
 
 describe("AppDb", () => {
   let appDb: AppDb;
@@ -15,18 +16,18 @@ describe("AppDb", () => {
 
   test("workspace CRUD round trip", () => {
     const workspaces = appDb.workspaces;
-    expect(workspaces.list()).toEqual([]);
+    assert.deepEqual(workspaces.list(), []);
     const created = workspaces.create("alpha");
-    expect(workspaces.get(created.id)).toEqual(created);
-    expect(workspaces.list()).toEqual([created]);
-    expect(workspaces.patch(created.id, "beta")).toEqual({ ...created, name: "beta" });
-    expect(workspaces.replace(created.id, "gamma")).toEqual({ id: created.id, name: "gamma" });
-    expect(workspaces.delete(created.id)).toBe(true);
-    expect(workspaces.get(created.id)).toBeUndefined();
+    assert.deepEqual(workspaces.get(created.id), created);
+    assert.deepEqual(workspaces.list(), [created]);
+    assert.deepEqual(workspaces.patch(created.id, "beta"), { ...created, name: "beta" });
+    assert.deepEqual(workspaces.replace(created.id, "gamma"), { id: created.id, name: "gamma" });
+    assert.equal(workspaces.delete(created.id), true);
+    assert.equal(workspaces.get(created.id), undefined);
   });
 
   test("ping succeeds on open database", () => {
-    expect(() => appDb.ping()).not.toThrow();
+    assert.doesNotThrow(() => appDb.ping());
   });
 });
 
@@ -35,7 +36,7 @@ describe("AppDb.openWithRetry", () => {
     const appDb = AppDb.openWithRetry(1);
     try {
       appDb.workspaces.create("retry-ok");
-      expect(appDb.workspaces.list()).toHaveLength(1);
+      assert.equal(appDb.workspaces.list().length, 1);
     } finally {
       appDb.close();
     }
@@ -47,7 +48,7 @@ describe("AppDb.attach", () => {
     const locals = {} as import("argsbarg").Locals;
     AppDb.attach({ locals, invocation: "cli" });
     locals.db.workspaces.create("attached");
-    expect(locals.db.workspaces.list()).toHaveLength(1);
+    assert.equal(locals.db.workspaces.list().length, 1);
   });
 });
 
@@ -61,10 +62,9 @@ describe("AppDb.checkReadiness", () => {
     const ctx = {
       spec: runtime.spec,
       surface: "http" as const,
-      appConfig: { read: () => ({}) },
       runtime,
     } as unknown as ReadinessContext;
-    expect(AppDb.checkReadiness(ctx)).toBe(false);
+    assert.equal(AppDb.checkReadiness(ctx), false);
   });
 
   test("returns true when sqlite responds", () => {
@@ -77,10 +77,9 @@ describe("AppDb.checkReadiness", () => {
     const ctx = {
       spec: runtime.spec,
       surface: "http" as const,
-      appConfig: { read: () => ({}) },
       runtime,
     } as unknown as ReadinessContext;
-    expect(AppDb.checkReadiness(ctx)).toBe(true);
+    assert.equal(AppDb.checkReadiness(ctx), true);
     (runtime.state.db as AppDb).close();
   });
 });

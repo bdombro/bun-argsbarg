@@ -2,20 +2,18 @@ import type { ParseResult } from "../core/parse.ts";
 import { ParseKind } from "../core/parse.ts";
 import type { AppSpec, Command, CommandGroup } from "../core/types.ts";
 import { hasHandler } from "../core/types.ts";
-import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import { runMcpBundle } from "../mcp/bundle.ts";
-import { capabilityDeniedMessage, resolveCapabilities } from "../runtime/capabilities.ts";
+import { runMcpBundle } from "../mcp/pack/bundle.ts";
+import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { App } from "../runtime/cli.ts";
 import { serveOverridesFromOpts } from "../server/overrides.ts";
-import { completionBashScript } from "./completion-bash.ts";
-import { completionFishScript } from "./completion-fish.ts";
-import { cliBuiltinCompletionGroup as completionGroup } from "./completion-group.ts";
-import { completionZshScript } from "./completion-zsh.ts";
-import { cliBuiltinConfigureCommand, isConfigureConfigPath } from "./configure.ts";
+import { completionBashScript } from "./completion/bash.ts";
+import { completionFishScript } from "./completion/fish.ts";
+import { cliBuiltinCompletionGroup as completionGroup } from "./completion/group.ts";
+import { completionZshScript } from "./completion/zsh.ts";
 import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliPresentationRoot } from "./presentation.ts";
-import { cliBuiltinVersionCommand } from "./version.ts";
+import { cliBuiltinVersionCommand } from "./registry.ts";
 
 export interface DispatchBuiltinOpts {
   isLeafCompletionIntercept: boolean;
@@ -39,11 +37,8 @@ export async function dispatchBuiltin(program: AppSpec, pr: ParseResult, opts: D
 
   const caps = resolveCapabilities(program);
 
-  if (pr.path[0] === "completion") {
-    if (!caps.completion) {
-      process.stderr.write(capabilityDeniedMessage("completion"));
-      process.exit(1);
-    }
+  // With the capability off, `completion` is an ordinary name (the app's own command, if any).
+  if (pr.path[0] === "completion" && caps.completion) {
     const schemaForCompletion = completionSchema(program, opts);
     if (pr.path[1] === "bash") {
       process.stdout.write(completionBashScript(schemaForCompletion));
@@ -69,11 +64,8 @@ export async function dispatchBuiltin(program: AppSpec, pr: ParseResult, opts: D
     process.exit(0);
   }
 
-  if (pr.path[0] === "http") {
-    if (!caps.http) {
-      process.stderr.write(capabilityDeniedMessage("http"));
-      process.exit(1);
-    }
+  // With the capability off, `http` is an ordinary name (the app's own command, if any).
+  if (pr.path[0] === "http" && caps.http) {
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
       await new App(program).serveHttp(serveOverridesFromOpts(pr.opts, "http"));
@@ -83,11 +75,8 @@ export async function dispatchBuiltin(program: AppSpec, pr: ParseResult, opts: D
     process.exit(1);
   }
 
-  if (pr.path[0] === "mcp") {
-    if (!caps.mcp) {
-      process.stderr.write(capabilityDeniedMessage("mcp"));
-      process.exit(1);
-    }
+  // With the capability off, `mcp` is an ordinary name (the app's own command, if any).
+  if (pr.path[0] === "mcp" && caps.mcp) {
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
       await new App(program).serveMcp(serveOverridesFromOpts(pr.opts, "mcp"));
@@ -104,16 +93,6 @@ export async function dispatchBuiltin(program: AppSpec, pr: ParseResult, opts: D
     }
     process.stderr.write(`Unknown subcommand: mcp ${pr.path.slice(1).join(" ")}\n`);
     process.exit(1);
-  }
-
-  if (pr.path[0] === "configure") {
-    if (!caps.configure) {
-      process.stderr.write(capabilityDeniedMessage("configure"));
-      process.exit(1);
-    }
-    if (isConfigureConfigPath(pr.path)) {
-      return;
-    }
   }
 }
 
@@ -137,17 +116,6 @@ export function builtinInterceptRoot(
         commands: [completionGroup(program)],
       },
       isLeafCompletionIntercept: true,
-    };
-  }
-
-  if (first === "configure" && caps.configure) {
-    return {
-      parseRoot: {
-        key: program.key,
-        description: program.description,
-        commands: [cliBuiltinConfigureCommand(program)],
-      },
-      isLeafCompletionIntercept: false,
     };
   }
 
@@ -179,18 +147,6 @@ export function builtinInterceptRoot(
         key: program.key,
         description: program.description,
         commands: [cliBuiltinVersionCommand()],
-      },
-      isLeafCompletionIntercept: false,
-    };
-  }
-
-  const docsGroup = cliBuiltinDocsGroupIfEnabled(program);
-  if (first === "docs" && docsGroup) {
-    return {
-      parseRoot: {
-        key: program.key,
-        description: program.description,
-        commands: [docsGroup],
       },
       isLeafCompletionIntercept: false,
     };

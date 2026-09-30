@@ -2,31 +2,74 @@
 Domain-specific regression tests (split from index.test.ts).
 */
 
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
 import { join } from "node:path";
-import { $ } from "bun";
+import { test } from "node:test";
 import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
 import type { RunnableCommand } from "../core/types.ts";
 import { hasSubcommands } from "../core/types.ts";
 import { cliValidateProgram } from "../core/validate.ts";
 import { argsbarg, type CommandContext, OptionKind } from "../index.ts";
-import { testProgram, varargsReadFixture } from "../test/fixtures.ts";
+import { runNode, testProgram, varargsReadFixture } from "../test/fixtures.ts";
 
 /** Tests that ctx.invocation is cli via app.run. */
 test("ctx.invocation is cli via app.run", async () => {
-  const indexPath = join(import.meta.dir, "../index.ts");
-  const { stdout } = await $`bun -e ${`
+  const indexPath = join(import.meta.dirname, "../index.ts");
+  const { stdout } = runNode([
+    "--input-type=module",
+    "-e",
+    `
 import { argsbarg } from ${JSON.stringify(indexPath)};
 const program = {
   key: "t",
   description: "d",
   version: "0.0.0",
-  configure: { enabled: false },
   handler: (ctx) => console.log(ctx.invocation),
 };
 await argsbarg(program).run([]);
-  `}`.quiet();
-  expect(stdout.toString().trim()).toBe("cli");
+  `,
+  ]);
+  assert.equal(stdout.toString().trim(), "cli");
+});
+
+/** Verifies app.run runs beforeInvoke/afterInvoke around the handler and routes failures through formatError/onError. */
+test("app.run runs app hooks", () => {
+  const indexPath = join(import.meta.dirname, "../index.ts");
+  const script = (fail: boolean) => `
+import { argsbarg } from ${JSON.stringify(indexPath)};
+await argsbarg({
+  key: "t",
+  description: "d",
+  version: "0.0.0",
+  hooks: {
+    beforeInvoke: (ctx) => { ctx.locals.user = "ada"; console.log("before"); },
+    afterInvoke: () => console.log("after"),
+    formatError: () => ({ message: "formatted", exitCode: 3 }),
+    onError: () => console.log("onError"),
+  },
+  handler: (ctx) => { if (${fail}) throw new Error("boom"); console.log(ctx.locals.user); },
+}).run([]);
+`;
+  const ok = runNode(["--input-type=module", "-e", script(false)]);
+  assert.equal(ok.stdout.toString().trim(), "before\nada\nafter");
+  const bad = runNode(["--input-type=module", "-e", script(true)]);
+  assert.equal(bad.exitCode, 3);
+  assert.equal(bad.stdout.toString().trim(), "before\nonError");
+  assert.equal(bad.stderr.toString().trim(), "formatted");
+});
+
+/** Verifies a disabled built-in's name (`http` without `httpServer`) routes to the app's own command, with hooks. */
+test("app command named after a disabled built-in runs with hooks", async () => {
+  const seen: string[] = [];
+  const root = testProgram({
+    key: "app",
+    description: "",
+    hooks: { beforeInvoke: () => void seen.push("hook") },
+    commands: [{ key: "http", description: "App's own http.", handler: () => void seen.push("handler") }],
+  });
+  const result = await argsbarg(root).invoke(["http"]);
+  assert.equal(result.kind, "ok");
+  assert.deepEqual(seen, ["hook", "handler"]);
 });
 
 /** Tests that ctx.invocation is mcp via App.invoke. */
@@ -41,8 +84,8 @@ test("ctx.invocation is mcp via App.invoke", async () => {
   });
   cliValidateProgram(root);
   const result = await argsbarg(root).invoke([]);
-  expect(result.kind).toBe("ok");
-  expect(seen).toBe("mcp");
+  assert.equal(result.kind, "ok");
+  assert.equal(seen, "mcp");
 });
 
 /** Tests that ctx.locals.requestId is seeded before handler on invoke. */
@@ -65,8 +108,8 @@ test("App.invoke seeds ctx.locals.requestId", async () => {
     requestId: wireId,
     http: { request: new Request("http://localhost/"), clientIp: "127.0.0.1", requestId: wireId },
   });
-  expect(result.kind).toBe("ok");
-  expect(requestId).toBe(wireId);
+  assert.equal(result.kind, "ok");
+  assert.equal(requestId, wireId);
 });
 
 /** App.invoke rejects invalid Enum value. */
@@ -87,8 +130,8 @@ test("App.invoke rejects invalid Enum value", async () => {
   });
   cliValidateProgram(root);
   const result = await argsbarg(root).invoke(["--mode", "staging"]);
-  expect(result.kind).toBe("error");
-  expect(result.errorMsg).toContain("not one of");
+  assert.equal(result.kind, "error");
+  assert.ok((result.errorMsg ?? "").includes("not one of"));
 });
 
 /** App.invoke accepts valid Enum value. */
@@ -111,61 +154,61 @@ test("App.invoke accepts valid Enum value", async () => {
   });
   cliValidateProgram(root);
   const result = await argsbarg(root).invoke(["--mode", "dev"]);
-  expect(result.kind).toBe("ok");
-  expect(result.stdout.trim()).toBe("dev");
+  assert.equal(result.kind, "ok");
+  assert.equal(result.stdout.trim(), "dev");
 });
 
 test("varargs trailing option after positionals via App.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
-  expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.args).toEqual(["file.txt"]);
-  expect(pr.opts.json).toBe("1");
+  assert.equal(pr.kind, ParseKind.Ok);
+  assert.deepEqual(pr.args, ["file.txt"]);
+  assert.equal(pr.opts.json, "1");
 });
 
 test("varargs option before positionals", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "--json", "file.txt"]));
-  expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.args).toEqual(["file.txt"]);
-  expect(pr.opts.json).toBe("1");
+  assert.equal(pr.kind, ParseKind.Ok);
+  assert.deepEqual(pr.args, ["file.txt"]);
+  assert.equal(pr.opts.json, "1");
 });
 
 test("varargs multiple files then trailing option", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "a.txt", "b.txt", "--json"]));
-  expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.args).toEqual(["a.txt", "b.txt"]);
-  expect(pr.opts.json).toBe("1");
+  assert.equal(pr.kind, ParseKind.Ok);
+  assert.deepEqual(pr.args, ["a.txt", "b.txt"]);
+  assert.equal(pr.opts.json, "1");
 });
 
 test("varargs double dash forces positional", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--", "--json"]));
-  expect(pr.kind).toBe(ParseKind.Ok);
-  expect(pr.args).toEqual(["file.txt", "--json"]);
-  expect(pr.opts.json).toBeUndefined();
+  assert.equal(pr.kind, ParseKind.Ok);
+  assert.deepEqual(pr.args, ["file.txt", "--json"]);
+  assert.equal(pr.opts.json, undefined);
 });
 
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const result = await argsbarg(root).invoke(["read", "--unknown"]);
-  expect(result.kind).toBe("error");
-  expect(result.stderr).toContain("--unknown");
+  assert.equal(result.kind, "error");
+  assert.ok(result.stderr.includes("--unknown"));
 });
 
 test("varargs scoped help in tail", () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = parse(root, ["read", "file.txt", "--help"]);
-  expect(pr.kind).toBe(ParseKind.Help);
-  expect(pr.helpPath).toContain("read");
-  expect(pr.helpExplicit).toBe(true);
+  assert.equal(pr.kind, ParseKind.Help);
+  assert.ok(pr.helpPath.includes("read"));
+  assert.equal(pr.helpExplicit, true);
 });
 
 /** Tests that ctx.positional returns single slot value. */
@@ -187,7 +230,7 @@ test("ctx.positional returns single slot value", async () => {
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
   await argsbarg(root).invoke(["x", "./file"]);
-  expect(captured).toBe("./file");
+  assert.equal(captured, "./file");
 });
 
 test("ctx.positional returns varargs array", async () => {
@@ -200,7 +243,7 @@ test("ctx.positional returns varargs array", async () => {
   }
   cliValidateProgram(root);
   await argsbarg(root).invoke(["read", "a.txt", "b.txt"]);
-  expect(captured).toEqual(["a.txt", "b.txt"]);
+  assert.deepEqual(captured, ["a.txt", "b.txt"]);
 });
 
 /** Tests that ctx.positional returns undefined for absent optional slot. */
@@ -222,7 +265,7 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
   await argsbarg(root).invoke(["x"]);
-  expect(captured).toBeUndefined();
+  assert.equal(captured, undefined);
 });
 
 /** Tests that ctx.positional varargs matches ctx.args. */
@@ -238,5 +281,5 @@ test("ctx.positional varargs matches ctx.args", async () => {
   }
   cliValidateProgram(root);
   await argsbarg(root).invoke(["read", "a.txt", "b.txt"]);
-  expect(positional).toEqual(args);
+  assert.deepEqual(positional, args);
 });

@@ -1,6 +1,3 @@
 node_modules/
 dist/
-Formula/.staging/
-workspaces.db
 .DS_Store
-

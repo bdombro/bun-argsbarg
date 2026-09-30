@@ -7,7 +7,6 @@ import {
   type CreateOptions,
   diffCreateDetails,
   normalizeCreateTemplateId,
-  parseCreateArgv,
   printCreateDiffs,
   renderCreateTree,
   resolveCreateOptions,
@@ -45,8 +44,7 @@ function collectInteractiveOptions(
 
   process.stderr.write(`\nTemplate: ${opts.templateId}\n`);
   process.stderr.write(`Target: ${baseDir}\n`);
-  process.stderr.write(`Key: ${opts.key}  Class: ${opts.className}  Tap: ${opts.tap}  Release: ${opts.releaseRepo}\n`);
-  process.stderr.write(`Homepage: ${opts.homepage}\n\n`);
+  process.stderr.write(`Key: ${opts.key}  Release: ${opts.releaseRepo}\n\n`);
   const tree = renderCreateTree(opts);
   process.stderr.write(`Files (${tree.size}):\n`);
   for (const rel of [...tree.keys()].sort()) {
@@ -135,10 +133,4 @@ async function runCreateApply(baseDir: string, opts: CreateOptions, dryRun: bool
   await runPostCreate(baseDir, false, opts.templateId);
   process.stdout.write("Done.\n");
   return 0;
-}
-
-/** Parse argv and run create (for tests and direct script invocation). */
-export async function runCreateCommand(rest: string[]): Promise<number> {
-  const { dir, opts } = parseCreateArgv(rest);
-  return runCreate({ ...opts, dir });
 }

@@ -2,7 +2,8 @@
 Tests for canonical wire input schema generation and wire option filtering.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { z } from "zod";
 import { OptionKind, type RunnableCommand, ValueFormat } from "./types.ts";
 import { buildCommandInputSchema, commandWireOptions } from "./wire-schema.ts";
@@ -27,7 +28,7 @@ describe("commandWireOptions", () => {
 
     const wire = commandWireOptions(leaf);
     const names = wire.map((o) => o.name);
-    expect(names).toEqual(["message", "dry-run"]);
+    assert.deepEqual(names, ["message", "dry-run"]);
   });
 
   /** Tests that hidden options are excluded from wire schemas. */
@@ -43,7 +44,10 @@ describe("commandWireOptions", () => {
     };
 
     const wire = commandWireOptions(leaf);
-    expect(wire.map((o) => o.name)).toEqual(["visible"]);
+    assert.deepEqual(
+      wire.map((o) => o.name),
+      ["visible"],
+    );
   });
 });
 
@@ -60,8 +64,8 @@ describe("buildCommandInputSchema", () => {
       handler: () => {},
     };
 
-    expect(buildCommandInputSchema(leaf)).toBe(toJsonSchema(customSchema, "input"));
-    expect(buildCommandInputSchema(leaf).required).toEqual(["custom"]);
+    assert.equal(buildCommandInputSchema(leaf), toJsonSchema(customSchema, "input"));
+    assert.deepEqual(buildCommandInputSchema(leaf).required, ["custom"]);
   });
 
   /** Tests synthesizing inputSchema for flag-based commands. */
@@ -117,7 +121,7 @@ describe("buildCommandInputSchema", () => {
     };
 
     const schema = buildCommandInputSchema(leaf);
-    expect(schema).toEqual({
+    assert.deepEqual(schema, {
       type: "object",
       properties: {
         name: {
@@ -206,11 +210,11 @@ describe("buildCommandInputSchema", () => {
       properties: Record<string, unknown>;
       required?: string[];
     };
-    expect(schema.type).toBe("object");
-    expect(schema.required).toBeUndefined();
+    assert.equal(schema.type, "object");
+    assert.equal(schema.required, undefined);
 
     // CommaList
-    expect(schema.properties.tags).toEqual({
+    assert.deepEqual(schema.properties.tags, {
       oneOf: [
         { type: "string", description: "Comma-separated tag list" },
         { type: "array", items: { type: "string" }, description: "Comma-separated tag list" },
@@ -218,35 +222,35 @@ describe("buildCommandInputSchema", () => {
     });
 
     // Duration
-    expect(schema.properties.timeout).toEqual({
+    assert.deepEqual(schema.properties.timeout, {
       type: "string",
       description: "Timeout duration",
       pattern: "^\\d+[hdms]?$",
     });
 
     // Date
-    expect(schema.properties.since).toEqual({
+    assert.deepEqual(schema.properties.since, {
       type: "string",
       description: "Start date",
       format: "date",
     });
 
     // DateTime
-    expect(schema.properties.timestamp).toEqual({
+    assert.deepEqual(schema.properties.timestamp, {
       type: "string",
       description: "ISO timestamp",
       format: "date-time",
     });
 
     // Regex pattern
-    expect(schema.properties.code).toEqual({
+    assert.deepEqual(schema.properties.code, {
       type: "string",
       description: "Custom code format",
       pattern: "^[A-Z]{3}$",
     });
 
     // Varargs positional
-    expect(schema.properties.files).toEqual({
+    assert.deepEqual(schema.properties.files, {
       type: "array",
       items: { type: "string" },
       description: "Files to process",

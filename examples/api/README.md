@@ -1,18 +1,16 @@
 # example-api
 
-Argsbarg schema-first copy template (Zod schemas, typed commands, REST CRUD).
+Argsbarg schema-first npm template (Zod schemas, typed commands, REST CRUD).
 
 ## Installation
 
-Install via Homebrew:
-
 ```bash
-brew tap bdombro/bun-argsbarg git@github.com:bdombro/bun-argsbarg.git
-brew install example-api
-example-api configure install
+npx example-api --help
+# or
+npm install -g example-api
 ```
 
-`example-api configure install` sets up shell completions, agent skills, and MCP configuration.
+Requires Node ≥ 22.13 (`node:sqlite`). Shell completions: `example-api completion zsh --help` (also bash and fish).
 
 ## Commands
 
@@ -24,9 +22,8 @@ example-api configure install
 
 ### Built-in commands
 
-- `example-api completion` — Install or inspect shell tab completions (bash, zsh, fish).
-- `example-api configure` — Manage agent artifacts (skills, MCP, application configuration).
-- `example-api docs` — Browse bundled documentation topics (`cli`, `mcp`, `http`, `readme`).
+- `example-api completion` — Print shell tab-completion scripts (bash, zsh, fish).
+- `example-api http` — Start the HTTP API server.
 - `example-api mcp` — Start the Model Context Protocol (stdio) server for AI coding agents.
 - `example-api version` — Display version information.
 
@@ -39,8 +36,9 @@ example-api echo "Hello, world!"
 # Inspect JSON status
 example-api status --json
 
-# List workspaces
-example-api workspaces list
+# Workspaces over HTTP (the in-memory database lives in the server process)
+example-api http &
+curl -s localhost:3000/workspaces
 
 # Start the MCP server for AI agents
 example-api mcp
@@ -48,28 +46,20 @@ example-api mcp
 
 ## AI Agent & MCP Integration
 
-`example-api` includes an integrated MCP server and agent skills out of the box:
+`example-api` includes an MCP server and an agent skill:
 
-- **MCP server**: Run `example-api mcp` or register via `example-api configure install`.
+- **MCP server**: add `{ "command": "npx", "args": ["-y", "example-api", "mcp"] }` to your client's MCP config.
 - **Agent skill**: See `skills/example-api/SKILL.md` for agent command group instructions.
 
-## Documentation
-
-| Need | Resource |
-| --- | --- |
-| CLI reference | [docs/cli.md](docs/cli.md) or `example-api docs cli` |
-| MCP tools | [docs/mcp.md](docs/mcp.md) or `example-api docs mcp` |
-| HTTP API | [docs/http.md](docs/http.md) or `example-api docs http` |
-| Agent skill command group | [skills/example-api/SKILL.md](skills/example-api/SKILL.md) |
-| CLI schema (JSON) | [docs/cli-schema.json](docs/cli-schema.json) |
 
 ## Development
 
-Requires [Homebrew](https://brew.sh), [just](https://just.systems), and [Bun](https://bun.sh):
+Requires Node ≥ 22.18 and [just](https://just.systems):
 
 ```bash
-brew install just bun
-just setup
-just check
-just test
+just setup             # npm install
+just test              # Biome, tsc, node --test
+just run --help        # from source
+just build             # tsc → dist/ (+ SQL migrations)
+just release patch --dry-run
 ```

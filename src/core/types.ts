@@ -5,7 +5,6 @@ read from, so the package has one source of truth.
 */
 
 import type { z } from "zod";
-import type { AnyAppConfigSnapshot } from "../config/context.ts";
 import type { CommandContext, CommandInputs } from "./context.ts";
 import { toJsonSchema } from "./zod-schema.ts";
 
@@ -17,52 +16,61 @@ export type Invocation = "cli" | "mcp" | "http";
 /**
  * Option kinds: presence (boolean flag), string (free-form text), number (strict double), enum (fixed choices), or json (parsed JSON object/array).
  */
-export enum OptionKind {
+export const OptionKind = {
   /** Boolean flag: no value token (may be implicit `"1"` when set). */
-  Presence = "presence",
+  Presence: "presence",
   /** Free-form string value. */
-  String = "string",
+  String: "string",
   /** Strict floating-point value (parsed at validation time). */
-  Number = "number",
+  Number: "number",
   /** Fixed set of allowed string values. Requires non-empty `choices` on the option. */
-  Enum = "enum",
+  Enum: "enum",
   /** JSON object or array (parsed from `--name '<json>'`, piped stdin when `pipable`, or MCP/API tool body). */
-  Json = "json",
-}
+  Json: "json",
+} as const;
+
+/** Union of the `OptionKind` values. */
+export type OptionKind = (typeof OptionKind)[keyof typeof OptionKind];
 
 /**
  * Named validation/coercion for string options (`format` on `CommandOption`).
  * Positionals do not use `format`; varargs use space-separated CLI tokens and JSON arrays over MCP.
  */
-export enum ValueFormat {
+export const ValueFormat = {
   /** Duration text such as `30s`, `20m`, `1h`, `2d` (default unit minutes when omitted). */
-  Duration = "duration",
+  Duration: "duration",
   /** Comma-separated list on a single option value (`--services a,b`). */
-  CommaList = "comma-list",
+  CommaList: "comma-list",
   /** Calendar date `YYYY-MM-DD`. */
-  Date = "date",
+  Date: "date",
   /** RFC 3339 instant with `Z` or numeric offset. */
-  DateTime = "date-time",
-}
+  DateTime: "date-time",
+} as const;
+
+/** Union of the `ValueFormat` values. */
+export type ValueFormat = (typeof ValueFormat)[keyof typeof ValueFormat];
 
 /**
  * When `fallbackCommand` is used for missing or unknown subcommand tokens at a routing node.
  */
-export enum FallbackMode {
+export const FallbackMode = {
   /**
    * If argv has no next subcommand, route to `fallbackCommand`; if the token is unknown, error.
    */
-  MissingOnly = "missingOnly",
+  MissingOnly: "missingOnly",
   /**
    * If argv has no next subcommand or the token is not a known child, route to `fallbackCommand`.
    */
-  MissingOrUnknown = "missingOrUnknown",
+  MissingOrUnknown: "missingOrUnknown",
   /**
    * If the next token is present but not a known child, route to `fallbackCommand`.
    * When the subcommand token is missing (exhausted argv), do not use fallback (implicit scoped help).
    */
-  UnknownOnly = "unknownOnly",
-}
+  UnknownOnly: "unknownOnly",
+} as const;
+
+/** Union of the `FallbackMode` values. */
+export type FallbackMode = (typeof FallbackMode)[keyof typeof FallbackMode];
 
 /**
  * Per-surface CLI exposure (help, completions, cli-schema).
@@ -206,8 +214,6 @@ export interface McpServerConfig {
   claudePlugin?: boolean;
   /** When `true`, `mcp bundle` also writes `dist/cursor-plugin/<name>.zip`. Default false. */
   cursorPlugin?: boolean;
-  /** Resource URI for schema export (default: `<sanitized root key>://schema`). */
-  schemaResourceUri?: string;
   /**
    * Capture the user's login shell environment at MCP server start and merge it
    * into process.env. Solves missing PATH, nvm/rbenv shims, Homebrew binaries,
@@ -215,8 +221,7 @@ export interface McpServerConfig {
    */
   shellEnv?: boolean | string;
   /**
-   * Custom MCP resources exposed alongside the built-in schema resource.
-   * URIs must be unique and must not equal schemaResourceUri.
+   * Custom MCP resources (`resources/list`, `resources/read`). URIs must be unique.
    */
   resources?: McpResource[];
   /** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
@@ -338,7 +343,7 @@ export interface RespondOptions {
  * A custom MCP resource exposed under resources/list and resources/read.
  */
 export interface McpResource {
-  /** Resource URI (must be unique; must not equal schemaResourceUri). */
+  /** Resource URI (must be unique). */
   uri: string;
   /** Short display name for resources/list. */
   name: string;
@@ -372,157 +377,10 @@ export interface McpToolConfig {
   notes?: string | false;
 }
 
-/**
- * Opt-out and defaults for the `install` built-in (app root only).
- */
-export interface CliUpdateArtifact {
-  /** Path to an executable binary to copy into the install location. */
-  path: string;
-  /** Release version of `path` (used for already-current checks and success messages). */
-  version?: string;
-  /** Called after reinstall completes (e.g. remove a temp download directory). */
-  cleanup?: () => void | Promise<void>;
-}
-
-/** Fetches the latest release binary for `install --update`. */
-export type CliUpdateGetLatest = (ctx: { version: string }) => Promise<CliUpdateArtifact>;
-
-/** Context passed to {@link AppConfigEntry.resolve} for one config key. */
-export interface AppConfigResolveContext {
-  /** Schema key being resolved. */
-  key: string;
-  /** Entry metadata for this key. */
-  entry: AppConfigEntry;
-  /** App spec (read-only). */
-  spec: AppSpec;
-  /** Raw value from the config file, if any. */
-  fileValue: unknown;
-  /** Non-empty host env string when `entry.env` is set; otherwise `undefined`. */
-  envValue: string | undefined;
-}
-
-/**
- * Optional fallback resolver for one config key (e.g. `gh auth token` when `GH_TOKEN` is unset).
- * Return `undefined` to continue resolution (env, then default).
- */
-export type AppConfigResolveFn = (ctx: AppConfigResolveContext) => unknown;
-
-/**
- * Metadata overlay for one key in {@link AppConfig.entries}.
- * Types and validation come from {@link AppConfig.schema} when set; otherwise all values are strings.
- */
-export interface AppConfigEntry {
-  /** Help text for prompts, MCP manifests, and generated docs. */
-  description: string;
-  /** Short label in host UIs and CLI prompts. Default: the config key. */
-  title?: string;
-  /** Default when `schema` is omitted (all-string mode). */
-  default?: string;
-  /** When `false`, optional for bootstrap and MCP enforcement. Default: `true`. */
-  required?: boolean;
-  /**
-   * Mask stdin during prompts and redact on `configure get`.
-   * Default: `/key|token|secret|password/i.test(name)`.
-   */
-  sensitive?: boolean;
-  /** When set: non-empty `process.env[env]` overrides file; value exported after resolve. */
-  env?: string;
-  /**
-   * Optional fallback after file when env is empty.
-   * Return `undefined` to fall back to `env` (if set) and schema defaults.
-   */
-  resolve?: AppConfigResolveFn;
-}
-
-/**
- * App configuration block on the app root ({@link AppSpec.appConfig}).
- */
-export interface AppConfig {
-  /** Built-in `configure get` / `configure set`. Default: enabled when `appConfig` is set. */
-  commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
-  /**
-   * Zod object schema for the config file (prefer `z.strictObject` so unknown keys are rejected).
-   * When omitted, argsbarg synthesizes an all-string schema from `entries`.
-   */
-  schema?: z.ZodObject;
-  /** Per-key metadata; keys must exist in `schema.shape` when `schema` is set. */
-  entries: Record<string, AppConfigEntry>;
-}
-
 /** Opt-out for the `completion` built-in (default: enabled). */
 export interface CompletionConfig {
   /** When `false`, hide/disable `completion` (default: enabled). */
   enabled?: boolean;
-}
-
-/** Context for {@link ConfigureConfig} lifecycle hooks. */
-export interface ConfigureHookContext {
-  spec: AppSpec;
-  dry: boolean;
-  paths: {
-    agentsSkillDir: string;
-    agentsMcpPath: string;
-    mcpName: string;
-    skillDirName: string;
-  };
-}
-
-/** @experimental */
-export interface ConfigureConfig {
-  /** When `false`, hide/disable `configure` (default: enabled). */
-  enabled?: boolean;
-  /** Per-artifact gates for configure install. See {@link resolveEffectiveInstallTargets}. */
-  targets?: ConfigureTargets;
-  /** Runs after framework artifacts are installed (`configure install`). */
-  afterInstall?: (ctx: ConfigureHookContext) => void | Promise<void>;
-  /** Runs before framework artifacts are removed (`configure uninstall`). */
-  beforeUninstall?: (ctx: ConfigureHookContext) => void | Promise<void>;
-}
-
-/** Boolean or structured gate for one install artifact. */
-export type InstallTargetSpec =
-  | boolean
-  | {
-      /** When false, artifact is never installed (even with scoped CLI flags). Default true. */
-      enabled?: boolean;
-      /** When true, included in `configure install`. Default varies by key. */
-      includedInAll?: boolean;
-    };
-
-export interface ResolvedInstallTarget {
-  enabled: boolean;
-  includedInAll: boolean;
-}
-
-/** Per-artifact gates for configure. See {@link resolveEffectiveInstallTargets}. */
-export interface ConfigureTargets {
-  /** App binary status only (Homebrew PATH); no self-install. */
-  app?: InstallTargetSpec;
-  /** App config: interactive wizard step in `configure`. Default not in refresh. */
-  configure?: InstallTargetSpec;
-}
-
-/**
- * One bundled documentation topic for the `docs` built-in (app root only).
- */
-export interface DocsTopic {
-  /** Bundled markdown (use compile-time text imports in the consumer). */
-  text: string;
-  /** Help text for `myapp docs <key> -h`. Auto-generated from key when omitted. */
-  description?: string;
-}
-
-/**
- * Opt-out and optional topics for the `docs` built-in (app root only).
- * Docs is enabled by default; set `enabled: false` to disable.
- */
-export interface DocsConfig {
-  /** When `false`, hide/disable `docs` (default: enabled). */
-  enabled?: boolean;
-  /** Router description for `myapp docs` (default: "Print bundled CLI documentation."). */
-  description?: string;
-  /** Optional consumer markdown topics. Reserved keys: `mcp`, `all` (supplied by the built-in). */
-  topics?: Record<string, DocsTopic>;
 }
 
 /**
@@ -543,7 +401,7 @@ export interface CommandBase {
   options?: readonly CommandOption[];
 }
 
-/** Command input mode: `document` = structured JSON or YAML document body (no CLI flags). */
+/** Command input mode: `document` = structured JSON document body (no CLI flags). */
 export type CommandKind = "document";
 
 /** Handler `ctx.inputs` type for a command: the schema's parsed output, or coerced option/positional values. */
@@ -566,7 +424,7 @@ export type RunnableCommand<
   P extends z.ZodObject | undefined = z.ZodObject | undefined,
 > = CommandBase & {
   /**
-   * When `"document"`, the command accepts a single JSON or YAML document
+   * When `"document"`, the command accepts a single JSON document
    * (CLI positional or piped stdin; MCP/HTTP tool args = body). Requires `inputSchema`;
    * forbids `options` and `positionals`.
    */
@@ -579,7 +437,7 @@ export type RunnableCommand<
   positionals?: readonly CommandPositional[];
   /**
    * Zod schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
-   * Emitted in `docs cli-schema`, `docs cli`, and MCP `tools/list`; not validated at runtime.
+   * Emitted in schema export, MCP `tools/list`, and OpenAPI; not validated at runtime.
    */
   outputSchema?: O;
   /**
@@ -614,7 +472,7 @@ export type CommandGroup = CommandBase & {
 export type Command = RunnableCommand | CommandGroup;
 
 /** Classified failure kind for invoke error pipeline and HTTP/MCP status mapping. */
-export type InvokeFailureKind = "validation" | "help" | "unexpected" | "not_ready" | "missing_config" | "unknown_route";
+export type InvokeFailureKind = "validation" | "help" | "unexpected" | "unknown_route";
 
 /**
  * Per-invocation context attached in hooks (e.g. DB handles, auth principals).
@@ -630,8 +488,6 @@ export interface Locals {
  * Augment in app code: `declare module "argsbarg" { interface ServerState { db: AppDb } }`.
  */
 export interface ServerState {
-  /** Set when app config soft-validation fails at server start. */
-  configFileError?: string;
   /** Short-TTL cache for readiness probe results. */
   readinessCache?: {
     at: number;
@@ -658,7 +514,6 @@ export interface InvokeHookContext {
   /** Per-invocation bag; `beforeInvoke` may write. Framework seeds `requestId` before hooks run. */
   locals: Locals;
   runtime?: ServerRuntime;
-  appConfig: AnyAppConfigSnapshot;
   http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
   mcp?: { rpcMethod: string; toolName?: string; requestId: string };
 }
@@ -700,7 +555,6 @@ export interface AppHooks {
 export interface ReadinessContext {
   spec: AppSpec;
   surface: "http" | "mcp";
-  appConfig: AnyAppConfigSnapshot;
   runtime: ServerRuntime;
 }
 
@@ -708,7 +562,7 @@ export interface ReadinessContext {
 export interface LogConfig {
   /** `json` = ECS Logging lines; `text` = human stderr lines. Default: `json`. */
   format?: "json" | "text";
-  /** Tee stderr + append; relative paths resolve under the app config dir. */
+  /** Tee stderr + append; relative paths resolve against the working directory. */
   file?: string;
   /** Emit HTTP/MCP access logs. Default: true. */
   access?: boolean;
@@ -728,20 +582,14 @@ export interface LogConfig {
 
 /**
  * App spec passed to `argsbarg()`.
- * May be a command or command group, plus optional app-level MCP and install config.
+ * May be a command or command group, plus optional app-level MCP and HTTP config.
  */
 export type AppSpec = Command & AppSpecFields;
 
 /** Root settings shared by grouping and runnable roots (see {@link AppSpec} and `argsbarg()`). */
 export type AppSpecFields = {
-  /** Schema-driven app config file, bootstrap, and MCP metadata. */
-  appConfig?: AppConfig;
   /** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
   completion?: CompletionConfig;
-  /** Opt-out and defaults for `configure`. */
-  configure?: ConfigureConfig;
-  /** Opt-out and optional topics for the `docs` built-in (default: enabled). */
-  docs?: DocsConfig;
   /** Invoke and error hooks for user commands on CLI, HTTP, and MCP. */
   hooks?: AppHooks;
   /** When set with `enabled: true`, enables the `http` built-in HTTP server. */
@@ -761,7 +609,7 @@ export function hasHandler(node: Command): node is RunnableCommand {
   return "handler" in node && typeof node.handler === "function";
 }
 
-/** True when the command accepts a structured JSON or YAML document body (no CLI flags). */
+/** True when the command accepts a structured JSON document body (no CLI flags). */
 export function isDocumentCommand(
   /** Command to inspect. */
   leaf: RunnableCommand,
@@ -836,22 +684,22 @@ export type CommandDef<
 };
 
 /** Value type `ctx.inputs` holds for one option definition (after argsbarg's coercion). */
-export type CommandOptionValueOf<Opt extends CommandOption> = Opt extends { kind: OptionKind.Presence }
+export type CommandOptionValueOf<Opt extends CommandOption> = Opt extends { kind: typeof OptionKind.Presence }
   ? boolean
-  : Opt extends { kind: OptionKind.Number }
+  : Opt extends { kind: typeof OptionKind.Number }
     ? number
-    : Opt extends { kind: OptionKind.Enum; choices: readonly (infer C)[] }
+    : Opt extends { kind: typeof OptionKind.Enum; choices: readonly (infer C)[] }
       ? C
-      : Opt extends { kind: OptionKind.Json }
+      : Opt extends { kind: typeof OptionKind.Json }
         ? unknown
-        : Opt extends { format: ValueFormat.Duration }
+        : Opt extends { format: typeof ValueFormat.Duration }
           ? number
-          : Opt extends { format: ValueFormat.CommaList }
+          : Opt extends { format: typeof ValueFormat.CommaList }
             ? string[]
             : string;
 
 /** True when an option always has a value in `ctx.inputs` (presence flags, `required`, or a `default`). */
-type OptionAlwaysSet<Opt> = Opt extends { kind: OptionKind.Presence }
+type OptionAlwaysSet<Opt> = Opt extends { kind: typeof OptionKind.Presence }
   ? true
   : Opt extends { required: true }
     ? true

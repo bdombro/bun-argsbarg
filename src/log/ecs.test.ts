@@ -2,7 +2,8 @@
 Unit tests for ECS log line formatting.
 */
 
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import { ECS_VERSION, formatEcsLine, mergeEnrichFields, PROTECTED_ECS_KEYS } from "./ecs.ts";
 
 describe("formatEcsLine", () => {
@@ -16,13 +17,13 @@ describe("formatEcsLine", () => {
       },
     );
     const parsed = JSON.parse(line) as Record<string, unknown>;
-    expect(parsed["service.name"]).toBe("myapp");
-    expect(parsed["service.version"]).toBe("7.0.0");
-    expect(parsed["event.action"]).toBe("http.server.start");
-    expect(parsed.message).toBe("HTTP API listening");
-    expect(parsed["log.level"]).toBe("info");
-    expect(parsed["ecs.version"]).toBe(ECS_VERSION);
-    expect(typeof parsed["@timestamp"]).toBe("string");
+    assert.equal(parsed["service.name"], "myapp");
+    assert.equal(parsed["service.version"], "7.0.0");
+    assert.equal(parsed["event.action"], "http.server.start");
+    assert.equal(parsed.message, "HTTP API listening");
+    assert.equal(parsed["log.level"], "info");
+    assert.equal(parsed["ecs.version"], ECS_VERSION);
+    assert.equal(typeof parsed["@timestamp"], "string");
   });
 
   test("nests labels object instead of flattening", () => {
@@ -35,8 +36,8 @@ describe("formatEcsLine", () => {
       },
     );
     const parsed = JSON.parse(line) as Record<string, unknown>;
-    expect(parsed.labels).toEqual({ request_id: "abc", team: "demo" });
-    expect(parsed["labels.request_id"]).toBeUndefined();
+    assert.deepEqual(parsed.labels, { request_id: "abc", team: "demo" });
+    assert.equal(parsed["labels.request_id"], undefined);
   });
 
   test("includes trace and canonical http fields", () => {
@@ -57,11 +58,11 @@ describe("formatEcsLine", () => {
       },
     );
     const parsed = JSON.parse(line) as Record<string, unknown>;
-    expect(parsed["trace.id"]).toBe("0af7651916cd43dd8448eb211c80319c");
-    expect(parsed["span.id"]).toBe("b7ad6b7169203331");
-    expect(parsed["http.request.method"]).toBe("GET");
-    expect(parsed["url.path"]).toBe("/workspaces");
-    expect(parsed["event.duration"]).toBe(45_000_000);
+    assert.equal(parsed["trace.id"], "0af7651916cd43dd8448eb211c80319c");
+    assert.equal(parsed["span.id"], "b7ad6b7169203331");
+    assert.equal(parsed["http.request.method"], "GET");
+    assert.equal(parsed["url.path"], "/workspaces");
+    assert.equal(parsed["event.duration"], 45_000_000);
   });
 
   test("includes error stack fields", () => {
@@ -76,9 +77,9 @@ describe("formatEcsLine", () => {
       },
     );
     const parsed = JSON.parse(line) as Record<string, unknown>;
-    expect(parsed["error.message"]).toBe("boom");
-    expect(parsed["error.type"]).toBe("Error");
-    expect(String(parsed["error.stack_trace"])).toContain("boom");
+    assert.equal(parsed["error.message"], "boom");
+    assert.equal(parsed["error.type"], "Error");
+    assert.ok(String(parsed["error.stack_trace"]).includes("boom"));
   });
 
   test("enrich merges additive fields but not protected keys", () => {
@@ -91,8 +92,8 @@ describe("formatEcsLine", () => {
       }),
     });
     const parsed = JSON.parse(line) as Record<string, unknown>;
-    expect(parsed.message).toBe("hello");
-    expect(parsed["custom.field"]).toBe("yes");
+    assert.equal(parsed.message, "hello");
+    assert.equal(parsed["custom.field"], "yes");
   });
 });
 
@@ -100,10 +101,10 @@ describe("mergeEnrichFields", () => {
   test("skips protected and existing keys", () => {
     const line: Record<string, unknown> = { message: "keep", "trace.id": "set" };
     mergeEnrichFields(line, { message: "nope", "ecs.version": "0.0.0", "trace.id": "bad", extra: 1 });
-    expect(line.message).toBe("keep");
-    expect(line["ecs.version"]).toBeUndefined();
-    expect(line["trace.id"]).toBe("set");
-    expect(line.extra).toBe(1);
-    expect(PROTECTED_ECS_KEYS.has("message")).toBe(true);
+    assert.equal(line.message, "keep");
+    assert.equal(line["ecs.version"], undefined);
+    assert.equal(line["trace.id"], "set");
+    assert.equal(line.extra, 1);
+    assert.equal(PROTECTED_ECS_KEYS.has("message"), true);
   });
 });

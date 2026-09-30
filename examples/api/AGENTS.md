@@ -1,89 +1,59 @@
 # example-api
 
-<!-- argsbarg:managed — overwritten on merge; framework baseline; app-specific sections below take precedence -->
+Argsbarg schema-first npm CLI: Zod `inputSchema`/`outputSchema` via `command`, REST CRUD over in-memory `node:sqlite`. Users run it with `npx example-api` or `npm install -g example-api` (`bin` → `dist/index.js`).
 
-> **Baseline framework rules:** The conventions below are defaults for argsbarg projects. Project-specific sections below this managed block override these defaults.
+## Argsbarg authoring
 
-## Argsbarg schema
+When adding or changing commands, schemas, or MCP exposure:
 
-When adding or changing argsbarg schema, command handlers, or MCP exposure:
+1. **Read** `node_modules/argsbarg/docs/cli-program.md` first (authoritative).
+2. MCP tools, varargs, `inputSchema` → `node_modules/argsbarg/docs/mcp.md`.
+3. Zod schemas (`inputSchema`, `outputSchema`, JSON stdout) → `node_modules/argsbarg/docs/schemas.md`.
+4. Other templates for reference: `node_modules/argsbarg/examples/` (`cli`, `api`, `agent-plugin`, `homebrew`).
 
-1. **Read** `node_modules/argsbarg/docs/cli-program.md` (required — authoritative guide).
-2. MCP tools, varargs, `inputSchema` → also `node_modules/argsbarg/docs/mcp.md`.
-3. JSON stdout / `outputSchema` (Zod) → `node_modules/argsbarg/docs/output-schema.md`; authoring schemas → `node_modules/argsbarg/docs/json-schema-subset.md`.
-4. App config / `appConfig.schema` (Zod) → `node_modules/argsbarg/docs/config-schema.md`.
-5. `configure`, `configure.targets`, Homebrew distribution → `node_modules/argsbarg/docs/configure.md` and `distribution-homebrew.md`.
-6. Bundled `docs` built-in → `node_modules/argsbarg/docs/bundled-docs.md`.
-7. **Examples** (shipped under `node_modules/argsbarg/examples/`):
-   - **CLI copy template** (all builtins, Homebrew justfile, options/flags only) → `examples/cli/`
-   - **Schema-first copy template** (Zod `inputSchema`/`outputSchema` via `command`, REST CRUD) → `examples/api/`
+**Rules** (details are in the docs above; don't contradict them):
 
-**Hard rules** (details and examples are in the docs above — do not contradict them):
-
-- Reserved root commands: `completion`, `configure`, `mcp`, `version`, `docs`.
-- `argsbarg({ … })` builds the app (`src/app.ts`) and `command({ … })` declares every command (typed `ctx.inputs` / `ctx.pathParams`); action-oriented `description` on root, commands, options, and positionals.
-- Omit `mcpTool` unless genuinely CLI-only (`enabled: false`) or an irreducible wire limit — fix schema and headless handlers first.
-- Interactive commands: one headless path for MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); not raw `isTTY`.
-- String options: `format` / `default` / `pattern` per `cli-program.md`; `ctx.inputs` for multi-flag commands.
-- Varargs (`argMax: 0`): CLI space-separated; MCP JSON array only — no comma-splitting positionals.
-- Multi-surface commands (Ink + headless + MCP): one **`read*Flags(ctx)`** per command (or shared family helper + extensions); one **`resolve*Input(flags)`** for cross-field rules — handler reads ctx once, all paths share the struct.
-- Schemas: Zod in the command's `types.ts` — export the schema and a same-named `z.infer` type (`export const StatusJsonOutput = z.strictObject({…}); export type StatusJsonOutput = z.infer<typeof StatusJsonOutput>`). Prefer `z.strictObject`; put every field's documentation in `.describe("…")` (agents read it; JSDoc is not emitted).
-- Commands with `inputSchema` / `outputSchema` use `command({…})` so `ctx.inputs` and the return value are typed; path params come from `ctx.pathParams`.
-- App config (optional): `appConfig.schema` takes a Zod object schema from `src/config/types.ts`.
+- Reserved root commands: `completion`, `mcp`, `http`, `version`.
+- `argsbarg({ … })` builds the app in `src/app.ts`; `command({ … })` declares every command (typed `ctx.inputs` / `ctx.pathParams`). Give the root, commands, options, and positionals action-oriented `description`s.
+- Omit `mcpTool` unless a command is genuinely CLI-only (`enabled: false`) or hits an irreducible wire limit; fix the schema and headless path first.
+- Interactive commands have one headless path shared by MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); don't branch on raw `isTTY`.
+- String options: `format` / `default` / `pattern` per `cli-program.md`; use `ctx.inputs` for multi-flag commands.
+- Varargs (`argMax: 0`): space-separated on the CLI, a JSON array over MCP; never comma-split positionals.
+- App settings are app code (env vars or your own file); argsbarg doesn't manage them.
+- Multi-surface commands (Ink + headless + MCP): one `read*Flags(ctx)` per command and one `resolve*Input(flags)` for cross-field rules, so every path shares one struct.
+- Schemas live in the command's `types.ts`: export the Zod schema and a same-named `z.infer` type. Prefer `z.strictObject`; document every field with `.describe("…")` (agents read it; JSDoc isn't emitted).
 
 ## Code conventions
 
-### JSDoc
-
-Add doc comments for exported surfaces that are not obvious from the name alone: JSON output schemas, public types, and non-trivial algorithms. Skip comments on short test callbacks and pure re-export files.
-
-### Names
-
-Use names that describe the domain role, not generic placeholders like `data` or `handler`, except in very small scopes.
-
-### Structure
-
-After imports, put **exported** symbols first (alphabetical within each kind), then **module-private** helpers at the bottom. Use `~/…` only where you would otherwise use `../` (or deeper) to reach another module under `src/`. Same-directory (`./`) and child (`./foo/…`) imports stay relative. Use `.ts` extensions.
+- **JSDoc:** document exported surfaces that aren't obvious from the name (output schemas, public types, non-trivial algorithms). Skip short test callbacks and pure re-export files.
+- **Names:** describe the domain role; avoid `data` / `handler`-style placeholders outside tiny scopes.
+- **Structure:** after imports, exported symbols first (alphabetical within each kind), then module-private helpers. Relative imports with explicit `.ts` extensions.
+- **Abstractions:** keep single-use helpers in the calling file. Split only when reused, when the caller is hard to follow, or when the extraction is a substantial unit.
+- **Skill:** when commands are added, renamed, or removed, update `skills/example-api/SKILL.md`.
 
 ### Module boundaries
 
 | Path | Owns | Must not |
 | --- | --- | --- |
-| `src/index.ts` | Thin entry: `await app.run()` | Inline command handlers, business logic |
-| `src/types/` | Global type declarations and module augmentations (e.g. `argsbarg.d.ts`, `md.d.ts`) | Runtime logic, imports from outside `types/` |
-| `src/app.ts` | `Program` assembly: `docs`, `commands: […]` | Inline command handlers, business logic |
-| `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrate.ts`, `migrations/*.sql` | Command handlers |
-| `src/commands/<name>/` | One user-facing command: `command.ts`, optional `types.ts` with Zod schemas | Shared helpers (lift to `src/db/`) |
-| `scripts/` | Dev tooling (formula helpers) | Production command paths |
-
-When adding commands: `src/commands/<name>/command.ts` + `types.ts` when schemas are needed; register in `app.ts` **alphabetically by command key**.
-
-**Argsbarg schema:** see Argsbarg schema section above.
-
-### Execution
-
-- **Runtime:** Bun (`just test`, `just dev`).
-- **Tests:** colocate `*.test.ts` next to the module.
-- **Repository skill:** When adding, renaming, or removing commands, update `skills/<key>/SKILL.md` so the intent-based command group remains accurate for end-user agents. (`just docgen` updates `./docs/` only and never overwrites `skills/`).
-
-### Abstractions
-
-Avoid needless extraction: keep single-use helpers in the calling file by default. Split only when reused elsewhere, the caller is large or hard to follow, or extraction clarifies a substantial unit. Do not create tiny one-off helpers.
-- ❌ `utils/formatX.ts` — 60-line helper used by one command
-- ✅ inline helper in that command file
-
-<!-- /argsbarg:managed -->
+| `src/index.ts` | Entry: `await app.run()` | Command handlers, business logic |
+| `src/app.ts` | App spec: `commands: […]` (alphabetical by key) | Command handlers, business logic |
+| `src/create-identity.ts` | Key, release repo, description (rewritten by `argsbarg create`) | Anything else |
+| `src/types/` | Module augmentations (`argsbarg.d.ts`: `Locals`, `ServerState`) | Runtime logic |
+| `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrations/*.sql` | Command handlers |
+| `src/commands/<name>/` | One command: `command.ts`, optional `types.ts` with Zod schemas, colocated `*.test.ts` | Shared helpers (lift them out) |
+| `scripts/` | Dev tooling (release) | Production command paths |
 
 ## Tooling
 
-- Bun only (`bun`, `bun x`, `bun test`). No Node/npm/pnpm.
+- Node ≥ 22.18 and npm; no Bun required. [just](https://just.systems) runs the tasks.
+- `just setup`, `just check` (Biome + `tsc --noEmit`), `just test` (check + `node --test`), `just build` (`tsc` → `dist/`, plus SQL migrations), `just run …` (from source, type-stripped).
+- Release: `just release <major|minor|patch>` → `npm publish` (asks first; `--dry-run` changes nothing).
 
 ## Documentation
 
-- `README.md` — user-facing install/commands
-- `docs/architecture.md` — maintainer internals (create if missing)
-- Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
-- `skills/example-api/SKILL.md` — agent skill command group (scaffolded from template; customize as needed)
+- `README.md` — install and commands for users
+- `docs/architecture.md` — maintainer notes (create when needed)
+- `skills/example-api/SKILL.md` — agent skill (customize as needed)
 
 ## App conventions
 

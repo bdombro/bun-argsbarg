@@ -3,6 +3,8 @@ HTTP tool server for ArgsBarg programs: health, OpenAPI, and REST API invocation
 */
 
 import { randomUUID } from "node:crypto";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import type { AppSpec, HttpWireContext } from "../core/types.ts";
 import { schemaStrictnessWarnings } from "../core/validate.ts";
 import {
@@ -139,7 +141,7 @@ export async function handleApiRequest(
     if (!runtime) {
       return finish(jsonResponse(200, { ok: true }));
     }
-    const readiness = await evaluateReadiness(root, "http", runtime, cli.appConfig);
+    const readiness = await evaluateReadiness(root, "http", runtime);
     return finish(jsonResponse(readiness.ok ? 200 : 503, readiness));
   }
 
@@ -176,15 +178,7 @@ export async function handleApiRequest(
           }
           body = parsed as Record<string, unknown>;
         } catch {
-          try {
-            const parsed = Bun.YAML.parse(rawBody);
-            if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-              return finish(apiErrorResponse(400, { error: "Request body must be a JSON object" }));
-            }
-            body = parsed as Record<string, unknown>;
-          } catch {
-            return finish(apiErrorResponse(400, { error: "Invalid JSON body" }));
-          }
+          return finish(apiErrorResponse(400, { error: "Invalid JSON body" }));
         }
       }
     }
@@ -211,6 +205,48 @@ export async function handleApiRequest(
   return finish(apiErrorResponse(404, { error: "Not found" }));
 }
 
+/** Converts a Node request into a Fetch API `Request` (body buffered). */
+async function toFetchRequest(
+  /** Incoming Node request. */
+  req: IncomingMessage,
+  /** Listen address used to build the absolute URL. */
+  origin: string,
+): Promise<Request> {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(name, v);
+    } else if (value !== undefined) {
+      headers.set(name, value);
+    }
+  }
+  const method = req.method ?? "GET";
+  let body: Uint8Array<ArrayBuffer> | undefined;
+  if (method !== "GET" && method !== "HEAD") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    body = new Uint8Array(Buffer.concat(chunks));
+  }
+  return new Request(new URL(req.url ?? "/", origin), { method, headers, body });
+}
+
+/** Writes a Fetch API `Response` to a Node response. */
+async function writeFetchResponse(
+  /** Response produced by {@link handleApiRequest}. */
+  response: Response,
+  /** Outgoing Node response. */
+  res: ServerResponse,
+): Promise<void> {
+  const headers: Record<string, string | string[]> = {};
+  response.headers.forEach((value, name) => {
+    if (name !== "set-cookie") headers[name] = value;
+  });
+  const cookies = response.headers.getSetCookie();
+  if (cookies.length > 0) headers["set-cookie"] = cookies;
+  res.writeHead(response.status, headers);
+  res.end(Buffer.from(await response.arrayBuffer()));
+}
+
 /** Runs the HTTP API server until the process is interrupted. */
 export async function httpServeHttp(cli: App, resolved?: ResolvedHttpServeConfig): Promise<never> {
   const listen = resolved ?? {
@@ -220,12 +256,22 @@ export async function httpServeHttp(cli: App, resolved?: ResolvedHttpServeConfig
     obscureUnexpected: cli.spec.httpServer?.errors?.obscureUnexpected ?? false,
     log: { format: "json" as const, access: true, errors: true, dev: false },
   };
-  const server = Bun.serve({
-    hostname: listen.hostname,
-    port: listen.port,
-    fetch: (request) => handleApiRequest(cli, request, listen),
+  const origin = `http://${listen.hostname}:${listen.port}`;
+  const server = createServer((req, res) => {
+    toFetchRequest(req, origin)
+      .then((request) => handleApiRequest(cli, request, listen))
+      .then((response) => writeFetchResponse(response, res))
+      .catch((err: unknown) => {
+        if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }));
+      });
   });
-  const url = `http://${server.hostname}:${server.port}`;
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(listen.port, listen.hostname, () => resolve());
+  });
+  const address = server.address() as AddressInfo;
+  const url = `http://${listen.hostname}:${address.port}`;
   const emitter = cli.server?.emitter;
   for (const message of schemaStrictnessWarnings(cli.spec)) {
     emitter?.emit({ level: "warn", message, action: "schema.strictness" });

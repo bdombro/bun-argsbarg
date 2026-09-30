@@ -52,7 +52,7 @@ const app = argsbarg({
   description: "…",
   log: {
     format: "json",   // "text" for human-readable stderr
-    file: "server.log", // optional tee; relative paths → app config dir
+    file: "server.log", // optional tee; relative paths → working directory
     access: true,     // HTTP/MCP access lines
     errors: true,     // invoke error lines
   },
@@ -146,4 +146,4 @@ No configuration required. If the header is missing, Argsbarg does not invent a 
 
 - [http-server.md](http-server.md) — HTTP server setup and endpoints
 - [mcp.md](mcp.md) — MCP server (same `log` applies)
-- [decisions.md](decisions.md#structured-logging-ecs-logging) — why ECS Logging and hooks instead of a bundled observability SDK
+- [decisions.md](decisions.md#4-logging-ecs-json-on-stderr) — why ECS Logging and hooks instead of a bundled observability SDK

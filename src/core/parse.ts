@@ -8,7 +8,6 @@ across every entry path.
 */
 
 import { isCliCallable } from "../runtime/exposure.ts";
-import { fullStringIsDouble } from "../utils.ts";
 import { formatValidationError, validateFormatValue } from "./formats.ts";
 import {
   type Command,
@@ -21,20 +20,24 @@ import {
   OptionKind,
   type RunnableCommand,
 } from "./types.ts";
+import { fullStringIsDouble } from "./utils.ts";
 
 // ── Parse Result ──────────────────────────────────────────────────────────────
 
 /**
  * Outcome of a parse: success, help request, or fatal user error.
  */
-export enum ParseKind {
+export const ParseKind = {
   /** Parsed successfully; options and positionals are valid. */
-  Ok = "ok",
+  Ok: "ok",
   /** User requested help (explicit or implicit). */
-  Help = "help",
+  Help: "help",
   /** User error (unknown command, bad option, etc.). */
-  Error = "error",
-}
+  Error: "error",
+} as const;
+
+/** Union of the `ParseKind` values. */
+export type ParseKind = (typeof ParseKind)[keyof typeof ParseKind];
 
 /** Structured parse output: routed path, merged options, positional args, and help/error metadata. */
 export interface ParseResult {
@@ -292,7 +295,7 @@ export function collectOptionDefs(root: Command, path: string[]): CommandOption[
   return [...(node.options ?? [])];
 }
 
-/** Fills `args` for a document / json leaf from `startIdx` (0 or 1 JSON or YAML string positional). */
+/** Fills `args` for a document / json leaf from `startIdx` (0 or 1 JSON string positional). */
 function finishJsonLeaf(
   node: RunnableCommand,
   startIdx: number,

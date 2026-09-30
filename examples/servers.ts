@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /*
 This example shows the smallest end-to-end CLI+MCP+API setup.
 It includes one command, a couple of options, and a direct call to the runtime so
@@ -17,7 +17,7 @@ Ex API Response:
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { OptionKind, command, argsbarg } from "../src/index";
+import { OptionKind, command, argsbarg } from "../src/index.ts";
 
 const app = argsbarg({
   commands: [
@@ -56,11 +56,6 @@ const app = argsbarg({
     }),
   ],
   description: "Tiny demo.",
-  docs: {
-    topics: {
-      readme: { text: "# app.ts\n\nServers demo.\n" },
-    },
-  },
   httpServer: { enabled: true },
   key: "servers.ts",
   mcpServer: { enabled: true },
