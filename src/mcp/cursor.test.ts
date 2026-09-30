@@ -7,7 +7,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import {
   defaultCursorPluginPaths,
   generateCursorPluginManifest,
@@ -16,7 +16,7 @@ import {
 } from "./cursor.ts";
 import { pluginName } from "./plugin-shared.ts";
 
-const configFixture: CliProgram = {
+const configFixture: AppSpec = {
   key: "myapp",
   version: "1.0.0",
   description: "Demo.",

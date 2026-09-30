@@ -1,0 +1,13 @@
+{
+  "name": "example-agent-plugin",
+  "owner": {
+    "name": "Brian Dombrowski"
+  },
+  "plugins": [
+    {
+      "name": "example-agent-plugin",
+      "source": ".",
+      "description": "Argsbarg MCP plugin template for Cursor and Claude Code marketplaces"
+    }
+  ]
+}

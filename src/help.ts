@@ -8,15 +8,17 @@ style no matter how help is reached.
 */
 
 import {
-  type CliLeaf,
-  type CliNode,
-  type CliOption,
-  CliOptionKind,
-  type CliPositional,
-  type CliRouter,
-  isCliLeaf,
-  isCliRouter,
-  isDocumentLeaf,
+  type Command,
+  type CommandGroup,
+  type CommandOption,
+  type CommandPositional,
+  hasHandler,
+  hasSubcommands,
+  isDocumentCommand,
+  leafInputSchema,
+  leafOutputSchema,
+  OptionKind,
+  type RunnableCommand,
 } from "./core/types.ts";
 import { visibleOptions, visibleSubcommands } from "./runtime/exposure.ts";
 
@@ -162,15 +164,15 @@ function wrapText(text: string, width: number): string[] {
 // ── Option Label Formatting ───────────────────────────────────────────────────
 
 /** Suffix for `--name` in usage (e.g. ` <string>`) based on value kind. */
-function optKindLabel(k: CliOptionKind, o?: CliOption): string {
+function optKindLabel(k: OptionKind, o?: CommandOption): string {
   switch (k) {
-    case CliOptionKind.Presence:
+    case OptionKind.Presence:
       return "";
-    case CliOptionKind.Number:
+    case OptionKind.Number:
       return " <number>";
-    case CliOptionKind.String:
+    case OptionKind.String:
       return " <string>";
-    case CliOptionKind.Enum: {
+    case OptionKind.Enum: {
       const choices = o?.choices ?? [];
       if (choices.length === 0) {
         return " <choice>";
@@ -180,13 +182,13 @@ function optKindLabel(k: CliOptionKind, o?: CliOption): string {
       }
       return ` <${choices.slice(0, 3).join("|")}|…>`;
     }
-    case CliOptionKind.Json:
+    case OptionKind.Json:
       return " <json>";
   }
 }
 
 /** Formats a flag/value option for help tables: `--name`, optional short, optional kind hint. */
-export function cliOptionLabel(o: CliOption, color: boolean): string {
+export function cliOptionLabel(o: CommandOption, color: boolean): string {
   let r = `--${o.name}${optKindLabel(o.kind, o)}`;
   if (o.shortName) r += `, -${o.shortName}`;
   if (!color) return r;
@@ -207,7 +209,7 @@ export function cliResolveNotes(notes: string, appKey: string): string {
 }
 
 /** Formats a positional slot label (`<n>`, `[n]`, or varargs) for help. */
-export function cliPositionalLabel(p: CliPositional, color: boolean): string {
+export function cliPositionalLabel(p: CommandPositional, color: boolean): string {
   const { argMin = 1, argMax = 1 } = p;
   let r: string;
   if (argMax === 1) {
@@ -423,7 +425,7 @@ function usageLines(
   return out;
 }
 
-/** Table rows for `kind: "document"` / `kind: "json"` leaf input (schema properties + stdin hint). */
+/** Table rows for `kind: "document"` leaf input (schema properties + stdin hint). */
 function rowsForJsonInput(inputSchema: Record<string, unknown> | undefined, kind?: string): HelpRow[] {
   const hint = "Pass a JSON or YAML document as an argument or pipe to stdin.";
   const label = kind === "document" ? "DOCUMENT" : "JSON";
@@ -444,7 +446,7 @@ function rowsForJsonInput(inputSchema: Record<string, unknown> | undefined, kind
 }
 
 /** Table rows for named options, including synthetic built-in rows. */
-function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
+function rowsForOptions(defs: readonly CommandOption[], color: boolean): HelpRow[] {
   const rows: HelpRow[] = [];
   const helpLabel = color ? style.aquaBold("--help, ") + style.greenBright("-h") : "--help, -h";
   rows.push({ label: helpLabel, description: "Show help for this command." });
@@ -455,13 +457,13 @@ function rowsForOptions(defs: CliOption[], color: boolean): HelpRow[] {
   return rows;
 }
 
-/** Table rows for positional `CliPositional` definitions. */
-function rowsForPositionals(defs: CliPositional[], color: boolean): HelpRow[] {
+/** Table rows for positional `CommandPositional` definitions. */
+function rowsForPositionals(defs: readonly CommandPositional[], color: boolean): HelpRow[] {
   return defs.map((p) => ({ label: cliPositionalLabel(p, color), description: p.description }));
 }
 
 /** Table rows for subcommands, sorted by key (hidden commands omitted). */
-function rowsForSubcommands(cmds: CliNode[]): HelpRow[] {
+function rowsForSubcommands(cmds: Command[]): HelpRow[] {
   return visibleSubcommands(cmds)
     .sort((a, b) => a.key.localeCompare(b.key))
     .map((c) => ({ label: c.key, description: c.description }));
@@ -708,7 +710,7 @@ function appendNotesBox(
   lines: string[],
   /** Raw notes text from schema. */
   notes: string | undefined,
-  /** Program key for placeholder resolution. */
+  /** App spec key for placeholder resolution. */
   appKey: string,
   /** Available terminal width. */
   hw: number,
@@ -736,7 +738,7 @@ function appendNotesBox(
  */
 export function cliHelpRender(
   /** Root command presentation schema. */
-  schema: CliRouter,
+  schema: CommandGroup,
   /** Segment path to the target command node. */
   helpPath: string[],
   /** Whether output will be directed to stderr. */
@@ -776,11 +778,12 @@ export function cliHelpRender(
       lines.push(subBox.join("\n"));
     }
 
-    if (isCliLeaf(schema as unknown as CliNode) && showSchema) {
-      const leaf = schema as unknown as CliLeaf;
-      if (leaf.outputSchema !== undefined) {
-        const title = isDocumentLeaf(leaf) ? "Output Schema (JSON)" : "Output Schema (with --json)";
-        const yamlLines = schemaToYamlLines(leaf.outputSchema, 0);
+    if (hasHandler(schema as unknown as Command) && showSchema) {
+      const leaf = schema as unknown as RunnableCommand;
+      const leafOutput = leafOutputSchema(leaf);
+      if (leafOutput !== undefined) {
+        const title = isDocumentCommand(leaf) ? "Output Schema (JSON)" : "Output Schema (with --json)";
+        const yamlLines = schemaToYamlLines(leafOutput, 0);
         if (yamlLines.length > 0) {
           lines.push("");
           if (isTTY) {
@@ -797,14 +800,14 @@ export function cliHelpRender(
   }
 
   let layer = schema.commands ?? [];
-  let node: CliNode | undefined;
+  let node: Command | undefined;
   for (const seg of helpPath) {
-    const ch = layer.find((c: CliNode) => c.key === seg);
+    const ch = layer.find((c: Command) => c.key === seg);
     if (!ch) {
       return `${color ? style.red("Unknown help path.") : "Unknown help path."}\n`;
     }
     node = ch;
-    layer = isCliRouter(ch) ? ch.commands : [];
+    layer = hasSubcommands(ch) ? ch.commands : [];
   }
   if (!node) {
     return `${color ? style.red("Unknown help path.") : "Unknown help path."}\n`;
@@ -816,15 +819,15 @@ export function cliHelpRender(
     lines.push(color ? style.white(node.description) : node.description);
     lines.push("");
   }
-  const nodeIsDocumentLeaf = isCliLeaf(node) && isDocumentLeaf(node);
+  const nodeIsDocumentLeaf = hasHandler(node) && isDocumentCommand(node);
   const usage = usageLines(
     schema.key,
     helpPath,
-    isCliRouter(node) && node.commands.length > 0,
-    isCliLeaf(node) && (node.positionals ?? []).length > 0,
+    hasSubcommands(node) && node.commands.length > 0,
+    hasHandler(node) && (node.positionals ?? []).length > 0,
     nodeIsDocumentLeaf,
     color,
-    isCliLeaf(node) ? node.kind : undefined,
+    hasHandler(node) ? node.kind : undefined,
   );
   if (isTTY) {
     lines.push(renderTextBox("Usage", usage, hw, color).join("\n"));
@@ -832,15 +835,16 @@ export function cliHelpRender(
     lines.push(renderPlainSection("Usage", usage).join("\n"));
   }
 
-  if (nodeIsDocumentLeaf && isCliLeaf(node)) {
-    const inputRows = rowsForJsonInput(node.inputSchema, node.kind);
+  if (nodeIsDocumentLeaf && hasHandler(node)) {
+    const nodeInput = leafInputSchema(node);
+    const inputRows = rowsForJsonInput(nodeInput, node.kind);
     const inputBox = isTTY ? renderTableBox("Input", inputRows, hw, color) : renderPlainTable("Input", inputRows, hw);
     if (inputBox.length > 0) {
       lines.push("");
       lines.push(inputBox.join("\n"));
     }
-    if (showSchema && node.inputSchema !== undefined) {
-      const yamlLines = schemaToYamlLines(node.inputSchema, 0);
+    if (showSchema && nodeInput !== undefined) {
+      const yamlLines = schemaToYamlLines(nodeInput, 0);
       if (yamlLines.length > 0) {
         lines.push("");
         if (isTTY) {
@@ -858,7 +862,7 @@ export function cliHelpRender(
       lines.push(optBox.join("\n"));
     }
 
-    const posRows = rowsForPositionals(isCliLeaf(node) ? (node.positionals ?? []) : [], color);
+    const posRows = rowsForPositionals(hasHandler(node) ? (node.positionals ?? []) : [], color);
     const posBox = isTTY ? renderTableBox("Arguments", posRows, hw, color) : renderPlainTable("Arguments", posRows, hw);
     if (posBox.length > 0) {
       lines.push("");
@@ -866,7 +870,7 @@ export function cliHelpRender(
     }
   }
 
-  const subcmds = isCliRouter(node) ? node.commands : [];
+  const subcmds = hasSubcommands(node) ? node.commands : [];
   const subRows = rowsForSubcommands(subcmds);
   const subBox = isTTY
     ? renderTableBox("Subcommands", subRows, hw, color)
@@ -876,9 +880,10 @@ export function cliHelpRender(
     lines.push(subBox.join("\n"));
   }
 
-  if (isCliLeaf(node) && node.outputSchema !== undefined && showSchema) {
+  const nodeOutput = hasHandler(node) ? leafOutputSchema(node) : undefined;
+  if (nodeOutput !== undefined && showSchema) {
     const title = nodeIsDocumentLeaf ? "Output Schema (JSON)" : "Output Schema (with --json)";
-    const yamlLines = schemaToYamlLines(node.outputSchema, 0);
+    const yamlLines = schemaToYamlLines(nodeOutput, 0);
     if (yamlLines.length > 0) {
       lines.push("");
       if (isTTY) {

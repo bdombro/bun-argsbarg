@@ -41,12 +41,12 @@ After `GET /workspaces` returns 200 in 45ms:
 
 When the client sends a W3C **`traceparent`** header, lines also include `trace.id` and `span.id`, and the response echoes an updated `traceparent`.
 
-## `program.log` options
+## `log` options
 
-Set on the **program root** (same level as `httpServer` / `mcpServer`):
+Set on the **app root** (same level as `httpServer` / `mcpServer`):
 
 ```typescript
-const program = {
+const app = argsbarg({
   key: "myapp",
   version: "1.0.0",
   description: "…",
@@ -57,7 +57,7 @@ const program = {
     errors: true,     // invoke error lines
   },
   // …
-} satisfies CliProgram;
+});
 ```
 
 | Field | Default | Purpose |
@@ -80,7 +80,7 @@ Use **`enrich`** when you want **extra JSON fields** on top of the default ECS l
 ```typescript
 import type { LogEnrichContext } from "argsbarg";
 
-const program = {
+const app = argsbarg({
   // …
   log: {
     format: "json",
@@ -98,7 +98,7 @@ const program = {
       };
     },
   },
-} satisfies CliProgram;
+});
 ```
 
 Return a flat object of field names → values. Argsbarg merges each key onto the log line unless that key is already set. To add team metadata inside ECS `labels`, put it in `event.labels` via hooks rather than fighting merge order — or use `serialize` for full control.
@@ -112,7 +112,7 @@ When `serialize` is set, Argsbarg **does not** run the ECS formatter. Your funct
 ```typescript
 import type { LogEnrichContext } from "argsbarg";
 
-const program = {
+const app = argsbarg({
   // …
   log: {
     format: "json",
@@ -126,7 +126,7 @@ const program = {
         },
       }),
   },
-} satisfies CliProgram;
+});
 ```
 
 Do **not** set both `enrich` and `serialize` expecting both to apply — `serialize` wins and `enrich` is ignored.
@@ -145,5 +145,5 @@ No configuration required. If the header is missing, Argsbarg does not invent a 
 ## Related
 
 - [http-server.md](http-server.md) — HTTP server setup and endpoints
-- [mcp.md](mcp.md) — MCP server (same `program.log` applies)
+- [mcp.md](mcp.md) — MCP server (same `log` applies)
 - [decisions.md](decisions.md#structured-logging-ecs-logging) — why ECS Logging and hooks instead of a bundled observability SDK

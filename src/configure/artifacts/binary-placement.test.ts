@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { isAppInstalled, isExternallyManagedBinary, resolvePathCommand } from "./binary-placement.ts";
 
-const program: CliProgram = {
+const program: AppSpec = {
   key: "placementapp",
   version: "1.0.0",
   description: "x",

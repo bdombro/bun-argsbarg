@@ -75,7 +75,7 @@ export function extractTemplateAppContent(
   let content = template.slice(end.end).trim();
   if (title) {
     content = content.replace(
-      /skills\/(full-example|full-example-json|mcp-plugin)\/SKILL\.md/g,
+      /skills\/(example-cli|example-api|example-agent-plugin)\/SKILL\.md/g,
       `skills/${title}/SKILL.md`,
     );
   }
@@ -114,8 +114,7 @@ export function extractConventionSuffix(
     const line = lines[i];
     if (!/^\*\*[^*\n]+ conventions:\*\*/.test(line)) continue;
     if (PLACEHOLDER_SUFFIX_LINE.test(line)) continue;
-    if (/^\*\*full-example conventions:\*\*/i.test(line)) continue;
-    if (/^\*\*full-example-json conventions:\*\*/i.test(line)) continue;
+    if (/^\*\*example-(cli|api|agent-plugin) conventions:\*\*/i.test(line)) continue;
     best = lines.slice(i).join("\n").trimEnd();
   }
   return best;
@@ -146,7 +145,8 @@ export function extractAppContent(
   if (prefix) {
     const isPlaceholderAfter =
       !after ||
-      (PLACEHOLDER_SUFFIX_LINE.test(after) && (/full-example/i.test(after) || /^\*\*.*\bconventions:\*\*/.test(after)));
+      (PLACEHOLDER_SUFFIX_LINE.test(after) &&
+        (/example-(cli|api|agent-plugin)/i.test(after) || /^\*\*.*\bconventions:\*\*/.test(after)));
     if (isPlaceholderAfter) {
       return prefix;
     }
@@ -217,7 +217,7 @@ if (import.meta.main) {
     process.exit(1);
   }
 
-  const templatePath = process.argv[3] ?? join(repoRoot, "examples/full-example-json/AGENTS.md");
+  const templatePath = process.argv[3] ?? join(repoRoot, "examples/api/AGENTS.md");
   const agentsPath = join(consumerDir, "AGENTS.md");
   const claudePath = join(consumerDir, "CLAUDE.md");
 

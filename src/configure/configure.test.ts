@@ -7,8 +7,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appConfigFileExists } from "../config/file.ts";
-import type { CliProgram } from "../core/types.ts";
-import { Cli } from "../index.ts";
+import type { AppSpec } from "../core/types.ts";
+import { argsbarg } from "../index.ts";
 import { detectInstalledArtifacts } from "./artifacts/detect-installed.ts";
 import { installMcpServerEntry } from "./artifacts/mcp-config.ts";
 import { parseInstallOpts } from "./artifacts/opts.ts";
@@ -19,12 +19,11 @@ import { buildDetectedSnapshot, buildTargetPlanContext } from "./artifacts/targe
 import { buildUninstallPlan } from "./artifacts/uninstall.ts";
 import { appConfigHasEntries } from "./index.ts";
 
-const fixture: CliProgram = {
+const fixture: AppSpec = {
   key: "testapp",
   version: "0.0.0",
   description: "Test",
   mcpServer: { enabled: true },
-  skill: { enabled: true },
   handler: () => {},
 };
 
@@ -126,7 +125,7 @@ describe("uninstall plan", () => {
 
     expect(detectInstalledArtifacts(paths, fixture).skill).toBe(true);
 
-    const result = await new Cli(fixture).invoke(["configure", "uninstall", "--yes"]);
+    const result = await argsbarg(fixture).invoke(["configure", "uninstall", "--yes"]);
     expect(result.exitCode).toBe(0);
     expect(existsSync(paths.agentsSkillDir)).toBe(false);
   });
@@ -139,7 +138,7 @@ describe("uninstall plan", () => {
     const prevHome = process.env.HOME;
     process.env.HOME = "/private/tmp/sqsp-workspaces-postinstall-20260807-fake";
     try {
-      const result = await new Cli(fixture).invoke(["configure", "uninstall", "--yes"]);
+      const result = await argsbarg(fixture).invoke(["configure", "uninstall", "--yes"]);
       expect(result.exitCode).toBe(0);
       expect(existsSync(paths.agentsSkillDir)).toBe(false);
     } finally {
@@ -188,16 +187,15 @@ describe("app config wizard", () => {
 
 describe("configure install bootstrap", () => {
   test("creates config.json for apps without appConfig", async () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "installboot",
       version: "0.0.0",
       description: "Install bootstrap test.",
-      skill: { enabled: true },
       handler: () => {},
       configure: { enabled: true },
     };
     expect(appConfigFileExists(program)).toBe(false);
-    const result = await new Cli(program).invoke(["configure", "install"]);
+    const result = await argsbarg(program).invoke(["configure", "install"]);
     expect(result.exitCode).toBe(0);
     expect(appConfigFileExists(program)).toBe(true);
   });
@@ -206,7 +204,7 @@ describe("configure install bootstrap", () => {
 describe("configure lifecycle hooks", () => {
   test("afterInstall runs after install plan", async () => {
     const calls: string[] = [];
-    const program: CliProgram = {
+    const program: AppSpec = {
       ...fixture,
       key: "hookinstall",
       configure: {
@@ -215,7 +213,7 @@ describe("configure lifecycle hooks", () => {
         },
       },
     };
-    const result = await new Cli(program).invoke(["configure", "install"]);
+    const result = await argsbarg(program).invoke(["configure", "install"]);
     expect(result.exitCode).toBe(0);
     expect(calls).toEqual([`after:hookinstall:dry=false`]);
   });
@@ -226,7 +224,7 @@ describe("configure lifecycle hooks", () => {
     writeFileSync(join(paths.agentsSkillDir, "SKILL.md"), "# test\n", "utf8");
 
     const calls: string[] = [];
-    const program: CliProgram = {
+    const program: AppSpec = {
       ...fixture,
       key: "hookremove",
       configure: {
@@ -236,7 +234,7 @@ describe("configure lifecycle hooks", () => {
         },
       },
     };
-    const result = await new Cli(program).invoke(["configure", "uninstall", "--yes"]);
+    const result = await argsbarg(program).invoke(["configure", "uninstall", "--yes"]);
     expect(result.exitCode).toBe(0);
     expect(calls).toEqual(["before:hookremove"]);
     expect(existsSync(paths.agentsSkillDir)).toBe(false);

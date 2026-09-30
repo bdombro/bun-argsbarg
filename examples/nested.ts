@@ -8,9 +8,9 @@ It demonstrates how the schema scales beyond one command.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliFallbackMode, CliOptionKind, type CliProgram, wantsExplicitJson } from "../src/index";
+import { FallbackMode, OptionKind, wantsExplicitJson, command, argsbarg } from "../src/index";
 
-const program = {
+const app = argsbarg({
   commands: [
     {
       key: "stat",
@@ -20,19 +20,19 @@ const program = {
           key: "owner",
           description: "Ownership helpers.",
           commands: [
-            {
+            command({
               key: "lookup",
               description: "Resolve owner info.",
               options: [
                 {
                   name: "json",
                   description: "Emit handler output as JSON.",
-                  kind: CliOptionKind.Presence,
+                  kind: OptionKind.Presence,
                 },
                 {
                   name: "user-name",
                   description: "User to look up.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                   shortName: "u",
                 },
               ],
@@ -40,7 +40,7 @@ const program = {
                 {
                   name: "path",
                   description: "File or directory.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                 },
               ],
               handler: (ctx) => {
@@ -65,12 +65,12 @@ const program = {
                 }
                 return text;
               },
-            },
+            }),
           ],
         },
       ],
     },
-    {
+    command({
       key: "read",
       description: "Print the first line of each file.",
       notes: "Pass one or more file paths. The program prints the first line of each.",
@@ -78,7 +78,7 @@ const program = {
         {
           name: "files",
           description: "Paths to read.",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           argMax: 0,
         },
       ],
@@ -98,21 +98,20 @@ const program = {
           }
         }
       },
-    },
+    }),
   ],
   configure: {},
   description: "Nested groups demo.",
   docs: {
     topics: {
-      readme: { text: "# nested.ts\n\nNested groups demo.\n" },
+      readme: { text: "# app.ts\n\nNested groups demo.\n" },
     },
   },
   fallbackCommand: "read",
-  fallbackMode: CliFallbackMode.MissingOrUnknown,
+  fallbackMode: FallbackMode.MissingOrUnknown,
   key: "nested.ts",
   mcpServer: { enabled: true },
   version: pkg.version,
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();

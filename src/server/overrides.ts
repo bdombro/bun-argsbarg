@@ -4,7 +4,7 @@ CLI flag and programmatic overrides merged into HTTP/MCP server runtime config.
 
 import { join } from "node:path";
 import { resolveAppConfigDir } from "../config/file.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import type { ResolvedLogConfig } from "../log/emitter.ts";
 
 /** Overrides from `myapp http` / `serveHttp()` flags and embedders. */
@@ -34,7 +34,7 @@ export interface ResolvedMcpServeConfig {
   log: ResolvedLogConfig;
 }
 
-function resolveLogFile(program: CliProgram, logFile: string | undefined): string | undefined {
+function resolveLogFile(program: AppSpec, logFile: string | undefined): string | undefined {
   if (!logFile) {
     return undefined;
   }
@@ -45,7 +45,7 @@ function resolveLogFile(program: CliProgram, logFile: string | undefined): strin
 }
 
 /** Builds resolved HTTP server config (CLI flags > program schema). */
-export function resolveHttpServeConfig(program: CliProgram, overrides: ServeOverrides = {}): ResolvedHttpServeConfig {
+export function resolveHttpServeConfig(program: AppSpec, overrides: ServeOverrides = {}): ResolvedHttpServeConfig {
   const http = program.httpServer;
   const obscureUnexpected = overrides.obscureErrors ?? http?.errors?.obscureUnexpected ?? false;
   return {
@@ -64,7 +64,7 @@ export function resolveHttpServeConfig(program: CliProgram, overrides: ServeOver
 }
 
 /** Builds resolved MCP server config (CLI flags > program schema). */
-export function resolveMcpServeConfig(program: CliProgram, overrides: ServeOverrides = {}): ResolvedMcpServeConfig {
+export function resolveMcpServeConfig(program: AppSpec, overrides: ServeOverrides = {}): ResolvedMcpServeConfig {
   const mcp = program.mcpServer;
   return {
     obscureUnexpected: overrides.obscureErrors ?? mcp?.errors?.obscureUnexpected ?? false,

@@ -1,48 +1,42 @@
 #!/usr/bin/env bun
 /*
  * Value formats demo: duration, comma-list, date, default, and ctx.inputs.
- * Run: bun ./examples/formats.ts run --tags alpha,beta --on 2026-06-22
+ * Run: bun ./examples/app.ts run --tags alpha,beta --on 2026-06-22
  * MCP: pass comma-list as string or array; varargs N/A on this leaf.
  */
 
 import pkg from "../package.json" with { type: "json" };
-import {
-  Cli,
-  CliFallbackMode,
-  CliOptionKind,
-  type CliProgram,
-  CliValueFormat,
-} from "../src/index";
+import { FallbackMode, OptionKind, ValueFormat, command, argsbarg } from "../src/index";
 
-const program = {
+const app = argsbarg({
   commands: [
-    {
+    command({
       key: "run",
       description: "Print coerced option values from ctx.inputs.",
       options: [
         {
           name: "timeout",
           description: "Wait budget (default 30s).",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.Duration,
+          kind: OptionKind.String,
+          format: ValueFormat.Duration,
           default: "30s",
         },
         {
           name: "tags",
           description: "Comma-separated labels.",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.CommaList,
+          kind: OptionKind.String,
+          format: ValueFormat.CommaList,
         },
         {
           name: "on",
           description: "Calendar day (YYYY-MM-DD).",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.Date,
+          kind: OptionKind.String,
+          format: ValueFormat.Date,
         },
         {
           name: "verbose",
           description: "Also print raw ctx.opts strings.",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
           shortName: "v",
         },
       ],
@@ -59,14 +53,13 @@ const program = {
         }
         process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
       },
-    },
+    }),
   ],
   description: "Value formats and ctx.inputs demo.",
   fallbackCommand: "run",
-  fallbackMode: CliFallbackMode.MissingOnly,
+  fallbackMode: FallbackMode.MissingOnly,
   key: "formats.ts",
   version: pkg.version,
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();

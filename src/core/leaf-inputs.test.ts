@@ -1,26 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { Cli, CliContext, CliOptionKind } from "../index.ts";
-import { LeafInputError, loadLeafInputs } from "./leaf-inputs.ts";
-import type { CliProgram } from "./types.ts";
+import { z } from "zod";
+import { argsbarg, CommandContext, OptionKind } from "../index.ts";
+import { InputError, loadLeafInputs } from "./leaf-inputs.ts";
+import type { AppSpec } from "./types.ts";
 
-const invoiceSchema = {
-  type: "object",
-  properties: {
-    format: { type: "string", enum: ["pdf", "html"] },
-    invoice: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
-  },
-  required: ["format", "invoice"],
-  additionalProperties: false,
-} as const;
+/** Zod schema for the invoice render inputs. */
+const invoiceSchema = z.strictObject({
+  format: z.enum(["pdf", "html"]),
+  invoice: z.strictObject({ id: z.string() }),
+});
 
-function renderProgram(): CliProgram {
+function renderProgram(): AppSpec {
   return {
     key: "json-pipe-test",
     version: "1.0.0",
@@ -34,14 +24,14 @@ function renderProgram(): CliProgram {
           {
             name: "format",
             description: "Output format",
-            kind: CliOptionKind.Enum,
+            kind: OptionKind.Enum,
             choices: ["pdf", "html"],
             required: true,
           },
           {
             name: "invoice",
             description: "Invoice JSON (flag or stdin)",
-            kind: CliOptionKind.Json,
+            kind: OptionKind.Json,
             pipable: true,
             required: true,
           },
@@ -49,12 +39,12 @@ function renderProgram(): CliProgram {
         handler: (ctx) => ctx.inputs,
       },
     ],
-  } satisfies CliProgram;
+  } satisfies AppSpec;
 }
 
 describe("loadLeafInputs / jsonOpt", () => {
   test("reads Json option from MCP toolArgs", async () => {
-    const cli = new Cli(renderProgram());
+    const cli = argsbarg(renderProgram());
     const result = await cli.invoke(["render", "--format", "pdf"], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },
@@ -68,7 +58,7 @@ describe("loadLeafInputs / jsonOpt", () => {
   });
 
   test("flag wins over toolArgs for Json option", async () => {
-    const cli = new Cli(renderProgram());
+    const cli = argsbarg(renderProgram());
     const result = await cli.invoke(["render", "--format", "pdf", "--invoice", '{"id":"from-flag"}'], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "from-tool-args" } },
@@ -82,7 +72,7 @@ describe("loadLeafInputs / jsonOpt", () => {
 
   test("jsonOpt reads from preloadedJson", () => {
     const program = renderProgram();
-    const ctx = new CliContext(
+    const ctx = new CommandContext(
       "json-pipe-test",
       ["render"],
       [],
@@ -97,18 +87,17 @@ describe("loadLeafInputs / jsonOpt", () => {
     expect(ctx.inputs).toEqual({ format: "pdf", invoice: { id: "piped" } });
   });
 
-  test("inputsAs returns schemagen-shaped inputs", () => {
-    type RenderInput = { format: "pdf" | "html"; invoice: { id: string } };
+  test("inputs returns the parsed inputs", () => {
     const program = renderProgram();
-    const ctx = new CliContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "mcp", undefined, {
+    const ctx = new CommandContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "mcp", undefined, {
       format: "pdf",
       invoice: { id: "INV-1" },
     });
-    expect(ctx.inputsAs<RenderInput>()).toEqual({ format: "pdf", invoice: { id: "INV-1" } });
+    expect(ctx.inputs).toEqual({ format: "pdf", invoice: { id: "INV-1" } });
   });
 
   test("rejects invalid Json flag at parse time", async () => {
-    const cli = new Cli(renderProgram());
+    const cli = argsbarg(renderProgram());
     const result = await cli.invoke(["render", "--format", "pdf", "--invoice", "not-json"], {
       invocation: "mcp",
       toolArgs: {},
@@ -118,7 +107,7 @@ describe("loadLeafInputs / jsonOpt", () => {
   });
 
   test("validates merged inputs against inputSchema", async () => {
-    const cli = new Cli(renderProgram());
+    const cli = argsbarg(renderProgram());
     const result = await cli.invoke(["render", "--format", "pdf"], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: 123 } },
@@ -142,14 +131,14 @@ describe("loadLeafInputs / jsonOpt", () => {
             {
               name: "format",
               description: "Output format",
-              kind: CliOptionKind.Enum,
+              kind: OptionKind.Enum,
               choices: ["pdf", "html"],
               required: true,
             },
             {
               name: "invoice",
               description: "Invoice JSON",
-              kind: CliOptionKind.Json,
+              kind: OptionKind.Json,
               pipable: true,
               required: true,
             },
@@ -160,8 +149,8 @@ describe("loadLeafInputs / jsonOpt", () => {
           },
         },
       ],
-    } satisfies CliProgram;
-    const cli = new Cli(program);
+    } satisfies AppSpec;
+    const cli = argsbarg(program);
     const result = await cli.invoke(["render", "--format", "pdf"], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: 123 } },
@@ -185,14 +174,14 @@ describe("loadLeafInputs / jsonOpt", () => {
             {
               name: "format",
               description: "Output format",
-              kind: CliOptionKind.Enum,
+              kind: OptionKind.Enum,
               choices: ["pdf", "html"],
               required: true,
             },
             {
               name: "invoice",
               description: "Invoice JSON",
-              kind: CliOptionKind.Json,
+              kind: OptionKind.Json,
               required: true,
             },
           ],
@@ -202,8 +191,8 @@ describe("loadLeafInputs / jsonOpt", () => {
           },
         },
       ],
-    } satisfies CliProgram;
-    const cli = new Cli(program);
+    } satisfies AppSpec;
+    const cli = argsbarg(program);
     await cli.invoke(["render", "--format", "pdf"], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },
@@ -212,28 +201,18 @@ describe("loadLeafInputs / jsonOpt", () => {
     expect(inputs[0]).toEqual(inputs[1]);
   });
 
-  test("loadLeafInputs throws LeafInputError when required Json is missing", () => {
+  test("loadLeafInputs throws InputError when required Json is missing", () => {
     const program = renderProgram();
-    const ctx = new CliContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "mcp", undefined, {});
-    expect(() => loadLeafInputs(ctx)).toThrow(LeafInputError);
+    const ctx = new CommandContext("json-pipe-test", ["render"], [], { format: "pdf" }, program, "mcp", undefined, {});
+    expect(() => loadLeafInputs(ctx)).toThrow(InputError);
   });
 
   test("omits undefined optional properties before inputSchema validation", async () => {
-    const schemaWithOptional = {
-      type: "object",
-      properties: {
-        format: { type: "string", enum: ["pdf", "html"] },
-        template: { type: "string" },
-        invoice: {
-          type: "object",
-          properties: { id: { type: "string" } },
-          required: ["id"],
-          additionalProperties: false,
-        },
-      },
-      required: ["format", "invoice"],
-      additionalProperties: false,
-    };
+    const schemaWithOptional = z.strictObject({
+      format: z.enum(["pdf", "html"]),
+      template: z.string().optional(),
+      invoice: z.strictObject({ id: z.string() }),
+    });
     const program = {
       key: "json-pipe-test",
       version: "1.0.0",
@@ -247,19 +226,19 @@ describe("loadLeafInputs / jsonOpt", () => {
             {
               name: "format",
               description: "Output format",
-              kind: CliOptionKind.Enum,
+              kind: OptionKind.Enum,
               choices: ["pdf", "html"],
               required: true,
             },
             {
               name: "template",
               description: "Template name",
-              kind: CliOptionKind.String,
+              kind: OptionKind.String,
             },
             {
               name: "invoice",
               description: "Invoice JSON",
-              kind: CliOptionKind.Json,
+              kind: OptionKind.Json,
               pipable: true,
               required: true,
             },
@@ -267,8 +246,8 @@ describe("loadLeafInputs / jsonOpt", () => {
           handler: (ctx) => ctx.inputs,
         },
       ],
-    } satisfies CliProgram;
-    const cli = new Cli(program);
+    } satisfies AppSpec;
+    const cli = argsbarg(program);
     const result = await cli.invoke(["render", "--format", "pdf"], {
       invocation: "mcp",
       toolArgs: { format: "pdf", invoice: { id: "INV-1" } },

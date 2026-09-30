@@ -1,4 +1,4 @@
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import type { InstallPaths } from "./paths.ts";
 import { mcpCategoryEnabled } from "./target-effective.ts";
@@ -7,7 +7,7 @@ import { buildDetectedSnapshot, buildTargetPlanContext } from "./target-scope.ts
 import type { InstallAction, InstallOpts, UninstallAction } from "./target-types.ts";
 
 /** Builds install actions for normal mode (--all / scoped targets). */
-export function buildInstallPlanFromTargets(root: CliProgram, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
+export function buildInstallPlanFromTargets(root: AppSpec, paths: InstallPaths, opts: InstallOpts): InstallAction[] {
   const detected = buildDetectedSnapshot(root, paths);
   const ctx = buildTargetPlanContext(root, paths, opts, detected);
 
@@ -23,7 +23,7 @@ export function buildInstallPlanFromTargets(root: CliProgram, paths: InstallPath
 
 /** Builds uninstall actions for scoped targets or --all. */
 export function buildUninstallPlanFromTargets(
-  root: CliProgram,
+  root: AppSpec,
   paths: InstallPaths,
   opts: InstallOpts,
 ): UninstallAction[] {
@@ -44,7 +44,7 @@ export function buildUninstallPlanFromTargets(
 
 /** Runs MCP preflight for planned install actions. */
 export function runTargetPreflight(
-  root: CliProgram,
+  root: AppSpec,
   paths: InstallPaths,
   opts: InstallOpts,
   actions: InstallAction[],

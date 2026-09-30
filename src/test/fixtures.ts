@@ -1,9 +1,9 @@
-import type { CliProgram } from "../core/types.ts";
-import { CliFallbackMode, CliOptionKind } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
+import { FallbackMode, OptionKind } from "../core/types.ts";
 import type { McpToolDef } from "../mcp/tools.ts";
 
-export function testProgram(prog: Record<string, unknown> & { key: string; description: string }): CliProgram {
-  return { version: "0.0.0", ...prog } as CliProgram;
+export function testProgram(prog: Record<string, unknown> & { key: string; description: string }): AppSpec {
+  return { version: "0.0.0", ...prog } as AppSpec;
 }
 
 /** MCP tool with `name` from `collectMcpTools`, or throw. */
@@ -39,7 +39,7 @@ export const nestedMcpFixture = testProgram({
                 {
                   name: "user-name",
                   description: "User to look up.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                   shortName: "u",
                 },
               ],
@@ -47,7 +47,7 @@ export const nestedMcpFixture = testProgram({
                 {
                   name: "path",
                   description: "File or directory.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                 },
               ],
               handler: () => {},
@@ -63,7 +63,7 @@ export const nestedMcpFixture = testProgram({
         {
           name: "files",
           description: "Paths to read.",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           argMax: 0,
         },
       ],
@@ -77,7 +77,7 @@ export const nestedMcpFixture = testProgram({
     },
   ],
   fallbackCommand: "read",
-  fallbackMode: CliFallbackMode.MissingOrUnknown,
+  fallbackMode: FallbackMode.MissingOrUnknown,
 });
 
 /** Sends NDJSON MCP requests to a subprocess and collects responses by id. */
@@ -128,7 +128,7 @@ export const enumMcpFixture = testProgram({
         {
           name: "mode",
           description: "Mode.",
-          kind: CliOptionKind.Enum,
+          kind: OptionKind.Enum,
           choices: ["dev", "prod"],
           required: true,
         },
@@ -138,7 +138,7 @@ export const enumMcpFixture = testProgram({
   ],
 });
 
-export function varargsReadFixture(): CliProgram {
+export function varargsReadFixture(): AppSpec {
   return testProgram({
     key: "app",
     description: "",
@@ -150,14 +150,14 @@ export function varargsReadFixture(): CliProgram {
           {
             name: "json",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         positionals: [
           {
             name: "files",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 0,
             argMax: 0,
           },
@@ -168,7 +168,7 @@ export function varargsReadFixture(): CliProgram {
   });
 }
 
-export function nestedDocsFallbackFixture(): CliProgram {
+export function nestedDocsFallbackFixture(): AppSpec {
   return testProgram({
     key: "app",
     description: "",
@@ -178,7 +178,7 @@ export function nestedDocsFallbackFixture(): CliProgram {
         key: "docs",
         description: "Documentation commands.",
         fallbackCommand: "guide",
-        fallbackMode: CliFallbackMode.MissingOnly,
+        fallbackMode: FallbackMode.MissingOnly,
         commands: [
           {
             key: "guide",

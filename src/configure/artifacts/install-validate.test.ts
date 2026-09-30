@@ -3,11 +3,11 @@ Tests for install/install-validate module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "../../core/types.ts";
-import { CliSchemaValidationError } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
+import { SchemaValidationError } from "../../core/types.ts";
 import { cliValidateProgram } from "../../core/validate.ts";
 
-const base: CliProgram = {
+const base: AppSpec = {
   key: "app",
   version: "1.0.0",
   description: "Test",
@@ -24,25 +24,17 @@ describe("validateConfigureConfig", () => {
     const program = {
       ...base,
       configure: { targets: { allSkills: true } },
-    } as CliProgram;
-    expect(() => cliValidateProgram(program)).toThrow(CliSchemaValidationError);
+    } as AppSpec;
+    expect(() => cliValidateProgram(program)).toThrow(SchemaValidationError);
     expect(() => cliValidateProgram(program)).toThrow(/allSkills/);
-  });
-
-  test("rejects configure.agentIntegration", () => {
-    const program = {
-      ...base,
-      configure: { agentIntegration: "mcp" },
-    } as CliProgram;
-    expect(() => cliValidateProgram(program)).toThrow(/agentIntegration removed/);
   });
 
   test("rejects legacy per-host skill targets", () => {
     const program = {
       ...base,
       configure: { targets: { cursorSkill: true } },
-    } as CliProgram;
-    expect(() => cliValidateProgram(program)).toThrow(/cursorSkill removed/);
+    } as AppSpec;
+    expect(() => cliValidateProgram(program)).toThrow(/configure.targets.cursorSkill is not a valid target key/);
   });
 
   test("rejects legacy per-host MCP targets", () => {
@@ -50,15 +42,15 @@ describe("validateConfigureConfig", () => {
       ...base,
       mcpServer: { enabled: true },
       configure: { targets: { cursorMcp: true } },
-    } as CliProgram;
-    expect(() => cliValidateProgram(program)).toThrow(/cursorMcp removed/);
+    } as AppSpec;
+    expect(() => cliValidateProgram(program)).toThrow(/configure.targets.cursorMcp is not a valid target key/);
   });
 
   test("rejects unknown configure.targets keys", () => {
     const program = {
       ...base,
       configure: { targets: { unknownKey: true } },
-    } as CliProgram;
+    } as AppSpec;
     expect(() => cliValidateProgram(program)).toThrow(/not a valid target key/);
   });
 });

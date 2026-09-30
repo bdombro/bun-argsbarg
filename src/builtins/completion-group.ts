@@ -1,11 +1,11 @@
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 
 /**
- * Builds the static `completion` / `bash` / `zsh` / `fish` command subtree (merged into the program root at runtime).
+ * Builds the static `completion` / `bash` / `zsh` / `fish` command subtree (merged into the app root at runtime).
  */
-export function cliBuiltinCompletionGroup(program: CliProgram): import("../core/types.ts").CliRouter {
+export function cliBuiltinCompletionGroup(program: AppSpec): import("../core/types.ts").CommandGroup {
   const appName = program.key;
-  const router: import("../core/types.ts").CliRouter = {
+  const router: import("../core/types.ts").CommandGroup = {
     key: "completion",
     cli: { hidden: true },
     description: "Generate the autocompletion script for shells.",

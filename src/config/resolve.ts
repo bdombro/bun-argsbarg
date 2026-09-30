@@ -1,8 +1,8 @@
 /*
-Resolve program.appConfig values: defaults, file, env override, export to process.env.
+Resolve appConfig values: defaults, file, env override, export to process.env.
 */
 
-import type { CliAppConfigEntry, CliAppConfigResolveContext, CliProgram } from "../core/types.ts";
+import type { AppConfigEntry, AppConfigResolveContext, AppSpec } from "../core/types.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 import type { AppConfigFileData } from "./file.ts";
 import { displayAppConfigPath } from "./file.ts";
@@ -21,7 +21,7 @@ function isPresent(value: unknown): boolean {
 }
 
 /** Snapshot mapped host env at bootstrap entry (before file exports mutate process.env). */
-export function captureMappedHostEnv(program: CliProgram): Record<string, string | undefined> {
+export function captureMappedHostEnv(program: AppSpec): Record<string, string | undefined> {
   const out: Record<string, string | undefined> = {};
   const entries = program.appConfig?.entries;
   if (!entries) {
@@ -44,7 +44,7 @@ function envOverrideValue(envName: string, hostEnv?: Record<string, string | und
 }
 
 /** Coerce env string to typed value using property schema when possible. */
-function coerceEnvValue(program: CliProgram, key: string, raw: string): unknown {
+function coerceEnvValue(program: AppSpec, key: string, raw: string): unknown {
   const jsonSchema = effectiveJsonSchema(program);
   if (!jsonSchema) {
     return raw;
@@ -72,7 +72,7 @@ function coerceEnvValue(program: CliProgram, key: string, raw: string): unknown 
 
 /** Resolve all schema keys from file data and mapped host env (env wins over file). */
 export function resolveAppConfig(
-  program: CliProgram,
+  program: AppSpec,
   fileData: AppConfigFileData,
   hostEnv?: Record<string, string | undefined>,
 ): ResolvedConfig {
@@ -91,9 +91,9 @@ export function resolveAppConfig(
 }
 
 function tryEnvOverride(
-  program: CliProgram,
+  program: AppSpec,
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   hostEnv?: Record<string, string | undefined>,
 ): unknown {
   if (!entry.env) {
@@ -107,25 +107,25 @@ function tryEnvOverride(
 }
 
 function buildResolveContext(
-  program: CliProgram,
+  program: AppSpec,
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   fileData: AppConfigFileData,
   hostEnv?: Record<string, string | undefined>,
-): CliAppConfigResolveContext {
+): AppConfigResolveContext {
   return {
     key,
     entry,
-    program,
+    spec: program,
     fileValue: fileData[key],
     envValue: entry.env ? envOverrideValue(entry.env, hostEnv) : undefined,
   };
 }
 
 function resolveConfigKey(
-  program: CliProgram,
+  program: AppSpec,
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   fileData: AppConfigFileData,
   hostEnv?: Record<string, string | undefined>,
 ): unknown {
@@ -159,7 +159,7 @@ function resolveConfigKey(
 
 /** Write mapped config values to process.env for subprocess inheritance (never overwrites host env). */
 export function exportConfigToEnv(
-  program: CliProgram,
+  program: AppSpec,
   resolved: ResolvedConfig,
   hostEnv?: Record<string, string | undefined>,
 ): void {
@@ -198,7 +198,7 @@ export function stringifyConfigValue(value: unknown): string {
 }
 
 /** Required schema keys that are still missing after resolution. */
-export function missingRequiredConfig(program: CliProgram, resolved: ResolvedConfig): string[] {
+export function missingRequiredConfig(program: AppSpec, resolved: ResolvedConfig): string[] {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return [];
@@ -218,7 +218,7 @@ export function missingRequiredConfig(program: CliProgram, resolved: ResolvedCon
 }
 
 /** Stderr message when required config keys are missing. */
-export function formatMissingConfigMessage(program: CliProgram, keys: string[]): string {
+export function formatMissingConfigMessage(program: AppSpec, keys: string[]): string {
   const list = keys.join(", ");
   const path = displayAppConfigPath(program);
   return [
@@ -231,7 +231,7 @@ export function formatMissingConfigMessage(program: CliProgram, keys: string[]):
 }
 
 /** MCP tools/call error when required config is missing. */
-export function formatMcpMissingConfigMessage(program: CliProgram, keys: string[]): string {
+export function formatMcpMissingConfigMessage(program: AppSpec, keys: string[]): string {
   const list = keys.join(", ");
   const path = displayAppConfigPath(program);
   return [

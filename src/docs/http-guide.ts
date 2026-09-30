@@ -1,17 +1,17 @@
 import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
-import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { type AppSpec, OptionKind } from "../core/types.ts";
 import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
 import { collectHttpRoutes } from "../http/routes.ts";
 import { resolveHttpListenAddress } from "../http/server.ts";
-import { leafWireOptions } from "../mcp/tools.ts";
+import { commandWireOptions } from "../mcp/tools.ts";
 
 /** Formats one HTTP route for the auto-generated HTTP guide. */
-function formatRouteLine(root: CliProgram, route: ReturnType<typeof collectHttpRoutes>[number]): string {
+function formatRouteLine(root: AppSpec, route: ReturnType<typeof collectHttpRoutes>[number]): string {
   const cliPath = route.commandPath.join(" ");
   let line = `- \`${route.method} ${route.openApiPath}\` (CLI: \`${root.key} ${cliPath}\`) — ${route.leaf.description}`;
-  const opts = leafWireOptions(route.leaf);
-  const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
+  const opts = commandWireOptions(route.leaf);
+  const flags = opts.filter((o) => o.kind === OptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;
   }
@@ -19,7 +19,7 @@ function formatRouteLine(root: CliProgram, route: ReturnType<typeof collectHttpR
 }
 
 /** Generates the auto `docs http` markdown guide from schema and API config. */
-export function generateHttpGuide(root: CliProgram): string {
+export function generateHttpGuide(root: AppSpec): string {
   const api = root.httpServer;
   if (!api) {
     throw new Error("HTTP API server not enabled");
@@ -52,7 +52,7 @@ export function generateHttpGuide(root: CliProgram): string {
     "| Method | Path | Purpose |",
     "| --- | --- | --- |",
     "| `GET` | `/health/liveness` | Liveness — server is online and accepting requests |",
-    "| `GET` | `/health/readiness` | Readiness — online plus config and `program.readiness` checks passed |",
+    "| `GET` | `/health/readiness` | Readiness — online plus config and `readiness` checks passed |",
     "| `GET` | `/openapi.json` | OpenAPI 3.1 REST paths |",
     "| `GET` | `/swagger` | Interactive Swagger UI API reference |",
     `| * | \`${userGlob}\` | Invoke user commands (method per route) |`,
@@ -84,7 +84,7 @@ export function generateHttpGuide(root: CliProgram): string {
     "",
     "Server logs go to **stderr** (one JSON object per line by default).",
     "",
-    "- Configure with `program.log` on the program root",
+    "- Configure with `log` on the app root",
     "- **`enrich`** — add custom JSON fields on top of the default line",
     "- **`serialize`** — replace the formatter and emit your own line shape",
     "",

@@ -7,7 +7,7 @@ import { $ } from "bun";
 import { completionBashScript, completionZshScript } from "../builtins/index.ts";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { cliHelpRender } from "../help.ts";
-import { Cli, CliFallbackMode, CliOptionKind, type CliProgram } from "../index.ts";
+import { type AppSpec, argsbarg, FallbackMode, OptionKind } from "../index.ts";
 import { applyShellEnv } from "../mcp/env.ts";
 import { allMcpResources, collectMcpTools, mcpToolCallToArgv, resolveMcpSchemaUri } from "../mcp/tools.ts";
 import { generatePluginSkillBundle } from "../skill/generate.ts";
@@ -20,7 +20,7 @@ import {
   varargsReadFixture,
 } from "../test/fixtures.ts";
 import { ParseKind, parse, postParseValidate } from "./parse.ts";
-import { cliSchemaJson } from "./schema.ts";
+import { schemaJson } from "./schema.ts";
 import { cliValidateProgram } from "./validate.ts";
 
 /** Tests that bundled short presence flags. */
@@ -36,13 +36,13 @@ test("bundled short presence flags", () => {
           {
             name: "a",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
             shortName: "a",
           },
           {
             name: "b",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
             shortName: "b",
           },
         ],
@@ -70,7 +70,7 @@ test("long option equals", () => {
           {
             name: "name",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         handler: () => {},
@@ -96,14 +96,14 @@ test("fallback missing or unknown root flags", () => {
           {
             name: "name",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         handler: () => {},
       },
     ],
     fallbackCommand: "hello",
-    fallbackMode: CliFallbackMode.MissingOrUnknown,
+    fallbackMode: FallbackMode.MissingOrUnknown,
   });
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["--name", "bob"]));
@@ -228,7 +228,7 @@ test("invalid number post validate", () => {
           {
             name: "n",
             description: "",
-            kind: CliOptionKind.Number,
+            kind: OptionKind.Number,
           },
         ],
         handler: () => {},
@@ -255,7 +255,7 @@ test("supports scientific notation in numbers", () => {
           {
             name: "n",
             description: "",
-            kind: CliOptionKind.Number,
+            kind: OptionKind.Number,
           },
         ],
         handler: () => {},
@@ -346,14 +346,14 @@ test("trailing options after bounded positionals", () => {
           {
             name: "verbose",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         positionals: [
           {
             name: "path",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         handler: () => {},
@@ -380,25 +380,25 @@ test("options interleaved between bounded positionals", () => {
           {
             name: "force",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
             shortName: "f",
           },
           {
             name: "mode",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         positionals: [
           {
             name: "src",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
           {
             name: "dest",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         handler: () => {},
@@ -456,21 +456,21 @@ test("options interleaved with optional positionals", () => {
           {
             name: "force",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         positionals: [
           {
             name: "env",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 0,
             argMax: 1,
           },
           {
             name: "target",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 0,
             argMax: 1,
           },
@@ -513,21 +513,21 @@ test("options interleaved between bounded positional and varargs tail", () => {
           {
             name: "json",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         positionals: [
           {
             name: "target",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 1,
             argMax: 1,
           },
           {
             name: "files",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 1,
             argMax: 0,
           },
@@ -545,8 +545,8 @@ test("options interleaved between bounded positional and varargs tail", () => {
   expect(pr.opts.json).toBe("1");
 });
 
-/** Tests that options on routing groups are rejected at schema validation. */
-test("rejects options on routing groups", () => {
+/** Tests that options on command group are rejected at schema validation. */
+test("rejects options on command group", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -558,7 +558,7 @@ test("rejects options on routing groups", () => {
           {
             name: "json",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         commands: [
@@ -571,11 +571,11 @@ test("rejects options on routing groups", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/routing group/);
+  expect(() => cliValidateProgram(root)).toThrow(/command group/);
 });
 
-/** Tests that leaf flags are only accepted on the leaf command segment. */
-test("leaf flags are only accepted on the leaf command segment", () => {
+/** Tests that leaf flags are only accepted on the command with a handler segment. */
+test("leaf flags are only accepted on the command with a handler segment", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -591,12 +591,12 @@ test("leaf flags are only accepted on the leaf command segment", () => {
               {
                 name: "json",
                 description: "",
-                kind: CliOptionKind.Presence,
+                kind: OptionKind.Presence,
               },
               {
                 name: "user",
                 description: "",
-                kind: CliOptionKind.String,
+                kind: OptionKind.String,
                 shortName: "u",
               },
             ],
@@ -604,7 +604,7 @@ test("leaf flags are only accepted on the leaf command segment", () => {
               {
                 name: "path",
                 description: "",
-                kind: CliOptionKind.String,
+                kind: OptionKind.String,
               },
             ],
             handler: () => {},
@@ -635,14 +635,14 @@ test("varargs tail parses trailing options", () => {
           {
             name: "json",
             description: "",
-            kind: CliOptionKind.Presence,
+            kind: OptionKind.Presence,
           },
         ],
         positionals: [
           {
             name: "files",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 0,
             argMax: 0,
           },
@@ -671,14 +671,14 @@ test("stops parsing options at --", () => {
           {
             name: "name",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
           },
         ],
         positionals: [
           {
             name: "files",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMin: 0,
             argMax: 0,
           },
@@ -703,7 +703,7 @@ test("missing required option returns error", () => {
       {
         name: "req",
         description: "",
-        kind: CliOptionKind.String,
+        kind: OptionKind.String,
         required: true,
       },
     ],
@@ -734,7 +734,7 @@ test("provided required option parses ok", () => {
           {
             name: "req",
             description: "",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             required: true,
           },
         ],
@@ -757,7 +757,7 @@ test("presence option cannot be required", () => {
       {
         name: "flag",
         description: "",
-        kind: CliOptionKind.Presence,
+        kind: OptionKind.Presence,
         required: true,
       },
     ],
@@ -848,7 +848,7 @@ test("root --schema is no longer a flag", () => {
 });
 
 /** CliSchemaJson omits handlers and completion built-ins. */
-test("cliSchemaJson omits handlers and completion built-ins", () => {
+test("schemaJson omits handlers and completion built-ins", () => {
   const root = testProgram({
     key: "app",
     description: "demo",
@@ -872,14 +872,14 @@ test("cliSchemaJson omits handlers and completion built-ins", () => {
     ],
   });
 
-  const schema = JSON.parse(cliSchemaJson(root));
+  const schema = JSON.parse(schemaJson(root));
   expect(schema.commands).toHaveLength(1);
   expect(schema.commands[0].key).toBe("x");
   expect(schema).not.toHaveProperty("handler");
 });
 
-/** CliSchemaExport configure notes reference README for install. */
-test("cliSchemaExport configure notes reference README for install", () => {
+/** SchemaExport configure notes reference README for install. */
+test("schemaExport configure notes reference README for install", () => {
   const root = testProgram({
     key: "myapp",
     version: "1.0.0",
@@ -893,14 +893,14 @@ test("cliSchemaExport configure notes reference README for install", () => {
     ],
   });
 
-  const json = cliSchemaJson(root);
+  const json = schemaJson(root);
   expect(json).not.toContain("{argsbarg:program}");
   expect(json).toContain("README");
   expect(json).not.toContain("brew install <tap>");
 });
 
-/** CliSchemaExport resolves {argsbarg:program} in consumer notes. */
-test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
+/** SchemaExport resolves {argsbarg:program} in consumer notes. */
+test("schemaExport resolves {argsbarg:program} in consumer notes", () => {
   const root = testProgram({
     key: "myapp",
     version: "1.0.0",
@@ -915,7 +915,7 @@ test("cliSchemaExport resolves {argsbarg:program} in consumer notes", () => {
     ],
   });
 
-  const schema = JSON.parse(cliSchemaJson(root));
+  const schema = JSON.parse(schemaJson(root));
   expect(schema.commands[0].notes).toBe("Run `myapp run` to start.");
 });
 
@@ -931,7 +931,7 @@ test("cliValidateProgram rejects Enum with no choices", () => {
     key: "app",
     description: "",
     handler: () => {},
-    options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: [] }],
+    options: [{ name: "mode", description: "", kind: OptionKind.Enum, choices: [] }],
   });
   expect(() => cliValidateProgram(root)).toThrow(/requires non-empty choices/);
 });
@@ -941,7 +941,7 @@ test("cliValidateProgram rejects Enum with duplicate choices", () => {
     key: "app",
     description: "",
     handler: () => {},
-    options: [{ name: "mode", description: "", kind: CliOptionKind.Enum, choices: ["a", "a"] }],
+    options: [{ name: "mode", description: "", kind: OptionKind.Enum, choices: ["a", "a"] }],
   });
   expect(() => cliValidateProgram(root)).toThrow(/choices must be distinct/);
 });
@@ -965,7 +965,7 @@ test("mcpTool.description override wins without env suffix", () => {
   expect(tools[0]?.description).toBe("custom");
 });
 
-test("cliValidateProgram requires program.appConfig description", () => {
+test("cliValidateProgram requires appConfig description", () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -1135,7 +1135,7 @@ test("Enum completions list choices in bash script", () => {
       {
         key: "run",
         description: "",
-        options: [{ name: "mode", description: "m", kind: CliOptionKind.Enum, choices: ["dev", "prod"] }],
+        options: [{ name: "mode", description: "m", kind: OptionKind.Enum, choices: ["dev", "prod"] }],
         handler: () => {},
       },
     ],
@@ -1165,7 +1165,7 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
         key: "docs",
         description: "Documentation commands.",
         fallbackCommand: "guide",
-        fallbackMode: CliFallbackMode.MissingOrUnknown,
+        fallbackMode: FallbackMode.MissingOrUnknown,
         commands: [
           {
             key: "guide",
@@ -1174,7 +1174,7 @@ test("nested fallback MissingOrUnknown routes unknown token to default", () => {
               {
                 name: "topic",
                 description: "",
-                kind: CliOptionKind.String,
+                kind: OptionKind.String,
                 argMin: 0,
                 argMax: 0,
               },
@@ -1246,7 +1246,7 @@ test("nested router scoped help does not route to fallback", () => {
   expect(help).toContain("guide");
 });
 
-test("varargs trailing option after positionals via Cli.invoke", async () => {
+test("varargs trailing option after positionals via App.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
@@ -1285,7 +1285,7 @@ test("varargs double dash forces positional", () => {
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["read", "--unknown"]);
+  const result = await argsbarg(root).invoke(["read", "--unknown"]);
   expect(result.kind).toBe("error");
   expect(result.stderr).toContain("--unknown");
 });
@@ -1334,19 +1334,8 @@ test("configure config on non-root node is rejected", () => {
         handler: () => {},
       },
     ],
-  } as unknown as CliProgram;
-  expect(() => cliValidateProgram(root)).toThrow(/configure is only supported on the program root/);
-});
-
-test("configure.prefix is rejected", () => {
-  const root = {
-    key: "app",
-    version: "0.0.0",
-    description: "",
-    configure: { prefix: "/opt/bin" },
-    handler: () => {},
-  } as unknown as CliProgram;
-  expect(() => cliValidateProgram(root)).toThrow(/configure\.prefix removed/);
+  } as unknown as AppSpec;
+  expect(() => cliValidateProgram(root)).toThrow(/configure is only supported on the app root/);
 });
 
 /** Tests that generatePluginSkillBundle is MCP routing stub without shell catalog. */

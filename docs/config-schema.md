@@ -1,21 +1,21 @@
-# Config schema (`program.appConfig`)
+# Config schema (`appConfig`)
 
-How to declare app configuration — flat JSON file, env overrides, handler access via `ctx.appConfig`, and a **recommended codegen pipeline** for typed config.
+How to declare app configuration: a flat JSON file, env overrides, handler access via `ctx.appConfig`, and an optional Zod schema for typed config.
 
 ## Argsbarg contract
 
-On the **program root**, set `appConfig` with metadata `entries` and optional block `jsonSchema`:
+On the **app root**, set `appConfig` with metadata `entries` and an optional Zod object `schema`:
 
 ```typescript
-import { Cli, type CliProgram } from "argsbarg";
-import { APP_CONFIG_JSON_SCHEMA } from "./schemas/configSchemas.js";
+import { argsbarg } from "argsbarg";
+import { Settings } from "./config/types.ts";
 
-const program = {
+const app = argsbarg({
   key: "myapp",
   version: "1.0.0",
   description: "…",
   appConfig: {
-    jsonSchema: APP_CONFIG_JSON_SCHEMA,
+    schema: Settings,
     entries: {
       apiToken: {
         description: "Create at https://example.com/settings/tokens",
@@ -30,10 +30,9 @@ const program = {
     const token = ctx.appConfig.require("apiToken");
     const region = ctx.appConfig.get("defaultRegion"); // default already applied
   },
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();
 ```
 
 | Where argsbarg uses it | Purpose |
@@ -44,31 +43,31 @@ await cli.run();
 | MCP bundle / Claude plugin | `userConfig` for entries with `env` set |
 | `ctx.appConfig` in handlers | `get`, `require`, `set`, `read`, `getUnsafe`, `setUnsafe`, `readUnsafe`, `path`, `dir` — prefer `get`/`set` when `appConfig` is set |
 
-**Handler access** — with `program.appConfig`: `get` / `set` / `require` use schema validation and resolved values. `getUnsafe` / `setUnsafe` / `readUnsafe` read and write the raw file (for `_bindings` and ad-hoc keys). Without `program.appConfig`, only `path`, `dir`, and the `*Unsafe` methods work.
+**Handler access** — with `appConfig`: `get` / `set` / `require` use schema validation and resolved values. `getUnsafe` / `setUnsafe` / `readUnsafe` read and write the raw file (for `_bindings` and ad-hoc keys). Without `appConfig`, only `path`, `dir`, and the `*Unsafe` methods work.
 
 **`_bindings`** — reserved top-level metadata: `{ "_bindings": { "apiToken": "env" } }`. Set via wizard (Enter to use env), `configure set --from-env`, or `ctx.appConfig.set` (marks `file`). Optional keys can be bound to `skip`.
 
-**Validation at runtime** — argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective JSON Schema ([validation](json-schema-subset.md)). Draft is chosen from `jsonSchema.$schema` (default Draft-07). Partial writes (bindings only, single-key updates) skip required-property checks.
+**Validation at runtime:** argsbarg validates the config file and `configure set` / `ctx.appConfig.set` against the effective Zod schema ([schemas](json-schema-subset.md)). Partial writes (bindings only, single-key updates) validate with `schema.partial()`, so top-level required keys are skipped.
 
 See [cli-program.md — Configuration](cli-program.md#configuration-programappconfig) for resolution order, bootstrap timing, and `configure get`/`set`.
 
-## `CliAppConfig` and `CliAppConfigEntry`
+## `AppConfig` and `AppConfigEntry`
 
 ```typescript
-export interface CliAppConfigEntry {
+export interface AppConfigEntry {
   description: string;
   title?: string;       // default: config key
   default?: string;     // all-string mode only
-  required?: boolean;   // default: true (can override jsonSchema required)
+  required?: boolean;   // default: true (can override schema required)
   sensitive?: boolean;  // default: name heuristic
   env?: string;         // env override + export to process.env after resolve
-  resolve?: CliAppConfigResolveFn;  // fallback after file; must be synchronous
+  resolve?: AppConfigResolveFn;  // fallback after file; must be synchronous
 }
 
-export interface CliAppConfig {
+export interface AppConfig {
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
-  jsonSchema?: Record<string, unknown>;  // JSON Schema block; include $schema to opt into 2019-09 / 2020-12
-  entries: Record<string, CliAppConfigEntry>;
+  schema?: z.ZodObject;  // Zod object schema (z.strictObject recommended); omit for all-string mode
+  entries: Record<string, AppConfigEntry>;
 }
 ```
 
@@ -101,7 +100,7 @@ No nested `env` bag. No extra keys — rejected on load.
 | 2 | **File** | `config.json` value for the key |
 | 3 | **`resolve()`** | Optional synchronous callback (e.g. `gh auth token`); return `undefined` to continue. Async/Promise return values are ignored. |
 | 4 | **Env** (`entry.env`) | Fallback when `resolve` returned `undefined` |
-| 5 | **Default** | `jsonSchema` / `entry.default` |
+| 5 | **Default** | `schema` field `.default()` / `entry.default` |
 
 Empty string in env or file counts as **missing** for required entries. After resolution, mapped values are exported to `process.env`.
 
@@ -129,72 +128,37 @@ githubToken: {
 
 Interactive `configure` does not persist values supplied only by env or `resolve` when you press Enter to accept the current value.
 
-## Hand-written vs generated
+## All-string vs typed config
 
 | Approach | When |
 | --- | --- |
-| **Omit `jsonSchema`** | Simple apps; all values stored as strings; use `entry.default` |
-| **Codegen from TypeScript** | Typed config, nested objects, shared with JSON Schema CI |
+| **Omit `schema`** | Simple apps; all values are strings; use `entry.default` |
+| **Zod `schema`** | Typed config, nested objects, defaults, formats |
 
-## Recommended pipeline (argsbarg schemagen)
+## Typed config with Zod
 
-Mirror the [output-schema.md](output-schema.md) pattern for config:
-
-```mermaid
-flowchart LR
-  subgraph src [src/config/types.ts]
-    Marker["/** @sg */ export interface AppConfig"]
-  end
-  subgraph gen [argsbarg schemagen]
-    Script["argsbarg schemagen"]
-    Gen["ts-json-schema-generator"]
-  end
-  subgraph artifacts [Gitignored __generated__]
-    Json["AppConfigSchema.json"]
-    Index["index.ts"]
-  end
-  subgraph runtime [Runtime]
-    Program["program.appConfig.jsonSchema"]
-    Validate["@cfworker/json-schema (draft from $schema)"]
-  end
-  src --> Script --> Gen --> Json
-  Gen --> Index --> Program --> Validate
-```
-
-| Piece | Convention |
-| --- | --- |
-| Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled with argsbarg) |
-| Discovery | `/** @sg */` on `AppConfig` in `src/config/types.ts` (or any scanned `src/**/*.ts`) |
-| Artifacts | `src/config/__generated__/AppConfigSchema.json` — gitignored; run `just schemagen` after clone |
-| Consumer CI | Optional: `ajv` + `ajv-formats` against the same committed JSON (not an argsbarg runtime dep) |
-
-Example:
+Define the config schema next to the program, with `.describe()` on every key (agents and prompts read it):
 
 ```typescript
 // src/config/types.ts
-/** @sg */
-export interface AppConfig {
-  apiToken: string;
-}
+import { z } from "zod";
+
+/** App configuration file. Named `Settings` so it doesn't clash with argsbarg's `AppConfig` type. */
+export const Settings = z.strictObject({
+  apiToken: z.string().min(1).describe("Create at https://example.com/settings/tokens"),
+  defaultRegion: z.string().default("us-east-1").describe("AWS region."),
+  maxRetries: z.number().int().min(0).max(10).default(3).describe("Retry count."),
+});
+
+/** Parsed app configuration. */
+export type Settings = z.infer<typeof Settings>;
 ```
 
-Wire on the program root: `import { AppConfigSchema } from "./config/__generated__"`.
+Wire it on the app root with `appConfig: { schema: Settings, entries: { … } }`. Every `entries` key must exist in `schema.shape`, and argsbarg checks this at startup. `z.strictObject` rejects unknown keys on load. With `z.object`, unknown keys are stripped, and MCP/HTTP startup logs a `schema.strictness` warning.
 
-### Supported AppConfig shapes (runtime validation)
+Prompts, `configure set` coercion, and MCP manifests read the emitted JSON Schema (`z.toJSONSchema(schema, { io: "input" })`), so `.default()` values show up as defaults and fields with defaults become optional.
 
-Validation is [@cfworker/json-schema](https://www.npmjs.com/package/@cfworker/json-schema) with draft from `$schema` (default Draft-07). See [json-schema-subset.md](json-schema-subset.md) for drafts, Zod interop, and limits.
-
-| Commonly used | Notes |
-| --- | --- |
-| `type`, `properties`, `required`, `additionalProperties` | |
-| `enum`, `const` | `default` is not applied at validation time |
-| local `#/definitions` + `$ref` (Draft-07) or `#/$defs` + `$ref` (2020-12) | remote `$ref` not supported |
-| `anyOf` / `oneOf` / `allOf` | |
-| `items`, `minItems`, `maxItems` | |
-| `minimum`, `maximum`, `minLength`, `maxLength`, `pattern` | |
-| `format` | includes argsbarg `comma-list` |
-
-## Minimal example (no schemagen)
+## Minimal example (all-string mode)
 
 ```typescript
 appConfig: {
@@ -209,7 +173,7 @@ All file values are strings. Defaults come from `entry.default`.
 
 ## Built-in `configure get` / `configure set`
 
-When `program.appConfig` is set and `commands !== false`:
+When `appConfig` is set and `commands !== false`:
 
 | Subcommand | Purpose |
 | --- | --- |
@@ -224,9 +188,9 @@ Object/array/`$ref` properties require `--json` on `configure set` when comma-se
 
 | Example | Role |
 | --- | --- |
-| [`examples/full-example-json/`](../examples/full-example-json/) | **Schema-first copy template** — `@sg` schemagen, builtins; optional `program.appConfig` |
+| [`examples/api/`](../examples/api/) | **Schema-first copy template**: Zod schemas, builtins; optional `appConfig` |
 
 ```bash
-cd examples/full-example-json && just setup && just schemagen
-FULL_EXAMPLE_JSON_API_TOKEN=dev just run configure get apiToken --json
+cd examples/api && just setup
+EXAMPLE_API_API_TOKEN=dev just run configure get apiToken --json
 ```

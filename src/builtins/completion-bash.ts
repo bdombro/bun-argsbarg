@@ -1,4 +1,4 @@
-import { CliOptionKind, type CliRouter } from "../core/types.ts";
+import { type CommandGroup, OptionKind } from "../core/types.ts";
 import { emitConsumeLong, emitConsumeShort, emitMatchChild } from "./completion-simulate-shared.ts";
 import { collectScopes, type ScopeRec } from "./scopes.ts";
 import { escShellSingleQuoted, identToken, kHelpLong, kHelpShort, mainName } from "./shell-helpers.ts";
@@ -45,7 +45,7 @@ function emitEnumReplyBash(ident: string, scopes: ScopeRec[]): string {
   o += '  local sid="$1" prev="$2" cur="$3"\n';
   o += "  case $sid in\n";
   for (const [i, sc] of scopes.entries()) {
-    const enumOpts = sc.opts.filter((op) => op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0);
+    const enumOpts = sc.opts.filter((op) => op.kind === OptionKind.Enum && (op.choices?.length ?? 0) > 0);
     if (enumOpts.length === 0) continue;
     o += `    ${i})\n`;
     o += "      case $prev in\n";
@@ -62,7 +62,7 @@ function emitEnumReplyBash(ident: string, scopes: ScopeRec[]): string {
   return o;
 }
 
-function emitMainBodyBash(schema: CliRouter, ident: string): string {
+function emitMainBodyBash(schema: CommandGroup, ident: string): string {
   const main = mainName(schema.key);
   let o = "_${main}() {\n".replace("${main}", main);
   o += '  local cur="${COMP_WORDS[COMP_CWORD]}"\n';
@@ -97,7 +97,7 @@ function emitMainBodyBash(schema: CliRouter, ident: string): string {
 }
 
 /** Returns a self-contained bash `complete` script for the given program schema. */
-export function completionBashScript(schema: CliRouter): string {
+export function completionBashScript(schema: CommandGroup): string {
   const ident = identToken(schema.key);
   const scopes = collectScopes(schema);
   const pathIndex: Record<string, number> = {};

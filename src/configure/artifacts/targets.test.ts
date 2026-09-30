@@ -3,7 +3,7 @@ Tests for install/targets module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { normalizeInstallRawOpts } from "./normalize.ts";
 import { normalizeUninstallRawOpts } from "./normalize-uninstall.ts";
 import { resolveEffectiveInstallTargets } from "./target-effective.ts";
@@ -43,13 +43,13 @@ describe("resolveEffectiveInstallTargets", () => {
   });
 
   test("skill disabled even when program.skill is set (skill gen removed)", () => {
-    const t = resolveEffectiveInstallTargets(undefined, { skill: { enabled: true } });
+    const t = resolveEffectiveInstallTargets(undefined, {});
     expect(t.skill.enabled).toBe(false);
     expect(t.skill.includedInAll).toBe(false);
   });
 
   test("agentsMcp in --all when mcpServer enabled", () => {
-    const program: Pick<CliProgram, "mcpServer"> = { mcpServer: { enabled: true } };
+    const program: Pick<AppSpec, "mcpServer"> = { mcpServer: { enabled: true } };
     const t = resolveEffectiveInstallTargets(undefined, program);
     expect(t.agentsMcp.enabled).toBe(true);
     expect(t.agentsMcp.includedInAll).toBe(true);
@@ -57,7 +57,7 @@ describe("resolveEffectiveInstallTargets", () => {
   });
 
   test("scoped --mcp includes agentsMcp when mcpServer enabled", () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "app",
       version: "1",
       description: "x",
@@ -70,11 +70,10 @@ describe("resolveEffectiveInstallTargets", () => {
   });
 
   test("scoped --skill omits skill because skill generation is removed", () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "app",
       version: "1",
       description: "x",
-      skill: { enabled: true },
       handler: () => {},
     };
     const effective = resolveEffectiveInstallTargets(program.configure, program);

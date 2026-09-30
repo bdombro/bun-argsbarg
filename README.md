@@ -6,19 +6,19 @@
 [npm version](https://www.npmjs.com/package/argsbarg)
 [Bun](https://bun.sh)
 
-Build beautiful, well-behaved, production-grade CLIs, HTTP REST services, MCP Servers for Bun from a single, unified schema. All with only 2 modest dependencies.
+Build beautiful, well-behaved, production-grade CLIs, HTTP REST services, MCP Servers for Bun from a single, unified schema. Zero dependencies — one peer: [Zod](https://zod.dev).
 
 Why ArgsBarg?
 
 *Schema-first & Auto-validated* — Define your entire command structure, options, description, and inputs once. ArgsBarg compiles this into type-safe option accessors, command-line routing, and validation schemas, keeping your code and interfaces perfectly aligned.
 
-*Automated Schemagen & Docgen* — Maintain single-source truth by decorating standard TypeScript types (`/** @sg */ interface...`) to automatically compile them into runtime validation schemas (`argsbarg schemagen`). Easily export standard-compliant API documentation, full CLI reference markdown, and OpenAPI 3.1 definitions directly from your code (`docs --save` command) using introspection.
+*Zod Schemas & Docgen* — Define inputs, outputs, and config once in [Zod](https://zod.dev): argsbarg validates with them, infers handler types via `command`, and emits JSON Schema for MCP, OpenAPI, and help — no codegen step. Easily export standard-compliant API documentation, full CLI reference markdown, and OpenAPI 3.1 definitions directly from your code (`docs --save` command) using introspection.
 
 *Production REST Server* — Instantly expose your commands as HTTP REST endpoints (`POST /v1/some-command`) with built-in Kubernetes-compliant `/health/liveness` and `/health/readiness` probes, ECS structured JSON logging to `stderr`, and auto-generated OpenAPI 3.1 specs with an interactive Swagger UI.
 
 *First-Class Homebrew Distribution* — Exposes robust native support for packaging and distributing compiled binaries and shell completions cleanly via a standard tap-from-repo Homebrew model. Includes built-in completion script generators (`completion bash`/`zsh`/`fish`) consumed by Homebrew's standard `generate_completions_from_executable` command out of the box, ensuring friction-free installations and updates for your developers.
 
-*High-Performance & Light Footprint* — Optimized specifically for Bun. Executes TypeScript and TSX source files directly with no transpile or bundling steps required, leveraging `Bun.serve` for rapid startup and low memory usage. Ships with only two production dependencies (`@cfworker/json-schema` and `ts-json-schema-generator`).
+*High-Performance & Light Footprint* — Optimized specifically for Bun. Executes TypeScript and TSX source files directly with no transpile or bundling steps required, leveraging `Bun.serve` for rapid startup and low memory usage. Ships with zero production dependencies; `zod` is the only peer.
 
 *Beautiful* `-h` *screens* — Scoped help at any routing depth, rendered in rounded UTF-8 boxes with tables, terminal-width wrapping, and color when stdout is a TTY. Errors print in red with contextual help on stderr.
 
@@ -50,9 +50,9 @@ $ myapp http
 ## Basic Usage
 
 ```typescript
-import { Cli, type CliProgram, CliOptionKind } from "argsbarg";
+import { argsbarg, OptionKind } from "argsbarg";
 
-const program = {
+const app = argsbarg({
   description: "Tiny demo.",
   handler: async (ctx) => {
     const name = ctx.args[0] ?? "world";
@@ -66,7 +66,7 @@ const program = {
     {
       name: "verbose",
       description: "Enable extra logging.",
-      kind: CliOptionKind.Presence,
+      kind: OptionKind.Presence,
       shortName: "v",
     },
   ],
@@ -74,30 +74,29 @@ const program = {
     {
       name: "name",
       description: "Who to greet.",
-      kind: CliOptionKind.String,
+      kind: OptionKind.String,
       argMin: 0,
       argMax: 1,
     },
   ],
   version: "1.0.0",
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();
 ```
 
-`Cli.run()` parses `process.argv`, prints help or errors, dispatches the leaf handler, and **exits the process**.
+`app.run()` parses `process.argv`, prints help or errors, dispatches the command handler, and **exits the process**.
 
 ## What is it?
 
 Everything you need for a first-class CLI:
 
-- **Nested subcommands** (router nodes with `commands`, leaf nodes with `handler`)
+- **Nested subcommands** (command group nodes with `commands`, command nodes with `handler`)
 - **POSIX-style options** (`-x`, `--long`, `--long=value`) — kinds: presence, string, number, **enum** (`choices` array)
 - **Bundled presence flags** (`-abc`)
-- **Positional arguments and varargs tails** (`CliPositional` objects on `positionals`)
+- **Positional arguments and varargs tails** (`CommandPositional` objects on `positionals`)
 - **Scoped help** at any routing depth (`-h` / `--help`)
-- **Default-command fallback** (`CliFallbackMode`)
+- **Default-command fallback** (`FallbackMode`)
 - **Option separator** (`--` to stop option parsing)
 - **Rich help**: rounded UTF-8 boxes, tables, terminal width detection (`process.stdout.columns`), colors when stdout/stderr is a TTY
 - **TypeScript-native**: Typed option accessors (`ctx.typedOpt<T>`) and `async/await` handler support.
@@ -108,15 +107,14 @@ You can either quickly bootstrap a complete, feature-rich project skeleton using
 
 ### Option A: Bootstrap a New Project (Recommended)
 
-ArgsBarg provides an interactive project generator to scaffold a new repository fully equipped with TypeScript, Biome, automated schemagen/docgen, standard testing, and Homebrew integration rules:
+ArgsBarg provides an interactive project generator to scaffold a new repository fully equipped with TypeScript, Biome, Zod schemas, automated docgen, standard testing, and Homebrew integration rules:
 
 ```bash
 # Interactive setup (prompts for naming and git configurations)
 bun x argsbarg@latest create my-app
 
 # Non-interactive / Headless setup
-bun x argsbarg@latest create my-app \
-  --key my-cli --release-repo org/my-cli --yes
+bun x argsbarg@latest create my-app --template cli --release-repo org/my-cli --yes
 ```
 
 Edit `scripts/create-identity.ts` in the new repository to set your description. The `create` command copies the full-featured template, runs `bun install`, bootstraps a git repository (if standalone), and runs initial validation tests.
@@ -126,10 +124,9 @@ Edit `scripts/create-identity.ts` in the new repository to set your description.
 | Area                  | Files / wiring                                                                           |
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | All built-ins          | `completion`, `version`, `configure`, `docs`, `mcp`, `http`, `configure get`/`set`       |
-| `@sg` schemagen       | `/** @sg */` on types in `src/**/*.ts` → `{TypeName}Schema` in `__generated__/`          |
-| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutputSchema` from `__generated__/`          |
-| Schemagen             | `just schemagen` → `argsbarg schemagen` (justfile exports `node_modules/.bin` on `PATH`) |
-| Command layout        | `src/commands/<name>/command.ts`; registration in `src/program.ts`                       |
+| Zod schemas           | `src/commands/<name>/types.ts` → `export const X = z.strictObject({…})` + `z.infer` type   |
+| `outputSchema`        | `src/commands/status/types.ts` → `StatusJsonOutput`, wired with `command`              |
+| Command layout        | `src/commands/<name>/command.ts`; registration in `src/app.ts`                       |
 | MCP doc topics        | `docs.topics` auto-exposed as `<key>://docs/<topic>` resources when docs + MCP enabled   |
 | Package import        | `from "argsbarg"` (not relative to argsbarg `src/`)                                      |
 | Homebrew distribution | `scripts/formula-shared.ts`, `scripts/dev-formula.ts`, `Formula/`, `justfile`            |
@@ -154,7 +151,7 @@ ArgsBarg automatically integrates several core features into your application. T
 - `http` — Launch the high-performance HTTP REST server (injected when `httpServer.enabled` is `true`).
 - `completion bash` / `zsh` / `fish` — Generate shell completion scripts to stdout for deployment and packaging.
 - `docs` — Print bundled markdown topics, schema JSON, or CLI reference markdown (`myapp docs cli`, `myapp docs cli-schema`, etc.). Enabled by default; see [docs/bundled-docs.md](docs/bundled-docs.md).
-- `configure get` / `set` — Query and update application-level configurations non-interactively (active when `program.appConfig` contains configuration schema entries).
+- `configure get` / `set` — Query and update application-level configurations non-interactively (active when `appConfig` contains configuration schema entries).
 
 ### Experimental Integrations (Opt-in)
 
@@ -165,18 +162,18 @@ Do not declare top-level commands named `completion`, `version`, or `docs` as th
 
 ## HTTP REST Server
 
-By opting in with `httpServer: { enabled: true }` on your program root, running your app with the `http` subcommand launches a high-performance HTTP REST server powered natively by `Bun.serve`. This is ideal for sidecars, microservices, and micro-container deployments (such as in Kubernetes).
+By opting in with `httpServer: { enabled: true }` on your app root, running your app with the `http` subcommand launches a high-performance HTTP REST server powered natively by `Bun.serve`. This is ideal for sidecars, microservices, and micro-container deployments (such as in Kubernetes).
 
 Nested command paths map directly to standard REST paths (e.g., `v1 invoices render` maps to `POST /v1/invoices/render`).
 
 ```typescript
-const cli = {
+const app = argsbarg({
   commands: [/* ... */],
   description: "My service.",
   httpServer: { enabled: true, port: 3000 },
   key: "myapp",
   version: "1.0.0",
-} satisfies CliProgram;
+});
 ```
 
 ```bash
@@ -189,7 +186,7 @@ myapp http --port 3000
 
 - **Built-in Health Checks** — Automatic `/health/liveness` (responds 200 when online) and `/health/readiness` (responds 200 when online and config validation passes) probes out of the box, compliant with container orchestrators.
 - **OpenAPI 3.1 Spec & Swagger UI** — Serves standard `/openapi.json` and a `/swagger` interactive API browser generated directly from your command schema and JSDoc metadata.
-- **Pre-Handler Schema Validation** — Incoming request payloads are validated against the compile-time JSON Schema (`inputSchema`) on leaf commands before your handler ever runs.
+- **Pre-Handler Schema Validation** — Incoming request payloads are validated against the compile-time JSON Schema (`inputSchema`) on commands with a handler before your handler ever runs.
 - **ECS Structured Logging** — Access and error logs are automatically structured as Elastic Common Schema (ECS) JSON objects and written to `stderr` (e.g., for Datadog or ELK collection).
 - **W3C Distributed Tracing** — Automatically parses, propagates, and echoes `traceparent` headers for distributed tracing pipelines.
 
@@ -222,13 +219,13 @@ myapp completion fish
 
 ## How it works
 
-1. Build a **program root** with `satisfies CliProgram` (or `: CliProgram`): `key` is the app name, `commands` are top-level subcommands, `options` are global flags. A router root must not set `handler` or declare `positionals` (validated at startup). A leaf root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **routing node** for default subcommand routing (not root-only).
-2. Call `await new Cli(program).run()` — validates, parses argv, renders help or errors, invokes the leaf handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
+1. Build the app with `argsbarg({ … })` and each command with `command({ … })`: `key` is the app name, `commands` are top-level subcommands, `options` are global flags. A command group root must not set `handler` or declare `positionals` (validated at startup). A command root may set `handler` and `positionals` directly. Use `fallbackCommand` / `fallbackMode` on any **command group** for default subcommand routing (not root-only).
+2. Call `await app.run()` — validates, parses argv, renders help or errors, invokes the command handler, and `process.exit`s with status **0** on success, **1** on implicit help or error (explicit `--help` → **0**).
 3. From a handler, `cliErrWithHelp(ctx, "message")` prints a red error line plus contextual help on stderr and exits **1** (CLI only; API/MCP invocations throw a plain `Error`).
 
 
 
-### Fallback modes (`CliFallbackMode`)
+### Fallback modes (`FallbackMode`)
 
 
 | Mode               | Empty argv         | Unknown first token                                  |
@@ -238,13 +235,13 @@ myapp completion fish
 | `UnknownOnly`      | Root help (exit 1) | Default command                                      |
 
 
-With `MissingOrUnknown` / `UnknownOnly`, unrecognized flags at the **current routing node** stop option consumption and the remainder is passed to the default command.
+With `MissingOrUnknown` / `UnknownOnly`, unrecognized flags at the **current command group** stop option consumption and the remainder is passed to the default command.
 
-Set `fallbackCommand` / `fallbackMode` on nested routers too — e.g. `docs` with `fallbackCommand: "guide"` routes `myapp docs` to the guide leaf without requiring a root-level default.
+Set `fallbackCommand` / `fallbackMode` on nested command groups too — e.g. `docs` with `fallbackCommand: "guide"` routes `myapp docs` to the guide command without requiring a root-level default.
 
 ### Positionals (help labels)
 
-Add `CliPositional` entries to the command’s `positionals` list (separate from `CliOption` flags). With `argMax: 0`, the tail accepts at least `argMin` tokens and has no upper bound unless you set `argMax` > 0.
+Add `CommandPositional` entries to the command’s `positionals` list (separate from `CommandOption` flags). With `argMax: 0`, the tail accepts at least `argMin` tokens and has no upper bound unless you set `argMax` > 0.
 
 
 | Fields                                                           | Label    |
@@ -257,26 +254,26 @@ Add `CliPositional` entries to the command’s `positionals` list (separate from
 
 
 
-### Reading values (`CliContext`)
+### Reading values (`CommandContext`)
 
 - `ctx.flag("verbose")` / `ctx.hasFlag("verbose")` — presence options (`boolean`).
 - `ctx.stringOpt("name")` / `ctx.numberOpt("count")` — `string | undefined` / `number | null`.
-- `ctx.durationOpt("timeout")` — duration options (`format: CliValueFormat.Duration`) as milliseconds.
+- `ctx.durationOpt("timeout")` — duration options (`format: ValueFormat.Duration`) as milliseconds.
 - `ctx.commaListOpt("services")` — comma-list options as `string[] | undefined`.
 - `ctx.dateOpt("on")` / `ctx.dateTimeOpt("since")` — ISO date / date-time options.
-- `ctx.inputs` — coerced option and positional values for the current leaf; when `inputSchema` is set, validated before the handler runs and cached on `ctx`.
-- `ctx.inputsAs<T>()` — `ctx.inputs` cast to a schemagen or app input type.
+- `ctx.inputs` — coerced option and positional values for the current command; when `inputSchema` is set, validated before the handler runs and cached on `ctx`.
+- `command({ inputSchema, handler })` — `ctx.inputs` typed from the command's Zod `inputSchema` (parsed output, defaults applied).
 - `ctx.jsonOpt(name)` — parsed Json option (flag, preloaded stdin, or MCP/HTTP `toolArgs`).
 - `ctx.typedOpt<T>("custom", parseFn)` — custom parsing for type-safe option resolution.
 - `ctx.args` — positional words in order as `string[]`.
 - `ctx.positional("name")` — named positional lookup; varargs slots return `string[]`, single slots return `string | undefined`.
-- `ctx.program` — program root (`CliProgram`) for contextual help.
+- `ctx.spec` — app root (`Program`) for contextual help.
 
 
 
 ### Capabilities (built-ins)
 
-`completion`, `version`, `configure`, `mcp`, and `http` are not part of your schema — they are injected at runtime from program-level config (`mcpServer`, `httpServer`, `configure`, `docs`). Reserved command names: `completion` and `version` always; `configure` unless `configure.enabled: false`; `docs` unless `docs.enabled: false` (default on); `mcp` when `mcpServer.enabled` is `true`; `http` when `httpServer.enabled` is `true`.
+`completion`, `version`, `configure`, `mcp`, and `http` are not part of your schema — they are injected at runtime from app-level config (`mcpServer`, `httpServer`, `configure`, `docs`). Reserved command names: `completion` and `version` always; `configure` unless `configure.enabled: false`; `docs` unless `docs.enabled: false` (default on); `mcp` when `mcpServer.enabled` is `true`; `http` when `httpServer.enabled` is `true`.
 
 ## Examples
 
@@ -287,18 +284,19 @@ Check the `examples/` directory for full working scripts:
 | --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
 | `ArgsBargMinimal`     | `examples/minimal.ts`    | Smallest embeddable CLI (not a copy template).                                                    |
 | `ArgsBargNested`      | `examples/nested.ts`     | Nested command tree, positional tails, async handlers.                                            |
-| `ArgsBargFormats`     | `examples/formats.ts`    | `CliValueFormat`, `default`, `ctx.inputs`.                                                        |
-| `ArgsBargFullExample` | `examples/full-example/` | **Default copy template:** all builtins, Homebrew justfile; options/flags only (no schemagen). |
-| `ArgsBargFullExampleJson` | `examples/full-example-json/` | **Schema-first copy template:** `@sg`, `inputSchema`/`outputSchema`, REST CRUD, SQLite. |
+| `ArgsBargFormats`     | `examples/formats.ts`    | `ValueFormat`, `default`, `ctx.inputs`.                                                        |
+| `cli` template        | `examples/cli/`          | **Default copy template:** all builtins, Homebrew justfile; options/flags only (no schemas).        |
+| `api` template        | `examples/api/`          | **Schema-first copy template:** Zod `inputSchema`/`outputSchema` via `command`, REST CRUD, SQLite. |
+| `agent-plugin` template | `examples/agent-plugin/` | **Agent plugin copy template:** Claude Code / Cursor marketplace plugin with a committed Node bundle. |
 
 
 Examples ship in the npm package under `node_modules/argsbarg/examples/`.
 
 ## Bootstrap a new CLI
 
-Copy a shipped template into a new directory (`cli` default, or `json` for schema-first):
+Copy a shipped template into a new directory (`cli` default, `api` for schema-first, or `agent-plugin`):
 
-Interactive (TTY) — pick template A/B, then key and release repo:
+Interactive (TTY) — pick a template (A/B/C), then key and release repo:
 
 ```bash
 bun x argsbarg@latest create my-cli
@@ -312,17 +310,17 @@ bun x argsbarg@latest create my-cli \
   --key my-cli --release-repo org/my-cli --yes
 ```
 
-Schema-first (`@sg`, JSON schemas, REST CRUD demo):
+Schema-first (Zod schemas, `command`, REST CRUD demo):
 
 ```bash
 bun x argsbarg@latest create my-api \
-  --template json \
+  --template api \
   --key my-api --release-repo org/my-api --yes
 ```
 
-Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `program.description` and the Homebrew formula).
+Edit `scripts/create-identity.ts` in the new repo to set `desc` (used by `description` and the Homebrew formula).
 
-`create` copies the template (including `AGENTS.md` and `CLAUDE.md`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders, runs `bun install`, `argsbarg schemagen` (json template only), `bun test`, and `git init` + Initial commit when appropriate.
+`create` copies the template (including `AGENTS.md` and `CLAUDE.md`), substitutes `{key}` / `{tap}` / `{releaseRepo}` placeholders, runs `bun install`, `bun test`, and `git init` + Initial commit when appropriate.
 
 **Git bootstrap:** skipped when the target already has a `.git` directory, or when the target sits inside an existing git work tree (monorepo subfolder). Standalone new directories get an `Initial commit`.
 
@@ -336,8 +334,8 @@ Both templates ship all builtins (`completion`, `version`, `configure`, `docs`, 
 
 | Template | Path | Adds beyond builtins |
 | --- | --- | --- |
-| **cli** (default) | `examples/full-example/` | `echo`, `status` — options/flags only; no schemagen |
-| **json** | `examples/full-example-json/` | `@sg` schemagen, `inputSchema`/`outputSchema`, `render-json`, `workspaces` REST CRUD, in-memory SQLite |
+| **cli** (default) | `examples/cli/` | `echo`, `status` — options/flags only; no schemas |
+| **json** | `examples/api/` | Zod `inputSchema`/`outputSchema` (`command`), `render-json`, `shape-area`, `workspaces` REST CRUD, in-memory SQLite |
 
 Package import: `from "argsbarg"` (not relative to argsbarg `src/`).
 
@@ -354,7 +352,7 @@ nested.ts read ./README.md
 
 bun ./examples/formats.ts run --tags demo,docs --on 2026-06-22
 
-cd examples/full-example && just setup && just schemagen
+cd examples/cli && just setup
 just run status --json
 ```
 
@@ -366,9 +364,9 @@ ArgsBarg includes optional experimental features designed to make your CLI and s
 
 ### 1. Model Context Protocol (MCP) Server
 
-Opt in by setting `mcpServer: { enabled: true }` on your program root. Running `myapp mcp` starts a JSON-RPC 2.0 stdio server.
+Opt in by setting `mcpServer: { enabled: true }` on your app root. Running `myapp mcp` starts a JSON-RPC 2.0 stdio server.
 
-- **Automatic Tool Exposure** — Every leaf command in your CLI tree becomes an executable MCP tool with inputs automatically generated from your CLI options.
+- **Automatic Tool Exposure** — Every command with a handler in your CLI tree becomes an executable MCP tool with inputs automatically generated from your CLI options.
 - **Documentation Resources** — Your CLI structure, JSON schemas, and bundled `docs.topics` are automatically exposed to agents as resources (e.g., `<key>://schema`).
 - **Context-Aware Invocations** — Handlers can read `ctx.invocation` to distinguish between direct CLI, HTTP requests, or headless MCP calls.
 
@@ -401,14 +399,15 @@ The package root (`argsbarg` / `src/index.ts`) exports the types and runtime you
 
 | Symbol                                                            | Role                                                                                                                                           |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CliProgram`, `CliOption`, `CliPositional`, `CliHandler`          | Schema and handler types.                                                                                                                      |
-| `CliOptionKind`, `CliValueFormat`, `CliFallbackMode`              | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior.                                       |
-| `CliSchemaValidationError`                                        | Thrown when the static command tree violates schema rules.                                                                                     |
-| `CliContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.inputs`, `ctx.invocation`, …).                                        |
-| `CliLeafInputs`                                                   | Record type returned by `ctx.inputs` — coerced option/positional values keyed by schema name.                                                  |
-| `Cli`                                                             | Runtime: validate + freeze program, `run()`, `invoke()`, `serveMcp()`, `appConfig` getter, `exportCommandSchema()`, `exportAppConfigSchema()`. |
-| `CliInvokeResult`, `CliInvokeKind`                                | Result types from `cli.invoke()`.                                                                                                              |
-| `CliAppConfig`, `CliAppConfigEntry`                               | App config block on the program root (`entries` metadata overlay + optional `jsonSchema`).                                                     |
+| `Program`, `CommandOption`, `CommandPositional`                        | Schema types.                                                                                                                                  |
+| `program`, `command`, `RunnableCommand`, `CommandGroup`, `Command`  | Program/command helpers (infer `ctx.inputs`, `ctx.pathParams`, and returns) and command-tree types.                                               |
+| `OptionKind`, `ValueFormat`, `FallbackMode`              | Option kinds, value formats (`duration`, `comma-list`, `date`, `date-time`), and root fallback behavior.                                       |
+| `SchemaValidationError`                                        | Thrown when the static command tree violates schema rules.                                                                                     |
+| `CommandContext`                                                      | Handler context (`ctx.hasFlag`, `ctx.stringOpt`, `ctx.durationOpt`, `ctx.inputs`, `ctx.invocation`, …).                                        |
+| `CommandInputs`                                                   | Record type returned by `ctx.inputs` — coerced option/positional values keyed by schema name.                                                  |
+| `App`                                                             | Runtime: validate + freeze program, `run()`, `invoke()`, `serveMcp()`, `appConfig` getter, `exportCommandSchema()`, `exportAppConfigSchema()`. |
+| `InvokeResult`, `InvokeKind`                                | Result types from `cli.invoke()`.                                                                                                              |
+| `AppConfig`, `AppConfigEntry`                               | App config block on the app root (`entries` metadata overlay + optional Zod `schema`).                                                      |
 | `cliErrWithHelp(ctx, msg)`                                        | Print error + scoped help on stderr, exit 1.                                                                                                   |
 | `parseDurationMs`, `parseCommaList`, `parseDate`, `parseDateTime` | Optional format parsers for use outside handlers.                                                                                              |
 

@@ -3,23 +3,20 @@ Tests for config/resolve module behavior.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "../core/types.ts";
+import { z } from "zod";
+import type { AppSpec } from "../core/types.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
 
-const program: CliProgram = {
+const program: AppSpec = {
   key: "app",
   version: "1.0.0",
   description: "Test.",
   appConfig: {
-    jsonSchema: {
-      type: "object",
-      properties: {
-        apiToken: { type: "string" },
-        maxRetries: { type: "integer", default: 3 },
-        region: { type: "string", default: "us-east-1" },
-      },
-      required: ["apiToken"],
-    },
+    schema: z.object({
+      apiToken: z.string(),
+      maxRetries: z.number().int().default(3),
+      region: z.string().default("us-east-1"),
+    }),
     entries: {
       apiToken: { description: "Token.", env: "API_TOKEN" },
       maxRetries: { description: "Retries." },
@@ -66,7 +63,7 @@ describe("config/resolve", () => {
     }
   });
 
-  test("applies jsonSchema default when file and env absent", () => {
+  test("applies schema default when file and env absent", () => {
     const prev = process.env.API_TOKEN;
     delete process.env.API_TOKEN;
     try {
@@ -79,7 +76,7 @@ describe("config/resolve", () => {
   });
 
   test("all-string mode uses entry.default", () => {
-    const stringProgram: CliProgram = {
+    const stringProgram: AppSpec = {
       ...program,
       appConfig: {
         entries: {
@@ -117,7 +114,7 @@ describe("config/resolve", () => {
 
   /** Resolve callback supplies value when env and file are absent. */
   test("resolve callback supplies value when env and file are absent", () => {
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,
@@ -143,7 +140,7 @@ describe("config/resolve", () => {
 
   /** Env overrides resolve callback. */
   test("env overrides resolve callback", () => {
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,
@@ -170,7 +167,7 @@ describe("config/resolve", () => {
 
   /** File overrides resolve callback. */
   test("file overrides resolve callback", () => {
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,
@@ -196,7 +193,7 @@ describe("config/resolve", () => {
 
   /** Tests that falls back to env when resolve returns undefined. */
   test("falls back to env when resolve returns undefined", () => {
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,
@@ -224,7 +221,7 @@ describe("config/resolve", () => {
   /** Resolve callback is skipped when env is set. */
   test("resolve callback is skipped when env is set", () => {
     let resolveCalled = false;
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,
@@ -255,7 +252,7 @@ describe("config/resolve", () => {
 
   /** Tests that async resolve is ignored with stderr warning. */
   test("async resolve is ignored with stderr warning", () => {
-    const resolveProgram: CliProgram = {
+    const resolveProgram: AppSpec = {
       ...program,
       appConfig: {
         ...program.appConfig,

@@ -2,11 +2,11 @@ import { defaultConfigEntryTitle } from "../config/entry.ts";
 import { displayAppConfigPath } from "../config/file.ts";
 import { expectedMcpEntry } from "../configure/artifacts/mcp-config.ts";
 import { resolveClaudeDesktopMcpPath, userHome } from "../configure/artifacts/paths.ts";
-import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { type AppSpec, OptionKind } from "../core/types.ts";
 import {
   collectMcpTools,
+  commandWireOptions,
   DEFAULT_MCP_SIZE_LIMITS,
-  leafWireOptions,
   type McpToolDef,
   mcpServerId,
   mcpSizeReport,
@@ -19,7 +19,7 @@ import { docsEnabled, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts"
 /** Extra manual client setup notes for generated `docs mcp`. */
 function appendManualClientSetup(
   lines: string[],
-  _root: CliProgram,
+  _root: AppSpec,
   serverId: string,
   entry: { command: string; args: string[] },
 ): void {
@@ -56,11 +56,11 @@ function appendManualClientSetup(
 }
 
 /** Formats one exposed MCP tool for the auto-generated MCP guide. */
-function formatToolLine(root: CliProgram, tool: McpToolDef): string {
+function formatToolLine(root: AppSpec, tool: McpToolDef): string {
   const cliPath = tool.path.length > 0 ? `${root.key} ${tool.path.join(" ")}` : root.key;
   let line = `- \`${cliPath}\` — ${tool.description}`;
-  const opts = leafWireOptions(tool.leaf);
-  const flags = opts.filter((o) => o.kind === CliOptionKind.Presence).map((o) => `--${o.name}`);
+  const opts = commandWireOptions(tool.leaf);
+  const flags = opts.filter((o) => o.kind === OptionKind.Presence).map((o) => `--${o.name}`);
   if (flags.length > 0) {
     line += ` (flags: ${flags.join(", ")})`;
   }
@@ -68,7 +68,7 @@ function formatToolLine(root: CliProgram, tool: McpToolDef): string {
 }
 
 /** Generates the auto `docs mcp` markdown guide from schema and MCP config. */
-export function generateMcpGuide(root: CliProgram): string {
+export function generateMcpGuide(root: AppSpec): string {
   const tools = collectMcpTools(root);
   const schemaUri = resolveMcpSchemaUri(root);
   const serverId = mcpServerId(root);
@@ -177,7 +177,7 @@ export function generateMcpGuide(root: CliProgram): string {
     "",
     "| Mechanism | Purpose |",
     "|-----------|---------|",
-    "| `tools/list` | Callable tools for exposed leaf commands |",
+    "| `tools/list` | Callable tools for exposed commands with a handler |",
     "| `tools/call` | Runs handlers headlessly; JSON stdout becomes `structuredContent` when valid |",
     `| Schema resource | \`${schemaUri}\` — same JSON as \`${root.key} docs cli-schema\` |`,
   );

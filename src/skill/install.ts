@@ -4,7 +4,7 @@ Skill generation is removed; skills are authored directly in repositories under 
 */
 
 import { join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { userHome } from "../paths/host.ts";
 import { skillDirName } from "./naming.ts";
 
@@ -21,7 +21,7 @@ export interface SkillInstallOpts {
 }
 
 /** Resolved skill directory for a program (`~/.agents/skills/<key>/` or project `.agents/skills/<key>/`). */
-export function resolveAgentsSkillDir(root: CliProgram, global = true): string {
+export function resolveAgentsSkillDir(root: AppSpec, global = true): string {
   const base = global ? userHome() : process.cwd();
   return join(base, ".agents", "skills", skillDirName(root.key));
 }

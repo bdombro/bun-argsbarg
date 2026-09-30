@@ -1,7 +1,6 @@
 node_modules
 .release-notes.tmp.md
 
-# argsbarg schemagen output (run `just schemagen` or `argsbarg schemagen`)
-**/__generated__/
-
 dist
+# The agent-plugin example commits its Node bundle (see examples/agent-plugin/.gitignore)
+!examples/agent-plugin/dist/

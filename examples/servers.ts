@@ -4,7 +4,7 @@ This example shows the smallest end-to-end CLI+MCP+API setup.
 It includes one command, a couple of options, and a direct call to the runtime so
 readers can copy the pattern into their own scripts quickly.
 
-Demonstrates: `servers.ts hello`, MCP tool `hello`, and `POST /hello`.
+Demonstrates: `app.ts hello`, MCP tool `hello`, and `POST /hello`.
 
 Ex API Call:
 curl -s -X POST http://127.0.0.1:3000/hello \
@@ -17,18 +17,18 @@ Ex API Response:
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliOptionKind, type CliProgram } from "../src/index";
+import { OptionKind, command, argsbarg } from "../src/index";
 
-const program = {
+const app = argsbarg({
   commands: [
-    {
+    command({
       key: "hello",
       description: "Say hello.",
       positionals: [
         {
           name: "name",
           description: "Who to greet.",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           argMin: 0,
           argMax: 1,
         },
@@ -37,7 +37,7 @@ const program = {
         {
           name: "verbose",
           description: "Enable extra logging.",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
           shortName: "v",
         },
       ],
@@ -53,19 +53,18 @@ const program = {
         }
         return { greeting, verbose: ctx.hasFlag("verbose") };
       },
-    },
+    }),
   ],
   description: "Tiny demo.",
   docs: {
     topics: {
-      readme: { text: "# servers.ts\n\nServers demo.\n" },
+      readme: { text: "# app.ts\n\nServers demo.\n" },
     },
   },
   httpServer: { enabled: true },
   key: "servers.ts",
   mcpServer: { enabled: true },
   version: pkg.version,
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();

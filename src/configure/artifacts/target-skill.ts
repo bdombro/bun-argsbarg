@@ -5,14 +5,14 @@ Uninstall cleans up legacy/stale skill directories if present.
 */
 
 import { existsSync } from "node:fs";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { displayInstallPath, type InstallPaths } from "./paths.ts";
 import { InstallTarget } from "./target-base.ts";
 import type {
-  CliInstallArtifactKey,
   DetectedSnapshot,
   InstallAction,
   InstallActionKind,
+  InstallArtifactKey,
   InstalledArtifacts,
   InstallStatus,
   TargetPlanContext,
@@ -22,19 +22,19 @@ import { uninstallSkillDir } from "./uninstall.ts";
 
 /** Specification for an agent skill install target. */
 export interface SkillHostSpec {
-  key: CliInstallArtifactKey;
+  key: InstallArtifactKey;
   actionKind: InstallActionKind;
   label: string;
   uninstallPrefix: string;
   skillDir: (paths: InstallPaths) => string;
   detectedKey: "skill";
   statusField: "skill";
-  isAvailable: (root: CliProgram, paths: InstallPaths) => boolean;
+  isAvailable: (root: AppSpec, paths: InstallPaths) => boolean;
 }
 
 /** Agent shell skill directory install (`~/.agents/skills/<key>/`). */
 export class SkillInstallTarget extends InstallTarget {
-  readonly key: CliInstallArtifactKey;
+  readonly key: InstallArtifactKey;
   readonly actionKind: InstallActionKind;
   readonly category = "skill" as const;
   readonly uninstallPrefix: string;
@@ -49,15 +49,15 @@ export class SkillInstallTarget extends InstallTarget {
     this.uninstallPrefix = spec.uninstallPrefix;
   }
 
-  isAvailable(root: CliProgram, paths: InstallPaths): boolean {
+  isAvailable(root: AppSpec, paths: InstallPaths): boolean {
     return this.spec.isAvailable(root, paths);
   }
 
-  isDetected(paths: InstallPaths, _root: CliProgram): boolean {
+  isDetected(paths: InstallPaths, _root: AppSpec): boolean {
     return existsSync(this.spec.skillDir(paths));
   }
 
-  applyDetected(paths: InstallPaths, root: CliProgram, out: InstalledArtifacts): void {
+  applyDetected(paths: InstallPaths, root: AppSpec, out: InstalledArtifacts): void {
     out[this.spec.detectedKey] = this.isDetected(paths, root);
   }
 
@@ -65,7 +65,7 @@ export class SkillInstallTarget extends InstallTarget {
     return detected[this.spec.detectedKey];
   }
 
-  protected formatStatusLine(paths: InstallPaths, _root: CliProgram): string {
+  protected formatStatusLine(paths: InstallPaths, _root: AppSpec): string {
     return `${displayInstallPath(this.spec.skillDir(paths))}/`;
   }
 

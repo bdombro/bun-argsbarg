@@ -3,7 +3,13 @@ This module builds the built-in `docs` command group router.
 It registers bundled documentation topics (CLI guide, schema, MCP, HTTP) as subcommands.
 */
 
-import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "../core/types.ts";
+import {
+  type AppSpec,
+  type CommandGroup,
+  type CommandOption,
+  OptionKind,
+  type RunnableCommand,
+} from "../core/types.ts";
 import {
   DOCS_ROUTER_DESCRIPTION,
   docsEnabled,
@@ -17,13 +23,13 @@ import {
 } from "./resolve.ts";
 import { saveDocsTopic } from "./save.ts";
 
-const DOCS_SAVE_OPTION: CliOption = {
+const DOCS_SAVE_OPTION: CommandOption = {
   name: "save",
   description: "Write documentation to ./docs/.",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
 };
 
-function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: string): boolean }): void {
+function runDocsTopic(program: AppSpec, topic: string, ctx: { hasFlag(name: string): boolean }): void {
   if (ctx.hasFlag("save")) {
     process.stdout.write(`${saveDocsTopic(program, topic)}\n`);
     return;
@@ -31,7 +37,7 @@ function runDocsTopic(program: CliProgram, topic: string, ctx: { hasFlag(name: s
   printDocsTopic(program, topic);
 }
 
-function docsLeaf(program: CliProgram, key: string, description: string): CliLeaf {
+function docsLeaf(program: AppSpec, key: string, description: string): RunnableCommand {
   return {
     key,
     description,
@@ -49,10 +55,10 @@ function docsRouterNotes(): string {
 }
 
 /** Built-in `docs` router with bundled topic subcommands. */
-export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
+export function cliBuiltinDocsGroup(program: AppSpec): CommandGroup {
   const docs = resolveDocsConfig(program);
   const topics = docs.topics ?? {};
-  const leaves: CliLeaf[] = [];
+  const leaves: RunnableCommand[] = [];
 
   for (const key of docsUserTopicKeys(docs)) {
     const topic = topics[key];
@@ -89,7 +95,7 @@ export function cliBuiltinDocsGroup(program: CliProgram): CliRouter {
 }
 
 /** Returns the docs built-in when enabled. */
-export function cliBuiltinDocsGroupIfEnabled(program: CliProgram): CliRouter | null {
+export function cliBuiltinDocsGroupIfEnabled(program: AppSpec): CommandGroup | null {
   if (!docsEnabled(program)) {
     return null;
   }

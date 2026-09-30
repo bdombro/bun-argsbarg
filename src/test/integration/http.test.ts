@@ -5,16 +5,17 @@ HTTP API integration tests: routes, tool invocation, CORS, OpenAPI, and validati
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
+import { z } from "zod";
 import { cliValidateProgram } from "../../core/validate.ts";
 import { generateOpenApi } from "../../http/openapi.ts";
 import { API_CORS_HEADERS } from "../../http/result.ts";
 import { handleApiRequest } from "../../http/server.ts";
 import {
-  Cli,
-  CliContext,
-  type CliContext as CliContextType,
-  CliOptionKind,
+  argsbarg,
+  type CommandContext as CliContextType,
+  CommandContext,
   cliErrWithHelp,
+  OptionKind,
   wantsExplicitJson,
 } from "../../index.ts";
 import { LogEmitter } from "../../log/emitter.ts";
@@ -22,7 +23,7 @@ import { createServerRuntime } from "../../server/context.ts";
 import { resolveHttpServeConfig } from "../../server/overrides.ts";
 import { nestedMcpFixture, testProgram } from "../fixtures.ts";
 
-/** Program with HTTP API enabled and handlers that return values. */
+/** App spec with HTTP API enabled and handlers that return values. */
 function nestedApiFixture() {
   return testProgram({
     ...nestedMcpFixture,
@@ -43,12 +44,12 @@ function nestedApiFixture() {
                   {
                     name: "json",
                     description: "Emit handler output as JSON.",
-                    kind: CliOptionKind.Presence,
+                    kind: OptionKind.Presence,
                   },
                   {
                     name: "user-name",
                     description: "User to look up.",
-                    kind: CliOptionKind.String,
+                    kind: OptionKind.String,
                     shortName: "u",
                   },
                 ],
@@ -56,7 +57,7 @@ function nestedApiFixture() {
                   {
                     name: "path",
                     description: "File or directory.",
-                    kind: CliOptionKind.String,
+                    kind: OptionKind.String,
                   },
                 ],
                 handler: (ctx: CliContextType) => {
@@ -79,7 +80,7 @@ function nestedApiFixture() {
           {
             name: "files",
             description: "Paths to read.",
-            kind: CliOptionKind.String,
+            kind: OptionKind.String,
             argMax: 0,
           },
         ],
@@ -122,13 +123,13 @@ async function apiRequest(
   request: Request,
   opts?: { withServer?: boolean },
 ) {
-  const cli = new Cli(program);
+  const cli = argsbarg(program);
   if (opts?.withServer) {
     const resolved = resolveHttpServeConfig(program);
     cli.server = {
       runtime: createServerRuntime(program, "http"),
       emitter: new LogEmitter({
-        program,
+        spec: program,
         resolved: { ...resolved.log, access: false },
       }),
       http: resolved,
@@ -180,8 +181,8 @@ describe("httpServer validation", () => {
           handler: () => {},
         },
       ],
-    } as unknown as import("../../core/types.ts").CliProgram;
-    expect(() => cliValidateProgram(root)).toThrow(/httpServer is only supported on the program root/);
+    } as unknown as import("../../core/types.ts").AppSpec;
+    expect(() => cliValidateProgram(root)).toThrow(/httpServer is only supported on the app root/);
   });
 
   test("rejects reserved top-level command when pathPrefix is empty", () => {
@@ -277,11 +278,11 @@ describe("HTTP API routes", () => {
       ],
     });
     cliValidateProgram(throwProgram);
-    const cli = new Cli(throwProgram);
+    const cli = argsbarg(throwProgram);
     const resolved = resolveHttpServeConfig(throwProgram);
     cli.server = {
       runtime: createServerRuntime(throwProgram, "http"),
-      emitter: new LogEmitter({ program: throwProgram, resolved: { ...resolved.log, access: false } }),
+      emitter: new LogEmitter({ spec: throwProgram, resolved: { ...resolved.log, access: false } }),
       http: resolved,
     };
     const res = await handleApiRequest(
@@ -459,13 +460,9 @@ describe("HTTP API routes", () => {
           key: "create",
           kind: "document",
           description: "Create resource",
-          inputSchema: {
-            type: "object",
-            properties: { name: { type: "string" } },
-            required: ["name"],
-          },
+          inputSchema: z.object({ name: z.string() }),
           handler: (ctx: CliContextType) => {
-            return { created: ctx.inputsAs<{ name: string }>().name };
+            return { created: ctx.inputs.name };
           },
         },
       ],
@@ -601,21 +598,9 @@ test("generateOpenApi dereferences nested inputSchema definitions", () => {
       {
         key: "render",
         description: "Render a document.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            invoice: { $ref: "#/definitions/InvoiceData" },
-          },
-          definitions: {
-            InvoiceData: {
-              type: "object",
-              properties: {
-                id: { type: "string" },
-              },
-              required: ["id"],
-            },
-          },
-        },
+        inputSchema: z.object({
+          invoice: z.object({ id: z.string() }).meta({ id: "HttpTestInvoiceData" }).optional(),
+        }),
         handler: () => ({ ok: true }),
       },
     ],
@@ -634,14 +619,15 @@ test("generateOpenApi dereferences nested inputSchema definitions", () => {
     >;
   };
   const schema = doc.paths["/render"]?.post.requestBody.content["application/json; charset=utf-8"].schema;
-  expect(schema.properties.invoice).toEqual({
+  expect(JSON.stringify(schema)).not.toContain("$ref");
+  expect(schema.properties.invoice).toMatchObject({
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],
   });
 });
 
-test("generateOpenApi generates requestBody for kind: json leaves", () => {
+test("generateOpenApi generates requestBody for kind: document leaves", () => {
   const program = testProgram({
     key: "app",
     description: "Test app",
@@ -650,14 +636,8 @@ test("generateOpenApi generates requestBody for kind: json leaves", () => {
       {
         key: "render-invoice",
         description: "Render an invoice.",
-        kind: "json",
-        inputSchema: {
-          type: "object",
-          properties: {
-            id: { type: "string" },
-          },
-          required: ["id"],
-        },
+        kind: "document",
+        inputSchema: z.object({ id: z.string() }),
         handler: () => ({ ok: true }),
       },
     ],
@@ -693,7 +673,7 @@ test("ctx.respond throws when called twice", () => {
     description: "",
     handler: () => {},
   });
-  const context = new CliContext("app", [], [], {}, program, "http");
+  const context = new CommandContext("app", [], [], {}, program, "http");
   context.respond({ body: { ok: true } });
   expect(() => context.respond({ body: { ok: true } })).toThrow(/already called/);
 });
@@ -702,7 +682,7 @@ test("API_CORS_HEADERS are wide open", () => {
   expect(API_CORS_HEADERS["access-control-allow-origin"]).toBe("*");
 });
 
-test("ctx.invocation is http via Cli.invoke", async () => {
+test("ctx.invocation is http via App.invoke", async () => {
   let seen = "";
   const root = testProgram({
     key: "app",
@@ -713,7 +693,7 @@ test("ctx.invocation is http via Cli.invoke", async () => {
     },
   });
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke([], { invocation: "http" });
+  const result = await argsbarg(root).invoke([], { invocation: "http" });
   expect(result.kind).toBe("ok");
   expect(seen).toBe("http");
   expect(result.response?.body).toEqual({ invocation: "http" });

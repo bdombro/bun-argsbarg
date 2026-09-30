@@ -2,8 +2,8 @@
 This module resolves and prints bundled documentation topics for the `docs` built-in.
 */
 
-import { cliSchemaJson } from "../core/schema.ts";
-import type { CliDocsConfig, CliProgram } from "../core/types.ts";
+import { schemaJson } from "../core/schema.ts";
+import type { AppSpec, DocsConfig } from "../core/types.ts";
 import { openApiJson } from "../http/openapi.ts";
 import { generateCliGuide } from "./cli-guide.ts";
 import { generateHttpGuide } from "./http-guide.ts";
@@ -17,13 +17,13 @@ export type DocsBuiltinTopicKey = (typeof DOCS_BUILTIN_TOPIC_KEYS)[number];
 /** Default router description for the `docs` built-in. */
 export const DOCS_ROUTER_DESCRIPTION = "Print bundled CLI documentation.";
 
-/** Returns whether bundled docs are enabled on the program root. */
-export function docsEnabled(program: CliProgram): boolean {
+/** Returns whether bundled docs are enabled on the app root. */
+export function docsEnabled(program: AppSpec): boolean {
   return program.docs?.enabled !== false;
 }
 
 /** Normalized docs config with defaults applied. */
-export function resolveDocsConfig(program: CliProgram): CliDocsConfig {
+export function resolveDocsConfig(program: AppSpec): DocsConfig {
   return {
     description: program.docs?.description,
     topics: program.docs?.topics ?? {},
@@ -31,22 +31,22 @@ export function resolveDocsConfig(program: CliProgram): CliDocsConfig {
 }
 
 /** User topic keys in declaration order. */
-export function docsUserTopicKeys(docs: CliDocsConfig): string[] {
+export function docsUserTopicKeys(docs: DocsConfig): string[] {
   return Object.keys(docs.topics ?? {});
 }
 
 /** Whether MCP auto-guide topic is included. */
-export function docsIncludesMcpTopic(program: CliProgram): boolean {
+export function docsIncludesMcpTopic(program: AppSpec): boolean {
   return docsEnabled(program) && program.mcpServer?.enabled === true;
 }
 
 /** Whether HTTP auto-guide topic is included. */
-export function docsIncludesHttpTopic(program: CliProgram): boolean {
+export function docsIncludesHttpTopic(program: AppSpec): boolean {
   return docsEnabled(program) && program.httpServer?.enabled === true;
 }
 
 /** Whether OpenAPI export topic is included. */
-export function docsIncludesOpenApiTopic(program: CliProgram): boolean {
+export function docsIncludesOpenApiTopic(program: AppSpec): boolean {
   return docsIncludesHttpTopic(program);
 }
 
@@ -63,7 +63,7 @@ export function docsTopicDescription(key: string, custom?: string): string {
 }
 
 /** Markdown body for one docs topic key. */
-export function docsTopicText(program: CliProgram, topic: string): string {
+export function docsTopicText(program: AppSpec, topic: string): string {
   if (!docsEnabled(program)) {
     throw new Error("docs not enabled");
   }
@@ -88,9 +88,9 @@ export function docsTopicText(program: CliProgram, topic: string): string {
 }
 
 /** Full file body for a docs topic (stdout or `--save`). */
-export function docsTopicContent(program: CliProgram, topic: string): string {
+export function docsTopicContent(program: AppSpec, topic: string): string {
   if (topic === "cli-schema") {
-    return cliSchemaJson(program);
+    return schemaJson(program);
   }
   if (topic === "openapi") {
     if (!docsIncludesOpenApiTopic(program)) {
@@ -106,6 +106,6 @@ export function docsTopicContent(program: CliProgram, topic: string): string {
 }
 
 /** Writes one docs topic to stdout. */
-export function printDocsTopic(program: CliProgram, topic: string): void {
+export function printDocsTopic(program: AppSpec, topic: string): void {
   process.stdout.write(docsTopicContent(program, topic));
 }

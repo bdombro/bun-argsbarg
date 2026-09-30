@@ -3,7 +3,7 @@ Unit tests for LogEmitter enrich and serialize hooks.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import type { LogEnrichContext } from "./ecs.ts";
 import { LogEmitter } from "./emitter.ts";
 
@@ -12,7 +12,7 @@ const program = {
   version: "1.0.0",
   description: "test",
   handler: () => {},
-} satisfies CliProgram;
+} satisfies AppSpec;
 
 function captureStderr(run: () => void): string {
   const chunks: string[] = [];
@@ -33,7 +33,7 @@ describe("LogEmitter hooks", () => {
   test("serialize bypasses built-in ECS formatter", () => {
     const serialize = (ctx: LogEnrichContext) => JSON.stringify({ custom: true, msg: ctx.message });
     const emitter = new LogEmitter({
-      program,
+      spec: program,
       resolved: { format: "json", access: true, errors: true, dev: false, serialize },
     });
     const out = captureStderr(() => emitter.emit({ level: "info", message: "hello" }));
@@ -46,7 +46,7 @@ describe("LogEmitter hooks", () => {
   test("enrich adds fields to access logs", () => {
     const enrich = () => ({ "labels.team": "payments" });
     const emitter = new LogEmitter({
-      program,
+      spec: program,
       resolved: { format: "json", access: true, errors: true, dev: false, enrich },
     });
     const out = captureStderr(() =>
@@ -73,7 +73,7 @@ describe("LogEmitter hooks", () => {
       return {};
     };
     const emitter = new LogEmitter({
-      program,
+      spec: program,
       resolved: { format: "json", access: true, errors: true, dev: false, enrich },
     });
     captureStderr(() =>

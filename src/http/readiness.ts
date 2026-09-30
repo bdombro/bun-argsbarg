@@ -4,7 +4,7 @@ HTTP/MCP readiness checks for GET /health/readiness (orchestrator probes only).
 
 import type { AnyAppConfigSnapshot } from "../config/context.ts";
 import { missingRequiredConfig } from "../config/resolve.ts";
-import type { CliProgram, ReadinessContext, ServerRuntime } from "../core/types.ts";
+import type { AppSpec, ReadinessContext, ServerRuntime } from "../core/types.ts";
 
 const READINESS_CACHE_MS = 3000;
 
@@ -27,7 +27,7 @@ function configFileCheck(runtime: ServerRuntime): ReadinessCheck {
   return { ok: true };
 }
 
-function configRequiredCheck(program: CliProgram, appConfig: AnyAppConfigSnapshot): ReadinessCheck {
+function configRequiredCheck(program: AppSpec, appConfig: AnyAppConfigSnapshot): ReadinessCheck {
   if (!program.appConfig) {
     return { ok: true };
   }
@@ -39,7 +39,7 @@ function configRequiredCheck(program: CliProgram, appConfig: AnyAppConfigSnapsho
 }
 
 async function customReadinessCheck(ctx: ReadinessContext): Promise<ReadinessCheck> {
-  const fn = ctx.program.readiness;
+  const fn = ctx.spec.readiness;
   if (!fn) {
     return { ok: true };
   }
@@ -54,7 +54,7 @@ async function customReadinessCheck(ctx: ReadinessContext): Promise<ReadinessChe
 
 /** Runs built-in + custom readiness checks (short TTL cache in runtime.state). */
 export async function evaluateReadiness(
-  program: CliProgram,
+  program: AppSpec,
   surface: "http" | "mcp",
   runtime: ServerRuntime,
   appConfig: AnyAppConfigSnapshot,
@@ -64,7 +64,7 @@ export async function evaluateReadiness(
     return cached.result;
   }
 
-  const ctx: ReadinessContext = { program, surface, appConfig, runtime };
+  const ctx: ReadinessContext = { spec: program, surface, appConfig, runtime };
   const checks: Record<string, ReadinessCheck> = {
     config_file: configFileCheck(runtime),
     config_required: configRequiredCheck(program, appConfig),

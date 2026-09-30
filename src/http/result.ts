@@ -2,7 +2,7 @@
 Maps headless respond payloads to native HTTP Response objects.
 */
 
-import type { CliHttpResponseConfig, CliRespondOptions } from "../core/types.ts";
+import type { HttpResponseConfig, RespondOptions } from "../core/types.ts";
 
 /** JSON body for a failed HTTP tool invocation. */
 export interface ApiToolCallErrorBody {
@@ -41,10 +41,7 @@ export function apiOptionsResponse(): Response {
 }
 
 /** Resolves effective Content-Type for a respond payload. */
-export function resolveRespondContentType(
-  response: CliRespondOptions,
-  leafApiResponse?: CliHttpResponseConfig,
-): string {
+export function resolveRespondContentType(response: RespondOptions, leafApiResponse?: HttpResponseConfig): string {
   return (
     response.contentType ??
     leafApiResponse?.contentType ??
@@ -54,8 +51,8 @@ export function resolveRespondContentType(
 
 /** Builds a native HTTP Response from a successful headless respond payload. */
 export function apiSuccessResponse(
-  response: CliRespondOptions,
-  leafApiResponse?: CliHttpResponseConfig,
+  response: RespondOptions,
+  leafApiResponse?: HttpResponseConfig,
   defaultStatus?: number,
 ): Response {
   const contentType = resolveRespondContentType(response, leafApiResponse);

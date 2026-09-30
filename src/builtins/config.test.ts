@@ -8,9 +8,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { readBindings } from "../config/bindings.ts";
 import { resolveAppConfigPath, writeAppConfigFile } from "../config/file.ts";
-import { Cli, type CliProgram } from "../index.ts";
+import { type AppSpec, argsbarg } from "../index.ts";
 
-function configFixture(): CliProgram {
+function configFixture(): AppSpec {
   return {
     key: "cfg-app",
     version: "1.0.0",
@@ -39,7 +39,7 @@ describe("builtins/config", () => {
       const configPath = resolveAppConfigPath(program);
       mkdirSync(dirname(configPath), { recursive: true });
       writeFileSync(configPath, `${JSON.stringify({ apiToken: "secret" })}\n`);
-      const result = await new Cli(program).invoke(["configure", "get", "apiToken"]);
+      const result = await argsbarg(program).invoke(["configure", "get", "apiToken"]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe("REDACTED");
     } finally {
@@ -62,7 +62,7 @@ describe("builtins/config", () => {
       const configPath = resolveAppConfigPath(program);
       mkdirSync(dirname(configPath), { recursive: true });
       writeFileSync(configPath, `${JSON.stringify({ apiToken: "secret" })}\n`);
-      const result = await new Cli(program).invoke(["configure", "get", "apiToken", "--json"]);
+      const result = await argsbarg(program).invoke(["configure", "get", "apiToken", "--json"]);
       expect(result.exitCode).toBe(0);
       expect(JSON.parse(result.stdout)).toEqual({ set: true });
     } finally {
@@ -83,9 +83,9 @@ describe("builtins/config", () => {
     try {
       const program = configFixture();
       writeAppConfigFile(program, { apiToken: "seed" });
-      const result = await new Cli(program).invoke(["configure", "set", "port", "9090"]);
+      const result = await argsbarg(program).invoke(["configure", "set", "port", "9090"]);
       expect(result.exitCode).toBe(0);
-      const get = await new Cli(program).invoke(["configure", "get", "port"]);
+      const get = await argsbarg(program).invoke(["configure", "get", "port"]);
       expect(get.stdout.trim()).toBe("9090");
     } finally {
       if (prevTestHome === undefined) delete process.env.TEST_USER_HOME;
@@ -104,9 +104,9 @@ describe("builtins/config", () => {
     try {
       const program = configFixture();
       writeAppConfigFile(program, { apiToken: "seed" }, { partial: true });
-      const result = await new Cli(program).invoke(["configure", "set", "apiToken", "--from-env"]);
+      const result = await argsbarg(program).invoke(["configure", "set", "apiToken", "--from-env"]);
       expect(result.exitCode).toBe(0);
-      const raw = await new Cli(program).invoke(["configure", "get", "apiToken"]);
+      const raw = await argsbarg(program).invoke(["configure", "get", "apiToken"]);
       expect(raw.stdout.trim()).toBe("REDACTED");
       const configPath = resolveAppConfigPath(program);
       const { readFileSync } = await import("node:fs");

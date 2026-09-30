@@ -1,7 +1,7 @@
-import type { CliSchemaExport } from "../builtins/export.ts";
-import { cliSchemaExport } from "../core/schema.ts";
-import type { CliOption, CliPositional, CliProgram } from "../core/types.ts";
-import { CliFallbackMode, CliOptionKind } from "../core/types.ts";
+import type { SchemaExport } from "../builtins/export.ts";
+import { schemaExport } from "../core/schema.ts";
+import type { AppSpec, CommandOption, CommandPositional } from "../core/types.ts";
+import { FallbackMode, OptionKind } from "../core/types.ts";
 import { cliPositionalLabel, cliResolveNotes } from "../help.ts";
 
 /** Options for {@link generateCliGuideBody} and {@link generateCliGuide}. */
@@ -19,17 +19,17 @@ function commandPath(rootKey: string, path: string[]): string {
 }
 
 /** Human-readable option type for API tables. */
-function optionType(opt: CliOption): string {
-  if (opt.kind === CliOptionKind.Presence) {
+function optionType(opt: CommandOption): string {
+  if (opt.kind === OptionKind.Presence) {
     return "flag";
   }
-  if (opt.kind === CliOptionKind.Enum) {
+  if (opt.kind === OptionKind.Enum) {
     return `enum (\`${(opt.choices ?? []).join("`, `")}\`)`;
   }
   return opt.kind;
 }
 
-function optionFormatDefault(opt: CliOption): string {
+function optionFormatDefault(opt: CommandOption): string {
   const parts: string[] = [];
   if (opt.format !== undefined) {
     parts.push(opt.format);
@@ -44,20 +44,20 @@ function optionFormatDefault(opt: CliOption): string {
 }
 
 /** Markdown table cell for one option flag. */
-function optionLabel(opt: CliOption): string {
+function optionLabel(opt: CommandOption): string {
   const long = `\`--${opt.name}\``;
   const short = opt.shortName ? ` (\`-${opt.shortName}\`)` : "";
   return `${long}${short}`;
 }
 
 /** One options table row. */
-function formatOptionRow(opt: CliOption): string {
+function formatOptionRow(opt: CommandOption): string {
   const req = opt.required ? "required" : "optional";
   return `| ${optionLabel(opt)} | ${optionType(opt)} | ${req} | ${optionFormatDefault(opt)} | ${opt.description} |`;
 }
 
 /** One positionals table row. */
-function formatPositionalRow(p: CliPositional): string {
+function formatPositionalRow(p: CommandPositional): string {
   const label = cliPositionalLabel(p, false);
   const req = (p.argMin ?? 1) > 0 ? "required" : "optional";
   return `| \`${label}\` | ${p.kind} | ${req} | ${p.description} |`;
@@ -87,11 +87,11 @@ function formatOutputSchemaSection(schema: Record<string, unknown>): string[] {
 }
 
 /** Fallback routing note when present on a router node. */
-function fallbackLine(node: CliSchemaExport): string | null {
+function fallbackLine(node: SchemaExport): string | null {
   if (node.fallbackCommand === undefined) {
     return null;
   }
-  const mode = node.fallbackMode ?? CliFallbackMode.MissingOnly;
+  const mode = node.fallbackMode ?? FallbackMode.MissingOnly;
   return `**Default subcommand:** \`${node.fallbackCommand}\` (\`${mode}\`)`;
 }
 
@@ -104,7 +104,7 @@ function formatOutputSchemaPointer(rootKey: string): string[] {
 function renderCommandNode(
   rootKey: string,
   path: string[],
-  node: CliSchemaExport,
+  node: SchemaExport,
   lines: string[],
   opts: CliGuideBodyOptions,
 ): void {
@@ -174,16 +174,16 @@ function renderCommandNode(
 }
 
 /** Command-tree markdown for `docs cli` (no API doc header). */
-export function generateCliGuideBody(program: CliProgram, opts: CliGuideBodyOptions = {}): string {
-  const schema = cliSchemaExport(program);
+export function generateCliGuideBody(program: AppSpec, opts: CliGuideBodyOptions = {}): string {
+  const schema = schemaExport(program);
   const lines: string[] = [];
   renderCommandNode(program.key, [], schema, lines, opts);
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
 /** Generates markdown CLI reference from the same export as `docs cli-schema`. */
-export function generateCliGuide(program: CliProgram, opts: CliGuideBodyOptions = {}): string {
-  const schema = cliSchemaExport(program);
+export function generateCliGuide(program: AppSpec, opts: CliGuideBodyOptions = {}): string {
+  const schema = schemaExport(program);
   const lines: string[] = [
     `# ${program.key} — CLI API reference`,
     "",

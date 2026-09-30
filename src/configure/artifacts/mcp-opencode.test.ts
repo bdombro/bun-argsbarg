@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import {
   detectOpenCodeMcpConfigPath,
   expectedOpenCodeMcpEntry,
@@ -17,7 +17,7 @@ import {
   resolveOpenCodeConfigPathForInstall,
 } from "./mcp-opencode.ts";
 
-const fixture: CliProgram = {
+const fixture: AppSpec = {
   key: "testapp",
   version: "0.0.0",
   description: "Test",

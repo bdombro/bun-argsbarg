@@ -1,5 +1,5 @@
 /*
-This class packages parsed state for leaf handlers.
+This class packages parsed state for command handlers.
 It carries the app name, routed command path, positional args, and resolved options
 so handlers can focus on business logic instead of parser plumbing.
 
@@ -11,72 +11,69 @@ import type { AnyAppConfigSnapshot } from "../config/context.ts";
 import { EmptyAppConfigSnapshot } from "../config/context.ts";
 import { strictParseDouble } from "../utils.ts";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
-import { loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
+import { InputError, loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
-import type {
-  CliInvocation,
-  CliLeaf,
-  CliLocals,
-  CliNode,
-  CliProgram,
-  CliRespondOptions,
-  ServerRuntime,
-} from "./types.ts";
-import { isCliLeaf, isCliRouter } from "./types.ts";
+import type { AppSpec, Command, Invocation, Locals, RespondOptions, RunnableCommand, ServerRuntime } from "./types.ts";
+import { hasHandler, hasSubcommands } from "./types.ts";
+import { validateWithSchema } from "./zod-schema.ts";
 
-/** Coerced leaf inputs keyed by option and positional names. */
-export type CliLeafInputs = Record<string, boolean | number | string | string[] | unknown | undefined>;
+/** Coerced command inputs keyed by option and positional names. */
+export type CommandInputs = Record<string, boolean | number | string | string[] | unknown | undefined>;
 
 /**
- * Values passed to a leaf command handler after parsing: app name, routed path, args, and merged options.
+ * Values passed to a command handler after parsing: app name, routed path, args, and merged options.
+ * `I` is the type of {@link CommandContext.inputs} and `PP` of {@link CommandContext.pathParams} (both inferred via `command`).
  */
-export class CliContext {
+export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
   readonly appName: string;
   readonly commandPath: string[];
   args: string[];
-  readonly program: CliProgram;
+  readonly spec: AppSpec;
   opts: Record<string, string>;
-  readonly invocation: CliInvocation;
+  readonly invocation: Invocation;
   readonly appConfig: AnyAppConfigSnapshot;
   /** Original flat tool arguments for API/MCP invocations (when provided). */
   readonly toolArgs?: Record<string, unknown>;
-  /** Path parameter values from `:param` router descent. */
-  readonly pathParams: Record<string, string>;
+  /** Raw `:param` segment values from command group descent (before any `pathParams` schema validation). */
+  readonly rawPathParams: Record<string, string>;
   /** Pipable Json option values read from stdin before the handler (CLI only). */
   readonly preloadedJson: Record<string, unknown>;
   /** Per-invocation bag; `beforeInvoke` may write. */
-  readonly locals: CliLocals;
+  readonly locals: Locals;
   /** Shared server state for HTTP/MCP invocations. */
   runtime?: ServerRuntime;
 
-  private response?: CliRespondOptions;
-  private leafInputsCache?: CliLeafInputs;
+  private response?: RespondOptions;
+  /** Cached result of {@link pathParams} (validated once per invocation). */
+  private pathParamsCache?: { value: PP };
+  /** Cached result of {@link inputs} (loaded and validated once per invocation). */
+  private leafInputsCache?: { value: I };
 
-  /** Captures the program root, routed path, positional words, and option map for a leaf handler. */
+  /** Captures the app spec, routed path, positional words, and option map for a command handler. */
   constructor(
     appName: string,
     commandPath: string[],
     args: string[],
     opts: Record<string, string>,
-    program: CliProgram,
-    invocation: CliInvocation = "cli",
+    program: AppSpec,
+    invocation: Invocation = "cli",
     appConfig: AnyAppConfigSnapshot = new EmptyAppConfigSnapshot(program),
     toolArgs?: Record<string, unknown>,
     preloadedJson: Record<string, unknown> = {},
     pathParams: Record<string, string> = {},
-    locals: CliLocals = {} as CliLocals,
+    locals: Locals = {} as Locals,
     runtime?: ServerRuntime,
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
     this.args = args;
     this.opts = opts;
-    this.program = program;
+    this.spec = program;
     this.invocation = invocation;
     this.appConfig = appConfig;
     this.toolArgs = toolArgs;
     this.preloadedJson = preloadedJson;
-    this.pathParams = pathParams;
+    this.rawPathParams = pathParams;
     this.locals = locals;
     this.runtime = runtime;
   }
@@ -85,7 +82,7 @@ export class CliContext {
    * Sets the machine-readable response for API/MCP invocations, or writes to stdout in CLI mode.
    * May only be called once per invocation.
    */
-  respond(opts: CliRespondOptions): void {
+  respond(opts: RespondOptions): void {
     if (this.response !== undefined) {
       throw new Error("ctx.respond() was already called for this invocation");
     }
@@ -98,7 +95,7 @@ export class CliContext {
   }
 
   /** Returns the respond payload set by {@link respond}, if any. */
-  getResponse(): CliRespondOptions | undefined {
+  getResponse(): RespondOptions | undefined {
     return this.response;
   }
 
@@ -166,7 +163,7 @@ export class CliContext {
    * Flag wins over stdin and toolArgs.
    */
   jsonOpt(name: string): unknown | undefined {
-    return readJsonOptionValue(this, name);
+    return readJsonOptionValue(this as unknown as CommandContext, name);
   }
 
   /** Returns the value(s) for a named positional slot. Varargs slots return string[]; single slots return string | undefined. */
@@ -175,33 +172,47 @@ export class CliContext {
   }
 
   /**
-   * Coerced option and positional values for the current leaf.
-   * When `leaf.inputSchema` is set, argsbarg validates before the handler runs; this returns the cached result.
+   * `:param` values for the current command. With the command's `pathParams`, this is the schema's parsed output, validated
+   * before the handler runs (a mismatch is a {@link InputError}); otherwise the raw string segments.
    */
-  get inputs(): CliLeafInputs {
-    if (this.leafInputsCache !== undefined) {
-      return this.leafInputsCache;
+  get pathParams(): PP {
+    if (this.pathParamsCache !== undefined) {
+      return this.pathParamsCache.value;
     }
-    this.leafInputsCache = loadLeafInputs(this);
-    return this.leafInputsCache;
+    const schema = this._leafNode()?.pathParams;
+    if (schema === undefined) {
+      this.pathParamsCache = { value: this.rawPathParams as PP };
+      return this.pathParamsCache.value;
+    }
+    const result = validateWithSchema(schema, this.rawPathParams);
+    if (!result.valid) {
+      throw new InputError(result.errors.join("; "));
+    }
+    this.pathParamsCache = { value: result.value as PP };
+    return this.pathParamsCache.value;
   }
 
   /**
-   * {@link inputs} cast to a schemagen or app-defined input type (consumer-asserted; not inferred from `inputSchema`).
+   * Inputs for the current command. With the command's `inputSchema`, this is the schema's parsed output (defaults and
+   * transforms applied), validated before the handler runs; otherwise the coerced option and positional values.
    */
-  inputsAs<T = CliLeafInputs>(): T {
-    return this.inputs as T;
+  get inputs(): I {
+    if (this.leafInputsCache !== undefined) {
+      return this.leafInputsCache.value;
+    }
+    this.leafInputsCache = { value: loadLeafInputs(this as unknown as CommandContext) as I };
+    return this.leafInputsCache.value;
   }
 
-  private _leafNode(): CliLeaf | undefined {
-    let node: CliNode = this.program;
+  private _leafNode(): RunnableCommand | undefined {
+    let node: Command = this.spec;
     for (const seg of this.commandPath) {
-      if (!isCliRouter(node)) return undefined;
+      if (!hasSubcommands(node)) return undefined;
       const child = node.commands.find((c) => c.key === seg);
       if (!child) return undefined;
       node = child;
     }
-    return isCliLeaf(node) ? node : undefined;
+    return hasHandler(node) ? node : undefined;
   }
 
   private _posMap: Record<string, string | string[]> | undefined;

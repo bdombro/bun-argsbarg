@@ -1,7 +1,7 @@
 /** Interactive prompts for `argsbarg create`. */
 
 import { readPromptLine as readStdinLine } from "../prompt.ts";
-import { CREATE_TEMPLATES, type CreateTemplateId, normalizeCreateTemplateId } from "./create.ts";
+import { CREATE_TEMPLATES, type CreateTemplateId } from "./create.ts";
 
 export function readPromptLine(prompt: string): string {
   process.stderr.write(prompt);
@@ -28,28 +28,19 @@ export function promptRequired(label: string, current?: string): string {
   }
 }
 
-/** A/B picker for create template (returns cli or json). */
+/** Lettered picker for the create template (A, B, C … in `CREATE_TEMPLATES` order; the key also works). */
 export function promptTemplateChoice(): CreateTemplateId {
-  const cli = CREATE_TEMPLATES.find((t) => t.id === "cli");
-  const json = CREATE_TEMPLATES.find((t) => t.id === "json");
-  if (!cli || !json) {
-    throw new Error("CREATE_TEMPLATES must include cli and json entries");
-  }
   process.stderr.write("\nSelect a template:\n\n");
-  process.stderr.write(`A) ${cli.displayName} — ${cli.description}\n`);
-  process.stderr.write(`B) ${json.displayName} — ${json.description}\n\n`);
+  CREATE_TEMPLATES.forEach((template, i) => {
+    process.stderr.write(`${String.fromCharCode(65 + i)}) ${template.id} — ${template.description}\n`);
+  });
+  process.stderr.write("\n");
   while (true) {
-    const ans = readPromptLine("Choice: ").toLowerCase();
-    if (ans === "a") return "cli";
-    if (ans === "b") return "json";
-    process.stderr.write("  Enter A or B.\n");
+    const ans = readPromptLine("Choice: ").trim().toLowerCase();
+    const byLetter = CREATE_TEMPLATES[ans.charCodeAt(0) - 97];
+    if (ans.length === 1 && byLetter) return byLetter.id;
+    const byId = CREATE_TEMPLATES.find((t) => t.id === ans);
+    if (byId) return byId.id;
+    process.stderr.write(`  Enter ${CREATE_TEMPLATES.map((_, i) => String.fromCharCode(65 + i)).join(", ")}.\n`);
   }
-}
-
-export function parseTemplateChoiceInput(value: string | undefined): CreateTemplateId | undefined {
-  if (!value) return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "a" || normalized === "cli") return "cli";
-  if (normalized === "b" || normalized === "json") return "json";
-  return normalizeCreateTemplateId(value);
 }

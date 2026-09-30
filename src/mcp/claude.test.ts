@@ -7,11 +7,11 @@ import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { defaultClaudePluginPaths, generatePluginManifest, generatePluginMcpJson, packClaudePlugin } from "./claude.ts";
 import { pluginName } from "./plugin-shared.ts";
 
-const configFixture: CliProgram = {
+const configFixture: AppSpec = {
   key: "myapp",
   version: "1.0.0",
   description: "Demo.",
@@ -34,7 +34,7 @@ describe("claude plugin", () => {
     expect(pluginName({ ...configFixture, key: "MyApp" })).toBe("my-app");
   });
 
-  test("generatePluginManifest includes userConfig from program.appConfig", () => {
+  test("generatePluginManifest includes userConfig from appConfig", () => {
     const manifest = generatePluginManifest(configFixture, "myapp");
     expect(manifest.name).toBe("myapp");
     expect(manifest.mcpServers).toBe(".mcp.json");

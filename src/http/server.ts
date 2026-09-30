@@ -3,14 +3,15 @@ HTTP tool server for ArgsBarg programs: health, OpenAPI, and REST API invocation
 */
 
 import { randomUUID } from "node:crypto";
-import type { CliHttpWireContext, CliProgram } from "../core/types.ts";
+import type { AppSpec, HttpWireContext } from "../core/types.ts";
+import { schemaStrictnessWarnings } from "../core/validate.ts";
 import {
   executeHttpRouteCall,
   headlessFailureToHttpResponse,
   headlessSuccessToHttpResponse,
 } from "../headless/tool-call.ts";
 import { extractTraceContext, formatTraceparent } from "../log/trace.ts";
-import type { Cli } from "../runtime/cli.ts";
+import type { App } from "../runtime/cli.ts";
 import { leafHttpResponseDefaults } from "../runtime/exposure.ts";
 import type { ResolvedHttpServeConfig } from "../server/overrides.ts";
 import { generateOpenApi } from "./openapi.ts";
@@ -22,7 +23,7 @@ const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 3000;
 
 /** Resolved listen address for the HTTP API server. */
-export function resolveHttpListenAddress(program: CliProgram): { hostname: string; port: number } {
+export function resolveHttpListenAddress(program: AppSpec): { hostname: string; port: number } {
   const config = program.httpServer;
   return {
     hostname: config?.host ?? DEFAULT_HOST,
@@ -62,17 +63,17 @@ function parseQuery(url: URL): Record<string, string> {
 
 /** Handles one HTTP request for the API server. */
 export async function handleApiRequest(
-  cli: Cli,
+  cli: App,
   request: Request,
   resolved?: ResolvedHttpServeConfig,
 ): Promise<Response> {
   const httpConfig = resolved ?? cli.server?.http;
-  const trustProxy = httpConfig?.trustProxy ?? cli.program.httpServer?.trustProxy ?? false;
+  const trustProxy = httpConfig?.trustProxy ?? cli.spec.httpServer?.trustProxy ?? false;
   const requestId = randomUUID();
   const url = new URL(request.url);
   const clientIp = resolveClientIp(request, trustProxy);
   const trace = extractTraceContext(request);
-  const wireCtx: CliHttpWireContext = {
+  const wireCtx: HttpWireContext = {
     request,
     requestId,
     clientIp,
@@ -80,7 +81,7 @@ export async function handleApiRequest(
     method: request.method,
     ...(trace ? { traceId: trace.traceId, spanId: trace.spanId } : {}),
   };
-  const hooks = cli.server?.httpHooks ?? cli.program.httpServer?.hooks;
+  const hooks = cli.server?.httpHooks ?? cli.spec.httpServer?.hooks;
   const emitter = cli.server?.emitter;
   const started = performance.now();
 
@@ -126,7 +127,7 @@ export async function handleApiRequest(
     return finish(apiOptionsResponse());
   }
 
-  const root = cli.program;
+  const root = cli.spec;
   const path = url.pathname;
 
   if (request.method === "GET" && path === "/health/liveness") {
@@ -211,12 +212,12 @@ export async function handleApiRequest(
 }
 
 /** Runs the HTTP API server until the process is interrupted. */
-export async function httpServeHttp(cli: Cli, resolved?: ResolvedHttpServeConfig): Promise<never> {
+export async function httpServeHttp(cli: App, resolved?: ResolvedHttpServeConfig): Promise<never> {
   const listen = resolved ?? {
-    hostname: resolveHttpListenAddress(cli.program).hostname,
-    port: resolveHttpListenAddress(cli.program).port,
-    trustProxy: cli.program.httpServer?.trustProxy ?? false,
-    obscureUnexpected: cli.program.httpServer?.errors?.obscureUnexpected ?? false,
+    hostname: resolveHttpListenAddress(cli.spec).hostname,
+    port: resolveHttpListenAddress(cli.spec).port,
+    trustProxy: cli.spec.httpServer?.trustProxy ?? false,
+    obscureUnexpected: cli.spec.httpServer?.errors?.obscureUnexpected ?? false,
     log: { format: "json" as const, access: true, errors: true, dev: false },
   };
   const server = Bun.serve({
@@ -226,11 +227,11 @@ export async function httpServeHttp(cli: Cli, resolved?: ResolvedHttpServeConfig
   });
   const url = `http://${server.hostname}:${server.port}`;
   const emitter = cli.server?.emitter;
+  for (const message of schemaStrictnessWarnings(cli.spec)) {
+    emitter?.emit({ level: "warn", message, action: "schema.strictness" });
+  }
   if (emitter && listen.log.format === "text") {
-    emitter.emitLifecycle(
-      `${cli.program.key} ${cli.program.version} — HTTP API listening on ${url}`,
-      "http.server.start",
-    );
+    emitter.emitLifecycle(`${cli.spec.key} ${cli.spec.version} — HTTP API listening on ${url}`, "http.server.start");
   } else {
     emitter?.emit({
       level: "info",

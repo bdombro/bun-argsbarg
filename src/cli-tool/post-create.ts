@@ -2,7 +2,7 @@
 
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { CreateTemplateId } from "./create.ts";
+import { type CreateTemplateId, DEFAULT_CREATE_TEMPLATE } from "./create.ts";
 
 export function isInsideGitWorkTree(dir: string): boolean {
   try {
@@ -29,7 +29,8 @@ export function shouldSkipGitBootstrap(targetDir: string): boolean {
 export async function runPostCreate(
   targetDir: string,
   dryRun: boolean,
-  templateId: CreateTemplateId = "cli",
+  /** Template that was copied; the plugin template also builds its committed Node bundle. */
+  templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE,
 ): Promise<void> {
   const abs = resolve(targetDir);
   const steps: Array<{ label: string; run: () => Promise<void> | void }> = [
@@ -45,22 +46,22 @@ export async function runPostCreate(
         if (proc.exitCode !== 0) throw new Error("bun install failed");
       },
     },
-    ...(templateId === "json"
+    ...(templateId === "agent-plugin"
       ? [
           {
-            label: "argsbarg schemagen",
+            label: "just build (plugin bundle in dist/)",
             run: () => {
               if (dryRun) return;
-              const proc = Bun.spawnSync(["argsbarg", "schemagen"], {
-                cwd: abs,
-                stdout: "inherit",
-                stderr: "inherit",
-                env: {
-                  ...process.env,
-                  PATH: `${join(abs, "node_modules/.bin")}:${process.env.PATH ?? ""}`,
-                },
-              });
-              if (proc.exitCode !== 0) throw new Error("schemagen failed");
+              let proc: ReturnType<typeof Bun.spawnSync>;
+              try {
+                proc = Bun.spawnSync(["just", "build"], { cwd: abs, stdout: "inherit", stderr: "inherit" });
+              } catch {
+                process.stderr.write(
+                  "`just` not found; run `just build` before installing the plugin (it runs dist/).\n",
+                );
+                return;
+              }
+              if (proc.exitCode !== 0) throw new Error("just build failed");
             },
           },
         ]
@@ -113,15 +114,15 @@ export async function runPostCreate(
   }
 }
 
-export function printPostCreatePlan(templateId: CreateTemplateId = "cli"): void {
+export function printPostCreatePlan(templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE): void {
+  const steps = [
+    "bun install",
+    ...(templateId === "agent-plugin" ? ["just build (plugin bundle in dist/)"] : []),
+    "bun test",
+    "git init + Initial commit (skipped inside existing git work tree)",
+  ];
   process.stderr.write("Post-create steps:\n");
-  process.stderr.write("  1. bun install\n");
-  if (templateId === "json") {
-    process.stderr.write("  2. just schemagen\n");
-    process.stderr.write("  3. bun test\n");
-    process.stderr.write("  4. git init + Initial commit (skipped inside existing git work tree)\n");
-  } else {
-    process.stderr.write("  2. bun test\n");
-    process.stderr.write("  3. git init + Initial commit (skipped inside existing git work tree)\n");
-  }
+  steps.forEach((step, i) => {
+    process.stderr.write(`  ${i + 1}. ${step}\n`);
+  });
 }

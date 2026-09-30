@@ -47,8 +47,12 @@ function derefValue(value: unknown, root: Record<string, unknown>, resolving: Se
   return out;
 }
 
-/** Inlines internal `$ref` pointers and drops `definitions` / `$defs` from the output. */
+/**
+ * Inlines internal `$ref` pointers and drops `definitions` / `$defs` from the output, plus the root `$schema`
+ * (OpenAPI 3.1 schema objects already default to the 2020-12 dialect argsbarg emits).
+ */
 export function dereferenceJsonSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const root = structuredClone(schema);
-  return derefValue(root, root, new Set()) as Record<string, unknown>;
+  const { $schema: _dialect, ...out } = derefValue(root, root, new Set()) as Record<string, unknown>;
+  return out;
 }

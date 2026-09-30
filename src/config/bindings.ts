@@ -2,7 +2,7 @@
 Per-key config binding metadata (`_bindings`) — records how each schema key is satisfied.
 */
 
-import type { CliAppConfigEntry } from "../core/types.ts";
+import type { AppConfigEntry } from "../core/types.ts";
 
 /** Reserved top-level config file key for per-entry binding metadata. */
 export const CONFIG_BINDINGS_KEY = "_bindings";
@@ -92,7 +92,7 @@ export function clearFileValue(fileData: Record<string, unknown>, key: string): 
 }
 
 /** Whether the user already addressed this key (skip wizard re-prompt). */
-export function isKeyAddressed(key: string, fileData: Record<string, unknown>, _entry: CliAppConfigEntry): boolean {
+export function isKeyAddressed(key: string, fileData: Record<string, unknown>, _entry: AppConfigEntry): boolean {
   const bindings = readBindings(fileData);
   if (bindings[key] === "skip" || bindings[key] === "env" || bindings[key] === "file") {
     return true;

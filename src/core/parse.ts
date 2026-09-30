@@ -11,15 +11,15 @@ import { isCliCallable } from "../runtime/exposure.ts";
 import { fullStringIsDouble } from "../utils.ts";
 import { formatValidationError, validateFormatValue } from "./formats.ts";
 import {
-  CliFallbackMode,
-  type CliLeaf,
-  type CliNode,
-  type CliOption,
-  CliOptionKind,
-  type CliRouter,
-  isCliLeaf,
-  isCliRouter,
-  isDocumentLeaf,
+  type Command,
+  type CommandGroup,
+  type CommandOption,
+  FallbackMode,
+  hasHandler,
+  hasSubcommands,
+  isDocumentCommand,
+  OptionKind,
+  type RunnableCommand,
 } from "./types.ts";
 
 // ── Parse Result ──────────────────────────────────────────────────────────────
@@ -40,11 +40,11 @@ export enum ParseKind {
 export interface ParseResult {
   /** Parse outcome (ok, help, or error). */
   kind: ParseKind;
-  /** Routed subcommand keys from the program root (e.g. `["hello"]`). */
+  /** Routed subcommand keys from the app root (e.g. `["hello"]`). */
   path: string[];
   /** Merged long/short option values as string values (presence → `"1"`). */
   opts: Record<string, string>;
-  /** Positional arguments for the leaf command, in order. */
+  /** Positional arguments for the command with a handler, in order. */
   args: string[];
   /** True when the user passed `-h` / `--help` explicitly. */
   helpExplicit: boolean;
@@ -69,7 +69,7 @@ function isHelpTok(tok: string): boolean {
 }
 
 /** Looks up a subcommand or routing node by `key`. */
-function findChild(cmds: CliNode[], name: string): CliNode | undefined {
+function findChild(cmds: Command[], name: string): Command | undefined {
   return cmds.find((c) => c.key === name);
 }
 
@@ -78,7 +78,7 @@ function isParamRouterKey(key: string): boolean {
 }
 
 /** Static (non-`:param`) child by key. */
-function findStaticChild(cmds: CliNode[], name: string): CliNode | undefined {
+function findStaticChild(cmds: Command[], name: string): Command | undefined {
   const ch = cmds.find((c) => c.key === name);
   if (!ch || isParamRouterKey(ch.key)) {
     return undefined;
@@ -87,17 +87,17 @@ function findStaticChild(cmds: CliNode[], name: string): CliNode | undefined {
 }
 
 /** The single `:param` router child at this level, if any. */
-function findParamChild(cmds: CliNode[]): CliNode | undefined {
+function findParamChild(cmds: Command[]): Command | undefined {
   return cmds.find((c) => isParamRouterKey(c.key));
 }
 
 /** Resolves a long-option definition by name (without leading `--`). */
-function findOptionByName(defs: CliOption[], name: string): CliOption | undefined {
+function findOptionByName(defs: readonly CommandOption[], name: string): CommandOption | undefined {
   return defs.find((o) => o.name === name);
 }
 
 /** Resolves a short-option definition by its single character. */
-function findOptionDefByShort(defs: CliOption[], short: string): CliOption | undefined {
+function findOptionDefByShort(defs: readonly CommandOption[], short: string): CommandOption | undefined {
   return defs.find((o) => o.shortName === short);
 }
 
@@ -115,7 +115,7 @@ interface ConsumeReport {
 
 /** Consumes argv from index `i` for long/short options, updating `opts` until a non-option or `--`. */
 function consumeOptions(
-  defs: CliOption[],
+  defs: readonly CommandOption[],
   lenientUnknown: boolean,
   argv: string[],
   i: number,
@@ -145,7 +145,7 @@ function consumeOptions(
     }
 
     if (inlineVal !== undefined) {
-      if (def.kind === CliOptionKind.Presence) {
+      if (def.kind === OptionKind.Presence) {
         opts[def.name] = "1";
       } else {
         opts[def.name] = inlineVal;
@@ -154,7 +154,7 @@ function consumeOptions(
       return null;
     }
 
-    if (def.kind === CliOptionKind.Presence) {
+    if (def.kind === OptionKind.Presence) {
       opts[def.name] = "1";
     } else {
       idx += 1;
@@ -182,7 +182,7 @@ function consumeOptions(
         return `Unknown option: -${shortChar}`;
       }
 
-      if (def.kind === CliOptionKind.Presence) {
+      if (def.kind === OptionKind.Presence) {
         opts[def.name] = "1";
         j += 1;
         continue;
@@ -245,13 +245,13 @@ function consumeOptions(
 // ── Positional Collection ─────────────────────────────────────────────────────
 
 /** Resolves the command node at the end of a routed path. */
-function resolveNodeAtPath(root: CliNode, path: string[]): CliNode | undefined {
+function resolveNodeAtPath(root: Command, path: string[]): Command | undefined {
   if (path.length === 0) {
     return root;
   }
-  let node: CliNode = root;
+  let node: Command = root;
   for (const seg of path) {
-    if (!isCliRouter(node)) {
+    if (!hasSubcommands(node)) {
       return undefined;
     }
     const ch = findChild(node.commands, seg);
@@ -264,12 +264,12 @@ function resolveNodeAtPath(root: CliNode, path: string[]): CliNode | undefined {
 }
 
 /** Options declared on each command node along the path (root + each segment). Used for post-parse validation. */
-export function collectPathOptionDefs(root: CliNode, path: string[]): CliOption[] {
+export function collectPathOptionDefs(root: Command, path: string[]): CommandOption[] {
   const defs = [...(root.options ?? [])];
-  let node: CliNode = root;
+  let node: Command = root;
 
   for (const seg of path) {
-    if (!isCliRouter(node)) {
+    if (!hasSubcommands(node)) {
       break;
     }
     const ch = findChild(node.commands, seg);
@@ -283,10 +283,10 @@ export function collectPathOptionDefs(root: CliNode, path: string[]): CliOption[
   return defs;
 }
 
-/** Options declared on the leaf command at path (wire schemas and MCP/HTTP tool args). */
-export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
+/** Options declared on the command with a handler at path (wire schemas and MCP/HTTP tool args). */
+export function collectOptionDefs(root: Command, path: string[]): CommandOption[] {
   const node = resolveNodeAtPath(root, path);
-  if (!node || !isCliLeaf(node)) {
+  if (!node || !hasHandler(node)) {
     return [];
   }
   return [...(node.options ?? [])];
@@ -294,7 +294,7 @@ export function collectOptionDefs(root: CliNode, path: string[]): CliOption[] {
 
 /** Fills `args` for a document / json leaf from `startIdx` (0 or 1 JSON or YAML string positional). */
 function finishJsonLeaf(
-  node: CliLeaf,
+  node: RunnableCommand,
   startIdx: number,
   argv: string[],
   path: string[],
@@ -339,12 +339,12 @@ function finishJsonLeaf(
 
 /** Fills `args` for a leaf from `startIdx` according to `node.positionals`. */
 function finishLeaf(
-  node: CliLeaf,
+  node: RunnableCommand,
   startIdx: number,
   argv: string[],
   path: string[],
   opts: Record<string, string>,
-  optionDefs: CliOption[],
+  optionDefs: readonly CommandOption[],
   forcePositionalsIn: boolean,
   pathParams: Record<string, string>,
 ): ParseResult {
@@ -490,11 +490,11 @@ function helpResult(p: string[], explicit: boolean, pathParams: Record<string, s
   };
 }
 
-type DescendResult = { ok: true; node: CliNode; cliEnabled: boolean } | { ok: false; error: ParseResult };
+type DescendResult = { ok: true; node: Command; cliEnabled: boolean } | { ok: false; error: ParseResult };
 
 /** Descends into a static or `:param` child, updating path and pathParams. */
 function descendChild(
-  parent: CliRouter,
+  parent: CommandGroup,
   tok: string,
   path: string[],
   pathParams: Record<string, string>,
@@ -521,9 +521,9 @@ function descendChild(
 }
 
 /**
- * Parses `argv` against the program root, routing into subcommands and filling `opts` / `args`.
+ * Parses `argv` against the app root, routing into subcommands and filling `opts` / `args`.
  */
-export function parse(root: CliNode, argv: string[]): ParseResult {
+export function parse(root: Command, argv: string[]): ParseResult {
   let i = 0;
   const path: string[] = [];
   const pathParams: Record<string, string> = {};
@@ -531,10 +531,10 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   let cliEnabled = true;
 
   const rootLenient =
-    isCliRouter(root) &&
+    hasSubcommands(root) &&
     root.fallbackCommand !== undefined &&
-    ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown ||
-      (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
+    ((root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.MissingOrUnknown ||
+      (root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.UnknownOnly);
 
   // Consume root-level options first
   const rootRep = consumeOptions(root.options ?? [], rootLenient, argv, i, opts);
@@ -550,10 +550,10 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   // Determine which subcommand to route to
   let cmdName: string;
-  let node: CliNode | undefined;
+  let node: Command | undefined;
 
-  if (isCliLeaf(root)) {
-    if (isDocumentLeaf(root)) {
+  if (hasHandler(root)) {
+    if (isDocumentCommand(root)) {
       return finishJsonLeaf(root, i, argv, path, opts, pathParams);
     }
     return finishLeaf(root, i, argv, path, opts, root.options ?? [], forcePositionals, pathParams);
@@ -562,8 +562,8 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
   if (i >= argv.length) {
     if (
       root.fallbackCommand !== undefined &&
-      ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOnly ||
-        (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown)
+      ((root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.MissingOnly ||
+        (root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.MissingOrUnknown)
     ) {
       cmdName = root.fallbackCommand;
       node = findChild(root.commands, cmdName);
@@ -585,7 +585,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       i += 1;
       node = childPick;
       cliEnabled = isCliCallable(childPick, cliEnabled);
-    } else if (!forcePositionals && isCliRouter(root)) {
+    } else if (!forcePositionals && hasSubcommands(root)) {
       const paramChild = findParamChild(root.commands);
       if (paramChild && isCliCallable(paramChild, cliEnabled)) {
         cmdName = paramChild.key;
@@ -597,8 +597,8 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         const fallbackCommand = root.fallbackCommand;
         const canRouteUnknown =
           fallbackCommand !== undefined &&
-          ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown ||
-            (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
+          ((root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.MissingOrUnknown ||
+            (root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.UnknownOnly);
 
         if (canRouteUnknown) {
           cmdName = fallbackCommand;
@@ -614,8 +614,8 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       const fallbackCommand = root.fallbackCommand;
       const canRouteUnknown =
         fallbackCommand !== undefined &&
-        ((root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.MissingOrUnknown ||
-          (root.fallbackMode ?? CliFallbackMode.MissingOnly) === CliFallbackMode.UnknownOnly);
+        ((root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.MissingOrUnknown ||
+          (root.fallbackMode ?? FallbackMode.MissingOnly) === FallbackMode.UnknownOnly);
 
       if (canRouteUnknown) {
         cmdName = fallbackCommand;
@@ -646,7 +646,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 
   // Walk the command tree
   while (true) {
-    if (isCliLeaf(current) && isDocumentLeaf(current)) {
+    if (hasHandler(current) && isDocumentCommand(current)) {
       return finishJsonLeaf(current, i, argv, path, opts, pathParams);
     }
 
@@ -666,10 +666,10 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
     }
 
     if (i >= argv.length) {
-      if (isCliRouter(current) && current.commands.length > 0) {
+      if (hasSubcommands(current) && current.commands.length > 0) {
         const fb = current.fallbackCommand;
-        const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
-        if (fb !== undefined && (fm === CliFallbackMode.MissingOnly || fm === CliFallbackMode.MissingOrUnknown)) {
+        const fm = current.fallbackMode ?? FallbackMode.MissingOnly;
+        if (fb !== undefined && (fm === FallbackMode.MissingOnly || fm === FallbackMode.MissingOrUnknown)) {
           const fbNode = findChild(current.commands, fb);
           if (fbNode) {
             path.push(fb);
@@ -680,7 +680,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
         }
         return helpResult(path, false, pathParams);
       }
-      if (!isCliLeaf(current)) {
+      if (!hasHandler(current)) {
         return helpResult(path, false, pathParams);
       }
       return finishLeaf(current, i, argv, path, opts, current.options ?? [], forcePositionals, pathParams);
@@ -691,7 +691,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       return errorResult(`Unexpected option token: ${tok}`, path, [], pathParams);
     }
 
-    if (!forcePositionals && isCliRouter(current)) {
+    if (!forcePositionals && hasSubcommands(current)) {
       const descended = descendChild(current, tok, path, pathParams, cliEnabled);
       if (descended.ok) {
         i += 1;
@@ -701,11 +701,11 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       }
     }
 
-    if (isCliRouter(current) && current.commands.length > 0) {
+    if (hasSubcommands(current) && current.commands.length > 0) {
       const fb = current.fallbackCommand;
-      const fm = current.fallbackMode ?? CliFallbackMode.MissingOnly;
+      const fm = current.fallbackMode ?? FallbackMode.MissingOnly;
       const canRouteUnknown =
-        fb !== undefined && (fm === CliFallbackMode.MissingOrUnknown || fm === CliFallbackMode.UnknownOnly);
+        fb !== undefined && (fm === FallbackMode.MissingOrUnknown || fm === FallbackMode.UnknownOnly);
 
       if (canRouteUnknown && fb !== undefined) {
         const fbNode = findChild(current.commands, fb);
@@ -725,7 +725,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
       );
     }
 
-    if (!isCliLeaf(current)) {
+    if (!hasHandler(current)) {
       return helpResult(path, false, pathParams);
     }
     return finishLeaf(current, i, argv, path, opts, current.options ?? [], forcePositionals, pathParams);
@@ -737,7 +737,7 @@ export function parse(root: CliNode, argv: string[]): ParseResult {
 /**
  * Validates option keys and numeric values for an Ok parse along `pr.path`.
  */
-export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
+export function postParseValidate(root: Command, pr: ParseResult): ParseResult {
   if (pr.kind !== ParseKind.Ok) return pr;
 
   const defs = collectPathOptionDefs(root, pr.path);
@@ -751,7 +751,7 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
 
   for (const d of defs) {
     if (d.required && !(d.name in opts)) {
-      if (d.kind === CliOptionKind.Json) {
+      if (d.kind === OptionKind.Json) {
         continue;
       }
       return errorResult(`Missing required option: --${d.name}`, pr.path);
@@ -763,7 +763,7 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
     if (!d) {
       return errorResult(`Unknown option key: ${k}`, pr.path);
     }
-    if (d.kind === CliOptionKind.Json) {
+    if (d.kind === OptionKind.Json) {
       try {
         JSON.parse(v);
       } catch {
@@ -771,18 +771,18 @@ export function postParseValidate(root: CliNode, pr: ParseResult): ParseResult {
       }
       continue;
     }
-    if (d.kind === CliOptionKind.Number) {
+    if (d.kind === OptionKind.Number) {
       if (!fullStringIsDouble(v)) {
         return errorResult(`Invalid number for option --${k}: ${v}`, pr.path);
       }
     }
-    if (d.kind === CliOptionKind.Enum) {
+    if (d.kind === OptionKind.Enum) {
       const choices = d.choices ?? [];
       if (!choices.includes(v)) {
         return errorResult(`Option --${k}: '${v}' is not one of: ${choices.join(", ")}`, pr.path);
       }
     }
-    if (d.kind === CliOptionKind.String && (d.format !== undefined || d.pattern !== undefined)) {
+    if (d.kind === OptionKind.String && (d.format !== undefined || d.pattern !== undefined)) {
       try {
         validateFormatValue(v, d.format, d.pattern);
       } catch (err) {

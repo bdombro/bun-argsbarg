@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-09-30
+
+### Changed (breaking)
+
+- **New naming: an app is built with `argsbarg({ … })` from a spec of `command`s, and the `Cli` prefix is gone.** `argsbarg({ … })` validates the spec and returns the app (`export const app = argsbarg({ … })` in `src/app.ts`, then `await app.run()`); `App` is exported as a type only. Commands either run (`handler`) or group subcommands (`commands`), and both are declared with `command({ … })`. The definition is the **spec**: `app.spec`, `ctx.spec`, and `spec` on hook/runtime contexts; spec helpers (`generateOpenApi`, `schemaStrictnessWarnings`, `mcpSizeReport`, `packMcpBundle`, …) take `app.spec`. Public types drop `Cli` because argsbarg serves HTTP and MCP too; it stays only where it means the CLI surface (`CliExposureConfig`, `cliErrWithHelp`, the `"cli"` invocation). Key renames:
+
+  | 7.x | 8.0 |
+  | --- | --- |
+  | `const program = { … } satisfies CliProgram; new Cli(program).run()` | `export const app = argsbarg({ … }); await app.run()` |
+  | `src/program.ts` | `src/app.ts` |
+  | `cli.program` / `ctx.program` / hook `ctx.program` | `app.spec` / `ctx.spec` / hook `ctx.spec` |
+  | `CliProgram` / `CliProgramHooks` | `AppSpec` / `AppHooks` |
+  | `{ … } satisfies CliLeaf` / `CliRouter` | `command({ … })` |
+  | `CliNode` / `CliLeaf` / `CliRouter` | `Command` / `RunnableCommand` / `CommandGroup` |
+  | `CliOption` / `CliPositional` / `CliContext` | `CommandOption` / `CommandPositional` / `CommandContext` |
+  | `CliOptionKind` / `CliValueFormat` / `CliFallbackMode` | `OptionKind` / `ValueFormat` / `FallbackMode` |
+  | `CliSchemaValidationError` / `LeafInputError` / `CliJsonSchema` / `CliLeafInputs` | `SchemaValidationError` / `InputError` / `JsonSchema` / `CommandInputs` |
+  | `CliAppConfig` / `CliLocals` / `CliInvocation` | `AppConfig` / `Locals` / `Invocation` |
+  | `CliMcpServerConfig` / `CliHttpServerConfig` / `CliDocsConfig` … | `McpServerConfig` / `HttpServerConfig` / `DocsConfig` … |
+  | `CliCliExposureConfig` | `CliExposureConfig` |
+  | `isDocumentLeaf` / `buildLeafInputSchema` / `leafWireOptions` | `isDocumentCommand` / `buildCommandInputSchema` / `commandWireOptions` |
+  | `cliSchemaExport` / `cliSchemaJson` | `schemaExport` / `schemaJson` |
+
+  Validation now happens when `argsbarg()` runs (at import of `src/app.ts`). The docs name the app's own config schema `Settings` so it doesn't clash with argsbarg's `AppConfig` type. `declare module "argsbarg"` augmentations use `Locals` / `ServerState`. User-facing messages say "command" / "command group" / "app root" instead of leaf / router / program root.
+
+- Schemas are authored in Zod 4 (`zod` is now a peer dependency). `inputSchema`, `outputSchema`, `httpServer.errors.errorSchema`, and `mcpServer.errors.errorSchema` take Zod schemas; argsbarg validates with Zod and emits JSON Schema (draft 2020-12) for MCP `tools/list`, OpenAPI, non-TTY help, and `docs cli-schema`. Passing a JSON Schema object fails at startup with a migration error.
+- `program.appConfig.jsonSchema` is replaced by `program.appConfig.schema`, which takes a Zod object schema (`z.strictObject` recommended). Without it, argsbarg still synthesizes an all-string schema from `entries`.
+- `ctx.inputs` for a leaf with `inputSchema` is now the schema's parsed output: defaults and transforms are applied, and strict schemas reject unknown keys as before.
+- Schema validation errors are Zod's messages prefixed by path, polished for agents: missing fields read `name: required`, unknown keys list what is allowed (`$: Unrecognized key: "titel" (allowed: action, doc, title)`), and union/enum mismatches echo the rejected value (`steps.0.kind: Invalid discriminator value. Expected 'alpha' | 'beta' (got "alfa")`). This replaces argsbarg's union-narrowing rewrites.
+- Partial config validation (`configure set`, bootstrap) makes top-level keys optional via `.partial()`; nested `required` fields are no longer relaxed.
+
+### Removed (breaking)
+
+- `argsbarg schemagen`, the `/** @sg */` markers, and `__generated__/` artifacts: define schemas in Zod instead. The `ts-json-schema-generator` and `@cfworker/json-schema` dependencies are gone (argsbarg has no runtime dependencies; `zod` is the only peer).
+- Subpath exports `argsbarg/cli`, `argsbarg/headless`, `argsbarg/http`, `argsbarg/mcp`, and `argsbarg/schemagen`: import from `"argsbarg"` (everything they exported is on the root).
+- JSON Schema draft selection via `$schema` (argsbarg emits draft 2020-12) and the `comma-list` JSON Schema format registration.
+- The `consumers-schemagen` recipe; `sqsp-i18n-tools-poc` is no longer a tracked consumer. `consumers-dev` now forces the install, adds `zod`, and removes the nested dev copy of zod; the new `examples-install` recipe reinstalls the in-repo examples.
+- `ctx.inputsAs<T>()`: use `ctx.inputs` with `command`.
+- The `CliHandler` type export (unused since handlers are typed through `command` / `program`).
+- `kind: "json"` leaves, `isJsonLeaf`, and `JSON_LEAF_BODY_KEY`: use `kind: "document"`, `isDocumentCommand`, and `DOCUMENT_LEAF_BODY_KEY`. `kind: "json"` now fails at startup with a migration error.
+- `CliSkillConfig` / `program.skill` (it had no effect since skill generation was removed).
+- The dedicated startup errors for long-removed `configure` settings (`prefix`, `agentIntegration`, and per-host skill/MCP targets). Unknown target keys still fail with `configure.targets.<key> is not a valid target key`.
+
+### Migration (7 → 8)
+
+1. Add `zod@^4` to your dependencies.
+2. Convert each `/** @sg */` type to `export const X = z.strictObject({…})` plus `export type X = z.infer<typeof X>`, copying every JSDoc into `.describe("…")`. Agents read these descriptions, and Zod does not read JSDoc.
+3. Pass the Zod schemas to `inputSchema` / `outputSchema` / `errorSchema`, rename `appConfig.jsonSchema` → `appConfig.schema`, build the app with `export const app = argsbarg({…})` in `src/app.ts` (`await app.run()` in `index.ts`), wrap every command in `command({…})`, use `ctx.spec` / `app.spec` where you used `ctx.program` / `cli.program`, replace `ctx.inputsAs<T>()` with `ctx.inputs` (path params: `ctx.pathParams`), change `kind: "json"` to `kind: "document"`, and drop `skill: { … }`.
+4. Replace subpath imports with `"argsbarg"`, delete `__generated__/`, and remove the `schemagen` recipes and gitignore rules.
+5. Diff `docs cli-schema` output before and after to confirm every description survived. See `docs/developing.md` → "Upgrading consumer apps to 8.0".
+
+### Added
+
+- `command()` infers `ctx.inputs` from `inputSchema` and types the handler return from `outputSchema`. It is now the way to declare leaves; `{ … } satisfies RunnableCommand` is no longer documented or used in the templates (it still compiles, but its handler gets untyped `ctx.inputs`).
+- `program()` declares the program root: router roots keep their literal type, and a leaf root (one-command CLI) gets the same `ctx.inputs` inference as `command`. It replaces `satisfies Program` in the docs and templates.
+- `command()` also types `ctx.inputs` for leaves without an `inputSchema`, from their own `options` / `positionals` literals: presence flags are `boolean`, numbers `number`, enums their `choices` union, durations `number` (ms), comma-lists `string[]`, and required or defaulted options are non-optional. Types only; runtime parsing is unchanged. `CommandBase.options`, `positionals`, and `CommandOption.choices` accept readonly arrays.
+- Leaves can declare `pathParams: z.strictObject({ id: z.string().describe(…) })` for the `:param` segments above them: values are validated before the handler, typed as `ctx.pathParams` with `command`, and described in MCP tool schemas and OpenAPI path parameters. Startup checks that the keys match the route and are not also declared by `inputSchema`. The raw segments stay available as `ctx.rawPathParams`.
+- Startup validation emits every schema eagerly, so schemas JSON Schema cannot represent (transforms, `z.date()`, …) fail at startup with the leaf named.
+- `schemaStrictnessWarnings(program)` (exported) lists input and config objects that accept unknown keys (`z.object` instead of `z.strictObject`). The schema templates assert it is empty in `src/program.test.ts`, and MCP and HTTP servers log each warning at startup (`schema.strictness`).
+- JSON Schema authoring guide rewritten for Zod (`docs/json-schema-subset.md`), and ADR 4 (Zod as the schema layer) supersedes ADR 2.
+- The root export now includes every public type that was previously only reachable through the bundled `index.d.ts` (`RunnableCommand`, `CommandGroup`, `Command`, `JsonSchema`, …), plus the HTTP server and Claude/Cursor plugin helpers.
+
+### Fixed
+
+- `PUT` / `PATCH` on `:param` routes (e.g. `/workspaces/:id`) no longer fail with `unknown property "id"` when the leaf's `inputSchema` is strict: path parameters the schema does not declare are left out of validation and merged into `ctx.inputs` (also available as `ctx.pathParams`).
+- MCP tools under `:param` routers (e.g. `workspaces :id get`) now list each path parameter as a required argument and route calls to the given value. Previously their input schemas omitted the parameter and calls routed the literal `:id` segment, so agents could not address these routes.
+- Document leaves under `:param` routes accept HTTP and MCP calls whose body carries the path parameters (they are validated as path parameters, not body fields).
+- OpenAPI request and response schemas no longer embed a root `$schema`.
+- Copy templates are renamed and keyed by their directory: `examples/cli` (default; was `full-example`), `examples/api` (was `full-example-json`), and `examples/agent-plugin` (was `mcp-plugin`). `argsbarg create --template cli|api|agent-plugin` (was `cli` / `json` / `plugin`); `create-identity.ts` stores the same key. The example apps inside are `example-cli`, `example-api`, and `example-agent-plugin`. The interactive picker now lists every template (it only offered two), and `create --check` recognizes all three.
+- The mcp-plugin example's Node bundle (`dist/mcp-plugin.mjs`, which both plugin manifests run) is tracked in git; the root `.gitignore` had excluded it. `argsbarg create --template plugin` now builds `dist/<key>.mjs` (`just build`) before the initial commit.
+
 ## [7.1.4] - 2026-09-30
 
 ### Changed
@@ -1089,7 +1160,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.4...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.0...HEAD
+[8.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.0
 [7.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.4
 [7.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.3
 [7.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.2

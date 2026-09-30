@@ -2,8 +2,8 @@
 This module provides capability-aware labels for the configure built-in and docs copy.
 */
 
-import type { CliProgram } from "../core/types.ts";
-import type { CliCapabilities } from "../runtime/capabilities.ts";
+import type { AppSpec } from "../core/types.ts";
+import type { Capabilities } from "../runtime/capabilities.ts";
 
 type Kind = "mcp" | "config";
 
@@ -12,7 +12,7 @@ const LABEL: Record<Kind, { prose: string; short: string }> = {
   config: { prose: "app config", short: "config" },
 };
 
-function enabledKinds(program: CliProgram, caps: CliCapabilities): Kind[] {
+function enabledKinds(program: AppSpec, caps: Capabilities): Kind[] {
   const kinds: Kind[] = [];
   if (caps.mcp && program.mcpServer?.enabled) kinds.push("mcp");
   if (program.appConfig && Object.keys(program.appConfig.entries).length > 0) kinds.push("config");
@@ -26,20 +26,20 @@ function joinEnglish(items: string[]): string {
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
-function prose(program: CliProgram, caps: CliCapabilities): string {
+function prose(program: AppSpec, caps: Capabilities): string {
   return joinEnglish(enabledKinds(program, caps).map((k) => LABEL[k].prose));
 }
 
 /** True when brew caveats should mention `configure install` / `configure uninstall`. */
-export function needsConfigureCaveats(program: CliProgram, caps: CliCapabilities): boolean {
+export function needsConfigureCaveats(program: AppSpec, caps: Capabilities): boolean {
   return enabledKinds(program, caps).length > 0;
 }
 
-export function configureCommandDescription(program: CliProgram, caps: CliCapabilities): string {
+export function configureCommandDescription(program: AppSpec, caps: Capabilities): string {
   return `Set up ${prose(program, caps)} for this app (binary via Homebrew).`;
 }
 
-export function configureCommandNotes(program: CliProgram, _caps: CliCapabilities): string {
+export function configureCommandNotes(program: AppSpec, _caps: Capabilities): string {
   const app = program.key;
   const lines = [
     "Set up agent artifacts after the binary is installed via Homebrew (see README for tap install).",

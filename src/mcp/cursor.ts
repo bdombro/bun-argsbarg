@@ -7,7 +7,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFil
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildCursorPluginMcpEnvMapping, buildCursorPluginVariables } from "../config/manifest.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
 import { collectZipEntries, defaultAuthor, pluginName, stagePluginSkills } from "./plugin-shared.ts";
 import { mcpServerId } from "./tools.ts";
@@ -22,7 +22,7 @@ const CURSOR_PLUGIN_DIR = "cursor-plugin";
 /** Default Cursor plugin zip output under cwd. */
 export function defaultCursorPluginPaths(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Working directory (defaults to cwd). */
   cwd = process.cwd(),
 ) {
@@ -39,7 +39,7 @@ export function defaultCursorPluginPaths(
 /** Generates `.cursor-plugin/plugin.json` object. */
 export function generateCursorPluginManifest(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Staged executable name. */
   _binaryName: string,
 ): Record<string, unknown> {
@@ -72,7 +72,7 @@ export function generateCursorPluginManifest(
 /** Generates plugin `mcp.json` stdio server config for Cursor. */
 export function generateCursorPluginMcpJson(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Staged executable name. */
   binaryName: string,
 ): Record<string, unknown> {
@@ -98,7 +98,7 @@ function writePluginTree(
   /** Staging root directory. */
   pluginRoot: string,
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Absolute path to compiled binary. */
   binaryPath: string,
   /** Executable filename. */
@@ -129,7 +129,7 @@ function writePluginTree(
  */
 export function packCursorPlugin(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Packaging options. */
   opts: PackMcpBundleOpts = {},
 ): string {

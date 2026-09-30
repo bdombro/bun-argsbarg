@@ -40,15 +40,15 @@ function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
 /** Tests for argsbarg create. */
 describe("argsbarg create", () => {
   test("in-repo example templates match their own create output", () => {
-    for (const example of ["full-example", "full-example-json", "mcp-plugin"]) {
+    for (const example of ["cli", "api", "agent-plugin"]) {
       const dir = join(import.meta.dir, "../../examples", example);
       expect({ example, drift: diffCreate(dir, { check: true }) }).toEqual({ example, drift: [] });
     }
   });
 
   test("drops argsbarg-dev-only lines outside the in-repo template", () => {
-    const content = `setup:\n    bun install\n    ln -sf a b ${DEV_ONLY_MARKER}: fix link\n    just schemagen\n`;
-    expect(substituteTemplateContent(content, baseOpts())).toBe("setup:\n    bun install\n    just schemagen\n");
+    const content = `setup:\n    bun install\n    ln -sf a b ${DEV_ONLY_MARKER}: fix link\n    just check\n`;
+    expect(substituteTemplateContent(content, baseOpts())).toBe("setup:\n    bun install\n    just check\n");
     expect(substituteTemplateContent(content, baseOpts({ devTemplate: true }))).toBe(content);
   });
 
@@ -109,12 +109,12 @@ describe("argsbarg create", () => {
     expect(tree.has("src/commands/render-json/command.ts")).toBe(false);
   });
 
-  test("renderCreateTree json template includes schemagen commands", () => {
-    const tree = renderCreateTree(baseOpts({ templateId: "json", key: "testapp" }));
+  test("renderCreateTree json template includes schema demo commands", () => {
+    const tree = renderCreateTree(baseOpts({ templateId: "api", key: "testapp" }));
     expect(tree.has("src/commands/render-json/command.ts")).toBe(true);
     expect(tree.has("src/db/index.ts")).toBe(true);
     const identity = tree.get("scripts/create-identity.ts");
-    expect(identity).toContain('template: "json"');
+    expect(identity).toContain('template: "api"');
   });
 
   test("--check detects drift", () => {

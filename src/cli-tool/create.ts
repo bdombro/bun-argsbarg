@@ -5,39 +5,44 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pkg from "../../package.json" with { type: "json" };
 
-export type CreateTemplateId = "cli" | "json" | "plugin";
+/** Template key: the template's directory under `examples/` (also its example app key). */
+export type CreateTemplateId = "cli" | "api" | "agent-plugin";
 
+/** Default template for `argsbarg create`. */
+export const DEFAULT_CREATE_TEMPLATE: CreateTemplateId = "cli";
+
+/** One copy template shipped under `examples/`. */
 export interface CreateTemplateSpec {
+  /** Template key and directory name under `examples/`. */
   id: CreateTemplateId;
-  dirName: string;
-  displayName: string;
+  /** Short label for `--template` help (e.g. `options/flags`). */
+  summary: string;
+  /** One-line description for the interactive picker. */
   description: string;
 }
 
 export const CREATE_TEMPLATES: CreateTemplateSpec[] = [
   {
     id: "cli",
-    dirName: "full-example",
-    displayName: "full-example",
-    description: "Production CLI with MCP, HTTP, configure, and skills. Options and flags only; no schemagen.",
+    summary: "options/flags",
+    description: "Production CLI with MCP, HTTP, configure, and skills. Options and flags only; no schemas.",
   },
   {
-    id: "json",
-    dirName: "full-example-json",
-    displayName: "full-example-json",
-    description: "Same shell plus @sg schemagen, input/outputSchema validation, JSON HTTP leaves, and REST CRUD demo.",
+    id: "api",
+    summary: "Zod schemas, REST CRUD",
+    description:
+      "Same shell plus Zod inputSchema/outputSchema, typed command inputs, JSON HTTP commands, and a REST CRUD demo.",
   },
   {
-    id: "plugin",
-    dirName: "mcp-plugin",
-    displayName: "mcp-plugin",
+    id: "agent-plugin",
+    summary: "MCP plugin",
     description: "Agent MCP plugin copy template for Cursor and Claude Code marketplaces.",
   },
 ];
 
+/** Maps a raw template string (identity file, argv) to a known template key, else the default. */
 export function normalizeCreateTemplateId(value: string | undefined): CreateTemplateId {
-  if (value === "plugin" || value === "mcp-plugin") return "plugin";
-  return value === "json" ? "json" : "cli";
+  return CREATE_TEMPLATES.find((t) => t.id === value)?.id ?? DEFAULT_CREATE_TEMPLATE;
 }
 
 export function templateDirFor(templateId: CreateTemplateId): string {
@@ -45,7 +50,7 @@ export function templateDirFor(templateId: CreateTemplateId): string {
   if (!spec) {
     throw new Error(`Unknown create template: ${templateId}`);
   }
-  return join(packageRoot(), "examples", spec.dirName);
+  return join(packageRoot(), "examples", spec.id);
 }
 
 export interface CreateOptions {
@@ -73,7 +78,7 @@ export function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 }
 
-export function templateDir(templateId: CreateTemplateId = "cli"): string {
+export function templateDir(templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE): string {
   return templateDirFor(templateId);
 }
 
@@ -133,7 +138,7 @@ export function parseCreateIdentityFile(
   if (!existsSync(path)) return {};
   const text = readFileSync(path, "utf8");
   const pick = (field: string) => text.match(new RegExp(`${field}:\\s*"([^"]*)"`))?.[1];
-  const templateRaw = text.match(/template:\s*"(cli|json)"/)?.[1];
+  const templateRaw = text.match(/template:\s*"([a-z-]+)"/)?.[1];
   return {
     key: pick("key"),
     className: pick("className"),
@@ -147,7 +152,7 @@ export function parseCreateIdentityFile(
   };
 }
 
-export function templateIdentity(templateId: CreateTemplateId = "cli"): {
+export function templateIdentity(templateId: CreateTemplateId = DEFAULT_CREATE_TEMPLATE): {
   templateId: CreateTemplateId;
   key: string;
   className: string;
@@ -158,7 +163,7 @@ export function templateIdentity(templateId: CreateTemplateId = "cli"): {
   envPrefix: string;
 } {
   const parsed = parseCreateIdentityFile(join(templateDirFor(templateId), CREATE_IDENTITY_REL));
-  const key = parsed.key ?? CREATE_TEMPLATES.find((t) => t.id === templateId)?.displayName ?? "full-example";
+  const key = parsed.key ?? templateId;
   return {
     templateId,
     key,
@@ -205,7 +210,7 @@ export function resolveCreateOptions(partial: Partial<CreateOptions>, baseDir?: 
     merged.templateId ?? (baseDir ? devTemplateIdForDir(baseDir) : undefined),
   );
   const tmpl = templateIdentity(templateId);
-  const key = merged.key ?? tmpl.key ?? "full-example";
+  const key = merged.key ?? tmpl.key ?? "cli";
   const className = merged.className ?? classNameFromKey(key);
   const releaseRepo = merged.releaseRepo;
   if (!releaseRepo) {

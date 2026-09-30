@@ -1,4 +1,4 @@
-# Writing `CliProgram` and leaf commands
+# Writing `Program` and commands with a handler
 
 ArgsBarg turns your schema into help, shell completions, and MCP tools. **The same `description` fields you write for humans are the agent contract** for basic apps.
 
@@ -7,45 +7,45 @@ ArgsBarg turns your schema into help, shell completions, and MCP tools. **The sa
 ## Minimal app (MCP is free)
 
 ```typescript
-const cli = {
+const app = argsbarg({
   commands: [
-    {
+    command({
       key: "greet",
       description: "Greet someone by name.",
       positionals: [
-        { name: "name", description: "Who to greet.", kind: CliOptionKind.String },
+        { name: "name", description: "Who to greet.", kind: OptionKind.String },
       ],
       handler: async (ctx) => { /* ... */ },
-    },
+    }),
   ],
   description: "One-line summary of what the CLI does.",
   key: "myapp",
   mcpServer: { enabled: true },
   version: "1.0.0",
-} satisfies CliProgram;
+});
 ```
 
-No `mcpTool` blocks required. Every leaf becomes an MCP tool; `inputSchema` comes from options and positionals.
+No `mcpTool` blocks required. Every command becomes an MCP tool; `inputSchema` comes from options and positionals.
 
 ## HTTP API (optional)
 
 ```typescript
-const cli = {
+const app = argsbarg({
   commands: [/* ... */],
   description: "One-line summary of what the CLI does.",
   httpServer: { enabled: true }, // myapp api → http://127.0.0.1:3000
   key: "myapp",
   version: "1.0.0",
-} satisfies CliProgram;
+});
 ```
 
 `httpServer` and `mcpServer` are independent. Tool exposure uses the same rules (`mcpTool.enabled: false` hides from MCP and HTTP). See [http-server.md](http-server.md).
 
-**Logging** — HTTP and MCP server logs go to stderr (JSON by default). Configure `program.log` on the program root; use **`enrich`** to add fields or **`serialize`** for a fully custom line. See **[logging.md](logging.md)**.
+**Logging** — HTTP and MCP server logs go to stderr (JSON by default). Configure `log` on the app root; use **`enrich`** to add fields or **`serialize`** for a fully custom line. See **[logging.md](logging.md)**.
 
 ## Inline schema by default
 
-ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliProgram` and leaf fields inline** (`key`, `description`, `options`, `positionals`, `handler`) so a reader sees the full command contract in one place.
+ArgsBarg is **schema-first** — the program tree is the product. **Keep `Program` and command fields inline** (`key`, `description`, `options`, `positionals`, `handler`) so a reader sees the full command contract in one place.
 
 **Inline by default:**
 
@@ -54,11 +54,11 @@ ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliPro
   key: "reserve",
   description: "Reserve a QA environment.",
   options: [
-    { name: "yes", description: "Skip confirmation; use for non-interactive runs.", kind: CliOptionKind.Presence },
-    { name: "dry-run", description: "Preview without mutating.", kind: CliOptionKind.Presence },
+    { name: "yes", description: "Skip confirmation; use for non-interactive runs.", kind: OptionKind.Presence },
+    { name: "dry-run", description: "Preview without mutating.", kind: OptionKind.Presence },
   ],
   positionals: [
-    { name: "env", description: "Environment name.", kind: CliOptionKind.String, argMin: 0, argMax: 1 },
+    { name: "env", description: "Environment name.", kind: OptionKind.String, argMin: 0, argMax: 1 },
   ],
   handler: async (ctx) => { /* … */ },
 }
@@ -68,29 +68,29 @@ ArgsBarg is **schema-first** — the program tree is the product. **Keep `CliPro
 
 | Extract | When |
 | --- | --- |
-| Shared option objects (`DRY_RUN_OPTION`, `JSON_OPTION`) | Identical flag reused on many leaves |
+| Shared option objects (`DRY_RUN_OPTION`, `JSON_OPTION`) | Identical flag reused on many commands |
 | Shared spreads (`...MCP_TOOL_MUTATOR`) | Same `mcpTool` metadata on a family of commands |
 | `commands/<name>/command.tsx` module | Entry file is large; handler/body is substantial (Ink page, headless dispatch) |
 | `docs.topics` text imports | Compile-time markdown bundling — not schema shape |
 
-**Avoid extracting** thin indirection: a file that only re-exports `{ key, description, options }` with no logic, or splitting every leaf into its own module when the handler is a few lines. If extraction does not reduce duplication or file size materially, keep it inline.
+**Avoid extracting** thin indirection: a file that only re-exports `{ key, description, options }` with no logic, or splitting every command into its own module when the handler is a few lines. If extraction does not reduce duplication or file size materially, keep it inline.
 
-When you extract a leaf or router, prefer a **plain exported object** — not a zero-arg wrapper function:
+When you extract a command or command group, prefer a **plain exported object** — not a zero-arg wrapper function:
 
 ```typescript
 // commands/reserve/command.tsx
-export const reserveCommand = {
+export const reserveCommand = command({
   key: "reserve",
   description: "Reserve a QA environment.",
   options: [YES_OPTION, DRY_RUN_OPTION],
   positionals: [/* … */],
   handler: async (ctx) => { /* … */ },
-} satisfies CliLeaf;
+});
 ```
 
 Use a **parameterized factory** only when the schema truly depends on inputs (e.g. `createUpsertCommand(deps)` for tests or injected config). A `reserveCommand()` that returns a static literal adds indirection without benefit.
 
-**`satisfies CliProgram`** on the root (or **`satisfies CliLeaf`** / router type on extracted modules) preserves type-checking whether inline or not. Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `version`, …).
+Build the app with **`argsbarg({ … })`** and declare every command with **`command({ … })`** — inline or in their own modules — so handlers get typed `ctx.inputs` / `ctx.pathParams`. Extracted command groups can use `satisfies CommandGroup` (command groups have nothing to infer). Keep **program-root fields in alphabetical order** (`appConfig`, `commands`, `description`, `docs`, `hooks`, `httpServer`, `key`, `mcpServer`, `readiness`, `version`, …).
 
 ## Descriptions
 
@@ -107,14 +107,14 @@ Use root **`notes`** for cross-cutting hints shown in help (install commands, do
 
 Descriptions and schemas are copied into MCP tools and HTTP OpenAPI — optimize for smaller, clearer agent payloads:
 
-- **Declare options on the leaf command** that uses them — routing groups cannot declare options (program root may). Wire schemas (MCP, OpenAPI) expose leaf-local options only.
-- Prefer **`kind: "document"`** (or legacy `kind: "json"`) leaves with schemagen `inputSchema` for complex tool bodies (one nested object beats many flat flags).
+- **Declare options on the command with a handler** that uses them — command groups cannot declare options (app root may). Wire schemas (MCP, OpenAPI) expose leaf-local options only.
+- Prefer **`kind: "document"`** commands with a Zod `inputSchema` for complex tool bodies (one nested object beats many flat flags). Put agent-facing documentation in `.describe()` on every field.
 - Keep **`description`** strings short and action-oriented; put examples in **`notes`**, not duplicated in every option.
 - Use **`hidden: true`** or **`mcpTool.enabled: false`** for debug/internal commands.
 - For shape discovery: HTTP agents load **`docs openapi`** or `GET /openapi.json`; MCP agents use **`docs cli-schema`**; load full **`docs cli`** only when prose is needed.
-- Repository **`skills/<app>/SKILL.md`** acts as an intent-based router that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
+- Repository **`skills/<app>/SKILL.md`** acts as an intent-based command group that directs agents to `<subcommand> --help` — see [bundled-docs.md](bundled-docs.md#agent-artifact-contract).
 
-Validation: [json-schema-subset.md](json-schema-subset.md) (Draft-07 default; 2019-09 / 2020-12 when `$schema` is set — including Zod-generated schemas).
+Schemas: [json-schema-subset.md](json-schema-subset.md) (Zod 4 authoring; emitted as JSON Schema 2020-12).
 
 ## Well-known option names
 
@@ -132,7 +132,7 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 | --- | --- |
 | Agents don't know which flags to pass | Use standard option names (`yes`, `dry-run`, `json`); improve option `description` strings |
 | MCP calls hang on prompts | Add `--yes` and a headless code path; use `shouldRunHeadlessWithYes` |
-| Help text describes Ink UI | Rewrite leaf `description` as the action ("Reserve an environment.") |
+| Help text describes Ink UI | Rewrite command `description` as the action ("Reserve an environment.") |
 | MCP needs different args than humans | Expose the same flags; resolve defaults in the handler for both `cli` and `mcp` |
 | Command "doesn't work" over MCP | Branch on `ctx.invocation === "mcp"` in the handler (stdio is the wire) |
 
@@ -145,7 +145,7 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 
 ### Structured stdout
 
-On **leaf commands**, set `outputSchema` to a JSON Schema describing stdout when the handler emits JSON (typically with `--json`, or via MCP on the headless path):
+On **commands with a handler**, set `outputSchema` to a JSON Schema describing stdout when the handler emits JSON (typically with `--json`, or via MCP on the headless path):
 
 ```typescript
 {
@@ -174,10 +174,10 @@ On **string options**, optional metadata improves validation, MCP `inputSchema`,
 
 | Field | Purpose |
 | --- | --- |
-| `format: CliValueFormat.Duration` | Values like `30s`, `20m`, `1h`; read with `ctx.durationOpt(name)` (milliseconds) |
-| `format: CliValueFormat.CommaList` | Single-flag lists (`--services a,b`); MCP may pass string or array; read with `ctx.commaListOpt(name)` |
-| `format: CliValueFormat.Date` | `YYYY-MM-DD`; read with `ctx.dateOpt(name)` |
-| `format: CliValueFormat.DateTime` | RFC 3339 instant; read with `ctx.dateTimeOpt(name)` |
+| `format: ValueFormat.Duration` | Values like `30s`, `20m`, `1h`; read with `ctx.durationOpt(name)` (milliseconds) |
+| `format: ValueFormat.CommaList` | Single-flag lists (`--services a,b`); MCP may pass string or array; read with `ctx.commaListOpt(name)` |
+| `format: ValueFormat.Date` | `YYYY-MM-DD`; read with `ctx.dateOpt(name)` |
+| `format: ValueFormat.DateTime` | RFC 3339 instant; read with `ctx.dateTimeOpt(name)` |
 | `default: "..."` | Applied in post-parse when the option is omitted (not valid with `required: true`) |
 | `pattern: "..."` | Regex validation (mutually exclusive with `format`) |
 
@@ -186,21 +186,21 @@ On **string options**, optional metadata improves validation, MCP `inputSchema`,
 **Example** (duration with default, comma-list flag):
 
 ```typescript
-import { CliOptionKind, CliValueFormat } from "argsbarg";
+import { OptionKind, ValueFormat } from "argsbarg";
 
 options: [
   {
     name: "timeout",
     description: "Maximum wait time.",
-    kind: CliOptionKind.String,
-    format: CliValueFormat.Duration,
+    kind: OptionKind.String,
+    format: ValueFormat.Duration,
     default: "20m",
   },
   {
     name: "services",
     description: "Service names to reset (single env only).",
-    kind: CliOptionKind.String,
-    format: CliValueFormat.CommaList,
+    kind: OptionKind.String,
+    format: ValueFormat.CommaList,
   },
 ],
 handler: async (ctx) => {
@@ -218,17 +218,37 @@ handler: async (ctx) => {
 
 Read varargs with `ctx.positional("uids")` (returns `string[]`) or `ctx.args`. Do not comma-split argv tokens or use `format` on positionals.
 
-**`ctx.inputs`** — coerced option and positional values for the current leaf. When `leaf.inputSchema` is set, argsbarg validates **before the handler runs** and caches the result on `ctx`:
+**`ctx.inputs`** — coerced option and positional values for the current command. When `inputSchema` (a Zod schema) is set, argsbarg validates **before the handler runs** and `ctx.inputs` is the schema's **parsed output** (defaults and transforms applied), cached on `ctx`:
 
 ```typescript
 const { limit, "skip-readiness": skipReadiness, timeout } = ctx.inputs;
-// or, with a schemagen type:
-const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
 ```
 
-**`CliLeafInputs`** — return type of `ctx.inputs` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
+**`command`** — declare every command with `command({ … })`: `ctx.inputs` is typed as `z.output<typeof inputSchema>` (or from the `options` / `positionals` literals), `ctx.pathParams` from `pathParams`, and the handler's return value is checked against `outputSchema`. A one-command CLI passes its handler straight to `argsbarg({ …, handler })`, which infers the same way. Results fit anywhere a `RunnableCommand` / `Program` does, including command group `commands` arrays.
 
-| Schema | Value in `CliLeafInputs` |
+```typescript
+import { command } from "argsbarg";
+import { RenderInvoiceInput } from "./types.ts"; // z.strictObject({ format: z.enum(["pdf", "html"]), invoice: … })
+
+export const renderInvoice = command({
+  key: "render-invoice",
+  description: "Render an invoice from template data",
+  kind: "document",
+  inputSchema: RenderInvoiceInput,
+  handler: (ctx) => {
+    const { format, invoice } = ctx.inputs; // typed
+    // ...
+  },
+});
+```
+
+**Typed options without a schema** — `command` also types `ctx.inputs` from the command's own `options` / `positionals` literals: presence → `boolean`, `Number` → `number`, `Enum` → its `choices` union, `Duration` → `number` (ms), `CommaList` → `string[]`, other strings → `string`; `required` or `default` options (and single positionals with `argMin` ≥ 1) are non-optional. Root and ancestor options are present at runtime but not in the type.
+
+**Path parameters** — `:param` command group values are available as `ctx.pathParams` (raw strings; `ctx.rawPathParams` always holds the raw segments). Declare `pathParams: z.strictObject({ id: z.string().describe("…") })` on the command to validate them before the handler, type them via `command`, and describe them in MCP tool schemas and OpenAPI. Keys must match the `:param` names above the command and must not also appear in `inputSchema`. Undeclared path params are merged into `ctx.inputs`.
+
+**`CommandInputs`** — return type of `ctx.inputs` (exported from `"argsbarg"`). A flat record keyed by **schema option and positional names** (hyphens preserved, e.g. `"skip-readiness"`). Values are coerced per kind/format:
+
+| Schema | Value in `CommandInputs` |
 | --- | --- |
 | Presence | `boolean` |
 | Number | `number` or `undefined` if omitted |
@@ -247,7 +267,7 @@ Omitted options appear as `undefined` (not absent keys). Options with `default` 
 
 **`ctx.locals`** — per-invocation bag populated in `program.hooks.beforeInvoke` (framework seeds `requestId` before hooks run). **`ctx.runtime.state`** — shared HTTP/MCP server bag (DB pools, readiness cache, etc.).
 
-Argsbarg exports empty **`CliLocals`** and **`ServerState`** interfaces. Augment them once in your app so handlers see typed fields.
+Argsbarg exports empty **`Locals`** and **`ServerState`** interfaces. Augment them once in your app so handlers see typed fields.
 
 Create a `src/types/argsbarg.d.ts` file (or any name under your `tsconfig.json`'s `include` path) and ensure it contains at least one top-level `import` or `export` statement so TypeScript treats it as a module (module augmentation). Because it is matched by the `include` paths in `tsconfig.json`, TypeScript automatically loads it globally—no runtime or build-time imports are needed in your entry points!
 
@@ -256,7 +276,7 @@ Create a `src/types/argsbarg.d.ts` file (or any name under your `tsconfig.json`'
 import type { AppDb } from "../db";
 
 declare module "argsbarg" {
-  interface CliLocals {
+  interface Locals {
     db: AppDb;
   }
   interface ServerState {
@@ -266,24 +286,24 @@ declare module "argsbarg" {
 ```
 
 ```typescript
-// program.ts
+// app.ts
 hooks: { beforeInvoke: AppDb.attach },
 
 // handler
 handler: (ctx) => ctx.locals.db.workspaces.list(),
 ```
 
-Use **`CliLocals`** for handler-facing per-request state (`ctx.locals.db`). Use **`ServerState`** for cross-request server resources (`ctx.runtime.state.db`). Populate both in `beforeInvoke` when needed.
+Use **`Locals`** for handler-facing per-request state (`ctx.locals.db`). Use **`ServerState`** for cross-request server resources (`ctx.runtime.state.db`). Populate both in `beforeInvoke` when needed.
 
 ### Json options and piped stdin
 
-For nested tool bodies (e.g. invoice template data), declare a matching property in schemagen `inputType`, wire `inputSchema` on the leaf, and add a **`kind: Json`** option with the same name:
+For nested tool bodies (e.g. invoice template data), declare a matching property in the command's Zod `inputSchema` and add a **`kind: Json`** option with the same name:
 
 ```typescript
 {
   name: "invoice",
   description: "Invoice template data. Pass JSON via --invoice or pipe to stdin.",
-  kind: CliOptionKind.Json,
+  kind: OptionKind.Json,
   pipable: true,
   required: true,
 }
@@ -296,25 +316,25 @@ For nested tool bodies (e.g. invoice template data), declare a matching property
 
 **Precedence:** if `--invoice` is set, the flag value wins and stdin is not read.
 
-Use **`ctx.jsonOpt("invoice")`**, **`ctx.inputs`**, or **`ctx.inputsAs<MyInput>()`** — all synchronous. Argsbarg reads piped stdin before calling the handler when a `pipable` Json flag is omitted. When `leaf.inputSchema` is set, argsbarg validates merged inputs **before the handler runs** (same engine as `program.appConfig`; draft from `$schema` on the schema object); `ctx.inputs` returns the cached result.
+Use **`ctx.jsonOpt("invoice")`** or **`ctx.inputs`** — both synchronous. Argsbarg reads piped stdin before calling the handler when a `pipable` Json flag is omitted. When `leaf.inputSchema` is set, argsbarg validates merged inputs with Zod **before the handler runs**; `ctx.inputs` returns the cached parsed value.
 
-At most one `pipable` Json option per leaf. Json option names must appear in `inputSchema.properties` when a custom `inputSchema` is set.
+At most one `pipable` Json option per command. Json option names must be properties of the `inputSchema` object when one is set.
 
-### Structured document leaves (`kind: "document"`)
+### Structured document commands (`kind: "document"`)
 
-When the entire tool body is a structured document (JSON or YAML, no CLI flags), set **`kind: "document"`** (or legacy `"json"`) on the leaf with **`inputSchema`** and **no `options` or `positionals`**:
+When the entire tool body is a structured document (JSON or YAML, no CLI flags), set **`kind: "document"`** on the command with **`inputSchema`** and **no `options` or `positionals`**:
 
 ```typescript
-{
+command({
   key: "render-invoice",
   description: "Render an invoice from template data",
   kind: "document",
-  inputSchema,
+  inputSchema: RenderInvoiceInput,
   handler: (ctx) => {
-    const { format, invoice } = ctx.inputsAs<RenderInvoiceInput>();
+    const { format, invoice } = ctx.inputs;
     // ...
   },
-}
+})
 ```
 
 | Surface | How input is supplied |
@@ -339,9 +359,9 @@ invoice:
 EOF
 ```
 
-See [output-schema.md](output-schema.md) for schemagen `inputType`, [http-server.md](http-server.md) for HTTP tool bodies, and [json-schema-subset.md](json-schema-subset.md) for validation drafts, Zod interop, and keyword notes.
+See [json-schema-subset.md](json-schema-subset.md) for authoring schemas in Zod, [output-schema.md](output-schema.md) for `outputSchema`, and [http-server.md](http-server.md) for HTTP tool bodies.
 
-`CliLeafInputs` is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct) rather than expecting inference from `satisfies CliLeaf`.
+`CommandInputs` (commands without an `inputSchema`) is intentionally untyped at the framework level. Narrow in your app (`read*Flags(ctx)` returning a typed struct), or give the command a Zod `inputSchema` and declare it with `command`.
 
 See [examples/formats.ts](../examples/formats.ts) for a runnable demo.
 
@@ -349,7 +369,7 @@ Cross-field rules (e.g. `--match-remote` requires `--branch`) stay in consumer `
 
 ## Read flags once, resolve once
 
-For apps with **Ink + headless + MCP** (multiple surfaces per leaf), avoid scattering `ctx.hasFlag` / `ctx.stringOpt` through the handler. Use two layers:
+For apps with **Ink + headless + MCP** (multiple surfaces per command), avoid scattering `ctx.hasFlag` / `ctx.stringOpt` through the handler. Use two layers:
 
 | Layer | Responsibility |
 | --- | --- |
@@ -358,11 +378,11 @@ For apps with **Ink + headless + MCP** (multiple surfaces per leaf), avoid scatt
 
 The handler calls **`read*Flags` once**, passes the struct to **`resolve*Input`**, then branches to Ink, headless, or MCP with the same resolved input.
 
-**Shared reads** — when many leaves share options (`yes`, `dry-run`, `json`), one app-level helper (e.g. `readMutatingFlags(ctx)`) plus per-command extensions:
+**Shared reads** — when many commands share options (`yes`, `dry-run`, `json`), one app-level helper (e.g. `readMutatingFlags(ctx)`) plus per-command extensions:
 
 ```typescript
 // cli/flags.ts
-export function readMutatingFlags(ctx: CliContext) {
+export function readMutatingFlags(ctx: CommandContext) {
   const dryRun = ctx.hasFlag("dry-run");
   return {
     dryRun,
@@ -372,7 +392,7 @@ export function readMutatingFlags(ctx: CliContext) {
 }
 
 // commands/reset/resolve.ts
-export function readResetFlags(ctx: CliContext) {
+export function readResetFlags(ctx: CommandContext) {
   return {
     ...readMutatingFlags(ctx),
     env: ctx.args[0],
@@ -426,7 +446,7 @@ Ink + headless + MCP apps benefit from `read*Flags(ctx)` + `resolve*Input(flags)
 
 ## Headless-capable handlers
 
-Simple leaves (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
+Simple commands (read args, print stdout) are already headless — no extra work. **Any handler that might mount Ink, prompt, or open a browser should also implement a scriptable fast path** for:
 
 - **MCP** (`ctx.invocation === "mcp"` — always non-interactive)
 - **HTTP API** (`ctx.invocation === "http"` — same headless rules as MCP)
@@ -448,10 +468,7 @@ Use **one headless implementation** for MCP, HTTP API, and scripted CLI; do not 
 **Mutating command** (wizard optional, script path required):
 
 ```typescript
-import {
-  requireYesInNonTty,
-  shouldRunHeadlessWithYes,
-} from "argsbarg";
+import { requireYesInNonTty, shouldRunHeadlessWithYes } from "argsbarg";
 
 handler: async (ctx) => {
   const dryRun = ctx.hasFlag("dry-run");
@@ -502,20 +519,20 @@ handler: async (ctx) => {
 
 Basic synchronous handlers do not need this structure — only commands with an interactive branch.
 
-## Configuration (`program.appConfig`)
+## Configuration (`appConfig`)
 
-Declare app configuration on the **program root** (not on leaves). Values persist in a flat JSON file; handlers read resolved values via `ctx.appConfig`.
+Declare app configuration on the **app root** (not on commands). Values persist in a flat JSON file; handlers read resolved values via `ctx.appConfig`.
 
 ```typescript
-import { Cli, type CliProgram } from "argsbarg";
-import { APP_CONFIG_JSON_SCHEMA } from "./schemas/configSchemas.js";
+import { argsbarg } from "argsbarg";
+import { Settings } from "./config/types.ts"; // Zod object schema
 
-const program = {
+const app = argsbarg({
   key: "myapp",
   version: "1.0.0",
   description: "…",
   appConfig: {
-    jsonSchema: APP_CONFIG_JSON_SCHEMA, // optional; omit for all-string mode
+    schema: Settings, // optional; omit for all-string mode
     entries: {
       apiToken: {
         description: "Create at https://example.com/settings/tokens",
@@ -534,18 +551,17 @@ const program = {
     const token = ctx.appConfig.require("apiToken");
     const region = ctx.appConfig.get("defaultRegion");
   },
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();
 ```
 
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `description` | *(required)* | Shown in prompts, `configure get`, and bundle manifests |
 | `title` | config key | Short label in interactive `configure` |
-| `default` | — | Used when `jsonSchema` omitted (all-string mode) |
-| `required` | `true` | When `false`, optional unless required by `jsonSchema` |
+| `default` | — | Used when `schema` omitted (all-string mode) |
+| `required` | `true` | When `false`, optional unless required by `schema` |
 | `sensitive` | name heuristic (`token`, `secret`, …) | Redact in prompts, `configure get`, and status |
 | `env` | — | When set: non-empty host env overrides file; consulted again after `resolve` when `resolve` returns `undefined`; exported to `process.env` after resolve |
 | `resolve` | — | Optional fallback after file; return `undefined` to fall back to `env` (if set) and defaults |
@@ -555,14 +571,14 @@ await cli.run();
 - Default: `$XDG_CONFIG_HOME/<sanitized-key>/config` or `%APPDATA%/<key>/config`.
 - JSON: flat object keyed by schema names — `{ "apiToken": "…", "maxRetries": 5 }`.
 - **Strict:** unknown keys rejected on load.
-- **CLI:** missing required config exits 1 before the leaf handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
+- **CLI:** missing required config exits 1 before the command handler (TTY prompt when interactive). Built-in `docs` and `configure get`/`set` skip this exit.
 - **MCP:** server stays up; missing config returns `isError: true` at `tools/call`.
 - **Configure:** interactive `configure` runs the app config wizard; **`configure install`** registers MCP in `~/.agents/mcp.json` (see https://dotagentsprotocol.com). Optional `configure.afterInstall` / `configure.beforeUninstall` for app-specific agent setup; see [configure.md](configure.md).
 - **MCP install:** `mcpServer: { enabled: true }` merges into `~/.agents/mcp.json` on `configure install`; manual Cursor/Claude setup in [mcp.md](mcp.md).
 
 See [config-schema.md](config-schema.md) for codegen, [configure.md](configure.md) (`configure.targets`), and [mcp.md](mcp.md).
 
-**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` (schema-aware, resolved values); `getUnsafe`, `setUnsafe`, `readUnsafe` (raw file, works without `program.appConfig`); `path`, `dir`. Prefer `get`/`set` when `appConfig` is declared. Env export remains for subprocess inheritance. `path` is `~/.local/lib/<key>/config.json`; `dir` is its parent.
+**Handler access (`ctx.appConfig`):** `get`, `require`, `set`, `read` (schema-aware, resolved values); `getUnsafe`, `setUnsafe`, `readUnsafe` (raw file, works without `appConfig`); `path`, `dir`. Prefer `get`/`set` when `appConfig` is declared. Env export remains for subprocess inheritance. `path` is `~/.local/lib/<key>/config.json`; `dir` is its parent.
 
 **`_bindings`:** reserved metadata for per-key intent (`env`, `file`, `skip`). Set by the wizard, `configure set --from-env`, or `ctx.appConfig.set`. Does not change resolve order (env still wins when set).
 
@@ -600,7 +616,7 @@ If you maintain argsbarg from a sibling checkout, `just consumers-dev` / `just c
 ## See also
 
 - [Documentation map](README.md) — which doc to read when
-- [Output schemas](output-schema.md) — codegen pipeline for leaf `outputSchema`
+- [Output schemas](output-schema.md) — codegen pipeline for command `outputSchema`
 - [Developing argsbarg](developing.md) — release, consumer sync, npm `files`
 - [MCP server](mcp.md) — tools, schema resource, env bootstrapping
 - [Agent skills](ai-skills.md) — repository skills

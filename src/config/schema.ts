@@ -1,48 +1,64 @@
 /*
-Effective JSON Schema for program.appConfig (block schema or all-string synthesis).
+Effective config schema for appConfig: the user's Zod object schema, or an all-string schema
+synthesized from entries. Validation uses the Zod schema; prompts, coercion, manifests, and export read the
+emitted JSON Schema.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../core/types.ts";
+import { z } from "zod";
+import type { AppConfigEntry, AppSpec, JsonSchema } from "../core/types.ts";
+import { toJsonSchema } from "../core/zod-schema.ts";
 import { configEntryRequired, jsonSchemaRequiredKeys } from "./entry.ts";
 
-/** Synthesize a draft-07 object schema with string properties from metadata entries. */
-export function synthesizeAllStringSchema(schema: Record<string, CliAppConfigEntry>): Record<string, unknown> {
-  const properties: Record<string, unknown> = {};
-  const required: string[] = [];
-  for (const [key, entry] of Object.entries(schema)) {
-    const prop: Record<string, unknown> = {
-      type: "string",
-      description: entry.description,
-    };
-    if (entry.default !== undefined) {
-      prop.default = entry.default;
-    }
-    properties[key] = prop;
-    if (entry.required !== false) {
-      required.push(key);
-    }
+/** Synthesized all-string schemas, memoized per entries object so emission is cached too. */
+const synthesized = new WeakMap<Record<string, AppConfigEntry>, z.ZodObject>();
+
+/**
+ * Synthesizes a strict all-string Zod object schema from metadata entries.
+ * Entry defaults are applied by the resolver, so they are only recorded as JSON Schema `default` metadata.
+ */
+export function synthesizeAllStringSchema(
+  /** Config entries keyed by config key. */
+  entries: Record<string, AppConfigEntry>,
+): z.ZodObject {
+  const cached = synthesized.get(entries);
+  if (cached !== undefined) {
+    return cached;
   }
-  const out: Record<string, unknown> = {
-    type: "object",
-    additionalProperties: false,
-    properties,
-  };
-  if (required.length > 0) {
-    out.required = required;
+  const shape: Record<string, z.ZodType> = {};
+  for (const [key, entry] of Object.entries(entries)) {
+    const prop = z
+      .string()
+      .meta(
+        entry.default === undefined
+          ? { description: entry.description }
+          : { description: entry.description, default: entry.default },
+      );
+    shape[key] = entry.required === false ? prop.optional() : prop;
   }
-  return out;
+  const schema = z.strictObject(shape);
+  synthesized.set(entries, schema);
+  return schema;
 }
 
-/** Block JSON Schema used for validation, or synthesized all-string schema. */
-export function effectiveJsonSchema(program: CliProgram): Record<string, unknown> | undefined {
+/** Zod schema that validates the config file: `appConfig.schema`, or the synthesized all-string schema. */
+export function effectiveConfigZod(program: AppSpec): z.ZodObject | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return undefined;
   }
-  if (appConfig.jsonSchema !== undefined) {
-    return appConfig.jsonSchema;
-  }
-  return synthesizeAllStringSchema(appConfig.entries);
+  return appConfig.schema ?? synthesizeAllStringSchema(appConfig.entries);
+}
+
+/** Zod schema for one config key, when the effective schema declares it. */
+export function configKeySchema(program: AppSpec, key: string): z.ZodType | undefined {
+  const shape = effectiveConfigZod(program)?.shape as Record<string, z.ZodType> | undefined;
+  return shape?.[key];
+}
+
+/** Emitted JSON Schema of the effective config schema (for prompts, coercion, manifests, and export). */
+export function effectiveJsonSchema(program: AppSpec): JsonSchema | undefined {
+  const schema = effectiveConfigZod(program);
+  return schema === undefined ? undefined : toJsonSchema(schema, "input");
 }
 
 /** Property subschema for one config key from the effective root schema. */
@@ -62,7 +78,7 @@ export function configPropertySchema(
 }
 
 /** Default value for a key from JSON Schema property or entry metadata. */
-export function schemaDefaultForKey(program: CliProgram, key: string): unknown | undefined {
+export function schemaDefaultForKey(program: AppSpec, key: string): unknown | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return undefined;
@@ -82,7 +98,7 @@ export function schemaDefaultForKey(program: CliProgram, key: string): unknown |
 }
 
 /** Required key set for the program config schema. */
-export function programConfigRequiredKeys(program: CliProgram): Set<string> {
+export function programConfigRequiredKeys(program: AppSpec): Set<string> {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return new Set();

@@ -4,7 +4,8 @@ Synthesizes a JSON Schema object from leaf-local options and positionals when in
 */
 
 import { visibleOptions } from "../runtime/exposure.ts";
-import { type CliLeaf, type CliOption, CliOptionKind, type CliPositional, CliValueFormat } from "./types.ts";
+import { type CommandOption, type CommandPositional, OptionKind, type RunnableCommand, ValueFormat } from "./types.ts";
+import { toJsonSchema } from "./zod-schema.ts";
 
 /** Regular expression pattern for duration option format (e.g. 5m, 1h, 30s). */
 const DURATION_PATTERN = "^\\d+[hdms]?$";
@@ -15,7 +16,7 @@ const MCP_WIRE_OMIT_PRESENCE = new Set(["json", "yes", "verbose"]);
 /** JSON Schema property for one leaf option in wire schemas. */
 function optionProperty(
   /** Option definition to format as a schema property. */
-  opt: CliOption,
+  opt: CommandOption,
 ): Record<string, unknown> {
   const base: Record<string, unknown> = {
     description: opt.description,
@@ -24,10 +25,10 @@ function optionProperty(
     base.default = opt.default;
   }
   switch (opt.kind) {
-    case CliOptionKind.Presence:
+    case OptionKind.Presence:
       return { type: "boolean", ...base };
-    case CliOptionKind.String: {
-      if (opt.format === CliValueFormat.CommaList) {
+    case OptionKind.String: {
+      if (opt.format === ValueFormat.CommaList) {
         return {
           oneOf: [
             { type: "string", ...base },
@@ -36,13 +37,13 @@ function optionProperty(
         };
       }
       const stringBase = { type: "string", ...base };
-      if (opt.format === CliValueFormat.Duration) {
+      if (opt.format === ValueFormat.Duration) {
         return { ...stringBase, pattern: DURATION_PATTERN };
       }
-      if (opt.format === CliValueFormat.Date) {
+      if (opt.format === ValueFormat.Date) {
         return { ...stringBase, format: "date" };
       }
-      if (opt.format === CliValueFormat.DateTime) {
+      if (opt.format === ValueFormat.DateTime) {
         return { ...stringBase, format: "date-time" };
       }
       if (opt.pattern !== undefined) {
@@ -50,11 +51,11 @@ function optionProperty(
       }
       return stringBase;
     }
-    case CliOptionKind.Number:
+    case OptionKind.Number:
       return { type: "number", ...base };
-    case CliOptionKind.Enum:
+    case OptionKind.Enum:
       return { type: "string", enum: opt.choices, ...base };
-    case CliOptionKind.Json:
+    case OptionKind.Json:
       return { type: "object", ...base };
   }
 }
@@ -62,7 +63,7 @@ function optionProperty(
 /** JSON Schema property for one positional argument slot in wire schemas. */
 function positionalProperty(
   /** Positional argument definition to format as a schema property. */
-  p: CliPositional,
+  p: CommandPositional,
 ): Record<string, unknown> {
   const base = { description: p.description };
   const { argMax = 1 } = p;
@@ -76,12 +77,12 @@ function positionalProperty(
  * Filters leaf-local options to only those exposed over wire protocols (MCP, OpenAPI, CLI schema export).
  * Omits hidden options and framework-handled presence flags (`--json`, `--yes`, `--verbose`).
  */
-export function leafWireOptions(
+export function commandWireOptions(
   /** Leaf command node to extract wire options from. */
-  leaf: CliLeaf,
-): CliOption[] {
+  leaf: RunnableCommand,
+): CommandOption[] {
   return visibleOptions(leaf.options).filter((o) => {
-    if (o.kind === CliOptionKind.Presence && MCP_WIRE_OMIT_PRESENCE.has(o.name)) {
+    if (o.kind === OptionKind.Presence && MCP_WIRE_OMIT_PRESENCE.has(o.name)) {
       return false;
     }
     return true;
@@ -89,22 +90,22 @@ export function leafWireOptions(
 }
 
 /**
- * Builds the canonical input JSON Schema for a leaf command.
- * Returns `leaf.inputSchema` when explicitly defined (e.g. on document leaves or schemagen leaves);
+ * Builds the canonical input JSON Schema for a command with a handler.
+ * Returns the emitted `leaf.inputSchema` when set (e.g. on document leaves or Zod-schema leaves);
  * otherwise synthesizes a flat object schema from leaf-local wire options and positionals.
  */
-export function buildLeafInputSchema(
+export function buildCommandInputSchema(
   /** Leaf command node to build the input schema for. */
-  leaf: CliLeaf,
+  leaf: RunnableCommand,
 ): Record<string, unknown> {
   if (leaf.inputSchema !== undefined) {
-    return leaf.inputSchema;
+    return toJsonSchema(leaf.inputSchema, "input");
   }
 
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
 
-  for (const opt of leafWireOptions(leaf)) {
+  for (const opt of commandWireOptions(leaf)) {
     properties[opt.name] = optionProperty(opt);
     if (opt.required) {
       required.push(opt.name);

@@ -2,7 +2,7 @@
 Auto MCP resources for user docs.topics when docs and MCP are both enabled.
 */
 
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { docsEnabled, docsTopicDescription, docsTopicText, docsUserTopicKeys, resolveDocsConfig } from "./resolve.ts";
 
 /** Default URI pattern for a docs topic MCP resource (`<mcpId>://docs/<topicKey>`). */
@@ -11,17 +11,17 @@ export function defaultDocsTopicResourceUri(mcpId: string, topicKey: string): st
 }
 
 /** Sanitized MCP server id from program key (matches mcpServerId in mcp/tools.ts). */
-function mcpIdFromProgram(program: CliProgram): string {
+function mcpIdFromProgram(program: AppSpec): string {
   return program.key.replace(/[^a-zA-Z0-9]/g, "_");
 }
 
 /** Resolved URI for one user docs topic resource. */
-export function resolveDocsTopicResourceUri(program: CliProgram, topicKey: string): string {
+export function resolveDocsTopicResourceUri(program: AppSpec, topicKey: string): string {
   return defaultDocsTopicResourceUri(mcpIdFromProgram(program), topicKey);
 }
 
 /** All auto-generated docs topic resources (empty when docs or MCP disabled). */
-export function docsMcpResources(program: CliProgram): {
+export function docsMcpResources(program: AppSpec): {
   uri: string;
   name: string;
   description?: string;
@@ -52,7 +52,7 @@ export function docsMcpResources(program: CliProgram): {
 }
 
 /** Reserved MCP resource URIs from auto docs topics (for validation). */
-export function reservedDocsTopicResourceUris(program: CliProgram): string[] {
+export function reservedDocsTopicResourceUris(program: AppSpec): string[] {
   if (!docsEnabled(program) || program.mcpServer?.enabled !== true) {
     return [];
   }

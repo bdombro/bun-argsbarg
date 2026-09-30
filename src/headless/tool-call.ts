@@ -4,7 +4,7 @@ Shared headless tool dispatch for MCP and HTTP: config bootstrap, argv conversio
 
 import { bootstrapAppConfig } from "../config/bootstrap.ts";
 import { formatMcpMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
-import type { CliInvocation, CliProgram, InvokeFailureKind } from "../core/types.ts";
+import type { AppSpec, Invocation, InvokeFailureKind } from "../core/types.ts";
 import { failureKindHttpStatus } from "../hooks/run.ts";
 import { apiErrorResponse, apiSuccessResponse, stripAnsi } from "../http/result.ts";
 import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
@@ -17,7 +17,7 @@ import {
   type McpToolDef,
   mcpToolCallToArgv,
 } from "../mcp/tools.ts";
-import type { Cli, CliInvokeResult } from "../runtime/cli.ts";
+import type { App, InvokeResult } from "../runtime/cli.ts";
 
 /** Outcome of resolving a tool name against the program schema. */
 export type ToolLookupResult =
@@ -28,7 +28,7 @@ export type ToolLookupResult =
 /** Successful headless tool invocation payload shared by MCP and HTTP. */
 export interface HeadlessToolCallSuccess {
   ok: true;
-  response: NonNullable<CliInvokeResult["response"]>;
+  response: NonNullable<InvokeResult["response"]>;
   mcpResult: ReturnType<typeof buildToolCallSuccessFromResponse>;
 }
 
@@ -41,13 +41,13 @@ export interface HeadlessToolCallFailure {
   stdout: string;
   stderr: string;
   failureKind?: InvokeFailureKind;
-  invokeResult?: CliInvokeResult;
+  invokeResult?: InvokeResult;
 }
 
 export type HeadlessToolCallResult = HeadlessToolCallSuccess | HeadlessToolCallFailure;
 
 /** Finds an exposed MCP tool by name. */
-export function lookupHeadlessTool(program: CliProgram, toolName: string): ToolLookupResult {
+export function lookupHeadlessTool(program: AppSpec, toolName: string): ToolLookupResult {
   const tools = collectMcpTools(program);
   const tool = tools.find((t) => t.name === toolName);
   if (!tool) {
@@ -65,7 +65,7 @@ export function lookupHeadlessTool(program: CliProgram, toolName: string): ToolL
   return { ok: true, tool };
 }
 
-function invokeFailure(result: CliInvokeResult): HeadlessToolCallFailure {
+function invokeFailure(result: InvokeResult): HeadlessToolCallFailure {
   const message = result.errorMsg ?? (result.stderr.trim() || `Exit code ${result.exitCode}`);
   return {
     ok: false,
@@ -79,7 +79,7 @@ function invokeFailure(result: CliInvokeResult): HeadlessToolCallFailure {
   };
 }
 
-function noResponseFailure(result: CliInvokeResult): HeadlessToolCallFailure {
+function noResponseFailure(result: InvokeResult): HeadlessToolCallFailure {
   return {
     ok: false,
     kind: "invoke",
@@ -100,17 +100,27 @@ function argvFailure(
   return { ok: false, kind: "argv", message, exitCode: 1, stdout: "", stderr: "", failureKind: "validation" };
 }
 
-/** Returns the leaf input from wrapped tool arguments (`{ input: {...} }`), or `undefined` when malformed. */
+/**
+ * Returns the leaf input from wrapped tool arguments (`{ input: {...} }`, plus any path parameters next to it),
+ * or `undefined` when malformed. Path parameter values are merged into the returned object.
+ */
 function unwrapToolArgs(
   /** Raw tools/call arguments. */
   args: Record<string, unknown>,
+  /** Path parameter names allowed next to `input`. */
+  pathParamNames: string[],
 ): Record<string, unknown> | undefined {
   const inner = args[MCP_INPUT_WRAPPER_KEY];
-  const onlyWrapperKey = Object.keys(args).every((key) => key === MCP_INPUT_WRAPPER_KEY);
-  if (!onlyWrapperKey || typeof inner !== "object" || inner === null || Array.isArray(inner)) {
+  const allowed = new Set([MCP_INPUT_WRAPPER_KEY, ...pathParamNames]);
+  const onlyAllowedKeys = Object.keys(args).every((key) => allowed.has(key));
+  if (!onlyAllowedKeys || typeof inner !== "object" || inner === null || Array.isArray(inner)) {
     return undefined;
   }
-  return inner as Record<string, unknown>;
+  const merged: Record<string, unknown> = { ...(inner as Record<string, unknown>) };
+  for (const name of pathParamNames) {
+    if (name in args) merged[name] = args[name];
+  }
+  return merged;
 }
 
 /**
@@ -119,20 +129,20 @@ function unwrapToolArgs(
  * `structuredContent` wrapped as `{ result: ... }` to match their `outputSchema`.
  */
 export async function executeHeadlessToolCall(
-  cli: Cli,
+  cli: App,
   tool: McpToolDef,
   args: Record<string, unknown>,
-  invocation: CliInvocation,
+  invocation: Invocation,
   mcp?: { rpcMethod: string; toolName?: string; requestId: string },
 ): Promise<HeadlessToolCallResult> {
-  const leafArgs = tool.inputWrapped ? unwrapToolArgs(args) : args;
+  const leafArgs = tool.inputWrapped ? unwrapToolArgs(args, tool.pathParamNames) : args;
   if (leafArgs === undefined) {
     return argvFailure(
       `Tool arguments must be an object with a single "${MCP_INPUT_WRAPPER_KEY}" object property (see inputSchema)`,
     );
   }
 
-  const argvResult = mcpToolCallToArgv(cli.program, tool, leafArgs);
+  const argvResult = mcpToolCallToArgv(cli.spec, tool, leafArgs);
   if ("error" in argvResult) {
     return argvFailure(argvResult.error);
   }
@@ -164,14 +174,14 @@ export async function executeHeadlessToolCall(
  * Invokes a matched HTTP REST route headlessly (query + body → argv → invoke).
  */
 export async function executeHttpRouteCall(
-  cli: Cli,
+  cli: App,
   route: HttpRouteDef,
   pathParams: Record<string, string>,
   query: Record<string, string>,
   body: Record<string, unknown>,
   http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string },
 ): Promise<HeadlessToolCallResult> {
-  const argvResult = httpRequestToArgv(cli.program, route, pathParams, query, body);
+  const argvResult = httpRequestToArgv(cli.spec, route, pathParams, query, body);
   if ("error" in argvResult) {
     return argvFailure(argvResult.error);
   }
@@ -201,7 +211,7 @@ export async function executeHttpRouteCall(
 /** Maps a headless success result to an HTTP Response. */
 export function headlessSuccessToHttpResponse(
   result: HeadlessToolCallSuccess,
-  leafApiResponse?: import("../core/types.ts").CliHttpResponseConfig,
+  leafApiResponse?: import("../core/types.ts").HttpResponseConfig,
   defaultStatus?: number,
 ): Response {
   return apiSuccessResponse(result.response, leafApiResponse, defaultStatus);

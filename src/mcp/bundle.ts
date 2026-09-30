@@ -7,7 +7,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rm
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildProgramUserConfig } from "../config/manifest.ts";
-import type { CliMcpBundleConfig, CliProgram } from "../core/types.ts";
+import type { AppSpec, McpBundleConfig } from "../core/types.ts";
 import { packClaudePlugin } from "./claude.ts";
 import { packCursorPlugin } from "./cursor.ts";
 import { collectMcpTools, mcpServerId } from "./tools.ts";
@@ -24,7 +24,7 @@ export interface McpBundlePaths {
 }
 
 /** Default `dist/<key>` binary and `dist/<key>.mcpb` output under cwd. */
-export function defaultMcpBundlePaths(program: CliProgram, cwd = process.cwd()): McpBundlePaths {
+export function defaultMcpBundlePaths(program: AppSpec, cwd = process.cwd()): McpBundlePaths {
   const binaryName = program.key;
   const dist = join(cwd, DIST_DIR);
   return {
@@ -35,12 +35,12 @@ export function defaultMcpBundlePaths(program: CliProgram, cwd = process.cwd()):
 }
 
 /** Builds MCPB/plugin user_config from schema entries with `env` set. */
-function buildUserConfig(program: CliProgram): Record<string, unknown> | undefined {
+function buildUserConfig(program: AppSpec): Record<string, unknown> | undefined {
   return buildProgramUserConfig(program);
 }
 
 /** Default author when `mcpServer.bundle.author` is unset. */
-function defaultAuthor(bundle?: CliMcpBundleConfig): {
+function defaultAuthor(bundle?: McpBundleConfig): {
   name: string;
   email?: string;
   url?: string;
@@ -49,7 +49,7 @@ function defaultAuthor(bundle?: CliMcpBundleConfig): {
 }
 
 /** Generates MCPB `manifest.json` object from program schema and MCP tools. */
-export function generateMcpManifest(program: CliProgram, binaryName: string): Record<string, unknown> {
+export function generateMcpManifest(program: AppSpec, binaryName: string): Record<string, unknown> {
   const bundle = program.mcpServer?.bundle;
   const tools = collectMcpTools(program).map((t) => ({
     name: t.name,
@@ -105,7 +105,7 @@ export interface PackMcpBundleOpts {
  * Stages manifest + binary (+ optional icon) and writes a `.mcpb` ZIP.
  * Requires the compiled binary to exist.
  */
-export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {}): string {
+export function packMcpBundle(program: AppSpec, opts: PackMcpBundleOpts = {}): string {
   const cwd = opts.cwd ?? process.cwd();
   const defaults = defaultMcpBundlePaths(program, cwd);
   const binaryPath = resolve(cwd, opts.binaryPath ?? defaults.binaryPath);
@@ -152,12 +152,12 @@ export function packMcpBundle(program: CliProgram, opts: PackMcpBundleOpts = {})
 /** Runs `mcp bundle`: writes enabled dist artifacts; prints one path per line. */
 export function runMcpBundle(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
 ): void {
   const mcp = program.mcpServer;
   if (!mcp?.mcpd && !mcp?.claudePlugin && !mcp?.cursorPlugin) {
     throw new Error(
-      "mcp bundle: enable mcpServer.mcpd, mcpServer.claudePlugin, and/or mcpServer.cursorPlugin on the program root.",
+      "mcp bundle: enable mcpServer.mcpd, mcpServer.claudePlugin, and/or mcpServer.cursorPlugin on the app root.",
     );
   }
 

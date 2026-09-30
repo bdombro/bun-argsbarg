@@ -8,9 +8,9 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliOptionKind, type CliProgram } from "../src/index";
+import { OptionKind, argsbarg } from "../src/index";
 
-const program = {
+const app = argsbarg({
   description: "Tiny demo.",
   handler: (ctx) => {
     const name = ctx.args[0] ?? "world";
@@ -24,7 +24,7 @@ const program = {
     {
       name: "verbose",
       description: "Enable extra logging.",
-      kind: CliOptionKind.Presence,
+      kind: OptionKind.Presence,
       shortName: "v",
     },
   ],
@@ -32,13 +32,12 @@ const program = {
     {
       name: "name",
       description: "Who to greet.",
-      kind: CliOptionKind.String,
+      kind: OptionKind.String,
       argMin: 0,
       argMax: 1,
     },
   ],
   version: pkg.version,
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();

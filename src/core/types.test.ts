@@ -2,21 +2,21 @@
 Compile-only checks that invalid schema shapes fail type-checking.
 */
 
-import type { CliLeaf, CliNode, CliProgram, CliRouter } from "./types.ts";
+import type { AppSpec, Command, CommandGroup, RunnableCommand } from "./types.ts";
 
-const _routerOnly: CliRouter = {
+const _routerOnly: CommandGroup = {
   key: "app",
   description: "",
   commands: [],
 };
 
-const _leafOnly: CliLeaf = {
+const _leafOnly: RunnableCommand = {
   key: "run",
   description: "",
   handler: () => {},
 };
 
-const _program: CliProgram = {
+const _program: AppSpec = {
   key: "app",
   version: "0.0.0",
   description: "",
@@ -30,7 +30,7 @@ const _badMcpOnNode = {
   // @ts-expect-error mcpServer is program-root only
   mcpServer: { enabled: true },
   commands: [],
-} satisfies CliNode;
+} satisfies Command;
 
 const _badInstallOnNode = {
   key: "x",
@@ -38,4 +38,4 @@ const _badInstallOnNode = {
   // @ts-expect-error install is program-root only
   install: { enabled: false },
   handler: () => {},
-} satisfies CliNode;
+} satisfies Command;

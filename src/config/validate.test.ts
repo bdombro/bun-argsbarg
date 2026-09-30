@@ -1,211 +1,84 @@
 /*
-Tests for config/validate module behavior.
+Tests for config/validate module behavior: Zod document validation and CLI value coercion.
 */
 
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
+import { toJsonSchema } from "../core/zod-schema.ts";
 import {
   parseConfigSetValue,
-  resolveSchemaDraft,
   validateConfigDocument,
   validateConfigDocumentPartial,
+  validateConfigValue,
 } from "./validate.ts";
 
-const rootSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["apiToken", "maxRetries"],
-  properties: {
-    apiToken: { type: "string", minLength: 1 },
-    maxRetries: { type: "integer", minimum: 0, maximum: 10 },
-    enabled: { type: "boolean", default: true },
-    prefs: {
-      type: "object",
-      properties: { ttl: { type: "number" } },
-      required: ["ttl"],
-    },
-  },
-};
+const rootZod = z.strictObject({
+  apiToken: z.string().min(1),
+  maxRetries: z.number().int().min(0).max(10),
+  enabled: z.boolean().default(true),
+  prefs: z.strictObject({ ttl: z.number() }).optional(),
+});
+const rootSchema = toJsonSchema(rootZod, "input");
 
 /** Tests for config/validate. */
 describe("config/validate", () => {
   test("accepts valid document", () => {
-    const result = validateConfigDocument({ apiToken: "x", maxRetries: 3, prefs: { ttl: 3600 } }, rootSchema);
+    const result = validateConfigDocument({ apiToken: "x", maxRetries: 3, prefs: { ttl: 3600 } }, rootZod);
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
   });
 
-  test("rejects missing required property", () => {
-    const result = validateConfigDocument({ apiToken: "x" }, rootSchema);
-    expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("maxRetries"))).toBe(true);
+  test("ignores framework keys such as _bindings", () => {
+    const result = validateConfigDocument({ apiToken: "x", maxRetries: 3, _bindings: { apiToken: "env" } }, rootZod);
+    expect(result.valid).toBe(true);
   });
 
-  test("rejects unknown property when additionalProperties is false", () => {
-    const result = validateConfigDocument({ apiToken: "x", maxRetries: 1, extra: true }, rootSchema);
+  test("rejects missing required property with its path", () => {
+    const result = validateConfigDocument({ apiToken: "x" }, rootZod);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("extra"))).toBe(true);
+    expect(result.errors).toEqual(["maxRetries: required"]);
   });
 
-  test("rejects type mismatch", () => {
-    const result = validateConfigDocument({ apiToken: "x", maxRetries: "nope" }, rootSchema);
-    expect(result.valid).toBe(false);
+  test("rejects unknown property on strict schemas", () => {
+    const result = validateConfigDocument({ apiToken: "x", maxRetries: 1, extra: true }, rootZod);
+    expect(result.errors).toEqual(['$: Unrecognized key: "extra" (allowed: apiToken, enabled, maxRetries, prefs)']);
   });
 
-  describe("discriminated unions", () => {
-    const stepSchema = {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      type: "object",
-      properties: { steps: { type: "array", items: { $ref: "#/definitions/Step" } } },
-      required: ["steps"],
-      additionalProperties: false,
-      definitions: {
-        Step: {
-          anyOf: [
-            {
-              type: "object",
-              properties: { kind: { const: "alpha" }, title: { type: "string" } },
-              required: ["kind", "title"],
-              additionalProperties: false,
-            },
-            {
-              type: "object",
-              properties: { kind: { enum: ["beta", "bravo"] }, count: { type: "number" } },
-              required: ["kind"],
-              additionalProperties: false,
-            },
-            {
-              type: "object",
-              properties: { kind: { const: "gamma" }, flag: { type: "boolean" } },
-              required: ["kind"],
-              additionalProperties: false,
-            },
-          ],
-        },
-      },
-    };
-
-    test("valid mix of branches passes", () => {
-      const result = validateConfigDocument(
-        {
-          steps: [
-            { kind: "alpha", title: "x" },
-            { kind: "beta", count: 3 },
-          ],
-        },
-        stepSchema,
-      );
-      expect(result.valid).toBe(true);
-      expect(result.errors).toEqual([]);
+  test("reports one precise error for a bad discriminator", () => {
+    const steps = z.strictObject({
+      steps: z.array(
+        z.discriminatedUnion("kind", [
+          z.strictObject({ kind: z.literal("alpha"), title: z.string() }),
+          z.strictObject({ kind: z.enum(["beta", "bravo"]), count: z.number().optional() }),
+        ]),
+      ),
     });
+    expect(validateConfigDocument({ steps: [{ kind: "alpha", title: "x" }, { kind: "beta" }] }, steps).valid).toBe(
+      true,
+    );
+    const bad = validateConfigDocument({ steps: [{ kind: "alfa" }, { kind: "beta", count: "x" }] }, steps);
+    expect(bad.errors).toHaveLength(2);
+    expect(bad.errors[0]).toStartWith("steps.0.kind: Invalid discriminator value");
+    expect(bad.errors[0]).toEndWith('(got "alfa")');
+    expect(bad.errors[1]).toBe("steps.1.count: Invalid input: expected number, received string");
+  });
 
-    test("unknown property in the matched branch reports only that branch", () => {
-      const result = validateConfigDocument({ steps: [{ kind: "alpha", titel: "x" }] }, stepSchema);
-      expect(result.errors).toEqual([
-        'steps.0: missing required property "title"',
-        'steps.0: unknown property "titel" (allowed: kind, title)',
-      ]);
-    });
+  test("caps at 10 errors plus a count of the remainder", () => {
+    const many = z.strictObject({ steps: z.array(z.strictObject({ kind: z.literal("a") })) });
+    const result = validateConfigDocument({ steps: Array.from({ length: 12 }, () => ({})) }, many);
+    expect(result.errors).toHaveLength(11);
+    expect(result.errors[10]).toBe("…and 2 more errors");
+  });
 
-    test("unmapped discriminator value reports one synthetic error", () => {
-      const result = validateConfigDocument({ steps: [{ kind: "alfa" }] }, stepSchema);
-      expect(result.errors).toEqual(['steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)']);
-    });
+  test("partial validation skips top-level required keys but still checks types", () => {
+    expect(validateConfigDocumentPartial({ maxRetries: 2 }, rootZod).valid).toBe(true);
+    expect(validateConfigDocumentPartial({ maxRetries: "x" }, rootZod).valid).toBe(false);
+    expect(validateConfigDocumentPartial({ extra: 1 }, rootZod).valid).toBe(false);
+  });
 
-    test("missing discriminator reports one synthetic error", () => {
-      const result = validateConfigDocument({ steps: [{ title: "x" }] }, stepSchema);
-      expect(result.errors).toEqual(['steps.0: missing "kind" (expected one of: alpha, beta, bravo, gamma)']);
-    });
-
-    test("non-object instance reports one synthetic error", () => {
-      const result = validateConfigDocument({ steps: ["alpha"] }, stepSchema);
-      expect(result.errors).toEqual(['steps.0: expected an object with "kind" (one of: alpha, beta, bravo, gamma)']);
-    });
-
-    test("type mismatch in the matched branch reports only that field", () => {
-      const result = validateConfigDocument({ steps: [{ kind: "beta", count: "x" }] }, stepSchema);
-      expect(result.errors).toEqual(["steps.0.count: must be number (got string)"]);
-    });
-
-    test("a non-discriminated union still reports errors from every branch", () => {
-      const nonDiscriminatedSchema = {
-        type: "object",
-        properties: {
-          x: {
-            anyOf: [
-              { type: "object", properties: { a: { type: "string" } }, required: ["a"], additionalProperties: false },
-              { type: "object", properties: { b: { type: "number" } }, required: ["b"], additionalProperties: false },
-            ],
-          },
-        },
-        additionalProperties: false,
-      };
-      const result = validateConfigDocument({ x: {} }, nonDiscriminatedSchema);
-      expect(result.errors).toEqual(['x: missing required property "a"', 'x: missing required property "b"']);
-    });
-
-    test("collects one error per bad step, in order, without cross-contamination between array indices", () => {
-      const result = validateConfigDocument({ steps: [{ kind: "alfa" }, { kind: "beta", count: "x" }] }, stepSchema);
-      expect(result.errors).toEqual([
-        'steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)',
-        "steps.1.count: must be number (got string)",
-      ]);
-    });
-
-    test("resolves discriminators through $ref'd branches (ts-json-schema-generator output shape)", () => {
-      // ts-json-schema-generator (and similar tools) write each anyOf branch as a bare `{ $ref }` pointing
-      // into `definitions`, rather than inlining the branch schema. This is the shape gdocsmith's real
-      // `run` tool schema uses for its 27 step kinds, and it silently defeated discriminator detection
-      // (every branch looked property-less) until unionDiscriminator started resolving branch refs.
-      const refBranchSchema = {
-        $schema: "http://json-schema.org/draft-07/schema#",
-        type: "object",
-        properties: {
-          steps: { type: "array", items: { anyOf: [{ $ref: "#/definitions/A" }, { $ref: "#/definitions/B" }] } },
-        },
-        required: ["steps"],
-        additionalProperties: false,
-        definitions: {
-          A: {
-            type: "object",
-            properties: { kind: { const: "alpha" }, title: { type: "string" } },
-            required: ["kind", "title"],
-            additionalProperties: false,
-          },
-          B: {
-            type: "object",
-            properties: { kind: { const: "beta" }, count: { type: "number" } },
-            required: ["kind"],
-            additionalProperties: false,
-          },
-        },
-      };
-      const result = validateConfigDocument({ steps: [{ kind: "alfa" }] }, refBranchSchema);
-      expect(result.errors).toEqual(['steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta)']);
-    });
-
-    test("caps at 10 errors plus a count of the remainder", () => {
-      const manySchema = {
-        type: "object",
-        properties: {
-          steps: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: { kind: { enum: ["a"] } },
-              required: ["kind"],
-              additionalProperties: false,
-            },
-          },
-        },
-        additionalProperties: false,
-      };
-      const result = validateConfigDocument({ steps: Array.from({ length: 12 }, () => ({})) }, manySchema);
-      expect(result.errors).toHaveLength(11);
-      expect(result.errors.slice(0, 10)).toEqual(
-        Array.from({ length: 10 }, (_, i) => `steps.${i}: missing required property "kind"`),
-      );
-      expect(result.errors[10]).toBe("…and 2 more errors");
-    });
+  test("validateConfigValue throws the first message without the root path prefix", () => {
+    expect(() => validateConfigValue(11, rootZod.shape.maxRetries)).toThrow(/Too big/);
+    expect(() => validateConfigValue("x", undefined)).not.toThrow();
   });
 
   test("parseConfigSetValue coerces number and boolean", () => {
@@ -213,21 +86,22 @@ describe("config/validate", () => {
     expect(parseConfigSetValue("true", { type: "boolean" }, rootSchema, false)).toBe(true);
   });
 
+  test("parseConfigSetValue validates the coerced value against the key schema", () => {
+    const prop = rootSchema.properties as Record<string, Record<string, unknown>>;
+    expect(parseConfigSetValue("5", prop.maxRetries, rootSchema, false, rootZod.shape.maxRetries)).toBe(5);
+    expect(() => parseConfigSetValue("50", prop.maxRetries, rootSchema, false, rootZod.shape.maxRetries)).toThrow(
+      /Too big/,
+    );
+  });
+
   test("parseConfigSetValue requires --json for objects", () => {
     expect(() => parseConfigSetValue("ttl:1", { type: "object" }, rootSchema, false)).toThrow(/--json/);
-    expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, true)).toEqual({
-      ttl: 1,
-    });
-    expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, false)).toEqual({
-      ttl: 1,
-    });
+    expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, true)).toEqual({ ttl: 1 });
+    expect(parseConfigSetValue('{"ttl":1}', { type: "object" }, rootSchema, false)).toEqual({ ttl: 1 });
   });
 
   test("parseConfigSetValue accepts comma-separated string arrays", () => {
-    const servicesSchema = {
-      type: "array",
-      items: { type: "string" },
-    };
+    const servicesSchema = { type: "array", items: { type: "string" } };
     expect(parseConfigSetValue("a,b", servicesSchema, rootSchema, false)).toEqual(["a", "b"]);
     expect(parseConfigSetValue('["a","b"]', servicesSchema, rootSchema, false)).toEqual(["a", "b"]);
   });
@@ -238,10 +112,7 @@ describe("config/validate", () => {
   });
 
   test("parseConfigSetValue accepts comma-separated date arrays", () => {
-    const schema = {
-      type: "array",
-      items: { type: "string", format: "date" },
-    };
+    const schema = { type: "array", items: { type: "string", format: "date" } };
     expect(parseConfigSetValue("2024-01-01,2024-02-01", schema, rootSchema, false)).toEqual([
       "2024-01-01",
       "2024-02-01",
@@ -251,72 +122,9 @@ describe("config/validate", () => {
   test("parseConfigSetValue rejects non-primitive arrays without JSON", () => {
     const schema = {
       type: "array",
-      items: {
-        type: "object",
-        properties: { ttl: { type: "number" } },
-        required: ["ttl"],
-      },
+      items: { type: "object", properties: { ttl: { type: "number" } }, required: ["ttl"] },
     };
     expect(() => parseConfigSetValue("a,b", schema, rootSchema, false)).toThrow(/--json/);
     expect(parseConfigSetValue('[{"ttl":1}]', schema, rootSchema, false)).toEqual([{ ttl: 1 }]);
-  });
-
-  test("resolveSchemaDraft maps $schema URIs", () => {
-    expect(resolveSchemaDraft({ $schema: "http://json-schema.org/draft-07/schema#" })).toBe("7");
-    expect(resolveSchemaDraft({ $schema: "https://json-schema.org/draft/2020-12/schema" })).toBe("2020-12");
-    expect(resolveSchemaDraft({ $schema: "https://json-schema.org/draft/2019-09/schema" })).toBe("2019-09");
-    expect(resolveSchemaDraft({})).toBe("7");
-  });
-
-  test("validates draft 2020-12 schemas when $schema is set", () => {
-    const schema = {
-      $schema: "https://json-schema.org/draft/2020-12/schema",
-      type: "object",
-      additionalProperties: false,
-      required: ["name"],
-      properties: {
-        name: { type: "string", minLength: 1 },
-      },
-    };
-    expect(validateConfigDocument({ name: "ok" }, schema).valid).toBe(true);
-    expect(validateConfigDocument({ name: "" }, schema).valid).toBe(false);
-    expect(validateConfigDocument({}, schema).valid).toBe(false);
-  });
-
-  test("validateConfigDocumentPartial accepts schemagen root with empty definitions", () => {
-    const schema = {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      type: "object",
-      additionalProperties: false,
-      required: ["email"],
-      properties: {
-        email: { type: "string" },
-        services: { type: "array", items: { type: "string" } },
-      },
-      definitions: {},
-    };
-    expect(validateConfigDocumentPartial({ email: "a@example.com", services: ["a"] }, schema).valid).toBe(true);
-  });
-
-  test("validates draft 2020-12 $defs refs", () => {
-    const schema = {
-      $schema: "https://json-schema.org/draft/2020-12/schema",
-      type: "object",
-      additionalProperties: false,
-      required: ["item"],
-      properties: {
-        item: { $ref: "#/$defs/Item" },
-      },
-      $defs: {
-        Item: {
-          type: "object",
-          additionalProperties: false,
-          required: ["id"],
-          properties: { id: { type: "string" } },
-        },
-      },
-    };
-    expect(validateConfigDocument({ item: { id: "a" } }, schema).valid).toBe(true);
-    expect(validateConfigDocument({ item: { id: 1 } }, schema).valid).toBe(false);
   });
 });

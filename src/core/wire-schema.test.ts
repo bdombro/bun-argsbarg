@@ -3,58 +3,56 @@ Tests for canonical wire input schema generation and wire option filtering.
 */
 
 import { describe, expect, test } from "bun:test";
-import { type CliLeaf, CliOptionKind, CliValueFormat } from "./types.ts";
-import { buildLeafInputSchema, leafWireOptions } from "./wire-schema.ts";
+import { z } from "zod";
+import { OptionKind, type RunnableCommand, ValueFormat } from "./types.ts";
+import { buildCommandInputSchema, commandWireOptions } from "./wire-schema.ts";
+import { toJsonSchema } from "./zod-schema.ts";
 
-/** Tests for leafWireOptions. */
-describe("leafWireOptions", () => {
+/** Tests for commandWireOptions. */
+describe("commandWireOptions", () => {
   /** Tests filtering of framework-handled presence flags. */
   test("omits json, yes, and verbose presence flags", () => {
-    const leaf: CliLeaf = {
+    const leaf: RunnableCommand = {
       key: "test",
       description: "Test command",
       options: [
-        { name: "message", description: "Message text", kind: CliOptionKind.String },
-        { name: "json", description: "Output JSON", kind: CliOptionKind.Presence },
-        { name: "yes", description: "Auto-confirm", kind: CliOptionKind.Presence },
-        { name: "verbose", description: "Verbose logging", kind: CliOptionKind.Presence },
-        { name: "dry-run", description: "Dry run mode", kind: CliOptionKind.Presence },
+        { name: "message", description: "Message text", kind: OptionKind.String },
+        { name: "json", description: "Output JSON", kind: OptionKind.Presence },
+        { name: "yes", description: "Auto-confirm", kind: OptionKind.Presence },
+        { name: "verbose", description: "Verbose logging", kind: OptionKind.Presence },
+        { name: "dry-run", description: "Dry run mode", kind: OptionKind.Presence },
       ],
       handler: () => {},
     };
 
-    const wire = leafWireOptions(leaf);
+    const wire = commandWireOptions(leaf);
     const names = wire.map((o) => o.name);
     expect(names).toEqual(["message", "dry-run"]);
   });
 
   /** Tests that hidden options are excluded from wire schemas. */
   test("omits hidden options", () => {
-    const leaf: CliLeaf = {
+    const leaf: RunnableCommand = {
       key: "test",
       description: "Test command",
       options: [
-        { name: "visible", description: "Visible option", kind: CliOptionKind.String },
-        { name: "secret", description: "Secret option", kind: CliOptionKind.String, cli: { hidden: true } },
+        { name: "visible", description: "Visible option", kind: OptionKind.String },
+        { name: "secret", description: "Secret option", kind: OptionKind.String, cli: { hidden: true } },
       ],
       handler: () => {},
     };
 
-    const wire = leafWireOptions(leaf);
+    const wire = commandWireOptions(leaf);
     expect(wire.map((o) => o.name)).toEqual(["visible"]);
   });
 });
 
-/** Tests for buildLeafInputSchema. */
-describe("buildLeafInputSchema", () => {
-  /** Tests that explicitly set inputSchema is returned as-is. */
-  test("returns explicit inputSchema unchanged", () => {
-    const customSchema = {
-      type: "object",
-      properties: { custom: { type: "integer" } },
-      required: ["custom"],
-    };
-    const leaf: CliLeaf = {
+/** Tests for buildCommandInputSchema. */
+describe("buildCommandInputSchema", () => {
+  /** Tests that an explicit inputSchema is emitted (and memoized). */
+  test("returns the emitted explicit inputSchema", () => {
+    const customSchema = z.strictObject({ custom: z.number().int() });
+    const leaf: RunnableCommand = {
       key: "doc",
       description: "Document command",
       kind: "document",
@@ -62,54 +60,55 @@ describe("buildLeafInputSchema", () => {
       handler: () => {},
     };
 
-    expect(buildLeafInputSchema(leaf)).toBe(customSchema);
+    expect(buildCommandInputSchema(leaf)).toBe(toJsonSchema(customSchema, "input"));
+    expect(buildCommandInputSchema(leaf).required).toEqual(["custom"]);
   });
 
   /** Tests synthesizing inputSchema for flag-based commands. */
   test("synthesizes inputSchema from wire options and positionals", () => {
-    const leaf: CliLeaf = {
+    const leaf: RunnableCommand = {
       key: "create",
       description: "Create resource",
       options: [
         {
           name: "name",
           description: "Resource name",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           required: true,
         },
         {
           name: "count",
           description: "Item count",
-          kind: CliOptionKind.Number,
+          kind: OptionKind.Number,
           default: "1",
         },
         {
           name: "force",
           description: "Force creation",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
         },
         {
           name: "tier",
           description: "Account tier",
-          kind: CliOptionKind.Enum,
+          kind: OptionKind.Enum,
           choices: ["free", "pro", "enterprise"],
         },
         {
           name: "metadata",
           description: "Raw metadata",
-          kind: CliOptionKind.Json,
+          kind: OptionKind.Json,
         },
         {
           name: "json",
           description: "Omitted presence flag",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
         },
       ],
       positionals: [
         {
           name: "target",
           description: "Deployment target",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           argMin: 1,
           argMax: 1,
         },
@@ -117,7 +116,7 @@ describe("buildLeafInputSchema", () => {
       handler: () => {},
     };
 
-    const schema = buildLeafInputSchema(leaf);
+    const schema = buildCommandInputSchema(leaf);
     expect(schema).toEqual({
       type: "object",
       properties: {
@@ -155,38 +154,38 @@ describe("buildLeafInputSchema", () => {
 
   /** Tests string format constraints in synthesized inputSchema. */
   test("synthesizes formatted string options and varargs positionals", () => {
-    const leaf: CliLeaf = {
+    const leaf: RunnableCommand = {
       key: "query",
       description: "Query resources",
       options: [
         {
           name: "tags",
           description: "Comma-separated tag list",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.CommaList,
+          kind: OptionKind.String,
+          format: ValueFormat.CommaList,
         },
         {
           name: "timeout",
           description: "Timeout duration",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.Duration,
+          kind: OptionKind.String,
+          format: ValueFormat.Duration,
         },
         {
           name: "since",
           description: "Start date",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.Date,
+          kind: OptionKind.String,
+          format: ValueFormat.Date,
         },
         {
           name: "timestamp",
           description: "ISO timestamp",
-          kind: CliOptionKind.String,
-          format: CliValueFormat.DateTime,
+          kind: OptionKind.String,
+          format: ValueFormat.DateTime,
         },
         {
           name: "code",
           description: "Custom code format",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           pattern: "^[A-Z]{3}$",
         },
       ],
@@ -194,7 +193,7 @@ describe("buildLeafInputSchema", () => {
         {
           name: "files",
           description: "Files to process",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           argMin: 0,
           argMax: 0,
         },
@@ -202,7 +201,7 @@ describe("buildLeafInputSchema", () => {
       handler: () => {},
     };
 
-    const schema = buildLeafInputSchema(leaf) as {
+    const schema = buildCommandInputSchema(leaf) as {
       type: string;
       properties: Record<string, unknown>;
       required?: string[];

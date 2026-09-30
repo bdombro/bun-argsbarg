@@ -4,18 +4,20 @@ It is the shared declarative model that parsing, validation, help, and completio
 read from, so the package has one source of truth.
 */
 
+import type { z } from "zod";
 import type { AnyAppConfigSnapshot } from "../config/context.ts";
-import type { CliContext } from "./context.ts";
+import type { CommandContext, CommandInputs } from "./context.ts";
+import { toJsonSchema } from "./zod-schema.ts";
 
 /**
- * How a leaf handler was dispatched.
+ * How a command handler was dispatched.
  */
-export type CliInvocation = "cli" | "mcp" | "http";
+export type Invocation = "cli" | "mcp" | "http";
 
 /**
  * Option kinds: presence (boolean flag), string (free-form text), number (strict double), enum (fixed choices), or json (parsed JSON object/array).
  */
-export enum CliOptionKind {
+export enum OptionKind {
   /** Boolean flag: no value token (may be implicit `"1"` when set). */
   Presence = "presence",
   /** Free-form string value. */
@@ -29,10 +31,10 @@ export enum CliOptionKind {
 }
 
 /**
- * Named validation/coercion for string options (`format` on `CliOption`).
+ * Named validation/coercion for string options (`format` on `CommandOption`).
  * Positionals do not use `format`; varargs use space-separated CLI tokens and JSON arrays over MCP.
  */
-export enum CliValueFormat {
+export enum ValueFormat {
   /** Duration text such as `30s`, `20m`, `1h`, `2d` (default unit minutes when omitted). */
   Duration = "duration",
   /** Comma-separated list on a single option value (`--services a,b`). */
@@ -46,7 +48,7 @@ export enum CliValueFormat {
 /**
  * When `fallbackCommand` is used for missing or unknown subcommand tokens at a routing node.
  */
-export enum CliFallbackMode {
+export enum FallbackMode {
   /**
    * If argv has no next subcommand, route to `fallbackCommand`; if the token is unknown, error.
    */
@@ -65,7 +67,7 @@ export enum CliFallbackMode {
 /**
  * Per-surface CLI exposure (help, completions, cli-schema).
  */
-export interface CliCliExposureConfig {
+export interface CliExposureConfig {
   /** When `false`, not callable via CLI (cascades to descendants). Default: true. */
   enabled?: boolean;
   /** Callable; omit from help, completions, and schema export. */
@@ -74,19 +76,19 @@ export interface CliCliExposureConfig {
   schema?: { enabled?: boolean; hidden?: boolean };
 }
 
-/** HTTP method for REST leaves. */
-export type CliHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+/** HTTP method for REST commands. */
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /**
- * Per-node HTTP exposure and response defaults (routers: segment/enabled/hidden; leaves: full set).
+ * Per-node HTTP exposure and response defaults (groups: segment/enabled/hidden; runnable commands: full set).
  */
-export interface CliHttpExposureConfig {
+export interface HttpExposureConfig {
   /** When `false`, omit from HTTP route table. Default: exposed. */
   enabled?: boolean;
   /** Callable; omit from OpenAPI / route discovery. */
   hidden?: boolean;
   /** Override inferred HTTP verb. */
-  method?: CliHttpMethod;
+  method?: HttpMethod;
   /** URL path segment override (≠ `key`). */
   segment?: string;
   /** Default success HTTP status when handler omits `ctx.respond({ status })`. */
@@ -100,15 +102,15 @@ export interface CliHttpExposureConfig {
 /**
  * A named flag or value option (`--long`, `-short`), listed on command `options`.
  */
-export interface CliOption {
+export interface CommandOption {
   /** Option name (e.g., "name", "verbose"). */
   name: string;
   /** Per-surface CLI exposure for this option. */
-  cli?: Pick<CliCliExposureConfig, "hidden">;
+  cli?: Pick<CliExposureConfig, "hidden">;
   /** Description shown in help. */
   description: string;
   /** Option kind: presence flag, string value, or number value. */
-  kind: CliOptionKind;
+  kind: OptionKind;
   /** Short option character (e.g., 'n' for -n). */
   shortName?: string;
   /** Whether this option must be provided. Cannot be used with Presence kind. */
@@ -117,12 +119,12 @@ export interface CliOption {
    * Allowed values. Required when kind === Enum; ignored otherwise.
    * Must be a non-empty array of distinct non-empty strings.
    */
-  choices?: string[];
+  choices?: readonly string[];
   /**
    * Named string validation for `kind: String` options. Mutually exclusive with `pattern`.
    * Not supported on positionals.
    */
-  format?: CliValueFormat;
+  format?: ValueFormat;
   /** Default value applied in post-parse when the option is omitted. */
   default?: string;
   /** Regex pattern for string options. Mutually exclusive with `format`. */
@@ -135,15 +137,15 @@ export interface CliOption {
 }
 
 /**
- * An ordered positional argument slot, listed on leaf `positionals`.
+ * An ordered positional argument slot, listed on command `positionals`.
  */
-export interface CliPositional {
+export interface CommandPositional {
   /** Positional name (used in help and error messages). */
   name: string;
   /** Description shown in help. */
   description: string;
   /** Value kind for each consumed token. */
-  kind: CliOptionKind;
+  kind: OptionKind;
   /**
    * Minimum number of values required (default 1).
    * Use `0` for an optional slot when paired with `argMax: 1`, or a varargs tail with `argMax: 0`.
@@ -156,8 +158,8 @@ export interface CliPositional {
   argMax?: number;
 }
 
-/** @experimental MCP bundle output options (program root `mcpServer.bundle` only). */
-export interface CliMcpBundleConfig {
+/** @experimental MCP bundle output options (app root `mcpServer.bundle` only). */
+export interface McpBundleConfig {
   author?: {
     name: string;
     email?: string;
@@ -180,11 +182,11 @@ export interface CliMcpBundleConfig {
 }
 
 /**
- * Enables `myapp mcp` and MCP stdio server metadata (program root only).
+ * Enables `myapp mcp` and MCP stdio server metadata (app root only).
  * Must include `enabled: true`; omit `mcpServer` entirely to disable MCP.
  * @experimental
  */
-export interface CliMcpServerConfig {
+export interface McpServerConfig {
   /** When `true`, enables the `mcp` built-in and MCP stdio server. */
   enabled: boolean;
   /**
@@ -195,9 +197,9 @@ export interface CliMcpServerConfig {
    */
   instructions?: string;
   /** MCP error response defaults. */
-  errors?: CliMcpServerErrorsConfig;
+  errors?: McpServerErrorsConfig;
   /** Observe-only hooks for JSON-RPC messages. */
-  hooks?: CliMcpWireHooks;
+  hooks?: McpWireHooks;
   /** When `true`, `mcp bundle` writes `dist/<key>.mcpb` for Claude Desktop. Default false. */
   mcpd?: boolean;
   /** When `true`, `mcp bundle` also writes `dist/claude-plugin/<name>.zip`. Default false. */
@@ -216,11 +218,11 @@ export interface CliMcpServerConfig {
    * Custom MCP resources exposed alongside the built-in schema resource.
    * URIs must be unique and must not equal schemaResourceUri.
    */
-  resources?: CliMcpResource[];
+  resources?: McpResource[];
   /** Optional MCP Bundle (`.mcpb`) metadata for `mcp bundle`. */
-  bundle?: CliMcpBundleConfig;
-  /** Overrides the default startup size warnings (see {@link CliMcpSizeLimits}). */
-  sizeLimits?: CliMcpSizeLimits;
+  bundle?: McpBundleConfig;
+  /** Overrides the default startup size warnings (see {@link McpSizeLimits}). */
+  sizeLimits?: McpSizeLimits;
 }
 
 /**
@@ -233,25 +235,25 @@ export interface CliMcpServerConfig {
  * bytes or `definitionLines` lines, whichever comes first — a tool at or beyond either limit is read
  * incompletely on the first pass.
  */
-export interface CliMcpSizeLimits {
+export interface McpSizeLimits {
   definitionBytes?: number | false;
   definitionLines?: number | false;
   descriptionChars?: number | false;
   instructionsChars?: number | false;
 }
 
-/** JSON Schema for structured error responses (OpenAPI + HTTP/MCP error bodies). */
-export type CliJsonSchema = Record<string, unknown>;
+/** Emitted JSON Schema object (produced from Zod schemas by argsbarg; used by MCP, OpenAPI, help, and export). */
+export type JsonSchema = Record<string, unknown>;
 
 /** Wire-level HTTP hooks (observe-only; all requests including health and 404s). */
-export interface CliHttpWireHooks {
-  onRequest?: (ctx: CliHttpWireContext) => void | Promise<void>;
-  onResponse?: (ctx: CliHttpWireContext & { status: number; durationMs: number }) => void | Promise<void>;
-  onError?: (ctx: CliHttpWireContext & { failureKind: InvokeFailureKind; error: unknown }) => void | Promise<void>;
+export interface HttpWireHooks {
+  onRequest?: (ctx: HttpWireContext) => void | Promise<void>;
+  onResponse?: (ctx: HttpWireContext & { status: number; durationMs: number }) => void | Promise<void>;
+  onError?: (ctx: HttpWireContext & { failureKind: InvokeFailureKind; error: unknown }) => void | Promise<void>;
 }
 
-/** Per-request HTTP wire context for {@link CliHttpWireHooks}. */
-export interface CliHttpWireContext {
+/** Per-request HTTP wire context for {@link HttpWireHooks}. */
+export interface HttpWireContext {
   request: Request;
   requestId: string;
   clientIp: string;
@@ -264,24 +266,24 @@ export interface CliHttpWireContext {
 }
 
 /** Wire-level MCP hooks on JSON-RPC messages (observe-only). */
-export interface CliMcpWireHooks {
-  onRequest?: (ctx: CliMcpWireContext) => void | Promise<void>;
-  onResponse?: (ctx: CliMcpWireContext & { durationMs: number }) => void | Promise<void>;
-  onError?: (ctx: CliMcpWireContext & { failureKind: InvokeFailureKind; error: unknown }) => void | Promise<void>;
+export interface McpWireHooks {
+  onRequest?: (ctx: McpWireContext) => void | Promise<void>;
+  onResponse?: (ctx: McpWireContext & { durationMs: number }) => void | Promise<void>;
+  onError?: (ctx: McpWireContext & { failureKind: InvokeFailureKind; error: unknown }) => void | Promise<void>;
 }
 
-/** Per-message MCP wire context for {@link CliMcpWireHooks}. */
-export interface CliMcpWireContext {
+/** Per-message MCP wire context for {@link McpWireHooks}. */
+export interface McpWireContext {
   rpcMethod: string;
   requestId: string;
   toolName?: string;
 }
 
 /**
- * Enables `myapp http` and the HTTP tool server (program root only).
+ * Enables `myapp http` and the HTTP tool server (app root only).
  * Must include `enabled: true`; omit `httpServer` entirely to disable HTTP.
  */
-export interface CliHttpServerConfig {
+export interface HttpServerConfig {
   /** When `true`, enables the `http` built-in and HTTP tool server. */
   enabled: boolean;
   /** Listen host (default: `127.0.0.1`). */
@@ -296,34 +298,35 @@ export interface CliHttpServerConfig {
   /** Honor `X-Forwarded-For` for client IP in hooks and logs. */
   trustProxy?: boolean;
   /** HTTP error response defaults. */
-  errors?: { errorSchema?: CliJsonSchema; obscureUnexpected?: boolean };
+  errors?: { errorSchema?: z.ZodType; obscureUnexpected?: boolean };
   /** Observe-only hooks for all HTTP requests. */
-  hooks?: CliHttpWireHooks;
+  hooks?: HttpWireHooks;
 }
 
 /** MCP server error defaults. */
-export interface CliMcpServerErrorsConfig {
-  errorSchema?: CliJsonSchema;
+export interface McpServerErrorsConfig {
+  /** Zod schema for structured error bodies (emitted as JSON Schema in OpenAPI and MCP). */
+  errorSchema?: z.ZodType;
   obscureUnexpected?: boolean;
 }
 
 /**
  * Declarative HTTP response hints passed to {@link apiSuccessResponse}.
- * @internal Prefer `CliHttpExposureConfig` on the leaf.
+ * @internal Prefer `HttpExposureConfig` on the command.
  */
-export interface CliHttpResponseConfig {
+export interface HttpResponseConfig {
   /** Default success Content-Type (default: `application/json`). */
   contentType?: string;
   /** Optional Content-Disposition (e.g. `attachment; filename="invoice.pdf"`). */
   contentDisposition?: string;
 }
 
-/** Body types accepted by {@link CliContext.respond}. */
-export type CliRespondBody = string | Uint8Array | Record<string, unknown> | unknown[];
+/** Body types accepted by {@link CommandContext.respond}. */
+export type RespondBody = string | Uint8Array | Record<string, unknown> | unknown[];
 
-/** Options for {@link CliContext.respond} and headless invoke results. */
-export interface CliRespondOptions {
-  body: CliRespondBody;
+/** Options for {@link CommandContext.respond} and headless invoke results. */
+export interface RespondOptions {
+  body: RespondBody;
   /** Default: `application/json` for objects/arrays, `text/plain` for strings; binary requires explicit type. */
   contentType?: string;
   /** HTTP status (default: 200). */
@@ -334,7 +337,7 @@ export interface CliRespondOptions {
 /**
  * A custom MCP resource exposed under resources/list and resources/read.
  */
-export interface CliMcpResource {
+export interface McpResource {
   /** Resource URI (must be unique; must not equal schemaResourceUri). */
   uri: string;
   /** Short display name for resources/list. */
@@ -348,9 +351,9 @@ export interface CliMcpResource {
 }
 
 /**
- * Leaf-only. Controls how this command appears as an MCP tool.
+ * Runnable commands only. Controls how this command appears as an MCP tool.
  */
-export interface CliMcpToolConfig {
+export interface McpToolConfig {
   /** When `false`, omit from `tools/list` (default: exposed). */
   enabled?: boolean;
   /** Callable; omit from `tools/list` and MCP tool schemas. */
@@ -361,16 +364,16 @@ export interface CliMcpToolConfig {
    */
   description?: string;
   /**
-   * Overrides the leaf's `notes` in the MCP description only — CLI help always shows `notes` unchanged.
+   * Overrides the command's `notes` in the MCP description only — CLI help always shows `notes` unchanged.
    * `false` omits notes from the MCP description entirely; a string replaces them. Omit to use `notes` as
    * given. Useful when a note only makes sense with `--help` in front of it (a CLI-only workflow tip), or
-   * when the full CLI notes would push a definition past a size limit (see {@link CliMcpSizeLimits}).
+   * when the full CLI notes would push a definition past a size limit (see {@link McpSizeLimits}).
    */
   notes?: string | false;
 }
 
 /**
- * Opt-out and defaults for the `install` built-in (program root only).
+ * Opt-out and defaults for the `install` built-in (app root only).
  */
 export interface CliUpdateArtifact {
   /** Path to an executable binary to copy into the install location. */
@@ -384,14 +387,14 @@ export interface CliUpdateArtifact {
 /** Fetches the latest release binary for `install --update`. */
 export type CliUpdateGetLatest = (ctx: { version: string }) => Promise<CliUpdateArtifact>;
 
-/** Context passed to {@link CliAppConfigEntry.resolve} for one config key. */
-export interface CliAppConfigResolveContext {
+/** Context passed to {@link AppConfigEntry.resolve} for one config key. */
+export interface AppConfigResolveContext {
   /** Schema key being resolved. */
   key: string;
   /** Entry metadata for this key. */
-  entry: CliAppConfigEntry;
-  /** Program root (read-only). */
-  program: CliProgram;
+  entry: AppConfigEntry;
+  /** App spec (read-only). */
+  spec: AppSpec;
   /** Raw value from the config file, if any. */
   fileValue: unknown;
   /** Non-empty host env string when `entry.env` is set; otherwise `undefined`. */
@@ -402,18 +405,18 @@ export interface CliAppConfigResolveContext {
  * Optional fallback resolver for one config key (e.g. `gh auth token` when `GH_TOKEN` is unset).
  * Return `undefined` to continue resolution (env, then default).
  */
-export type CliAppConfigResolveFn = (ctx: CliAppConfigResolveContext) => unknown;
+export type AppConfigResolveFn = (ctx: AppConfigResolveContext) => unknown;
 
 /**
- * Metadata overlay for one key in {@link CliAppConfig.entries}.
- * Types and validation come from {@link CliAppConfig.jsonSchema} when set; otherwise all values are strings.
+ * Metadata overlay for one key in {@link AppConfig.entries}.
+ * Types and validation come from {@link AppConfig.schema} when set; otherwise all values are strings.
  */
-export interface CliAppConfigEntry {
+export interface AppConfigEntry {
   /** Help text for prompts, MCP manifests, and generated docs. */
   description: string;
   /** Short label in host UIs and CLI prompts. Default: the config key. */
   title?: string;
-  /** Default when `jsonSchema` is omitted (all-string mode). */
+  /** Default when `schema` is omitted (all-string mode). */
   default?: string;
   /** When `false`, optional for bootstrap and MCP enforcement. Default: `true`. */
   required?: boolean;
@@ -428,38 +431,33 @@ export interface CliAppConfigEntry {
    * Optional fallback after file when env is empty.
    * Return `undefined` to fall back to `env` (if set) and schema defaults.
    */
-  resolve?: CliAppConfigResolveFn;
+  resolve?: AppConfigResolveFn;
 }
 
 /**
- * App configuration block on the program root ({@link CliProgram.appConfig}).
+ * App configuration block on the app root ({@link AppSpec.appConfig}).
  */
-export interface CliAppConfig {
+export interface AppConfig {
   /** Built-in `configure get` / `configure set`. Default: enabled when `appConfig` is set. */
   commands?: boolean | { enabled?: boolean; mcpSet?: boolean };
-  /** Block JSON Schema (draft-07). When omitted, synthesize all-string schema from `entries`. */
-  jsonSchema?: Record<string, unknown>;
-  /** Per-key metadata; keys must match `jsonSchema.properties` when `jsonSchema` is set. */
-  entries: Record<string, CliAppConfigEntry>;
+  /**
+   * Zod object schema for the config file (prefer `z.strictObject` so unknown keys are rejected).
+   * When omitted, argsbarg synthesizes an all-string schema from `entries`.
+   */
+  schema?: z.ZodObject;
+  /** Per-key metadata; keys must exist in `schema.shape` when `schema` is set. */
+  entries: Record<string, AppConfigEntry>;
 }
 
 /** Opt-out for the `completion` built-in (default: enabled). */
-export interface CliCompletionConfig {
+export interface CompletionConfig {
   /** When `false`, hide/disable `completion` (default: enabled). */
   enabled?: boolean;
 }
 
-/**
- * @deprecated Skill generation was removed; skills are authored directly in repositories under `skills/<app>/SKILL.md`.
- */
-export interface CliSkillConfig {
-  /** @deprecated Skill generation was removed; this property has no effect. */
-  enabled?: boolean;
-}
-
-/** Context for {@link CliConfigureConfig} lifecycle hooks. */
+/** Context for {@link ConfigureConfig} lifecycle hooks. */
 export interface ConfigureHookContext {
-  program: CliProgram;
+  spec: AppSpec;
   dry: boolean;
   paths: {
     agentsSkillDir: string;
@@ -470,11 +468,11 @@ export interface ConfigureHookContext {
 }
 
 /** @experimental */
-export interface CliConfigureConfig {
+export interface ConfigureConfig {
   /** When `false`, hide/disable `configure` (default: enabled). */
   enabled?: boolean;
   /** Per-artifact gates for configure install. See {@link resolveEffectiveInstallTargets}. */
-  targets?: CliConfigureTargets;
+  targets?: ConfigureTargets;
   /** Runs after framework artifacts are installed (`configure install`). */
   afterInstall?: (ctx: ConfigureHookContext) => void | Promise<void>;
   /** Runs before framework artifacts are removed (`configure uninstall`). */
@@ -497,7 +495,7 @@ export interface ResolvedInstallTarget {
 }
 
 /** Per-artifact gates for configure. See {@link resolveEffectiveInstallTargets}. */
-export interface CliConfigureTargets {
+export interface ConfigureTargets {
   /** App binary status only (Homebrew PATH); no self-install. */
   app?: InstallTargetSpec;
   /** App config: interactive wizard step in `configure`. Default not in refresh. */
@@ -505,99 +503,124 @@ export interface CliConfigureTargets {
 }
 
 /**
- * One bundled documentation topic for the `docs` built-in (program root only).
+ * One bundled documentation topic for the `docs` built-in (app root only).
  */
-export interface CliDocsTopic {
+export interface DocsTopic {
   /** Bundled markdown (use compile-time text imports in the consumer). */
   text: string;
-  /** Leaf help text for `myapp docs <key> -h`. Auto-generated from key when omitted. */
+  /** Help text for `myapp docs <key> -h`. Auto-generated from key when omitted. */
   description?: string;
 }
 
 /**
- * Opt-out and optional topics for the `docs` built-in (program root only).
+ * Opt-out and optional topics for the `docs` built-in (app root only).
  * Docs is enabled by default; set `enabled: false` to disable.
  */
-export interface CliDocsConfig {
+export interface DocsConfig {
   /** When `false`, hide/disable `docs` (default: enabled). */
   enabled?: boolean;
   /** Router description for `myapp docs` (default: "Print bundled CLI documentation."). */
   description?: string;
   /** Optional consumer markdown topics. Reserved keys: `mcp`, `all` (supplied by the built-in). */
-  topics?: Record<string, CliDocsTopic>;
+  topics?: Record<string, DocsTopic>;
 }
 
 /**
  * Base properties shared by all nodes in the user command tree.
  */
-export interface CliNodeBase {
-  /** Program or command key (e.g., "myapp", "stat", "owner"). */
+export interface CommandBase {
+  /** App or command key (e.g., "myapp", "stat", "owner"). */
   key: string;
   /** Per-surface CLI exposure. */
-  cli?: CliCliExposureConfig;
+  cli?: CliExposureConfig;
   /** Per-surface HTTP exposure and response defaults. */
-  http?: CliHttpExposureConfig;
+  http?: HttpExposureConfig;
   /** Short description shown in help. */
   description: string;
   /** Additional notes shown in help (`{argsbarg:program}` → program key). */
   notes?: string;
   /** Global or command-level flags/options. */
-  options?: CliOption[];
+  options?: readonly CommandOption[];
 }
 
-/** Leaf input mode: `document` (or legacy `json`) = structured JSON or YAML document body (no CLI flags). */
-export type CliLeafKind = "document" | "json";
+/** Command input mode: `document` = structured JSON or YAML document body (no CLI flags). */
+export type CommandKind = "document";
+
+/** Handler `ctx.inputs` type for a command: the schema's parsed output, or coerced option/positional values. */
+export type CommandInputsOf<I> = [I] extends [z.ZodType] ? z.output<I> : CommandInputs;
+
+/** Handler `ctx.pathParams` type for a command: the `pathParams` schema's parsed output, or raw string segments. */
+export type CommandPathParamsOf<P> = [P] extends [z.ZodObject] ? z.output<P> : Record<string, string>;
+
+/** Handler return type for a command: the output schema's type (or nothing), or `unknown` without an output schema. */
+// biome-ignore lint/suspicious/noConfusingVoidType: `void` lets handlers that only print (no return) type-check.
+export type CommandResultOf<O> = [O] extends [z.ZodType] ? z.output<O> | void : unknown;
 
 /**
- * A leaf command node with a handler and optional positionals.
+ * A command that runs a handler (with optional positionals).
+ * Use {@link command} to get `ctx.inputs` and the return value typed from `inputSchema` / `outputSchema`.
  */
-export type CliLeaf = CliNodeBase & {
+export type RunnableCommand<
+  I extends z.ZodType | undefined = z.ZodType | undefined,
+  O extends z.ZodType | undefined = z.ZodType | undefined,
+  P extends z.ZodObject | undefined = z.ZodObject | undefined,
+> = CommandBase & {
   /**
-   * When `"document"` (or legacy `"json"`), the leaf accepts a single JSON or YAML document
+   * When `"document"`, the command accepts a single JSON or YAML document
    * (CLI positional or piped stdin; MCP/HTTP tool args = body). Requires `inputSchema`;
    * forbids `options` and `positionals`.
    */
-  kind?: CliLeafKind;
-  /** Handler function for leaf commands. */
-  handler: CliHandler;
+  kind?: CommandKind;
+  /** Handler (method syntax so typed commands fit in heterogeneous `commands` arrays). */
+  handler(
+    ctx: CommandContext<CommandInputsOf<I>, CommandPathParamsOf<P>>,
+  ): CommandResultOf<O> | Promise<CommandResultOf<O>>;
   /** Positional argument definitions. */
-  positionals?: CliPositional[];
+  positionals?: readonly CommandPositional[];
   /**
-   * JSON Schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
-   * Exported in `docs cli-schema`, `docs cli`, and MCP `tools/list`; not validated at runtime yet.
+   * Zod schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
+   * Emitted in `docs cli-schema`, `docs cli`, and MCP `tools/list`; not validated at runtime.
    */
-  outputSchema?: Record<string, unknown>;
-  /** JSON Schema for MCP/HTTP tool arguments (flat object). */
-  inputSchema?: Record<string, unknown>;
+  outputSchema?: O;
+  /**
+   * Zod schema for tool arguments and merged CLI inputs. Validated before the handler runs;
+   * the parsed value becomes `ctx.inputs`.
+   */
+  inputSchema?: I;
+  /**
+   * Zod object schema for the `:param` segments above this command (keys = param names without `:`). Validated
+   * before the handler; the parsed value becomes `ctx.pathParams`. Field descriptions are shown to MCP and OpenAPI.
+   */
+  pathParams?: P;
   /** Per-tool MCP exposure and metadata. */
-  mcpTool?: CliMcpToolConfig;
+  mcpTool?: McpToolConfig;
 };
 
 /**
  * A routing command node with nested subcommands.
  */
-export type CliRouter = CliNodeBase & {
+export type CommandGroup = CommandBase & {
   /** Nested subcommands. */
-  commands: CliNode[];
+  commands: Command[];
   /** Default subcommand when argv omits a command or uses an unknown token at this routing node. */
   fallbackCommand?: string;
   /** How fallbackCommand is applied at this routing node. */
-  fallbackMode?: CliFallbackMode;
+  fallbackMode?: FallbackMode;
 };
 
 /**
- * A node in the user-defined command tree (router or leaf).
+ * A command in the tree: runnable (`handler`) or a group of subcommands (`commands`).
  */
-export type CliNode = CliLeaf | CliRouter;
+export type Command = RunnableCommand | CommandGroup;
 
 /** Classified failure kind for invoke error pipeline and HTTP/MCP status mapping. */
 export type InvokeFailureKind = "validation" | "help" | "unexpected" | "not_ready" | "missing_config" | "unknown_route";
 
 /**
  * Per-invocation context attached in hooks (e.g. DB handles, auth principals).
- * Augment in app code: `declare module "argsbarg" { interface CliLocals { db: AppDb } }`.
+ * Augment in app code: `declare module "argsbarg" { interface Locals { db: AppDb } }`.
  */
-export interface CliLocals {
+export interface Locals {
   /** Correlation id seeded before hooks run (HTTP/MCP wire id or generated UUID). */
   requestId?: string;
 }
@@ -622,18 +645,18 @@ export interface ServerState {
 export interface ServerRuntime {
   /** Mutable global bag (DB pool, degraded flags, readiness cache, etc.). */
   state: ServerState;
-  program: CliProgram;
+  spec: AppSpec;
   surface: "http" | "mcp";
 }
 
-/** Context for program-level invoke hooks (CLI, HTTP, MCP user commands). */
+/** Context for app-level invoke hooks (CLI, HTTP, MCP user commands). */
 export interface InvokeHookContext {
-  invocation: CliInvocation;
+  invocation: Invocation;
   path: string[];
   pathParams: Record<string, string>;
   opts: Record<string, string>;
   /** Per-invocation bag; `beforeInvoke` may write. Framework seeds `requestId` before hooks run. */
-  locals: CliLocals;
+  locals: Locals;
   runtime?: ServerRuntime;
   appConfig: AnyAppConfigSnapshot;
   http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
@@ -654,35 +677,35 @@ export interface ClientErrorOverride {
   exitCode?: number;
 }
 
-/** Minimal invoke result passed to `afterInvoke` (see {@link Cli.invoke}). */
-export interface CliInvokeHookResult {
+/** Minimal invoke result passed to `afterInvoke` (see {@link App.invoke}). */
+export interface InvokeHookResult {
   kind: "ok" | "help" | "error";
   exitCode: number;
   failureKind?: InvokeFailureKind;
   errorMsg?: string;
 }
 
-/** Program-level invoke and error hooks (skipped for builtins). */
-export interface CliProgramHooks {
+/** App-level invoke and error hooks (skipped for builtins). */
+export interface AppHooks {
   /** May mutate `locals`, `opts`, `args`; may throw. Skipped for builtins. */
   beforeInvoke?: (ctx: InvokeHookContext) => void | Promise<void>;
-  afterInvoke?: (ctx: InvokeHookContext & { result: CliInvokeHookResult }) => void | Promise<void>;
+  afterInvoke?: (ctx: InvokeHookContext & { result: InvokeHookResult }) => void | Promise<void>;
   /** Mutate client-facing error payload only. Runs before `onError`. */
   formatError?: (ctx: ErrorHookContext) => ClientErrorOverride | undefined | Promise<ClientErrorOverride | undefined>;
   /** Observe only — runs after `formatError`; may enrich `locals`. Never mutates client response. */
   onError?: (ctx: ErrorHookContext) => void | Promise<void>;
 }
 
-/** Context for optional `program.readiness` (HTTP/MCP health only). */
+/** Context for optional `readiness` (HTTP/MCP health only). */
 export interface ReadinessContext {
-  program: CliProgram;
+  spec: AppSpec;
   surface: "http" | "mcp";
   appConfig: AnyAppConfigSnapshot;
   runtime: ServerRuntime;
 }
 
 /** Framework logging defaults (ECS Logging json or human text on stderr). */
-export interface CliLogConfig {
+export interface LogConfig {
   /** `json` = ECS Logging lines; `text` = human stderr lines. Default: `json`. */
   format?: "json" | "text";
   /** Tee stderr + append; relative paths resolve under the app config dir. */
@@ -704,78 +727,169 @@ export interface CliLogConfig {
 }
 
 /**
- * Program root passed to {@link Cli}.
- * May be a leaf or router, plus optional program-level MCP and install config.
+ * App spec passed to `argsbarg()`.
+ * May be a command or command group, plus optional app-level MCP and install config.
  */
-export type CliProgram = CliNode & {
+export type AppSpec = Command & AppSpecFields;
+
+/** Root settings shared by grouping and runnable roots (see {@link AppSpec} and `argsbarg()`). */
+export type AppSpecFields = {
   /** Schema-driven app config file, bootstrap, and MCP metadata. */
-  appConfig?: CliAppConfig;
+  appConfig?: AppConfig;
   /** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
-  completion?: CliCompletionConfig;
+  completion?: CompletionConfig;
   /** Opt-out and defaults for `configure`. */
-  configure?: CliConfigureConfig;
+  configure?: ConfigureConfig;
   /** Opt-out and optional topics for the `docs` built-in (default: enabled). */
-  docs?: CliDocsConfig;
+  docs?: DocsConfig;
   /** Invoke and error hooks for user commands on CLI, HTTP, and MCP. */
-  hooks?: CliProgramHooks;
+  hooks?: AppHooks;
   /** When set with `enabled: true`, enables the `http` built-in HTTP server. */
-  httpServer?: CliHttpServerConfig;
+  httpServer?: HttpServerConfig;
   /** Framework logging (stderr + optional file). */
-  log?: CliLogConfig;
+  log?: LogConfig;
   /** When set with `enabled: true`, enables the `mcp` built-in subcommand. */
-  mcpServer?: CliMcpServerConfig;
+  mcpServer?: McpServerConfig;
   /** Optional readiness probe for HTTP/MCP `GET /health/readiness` only. */
   readiness?: (ctx: ReadinessContext) => boolean | Promise<boolean>;
-  /** @deprecated Skill generation was removed; skills are authored directly in repositories under `skills/<app>/SKILL.md`. */
-  skill?: CliSkillConfig;
-  /** Program version (printed by the `version` built-in and MCP serverInfo). */
+  /** App version (printed by the `version` built-in and MCP serverInfo). */
   version: string;
 };
 
-/** True when the node is a leaf (has a handler). */
-export function isCliLeaf(node: CliNode): node is CliLeaf {
+/** True when the command runs a handler. */
+export function hasHandler(node: Command): node is RunnableCommand {
   return "handler" in node && typeof node.handler === "function";
 }
 
-/** True when the leaf accepts a structured JSON or YAML document body (no CLI flags). */
-export function isDocumentLeaf(
-  /** Leaf command node to inspect. */
-  leaf: CliLeaf,
+/** True when the command accepts a structured JSON or YAML document body (no CLI flags). */
+export function isDocumentCommand(
+  /** Command to inspect. */
+  leaf: RunnableCommand,
 ): boolean {
-  return leaf.kind === "document" || leaf.kind === "json";
+  return leaf.kind === "document";
 }
 
-/** True when the leaf accepts a structured document body (backward-compatible alias for `isDocumentLeaf`). */
-export function isJsonLeaf(
-  /** Leaf command node to inspect. */
-  leaf: CliLeaf,
-): boolean {
-  return isDocumentLeaf(leaf);
-}
-
-/** True when the node is a router (has subcommands). */
-export function isCliRouter(node: CliNode): node is CliRouter {
+/** True when the node is a command group (has subcommands). */
+export function hasSubcommands(node: Command): node is CommandGroup {
   return "commands" in node && Array.isArray(node.commands);
 }
 
-/** Resolves structured stdout schema from the leaf. */
-export function leafOutputSchema(leaf: CliLeaf): Record<string, unknown> | undefined {
-  return leaf.outputSchema;
+/** Emitted JSON Schema for the command's structured stdout, when it declares an `outputSchema`. */
+export function leafOutputSchema(leaf: RunnableCommand): JsonSchema | undefined {
+  return leaf.outputSchema === undefined ? undefined : toJsonSchema(leaf.outputSchema, "output");
+}
+
+/** Emitted JSON Schema for the command's `inputSchema`, when set. */
+export function leafInputSchema(leaf: RunnableCommand): JsonSchema | undefined {
+  return leaf.inputSchema === undefined ? undefined : toJsonSchema(leaf.inputSchema, "input");
 }
 
 /**
- * Handler closure type for leaf commands.
- * Supports sync and async handlers; non-undefined return values become implicit JSON responses for headless invocations.
+ * Declares a command. With a `handler` it runs: `ctx.inputs` is typed from its `inputSchema` (or its `options` /
+ * `positionals` literals), `ctx.pathParams` from `pathParams`, and the return value from `outputSchema`. With
+ * `commands` it groups subcommands and keeps its literal type. Identity at runtime.
  */
-export type CliHandler = (ctx: CliContext) => unknown | Promise<unknown>;
+export function command<const T extends CommandGroup>(
+  /** Command that groups subcommands. */
+  group: T,
+): NoInfer<T>;
+export function command<
+  I extends z.ZodType | undefined = undefined,
+  O extends z.ZodType | undefined = undefined,
+  P extends z.ZodObject | undefined = undefined,
+  const Opts extends readonly CommandOption[] = [],
+  const Pos extends readonly CommandPositional[] = [],
+>(
+  /** Command that runs a handler. */
+  runnable: CommandDef<I, O, P, Opts, Pos>,
+  // NoInfer: generics come from the definition, never from where the result is used (e.g. a `commands` array).
+): RunnableCommand<NoInfer<I>, NoInfer<O>, NoInfer<P>>;
+export function command(
+  /** Command definition. */
+  node: Command,
+): Command {
+  return node;
+}
+
+/**
+ * Runnable command definition accepted by {@link command}: a {@link RunnableCommand} whose `options` / `positionals` literals
+ * type `ctx.inputs` when there is no `inputSchema` (see {@link CommandOptionInputs}).
+ */
+export type CommandDef<
+  I extends z.ZodType | undefined,
+  O extends z.ZodType | undefined,
+  P extends z.ZodObject | undefined,
+  Opts extends readonly CommandOption[],
+  Pos extends readonly CommandPositional[],
+> = Omit<RunnableCommand<I, O, P>, "handler" | "options" | "positionals"> & {
+  /** Command-local flags/options (their literal types drive `ctx.inputs` typing). */
+  options?: Opts;
+  /** Positional argument definitions (their literal types drive `ctx.inputs` typing). */
+  positionals?: Pos;
+  /** Handler function. */
+  handler(
+    ctx: CommandContext<
+      [I] extends [z.ZodType] ? z.output<I> : CommandOptionInputs<Opts> & CommandPositionalInputs<Pos>,
+      CommandPathParamsOf<P>
+    >,
+  ): CommandResultOf<O> | Promise<CommandResultOf<O>>;
+};
+
+/** Value type `ctx.inputs` holds for one option definition (after argsbarg's coercion). */
+export type CommandOptionValueOf<Opt extends CommandOption> = Opt extends { kind: OptionKind.Presence }
+  ? boolean
+  : Opt extends { kind: OptionKind.Number }
+    ? number
+    : Opt extends { kind: OptionKind.Enum; choices: readonly (infer C)[] }
+      ? C
+      : Opt extends { kind: OptionKind.Json }
+        ? unknown
+        : Opt extends { format: ValueFormat.Duration }
+          ? number
+          : Opt extends { format: ValueFormat.CommaList }
+            ? string[]
+            : string;
+
+/** True when an option always has a value in `ctx.inputs` (presence flags, `required`, or a `default`). */
+type OptionAlwaysSet<Opt> = Opt extends { kind: OptionKind.Presence }
+  ? true
+  : Opt extends { required: true }
+    ? true
+    : Opt extends { default: string }
+      ? true
+      : false;
+
+/** `ctx.inputs` shape for a command's own options (root and ancestor options are present at runtime but untyped). */
+export type CommandOptionInputs<Opts extends readonly CommandOption[]> = {
+  [Opt in Opts[number] as OptionAlwaysSet<Opt> extends true ? Opt["name"] : never]: CommandOptionValueOf<Opt>;
+} & {
+  [Opt in Opts[number] as OptionAlwaysSet<Opt> extends true ? never : Opt["name"]]?: CommandOptionValueOf<Opt>;
+};
+
+/** Value type for one positional slot: a single word, or a `string[]` for multi-value / varargs slots. */
+type PositionalValueOf<Pos extends CommandPositional> = Pos extends { argMax: number }
+  ? Pos["argMax"] extends 1
+    ? string
+    : string[]
+  : string;
+
+/** True when a positional always has a value (single slot with `argMin` ≥ 1, the default). */
+type PositionalAlwaysSet<Pos> = Pos extends { argMin: 0 } ? false : true;
+
+/** `ctx.inputs` shape for a command's positionals. */
+export type CommandPositionalInputs<Pos extends readonly CommandPositional[]> = {
+  [Slot in Pos[number] as PositionalAlwaysSet<Slot> extends true ? Slot["name"] : never]: PositionalValueOf<Slot>;
+} & {
+  [Slot in Pos[number] as PositionalAlwaysSet<Slot> extends true ? never : Slot["name"]]?: PositionalValueOf<Slot>;
+};
 
 /**
  * Error thrown when the static CLI tree violates ArgsBarg rules.
  */
-export class CliSchemaValidationError extends Error {
+export class SchemaValidationError extends Error {
   /** Creates a schema validation error with a human-readable rule violation. */
   constructor(message: string) {
     super(message);
-    this.name = "CliSchemaValidationError";
+    this.name = "SchemaValidationError";
   }
 }

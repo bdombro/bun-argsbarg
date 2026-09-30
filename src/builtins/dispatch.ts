@@ -1,11 +1,11 @@
 import type { ParseResult } from "../core/parse.ts";
 import { ParseKind } from "../core/parse.ts";
-import type { CliNode, CliProgram, CliRouter } from "../core/types.ts";
-import { isCliLeaf } from "../core/types.ts";
+import type { AppSpec, Command, CommandGroup } from "../core/types.ts";
+import { hasHandler } from "../core/types.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
 import { runMcpBundle } from "../mcp/bundle.ts";
 import { capabilityDeniedMessage, resolveCapabilities } from "../runtime/capabilities.ts";
-import { Cli } from "../runtime/cli.ts";
+import { App } from "../runtime/cli.ts";
 import { serveOverridesFromOpts } from "../server/overrides.ts";
 import { completionBashScript } from "./completion-bash.ts";
 import { completionFishScript } from "./completion-fish.ts";
@@ -19,10 +19,10 @@ import { cliBuiltinVersionCommand } from "./version.ts";
 
 export interface DispatchBuiltinOpts {
   isLeafCompletionIntercept: boolean;
-  parseRoot: CliRouter;
+  parseRoot: CommandGroup;
 }
 
-function completionSchema(program: CliProgram, opts: DispatchBuiltinOpts): CliRouter {
+function completionSchema(program: AppSpec, opts: DispatchBuiltinOpts): CommandGroup {
   if (opts.isLeafCompletionIntercept) {
     return cliPresentationRoot(program);
   }
@@ -32,7 +32,7 @@ function completionSchema(program: CliProgram, opts: DispatchBuiltinOpts): CliRo
 /**
  * Handles built-in commands after parse.
  */
-export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts: DispatchBuiltinOpts): Promise<void> {
+export async function dispatchBuiltin(program: AppSpec, pr: ParseResult, opts: DispatchBuiltinOpts): Promise<void> {
   if (pr.kind !== ParseKind.Ok) {
     return;
   }
@@ -76,7 +76,7 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     }
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
-      await new Cli(program).serveHttp(serveOverridesFromOpts(pr.opts, "http"));
+      await new App(program).serveHttp(serveOverridesFromOpts(pr.opts, "http"));
       process.exit(0);
     }
     process.stderr.write(`Unknown subcommand: http ${pr.path.slice(1).join(" ")}\n`);
@@ -90,7 +90,7 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
     }
     const sub = pr.path[1];
     if (pr.path.length === 1 || sub === "serve") {
-      await new Cli(program).serveMcp(serveOverridesFromOpts(pr.opts, "mcp"));
+      await new App(program).serveMcp(serveOverridesFromOpts(pr.opts, "mcp"));
       process.exit(0);
     }
     if (pr.path.length === 2 && sub === "bundle") {
@@ -119,10 +119,10 @@ export async function dispatchBuiltin(program: CliProgram, pr: ParseResult, opts
 
 /** Built-in intercept roots for leaf programs. */
 export function builtinInterceptRoot(
-  program: CliProgram,
+  program: AppSpec,
   argv: string[],
-): { parseRoot: CliNode; isLeafCompletionIntercept: boolean } {
-  if (!isCliLeaf(program) || argv.length < 1) {
+): { parseRoot: Command; isLeafCompletionIntercept: boolean } {
+  if (!hasHandler(program) || argv.length < 1) {
     return { parseRoot: program, isLeafCompletionIntercept: false };
   }
 

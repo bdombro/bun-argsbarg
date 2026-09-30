@@ -1,6 +1,6 @@
 import { accessSync, constants, realpathSync } from "node:fs";
 import { delimiter, join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 
 /** Resolves a command name on PATH to its real path, if present. */
 export function resolvePathCommand(key: string): string | undefined {
@@ -39,6 +39,6 @@ export function isExternallyManagedBinary(key: string, execPath: string = proces
 }
 
 /** True when the app binary is available on PATH (e.g. Homebrew). */
-export function isAppInstalled(program: CliProgram): boolean {
+export function isAppInstalled(program: AppSpec): boolean {
   return isExternallyManagedBinary(program.key);
 }

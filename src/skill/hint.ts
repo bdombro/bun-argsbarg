@@ -3,7 +3,7 @@ This module provides HTML comment hints embedded in generated documentation
 and plugin artifacts to mark them as machine-generated.
 */
 
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 
 /** YAML frontmatter block at the start of markdown files. */
 export const MARKDOWN_FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
@@ -25,11 +25,11 @@ export function insertGeneratedHint(content: string, hint: string, options?: { a
 }
 
 /** Hint for `mcp bundle` plugin skill output. */
-export function skillBundleHint(program: CliProgram): string {
+export function skillBundleHint(program: AppSpec): string {
   return generatedFileHtmlComment(`${program.key} mcp bundle`);
 }
 
 /** Applies bundle hint to plugin SKILL.md (after frontmatter). */
-export function applyPluginSkillHint(program: CliProgram, skillMd: string): string {
+export function applyPluginSkillHint(program: AppSpec, skillMd: string): string {
   return insertGeneratedHint(skillMd, skillBundleHint(program), { afterFrontmatter: true });
 }

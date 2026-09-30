@@ -1,17 +1,17 @@
-import type { CliLeaf, CliNode, CliProgram, CliRouter } from "../core/types.ts";
-import { isCliLeaf } from "../core/types.ts";
-import type { CliCapabilities } from "../runtime/capabilities.ts";
+import type { AppSpec, Command, CommandGroup, RunnableCommand } from "../core/types.ts";
+import { hasHandler } from "../core/types.ts";
+import type { Capabilities } from "../runtime/capabilities.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { isCliHidden, presentationNode, visibleOptions } from "../runtime/exposure.ts";
 import { resolveBuiltins } from "./registry.ts";
 
 /** All built-in command nodes for argv parsing (includes hidden builtins). */
-export function parseBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
+export function parseBuiltins(program: AppSpec, caps: Capabilities): Command[] {
   return resolveBuiltins(program, caps);
 }
 
 /** Built-in subtrees visible in help, schema, and completions (hidden builtins omitted). */
-export function presentationBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
+export function presentationBuiltins(program: AppSpec, caps: Capabilities): Command[] {
   return parseBuiltins(program, caps).filter((b) => !isCliHidden(b));
 }
 
@@ -19,11 +19,11 @@ export function presentationBuiltins(program: CliProgram, caps: CliCapabilities)
  * Full command tree for argv parsing, including hidden commands and builtins.
  * Routing programs merge user commands with builtins; leaf programs wrap builtins only.
  */
-export function cliParseRoot(program: CliProgram): CliRouter {
+export function cliParseRoot(program: AppSpec): CommandGroup {
   const caps = resolveCapabilities(program);
   const builtins = parseBuiltins(program, caps);
 
-  if (isCliLeaf(program)) {
+  if (hasHandler(program)) {
     return {
       key: program.key,
       description: program.description,
@@ -49,12 +49,12 @@ export function cliParseRoot(program: CliProgram): CliRouter {
  * Hidden commands and options are omitted. Routing programs get builtins merged;
  * leaf programs are wrapped as a tiny router.
  */
-export function cliPresentationRoot(program: CliProgram): CliRouter {
+export function cliPresentationRoot(program: AppSpec): CommandGroup {
   const caps = resolveCapabilities(program);
   const builtins = presentationBuiltins(program, caps);
   const notes = presentationRootNotes(program, caps);
 
-  if (isCliLeaf(program)) {
+  if (hasHandler(program)) {
     return {
       key: program.key,
       description: program.description,
@@ -64,7 +64,7 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
     };
   }
 
-  const userCommands = program.commands.map((ch) => presentationNode(ch)).filter((ch): ch is CliNode => ch !== null);
+  const userCommands = program.commands.map((ch) => presentationNode(ch)).filter((ch): ch is Command => ch !== null);
 
   return {
     key: program.key,
@@ -77,8 +77,8 @@ export function cliPresentationRoot(program: CliProgram): CliRouter {
   };
 }
 
-/** Root help notes from consumer `program.notes`. */
-export function presentationRootNotes(program: CliProgram, _caps: CliCapabilities): string | undefined {
+/** Root help notes from the app's `notes`. */
+export function presentationRootNotes(program: AppSpec, _caps: Capabilities): string | undefined {
   const parts: string[] = [];
   if ((program.notes ?? "").trim().length > 0) {
     parts.push((program.notes ?? "").trim());
@@ -90,4 +90,4 @@ export function presentationRootNotes(program: CliProgram, _caps: CliCapabilitie
 }
 
 /** Presentation tree may include builtin leaf stubs. */
-export type CliPresentationNode = CliNode | CliLeaf;
+export type CliPresentationNode = Command | RunnableCommand;

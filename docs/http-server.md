@@ -1,23 +1,23 @@
 # HTTP API server
 
-ArgsBarg can expose your CLI as an HTTP REST server. Each **leaf command** becomes a route — nested command paths, HTTP verbs, and `:param` routers are reflected in the URL. By default routes sit at the server root (e.g. `GET /workspaces`). The server uses Bun's built-in HTTP stack and binds to **localhost by default**.
+ArgsBarg can expose your CLI as an HTTP REST server. Each **command with a handler** becomes a route — nested command paths, HTTP verbs, and `:param` command groups are reflected in the URL. By default routes sit at the server root (e.g. `GET /workspaces`). The server uses Bun's built-in HTTP stack and binds to **localhost by default**.
 
-The HTTP API is **opt-in**. Apps that do not set `httpServer` on the program root behave exactly as before.
+The HTTP API is **opt-in**. Apps that do not set `httpServer` on the app root behave exactly as before.
 
 ## Quick start
 
-1. Add `httpServer` to your program root:
+1. Add `httpServer` to your app root:
 
 ```typescript
 import pkg from "../package.json" with { type: "json" };
 
-const cli = {
+const app = argsbarg({
   key: "myapp",
   version: pkg.version,
   description: "My app.",
   httpServer: { enabled: true },
   commands: [/* ... */],
-} satisfies CliProgram;
+});
 ```
 
 `httpServer: { enabled: true }` opts in. Omit `httpServer` entirely to disable HTTP. Empty `httpServer: {}` is rejected at validation.
@@ -34,7 +34,7 @@ Optional flags on `myapp http` (and `myapp http serve`): `--host`, `--port`, `--
 
 ## Configuration
 
-Set `httpServer` on the **program root only**. Validation rejects `httpServer` on nested nodes.
+Set `httpServer` on the **app root only**. Validation rejects `httpServer` on nested nodes.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ Set `httpServer` on the **program root only**. Validation rejects `httpServer` o
 
 ## Logging
 
-Server logs (access lines, errors, startup) go to **stderr** as JSON by default. See **[logging.md](logging.md)** for `program.log`, **`enrich`**, **`serialize`**, trace headers, and examples.
+Server logs (access lines, errors, startup) go to **stderr** as JSON by default. See **[logging.md](logging.md)** for `log`, **`enrich`**, **`serialize`**, trace headers, and examples.
 
 ## REST routes
 
@@ -59,27 +59,27 @@ Routes are derived from the command tree:
 
 | CLI path | HTTP | Notes |
 | --- | --- | --- |
-| `workspaces get` | `GET /workspaces` | Verb leaf (`get`) omitted from URL |
+| `workspaces get` | `GET /workspaces` | Verb command (`get`) omitted from URL |
 | `workspaces post` | `POST /workspaces` | Default POST success **201** |
-| `workspaces :id get` | `GET /workspaces/{id}` | `:id` param router |
+| `workspaces :id get` | `GET /workspaces/{id}` | `:id` param command group |
 | `stat owner lookup` | `POST /stat/owner/lookup` | Default method POST when key is not a verb |
 
 With `httpServer.pathPrefix: "/api"`, the same routes are prefixed (e.g. `GET /api/workspaces`).
 
 When `pathPrefix` is empty, top-level command keys must not collide with framework paths (`health`, `swagger`, `openapi.json`, `tools`).
 
-Method precedence: `leaf.http.method` → verb key (`get`/`post`/…) → **POST**.
+Method precedence: `http.method` → verb key (`get`/`post`/…) → **POST**.
 
 Query string binds to options (values starting with `{` or `[` are JSON-parsed). Body on POST/PUT/PATCH binds to options, positionals, and `inputSchema` fields.
 
-Per-surface exposure: `http.enabled: false` removes a leaf from the route table; `http.hidden: true` keeps it callable but omits it from OpenAPI.
+Per-surface exposure: `http.enabled: false` removes a command from the route table; `http.hidden: true` keeps it callable but omits it from OpenAPI.
 
 ## Endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health/liveness` | Liveness — server is online and accepting requests |
-| `GET` | `/health/readiness` | Readiness — online plus config and optional `program.readiness` checks passed |
+| `GET` | `/health/readiness` | Readiness — online plus config and optional `readiness` checks passed |
 | `GET` | `/openapi.json` | OpenAPI 3.1 REST paths (includes `/health/*` and user routes) |
 | `GET` | `/swagger` | Interactive Swagger UI API reference (CDN) |
 | `*` | `/{command}/...` | Invoke user commands (method per route; optional `pathPrefix`) |
@@ -122,7 +122,7 @@ handler: (ctx) => {
 
 **CLI mode:** `ctx.respond()` prints to stdout. Handlers may still use `console.log` for human-only CLI output.
 
-### Leaf HTTP metadata
+### Command HTTP metadata
 
 ```typescript
 http?: {
@@ -157,11 +157,11 @@ Tool invocations are **not** gated on `/health/readiness`; readiness is for orch
 
 ## Hooks and runtime
 
-`program.hooks` (`beforeInvoke`, `afterInvoke`, `formatError`, `onError`) run for user commands on CLI, HTTP, and MCP — **not** for builtins.
+`hooks` (`beforeInvoke`, `afterInvoke`, `formatError`, `onError`) run for user commands on CLI, HTTP, and MCP — **not** for builtins.
 
 - `ctx.locals` — per-request bag (fresh each invoke); framework sets `requestId` before `beforeInvoke` (HTTP/MCP wire id when present, else a new UUID)
 - `ctx.runtime` — shared `ServerRuntime.state` on HTTP/MCP server sessions
-- `ctx.pathParams` — values from `:param` routers
+- `ctx.pathParams` — values from `:param` command groups
 
 Error order: `formatError` → `onError` → ECS log → client response.
 
@@ -171,8 +171,8 @@ All responses include wide-open CORS headers (`Access-Control-Allow-Origin: *`).
 
 ## OpenAPI
 
-Call `generateOpenApi(program)` from `argsbarg/http`, fetch `GET /openapi.json`, or run `myapp docs openapi --save`. Nested `$ref` in input/output schemas are dereferenced in the spec.
+Call `generateOpenApi(program)` from `argsbarg`, fetch `GET /openapi.json`, or run `myapp docs openapi --save`. Nested `$ref` in input/output schemas are dereferenced in the spec.
 
 ## Complex tool inputs
 
-Set `inputSchema` on the leaf and read coerced values with `ctx.inputs` / `ctx.inputsAs<T>()`. HTTP query, body, and path params merge into inputs before validation.
+Set a Zod `inputSchema` on the command (declared with `command`) and read the typed, parsed values with `ctx.inputs`. HTTP query and body merge into inputs before validation; path params are validated only when the schema declares them, otherwise read them from `ctx.pathParams`.

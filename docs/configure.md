@@ -4,7 +4,7 @@
 
 The `configure` built-in manages **agent artifacts** (MCP config, app config). The **binary and shell completions** ship via Homebrew — see [distribution-homebrew.md](distribution-homebrew.md).
 
-Opt out with `configure: { enabled: false }` on the program root.
+Opt out with `configure: { enabled: false }` on the app root.
 
 ## End-user install (Homebrew)
 
@@ -48,7 +48,7 @@ just install-local    # uninstall, build, brew install, configure install (`just
 # Remove agent artifacts and app config (run before brew uninstall)
 <key> configure uninstall [--yes]
 
-# Read or write app config (when program.appConfig is set)
+# Read or write app config (when appConfig is set)
 <key> configure get [key] [--json] [--pretty]
 <key> configure set <key> <value> [--json] [--from-env]
 ```
@@ -75,7 +75,7 @@ MCP config uses the command name on **`PATH`**, not a Cellar path. For Cursor, C
 
 ### Required-config wizard
 
-On **`configure install`**, when `program.appConfig` has entries and required keys are still missing after env resolution:
+On **`configure install`**, when `appConfig` has entries and required keys are still missing after env resolution:
 
 - **TTY:** runs the config wizard (required keys only; Enter keeps current values)
 - **Non-TTY:** exits with an error listing missing keys
@@ -101,7 +101,7 @@ Artifact keys: `app`, `configure`. Legacy `configure.targets.*Mcp` keys are reje
 
 ### Lifecycle hooks
 
-Optional callbacks on `program.configure` for app-specific agent setup beyond the `.agents` protocol (e.g. Cursor or Claude Desktop config).
+Optional callbacks on `configure` for app-specific agent setup beyond the `.agents` protocol (e.g. Cursor or Claude Desktop config).
 
 ```typescript
 configure: {
@@ -119,11 +119,11 @@ configure: {
 | `afterInstall` | After `configure install` installs framework artifacts |
 | `beforeUninstall` | Before `configure uninstall` removes framework artifacts |
 
-## App config (`program.appConfig`)
+## App config (`appConfig`)
 
-Every app gets `~/.local/lib/<sanitized-key>/config.json` on first **`configure install`**, even without `program.appConfig`.
+Every app gets `~/.local/lib/<sanitized-key>/config.json` on first **`configure install`**, even without `appConfig`.
 
-When `program.appConfig` is set, ArgsBarg manages schema-driven values in that file.
+When `appConfig` is set, ArgsBarg manages schema-driven values in that file.
 
 | Mode | Description |
 | --- | --- |
@@ -143,7 +143,7 @@ Export helpers from `argsbarg`: `resolveAppConfigPath`, `displayAppConfigPath`.
 | `install` | Install agent artifacts (MCP); bootstrap config; required-config wizard on TTY |
 | `uninstall` | Remove legacy skill, MCP entry, and app config (`--yes` skips TTY confirm) |
 | `status` | Read-only inventory (`--json` for machine output) |
-| `get` / `set` | Read or write `program.appConfig` keys (when configured) |
+| `get` / `set` | Read or write `appConfig` keys (when configured) |
 
 ## MCP merge behavior
 
@@ -181,7 +181,7 @@ bun x argsbarg@latest create my-cli --key my-cli --class-name MyCli --tap org/re
 bun x argsbarg create --check .
 ```
 
-See [distribution-homebrew.md](distribution-homebrew.md) and [../examples/full-example/README.md](../examples/full-example/README.md).
+See [distribution-homebrew.md](distribution-homebrew.md) and [../examples/cli/README.md](../examples/cli/README.md).
 
 ## Opt out
 

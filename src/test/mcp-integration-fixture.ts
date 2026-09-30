@@ -3,7 +3,7 @@
 MCP integration test fixture for subprocess tests (not a public example).
 */
 
-import { Cli, CliOptionKind, type CliProgram } from "../index.ts";
+import { type AppSpec, argsbarg, OptionKind } from "../index.ts";
 
 const program = {
   appConfig: {
@@ -22,7 +22,7 @@ const program = {
         {
           name: "name",
           description: "Env var name to read.",
-          kind: CliOptionKind.String,
+          kind: OptionKind.String,
           required: true,
         },
       ],
@@ -43,7 +43,7 @@ const program = {
         {
           name: "mode",
           description: "Operating mode.",
-          kind: CliOptionKind.Enum,
+          kind: OptionKind.Enum,
           choices: ["dev", "prod"],
           required: true,
         },
@@ -78,7 +78,7 @@ const program = {
     ],
   },
   version: "0.0.0-test",
-} satisfies CliProgram;
+} satisfies AppSpec;
 
-const cli = new Cli(program);
+const cli = argsbarg(program);
 await cli.run();

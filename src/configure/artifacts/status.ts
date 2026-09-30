@@ -1,5 +1,5 @@
 import { appConfigStatus } from "../../config/bootstrap.ts";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { buildInstallStatus, detectInstalledArtifacts } from "./detect-installed.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { resolveInstallTargetPreview } from "./target-scope.ts";
@@ -21,12 +21,12 @@ export function installErr(msg: string): void {
 }
 
 /** Interactive install/uninstall banner (stderr; leading blank line). */
-export function writeInteractiveInstallIntro(root: CliProgram): void {
+export function writeInteractiveInstallIntro(root: AppSpec): void {
   process.stderr.write(`\n${root.key} Setup\n\n`);
 }
 
 /** Prints install status to stdout (human or JSON). */
-export function printInstallStatus(root: CliProgram, opts: InstallOpts): void {
+export function printInstallStatus(root: AppSpec, opts: InstallOpts): void {
   const paths = resolveInstallPaths(root);
   const detected = detectInstalledArtifacts(paths, root);
   const status = buildInstallStatus(paths, detected, root);

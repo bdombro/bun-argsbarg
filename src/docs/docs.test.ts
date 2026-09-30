@@ -9,10 +9,10 @@ import { join } from "node:path";
 import { completionBashScript } from "../builtins/index.ts";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
 import { ParseKind, parse } from "../core/parse.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { cliValidateProgram } from "../core/validate.ts";
 import { cliHelpRender } from "../help.ts";
-import { Cli } from "../index.ts";
+import { argsbarg } from "../index.ts";
 import { resolveCapabilities, skipsRequiredAppConfigExit } from "../runtime/capabilities.ts";
 import { generateMcpGuide } from "./mcp-guide.ts";
 import { saveDocsTopic } from "./save.ts";
@@ -31,7 +31,7 @@ afterEach(() => {
   rmSync(workDir, { recursive: true, force: true });
 });
 
-function docsFixture(mcp = true): CliProgram {
+function docsFixture(mcp = true): AppSpec {
   return {
     key: "myapp",
     version: "1.0.0",
@@ -55,7 +55,7 @@ function docsFixture(mcp = true): CliProgram {
 
 /** Docs reserved when enabled. */
 test("docs reserved when enabled", () => {
-  const root: CliProgram = {
+  const root: AppSpec = {
     ...docsFixture(),
     commands: [
       {
@@ -87,7 +87,7 @@ test("docs rejects reserved topic keys", () => {
 });
 
 test("docs enabled by default without docs block", () => {
-  const root: CliProgram = {
+  const root: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo.",
@@ -98,7 +98,7 @@ test("docs enabled by default without docs block", () => {
 });
 
 test("docs opt-out allows user command named docs", () => {
-  const root: CliProgram = {
+  const root: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo.",
@@ -116,13 +116,13 @@ test("docs opt-out allows user command named docs", () => {
 });
 
 test("built-in docs work without topics", async () => {
-  const root: CliProgram = {
+  const root: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo.",
     commands: [{ key: "run", description: "Run.", handler: () => {} }],
   };
-  const cliRef = await new Cli(root).invoke(["docs", "cli"]);
+  const cliRef = await argsbarg(root).invoke(["docs", "cli"]);
   expect(cliRef.exitCode).toBe(0);
   expect(cliRef.stdout).toContain("CLI API reference");
 });
@@ -137,12 +137,12 @@ test("bare docs shows router help", () => {
 });
 
 test("docs readme prints bundled text", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "readme"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "readme"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("Hello README");
 });
 test("docs mcp when MCP enabled", async () => {
-  const result = await new Cli(docsFixture(true)).invoke(["docs", "mcp"]);
+  const result = await argsbarg(docsFixture(true)).invoke(["docs", "mcp"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("MCP server (myapp)");
   expect(result.stdout).toContain("myapp mcp");
@@ -151,7 +151,7 @@ test("docs mcp when MCP enabled", async () => {
 });
 
 test("docs rejects unknown subcommand", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "all"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "all"]);
   expect(result.exitCode).not.toBe(0);
 });
 
@@ -163,7 +163,7 @@ test("docs mcp absent from router when MCP disabled", async () => {
   if (docsNode && "commands" in docsNode) {
     expect(docsNode.commands.some((c) => c.key === "mcp")).toBe(false);
   }
-  const result = await new Cli(root).invoke(["docs", "mcp"]);
+  const result = await argsbarg(root).invoke(["docs", "mcp"]);
   expect(result.exitCode).not.toBe(0);
 });
 
@@ -171,7 +171,7 @@ test("docs http when API enabled", async () => {
   const root = docsFixture(true);
   root.httpServer = { enabled: true };
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["docs", "http"]);
+  const result = await argsbarg(root).invoke(["docs", "http"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("HTTP API (myapp)");
   expect(result.stdout).toContain("curl -s -X POST");
@@ -186,7 +186,7 @@ test("docs http absent from router when API disabled", async () => {
     expect(docsNode.commands.some((c) => c.key === "http")).toBe(false);
     expect(docsNode.commands.some((c) => c.key === "openapi")).toBe(false);
   }
-  const result = await new Cli(root).invoke(["docs", "http"]);
+  const result = await argsbarg(root).invoke(["docs", "http"]);
   expect(result.exitCode).not.toBe(0);
 });
 
@@ -194,7 +194,7 @@ test("docs openapi when API enabled", async () => {
   const root = docsFixture(true);
   root.httpServer = { enabled: true };
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["docs", "openapi"]);
+  const result = await argsbarg(root).invoke(["docs", "openapi"]);
   expect(result.exitCode).toBe(0);
   const doc = JSON.parse(result.stdout) as { openapi: string; paths: Record<string, unknown> };
   expect(doc.openapi).toBe("3.1.0");
@@ -203,7 +203,7 @@ test("docs openapi when API enabled", async () => {
 
 test("docs openapi absent when API disabled", async () => {
   const root = docsFixture(false);
-  const result = await new Cli(root).invoke(["docs", "openapi"]);
+  const result = await argsbarg(root).invoke(["docs", "openapi"]);
   expect(result.exitCode).not.toBe(0);
 });
 
@@ -215,7 +215,7 @@ test("presentation includes docs subtree", () => {
 });
 
 test("docs cli-schema prints JSON", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "cli-schema"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "cli-schema"]);
   expect(result.exitCode).toBe(0);
   const schema = JSON.parse(result.stdout);
   expect(schema.key).toBe("myapp");
@@ -223,7 +223,7 @@ test("docs cli-schema prints JSON", async () => {
 });
 
 test("docs cli prints markdown reference", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "cli"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "cli"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("# myapp — CLI API reference");
   expect(result.stdout).toContain("## `myapp run`");
@@ -288,7 +288,7 @@ test("generateMcpGuide includes a Tool sizes table", () => {
 });
 
 test("docs --save writes topic file", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "readme", "--save"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "readme", "--save"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout.trim()).toBe("docs/readme.md");
   const text = readFileSync(join(workDir, "docs/readme.md"), "utf8");
@@ -297,7 +297,7 @@ test("docs --save writes topic file", async () => {
 });
 
 test("docs cli --save prepends generated hint", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "cli", "--save"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "cli", "--save"]);
   expect(result.exitCode).toBe(0);
   const text = readFileSync(join(workDir, "docs/cli.md"), "utf8");
   expect(text.startsWith("<!-- Generated by myapp docs cli --save; do not edit. -->\n\n")).toBe(true);
@@ -305,7 +305,7 @@ test("docs cli --save prepends generated hint", async () => {
 });
 
 test("docs cli-schema --save writes JSON file", async () => {
-  const result = await new Cli(docsFixture()).invoke(["docs", "cli-schema", "--save"]);
+  const result = await argsbarg(docsFixture()).invoke(["docs", "cli-schema", "--save"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout.trim()).toBe("docs/cli-schema.json");
   const text = readFileSync(join(workDir, "docs/cli-schema.json"), "utf8");
@@ -317,7 +317,7 @@ test("docs cli-schema --save writes JSON file", async () => {
 test("docs openapi --save writes JSON file", async () => {
   const root = docsFixture(true);
   root.httpServer = { enabled: true };
-  const result = await new Cli(root).invoke(["docs", "openapi", "--save"]);
+  const result = await argsbarg(root).invoke(["docs", "openapi", "--save"]);
   expect(result.exitCode).toBe(0);
   expect(result.stdout.trim()).toBe("docs/openapi.json");
   const text = readFileSync(join(workDir, "docs/openapi.json"), "utf8");

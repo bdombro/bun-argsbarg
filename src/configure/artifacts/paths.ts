@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { mcpServerId } from "../../mcp/tools.ts";
 import { displayHomePath, userHome, xdgConfigHome } from "../../paths/host.ts";
 import { skillDirName } from "../../skill/naming.ts";
@@ -36,8 +36,8 @@ export function claudeDesktopPresent(_home: string, configPath: string): boolean
   return existsSync(configPath) || existsSync(dirname(configPath));
 }
 
-/** Resolves all install artifact paths for a program root. */
-export function resolveInstallPaths(root: CliProgram): InstallPaths {
+/** Resolves all install artifact paths for a app root. */
+export function resolveInstallPaths(root: AppSpec): InstallPaths {
   const home = userHome();
   const dirName = skillDirName(root.key);
 

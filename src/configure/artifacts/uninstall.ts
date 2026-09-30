@@ -1,5 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { displayHomePath } from "../../paths/host.ts";
 import type { InstallPaths } from "./paths.ts";
 import { buildUninstallPlanFromTargets } from "./target-plan-build.ts";
@@ -9,7 +9,7 @@ import type { InstallOpts, UninstallAction } from "./target-types.ts";
 export type { InstallActionKind, InstallOpts, UninstallAction } from "./target-types.ts";
 
 /** Builds uninstall actions for scoped targets or --all (ignores install.targets on --all). */
-export function buildUninstallPlan(root: CliProgram, paths: InstallPaths, opts: InstallOpts): UninstallAction[] {
+export function buildUninstallPlan(root: AppSpec, paths: InstallPaths, opts: InstallOpts): UninstallAction[] {
   return buildUninstallPlanFromTargets(root, paths, opts);
 }
 

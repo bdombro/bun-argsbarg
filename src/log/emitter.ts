@@ -4,7 +4,7 @@ Framework log emitter: ECS json or human text to stderr with optional file tee.
 
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { CliLogConfig, CliProgram } from "../core/types.ts";
+import type { AppSpec, LogConfig } from "../core/types.ts";
 import type { LogEnrichContext } from "./ecs.ts";
 import { durationMsToEcsNanos, type EcsLogEvent, type EcsLogLevel, formatEcsLine } from "./ecs.ts";
 
@@ -15,13 +15,13 @@ export interface ResolvedLogConfig {
   access: boolean;
   errors: boolean;
   dev: boolean;
-  enrich?: CliLogConfig["enrich"];
-  serialize?: CliLogConfig["serialize"];
+  enrich?: LogConfig["enrich"];
+  serialize?: LogConfig["serialize"];
 }
 
 /** Options for {@link LogEmitter}. */
 export interface LogEmitterOpts {
-  program: CliProgram;
+  spec: AppSpec;
   resolved: ResolvedLogConfig;
 }
 
@@ -33,7 +33,7 @@ export function obscureUnexpectedClientMessage(): string {
 }
 
 /** Merges program defaults with CLI flag / serve overrides. */
-export function resolveLogConfig(program: CliProgram, overrides: Partial<ResolvedLogConfig> = {}): ResolvedLogConfig {
+export function resolveLogConfig(program: AppSpec, overrides: Partial<ResolvedLogConfig> = {}): ResolvedLogConfig {
   const log = program.log;
   return {
     format: overrides.format ?? log?.format ?? "json",
@@ -52,7 +52,7 @@ export class LogEmitter {
   private readonly resolved: ResolvedLogConfig;
 
   constructor(opts: LogEmitterOpts) {
-    this.service = { name: opts.program.key, version: opts.program.version };
+    this.service = { name: opts.spec.key, version: opts.spec.version };
     this.resolved = opts.resolved;
   }
 

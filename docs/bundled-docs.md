@@ -8,10 +8,10 @@ Two documentation layers often coexist in a consumer repo:
 
 | Layer | Contents | How agents/humans get it |
 | --- | --- | --- |
-| **Argsbarg framework** | How to author `CliProgram`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wired via consumer [`AGENTS.md`](../examples/full-example-json/AGENTS.md) |
+| **Argsbarg framework** | How to author `Program`, MCP varargs policy, headless patterns | `node_modules/argsbarg/docs/` — wired via consumer [`AGENTS.md`](../examples/api/AGENTS.md) |
 | **Your CLI (docgen)** | Your command tree, options, MCP tool list, install notes | `myapp docs cli`, `docs cli-schema`, `docs mcp` — save with `--save` to `./docs/` |
 
-`docs cli` and `docs cli-schema` embed each leaf’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.
+`docs cli` and `docs cli-schema` embed each command’s `outputSchema` when set — see [output-schema.md](output-schema.md) for how to generate and wire schemas.
 
 Do not confuse them: editing `./docs/cli.md` after docgen updates **your** app reference; it does not change argsbarg's framework guides. When MCP behavior changes (e.g. varargs arrays in 3.6+), update consumer `docs/mcp.md` via **`myapp docs mcp --save`** and bump the `argsbarg` dependency.
 
@@ -22,12 +22,12 @@ See [docs/README.md](README.md) for the full documentation map.
 Zero config — built-in docgen only:
 
 ```typescript
-const cli = {
+const app = argsbarg({
   key: "myapp",
   version: "1.0.0",
   description: "My app.",
   commands: [/* ... */],
-} satisfies CliProgram;
+});
 ```
 
 Optional consumer markdown topics:
@@ -36,7 +36,7 @@ Optional consumer markdown topics:
 import readmeText from "../README.md" with { type: "text" };
 import archText from "../docs/architecture.md" with { type: "text" };
 
-const cli = {
+const app = argsbarg({
   key: "myapp",
   version: "1.0.0",
   description: "My app.",
@@ -47,11 +47,11 @@ const cli = {
     },
   },
   commands: [/* ... */],
-} satisfies CliProgram;
+});
 ```
 
 ```bash
-myapp docs              # router help (subcommand list)
+myapp docs              # group help (subcommand list)
 myapp docs readme
 myapp docs architecture
 myapp docs cli-schema       # full command tree as JSON
@@ -70,12 +70,12 @@ myapp docs cli --save      # write ./docs/cli.md
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `enabled` | `true` | Set `false` to disable the `docs` built-in |
-| `description` | `"Print bundled CLI documentation."` | Router help for `myapp docs` |
+| `description` | `"Print bundled CLI documentation."` | Command group help for `myapp docs` |
 | `topics` | *(none)* | Optional topic key → `{ text, description? }` |
 
 Reserved topic keys in `topics`: **`http`**, **`mcp`**, **`all`**, **`schema`**, **`cli`**, **`openapi`** (reserved — use the matching `docs <name>` subcommand instead).
 
-When `description` is omitted on a topic, ArgsBarg generates leaf help (`readme` → "Print README (user guide).").
+When `description` is omitted on a topic, ArgsBarg generates command help (`readme` → "Print README (user guide).").
 
 ## Compile-time bundling
 
@@ -87,20 +87,20 @@ import readmeText from "../README.md" with { type: "text" };
 
 Bun embeds the file when you `bun build --compile`. ArgsBarg does not read the filesystem at runtime.
 
-Inline topics in your program root when the set is small; use a separate module only if the import map grows enough to clutter `index.tsx`.
+Inline topics in your app root when the set is small; use a separate module only if the import map grows enough to clutter `index.tsx`.
 
 ## CLI schema and API (`docs cli-schema`, `docs cli`)
 
 By default (unless `docs.enabled: false`):
 
-- **`docs cli-schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for leaf roots).
+- **`docs cli-schema`** — same JSON as the former root `--schema` flag (handlers omitted; built-in subtrees included for command roots).
 - **`docs cli`** — markdown rendering of the same command tree (options, positionals, subcommands, fallback routing).
 
 ## MCP guide (`docs mcp`)
 
-When both docs (default) and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `program.appConfig`, schema resource URI, `configure install`, and protocol notes.
+When both docs (default) and `mcpServer.enabled` are `true`, ArgsBarg injects a **`docs mcp`** topic with an auto-generated guide: tool list, `appConfig`, schema resource URI, `configure install`, and protocol notes.
 
-There is no override API in v1 — customize behavior via `mcpTool.description` on leaf commands.
+There is no override API in v1 — customize behavior via `mcpTool.description` on commands with a handler.
 
 ## HTTP guide (`docs http`)
 
@@ -120,7 +120,7 @@ All `docs` subcommands are hidden from MCP `tools/list` (`mcpTool: { enabled: fa
 
 | Channel | Role |
 | --- | --- |
-| `skills/<app>/SKILL.md` | Authored repository skill router |
+| `skills/<app>/SKILL.md` | Authored repository skill command group |
 | `docs cli` | Print command tree markdown to stdout |
 | `docs cli-schema` | Print command tree JSON to stdout |
 | `docs` | Bundled markdown topics on stdout |

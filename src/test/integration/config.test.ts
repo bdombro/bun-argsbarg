@@ -44,8 +44,8 @@ test("bootstrapAppConfig prefers host env over config file", () => {
   }
 });
 
-/** MCP program.appConfig fails when required config missing. */
-test("MCP program.appConfig fails when required config missing", async () => {
+/** MCP appConfig fails when required config missing. */
+test("MCP appConfig fails when required config missing", async () => {
   const responses = await mcpRequest(
     [
       {
@@ -62,8 +62,8 @@ test("MCP program.appConfig fails when required config missing", async () => {
   expect(res.result.content[0]?.text).toContain("argsTestSecret");
 });
 
-/** MCP program.appConfig succeeds when env present. */
-test("MCP program.appConfig succeeds when env present", async () => {
+/** MCP appConfig succeeds when env present. */
+test("MCP appConfig succeeds when env present", async () => {
   const responses = await mcpRequest(
     [
       {
@@ -124,8 +124,8 @@ test("MCP config file loads and exports vars for tool handlers", async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-/** Cli.run docs cli skips required appConfig exit. */
-test("Cli.run docs cli skips required appConfig exit", async () => {
+/** App.run docs cli skips required appConfig exit. */
+test("App.run docs cli skips required appConfig exit", async () => {
   const dir = mkdtempSync(join(tmpdir(), "argsbarg-docs-skip-"));
   const configFile = join(dir, ".local", "lib", "docs_skip_test", "config");
   mkdirSync(dirname(configFile), { recursive: true });
@@ -134,7 +134,7 @@ test("Cli.run docs cli skips required appConfig exit", async () => {
   const mainPath = join(dir, "run-docs.ts");
   writeFileSync(
     mainPath,
-    `import { Cli, type CliProgram } from ${JSON.stringify(entry)};
+    `import { argsbarg, type AppSpec } from ${JSON.stringify(entry)};
 const program = {
   key: "docs-skip-test",
   version: "1.0.0",
@@ -144,8 +144,8 @@ const program = {
     entries: { token: { description: "Token.", env: "DOCS_SKIP_RUN_TOKEN" } },
   },
   handler: () => {},
-} satisfies CliProgram;
-await new Cli(program).run(process.argv.slice(2));
+} satisfies AppSpec;
+await argsbarg(program).run(process.argv.slice(2));
 `,
   );
   const env = { ...process.env, TEST_USER_HOME: dir } as Record<string, string | undefined>;

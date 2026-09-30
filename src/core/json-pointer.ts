@@ -1,11 +1,11 @@
 /*
 Same-document JSON Pointer resolution for JSON Schema `$ref` values (`#/definitions/Foo`).
-Shared by schemagen root hoisting, MCP tool schema checks, config validation, and OpenAPI dereferencing.
+Shared by MCP tool schema checks, config value coercion, and OpenAPI dereferencing of emitted schemas.
 */
 
 /**
- * Decodes one JSON Pointer segment: URI percent-escapes first (ts-json-schema-generator writes
- * `#/definitions/Box%3Cstring%3E`), then the `~1` → `/` and `~0` → `~` pointer escapes.
+ * Decodes one JSON Pointer segment: URI percent-escapes first (generators may write
+ * `#/$defs/Box%3Cstring%3E`), then the `~1` → `/` and `~0` → `~` pointer escapes.
  */
 export function decodeJsonPointerSegment(
   /** Raw segment between `/` separators. */

@@ -2,20 +2,21 @@
 This module serializes the CLI schema tree to JSON for machine-readable introspection.
 */
 
-import { type CliSchemaExport, exportPresentationBuiltins } from "../builtins/export.ts";
+import { exportPresentationBuiltins, type SchemaExport } from "../builtins/export.ts";
 import { cliResolveNotes } from "../help.ts";
 import { isCliSchemaHidden, visibleOptions } from "../runtime/exposure.ts";
-import { type CliNode, type CliProgram, isCliLeaf, isCliRouter, leafOutputSchema } from "./types.ts";
-import { buildLeafInputSchema } from "./wire-schema.ts";
+import { type AppSpec, type Command, hasHandler, hasSubcommands, leafOutputSchema } from "./types.ts";
+import { buildCommandInputSchema } from "./wire-schema.ts";
+import { toJsonSchema } from "./zod-schema.ts";
 
 const RESERVED = new Set(["http", "completion", "configure", "docs", "mcp", "version"]);
 
-function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
+function exportCommand(cmd: Command, root: AppSpec): SchemaExport | null {
   if (isCliSchemaHidden(cmd)) {
     return null;
   }
 
-  const out: CliSchemaExport = {
+  const out: SchemaExport = {
     key: cmd.key,
     description: cmd.description,
   };
@@ -29,11 +30,11 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
     out.options = options;
   }
 
-  if (isCliLeaf(cmd)) {
+  if (hasHandler(cmd)) {
     if ((cmd.positionals ?? []).length > 0) {
       out.positionals = cmd.positionals;
     }
-    out.inputSchema = buildLeafInputSchema(cmd);
+    out.inputSchema = buildCommandInputSchema(cmd);
     const outputSchema = leafOutputSchema(cmd);
     if (outputSchema !== undefined) {
       out.outputSchema = outputSchema;
@@ -51,17 +52,17 @@ function exportCommand(cmd: CliNode, root: CliProgram): CliSchemaExport | null {
     out.fallbackMode = cmd.fallbackMode;
   }
 
-  const children = isCliRouter(cmd) ? cmd.commands.filter((ch) => !RESERVED.has(ch.key)) : [];
+  const children = hasSubcommands(cmd) ? cmd.commands.filter((ch) => !RESERVED.has(ch.key)) : [];
   if (children.length > 0) {
-    out.commands = children.map((ch) => exportCommand(ch, root)).filter((ch): ch is CliSchemaExport => ch !== null);
+    out.commands = children.map((ch) => exportCommand(ch, root)).filter((ch): ch is SchemaExport => ch !== null);
   }
 
   return out;
 }
 
 /** Resolves `{argsbarg:program}` in exported notes using the root program key. */
-function resolveSchemaNotes(node: CliSchemaExport, appKey: string): CliSchemaExport {
-  const out: CliSchemaExport = { ...node };
+function resolveSchemaNotes(node: SchemaExport, appKey: string): SchemaExport {
+  const out: SchemaExport = { ...node };
   if ((out.notes ?? "").length > 0 && out.notes !== undefined) {
     out.notes = cliResolveNotes(out.notes, appKey);
   }
@@ -72,16 +73,16 @@ function resolveSchemaNotes(node: CliSchemaExport, appKey: string): CliSchemaExp
 }
 
 /** JSON-safe command tree export (handlers omitted). */
-export interface CliSchemaRootExport extends CliSchemaExport {
-  /** Program-level error JSON Schema when configured on `httpServer.errors` or `mcpServer.errors`. */
+export interface SchemaRootExport extends SchemaExport {
+  /** App-level error JSON Schema when configured on `httpServer.errors` or `mcpServer.errors`. */
   errorSchema?: Record<string, unknown>;
 }
 
 /** Returns the JSON-safe command tree (handlers omitted). */
-export function cliSchemaExport(root: CliProgram): CliSchemaRootExport {
+export function schemaExport(root: AppSpec): SchemaRootExport {
   const exported = exportCommand(root, root);
   const errorSchema = root.httpServer?.errors?.errorSchema ?? root.mcpServer?.errors?.errorSchema;
-  const base: CliSchemaRootExport = !exported
+  const base: SchemaRootExport = !exported
     ? {
         key: root.key,
         description: root.description,
@@ -89,13 +90,13 @@ export function cliSchemaExport(root: CliProgram): CliSchemaRootExport {
       }
     : resolveSchemaNotes(exported, root.key);
   if (errorSchema !== undefined) {
-    base.errorSchema = errorSchema;
+    base.errorSchema = toJsonSchema(errorSchema, "output");
   }
   return base;
 }
 
-export function cliSchemaJson(root: CliProgram): string {
-  return `${JSON.stringify(cliSchemaExport(root), null, 2)}\n`;
+export function schemaJson(root: AppSpec): string {
+  return `${JSON.stringify(schemaExport(root), null, 2)}\n`;
 }
 
-export type { CliSchemaExport };
+export type { SchemaExport };

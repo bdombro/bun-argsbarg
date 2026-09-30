@@ -12,7 +12,7 @@ Because developers customize `skills/<app>/SKILL.md` with domain workflows, exec
 
 - **YAML frontmatter** — `id`, `name`, `description`, `enabled` per https://dotagentsprotocol.com
 - **Options & Help Discovery** — guides agents to discover arguments and flags just-in-time via `<command> --help`
-- **Commands catalog** — compact intent-based router directing agents to the right subcommands
+- **Commands catalog** — compact intent-based command group directing agents to the right subcommands
 - **Workflow & Pitfalls** — guidelines for automated execution (e.g. using non-interactive flags like `--yes`)
 
 ## Claude Code and Cursor plugins

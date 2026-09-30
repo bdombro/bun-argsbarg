@@ -5,7 +5,7 @@ It writes documentation under `./docs/`.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { generatedFileHtmlComment, insertGeneratedHint } from "../skill/hint.ts";
 import { docsTopicContent } from "./resolve.ts";
 
@@ -25,8 +25,8 @@ export function docsTopicIsGeneratedByArgsbarg(
 
 /** HTML comment for generated markdown saved with `--save`. */
 export function docsSaveGeneratedHint(
-  /** Program definition. */
-  program: CliProgram,
+  /** App spec definition. */
+  program: AppSpec,
   /** Topic name. */
   topic: string,
 ): string {
@@ -35,8 +35,8 @@ export function docsSaveGeneratedHint(
 
 /** Inserts save hint into markdown content. */
 export function applySaveGeneratedHint(
-  /** Program definition. */
-  program: CliProgram,
+  /** App spec definition. */
+  program: AppSpec,
   /** Topic name. */
   topic: string,
   /** Markdown text. */
@@ -51,8 +51,8 @@ export function applySaveGeneratedHint(
 
 /** File body for `--save` (hint on argsbarg-generated markdown only). */
 export function docsTopicContentForSave(
-  /** Program definition. */
-  program: CliProgram,
+  /** App spec definition. */
+  program: AppSpec,
   /** Topic name. */
   topic: string,
 ): string {
@@ -77,16 +77,16 @@ export function docsSaveFilename(
 export function docsSaveRelativePath(
   /** Topic identifier. */
   topic: string,
-  /** Program root for resolving app-specific paths. */
-  _program?: CliProgram,
+  /** app spec root for resolving app-specific paths. */
+  _program?: AppSpec,
 ): string {
   return join(DOCS_SAVE_DIR, docsSaveFilename(topic));
 }
 
 /** Writes one docs topic under `./docs/`; returns relative path written. */
 export function saveDocsTopic(
-  /** Program definition root. */
-  program: CliProgram,
+  /** App spec definition root. */
+  program: AppSpec,
   /** Topic identifier to save. */
   topic: string,
 ): string {

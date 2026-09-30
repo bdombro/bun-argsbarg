@@ -2,7 +2,7 @@
 Named string format validation and parsing for CLI options.
 */
 
-import { CliValueFormat } from "./types.ts";
+import { ValueFormat } from "./types.ts";
 
 const DURATION_RE = /^\d+[hdms]?$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -94,33 +94,33 @@ export function validatePattern(s: string, pattern: string): void {
   }
 }
 
-export function formatValidationError(format: CliValueFormat, value: string): string {
+export function formatValidationError(format: ValueFormat, value: string): string {
   switch (format) {
-    case CliValueFormat.Duration:
+    case ValueFormat.Duration:
       return `Invalid duration: ${value} (use e.g. 30s, 20m, 1h, 2d)`;
-    case CliValueFormat.CommaList:
+    case ValueFormat.CommaList:
       return `Invalid comma-separated list: ${value}`;
-    case CliValueFormat.Date:
+    case ValueFormat.Date:
       return `Invalid date: ${value} (use YYYY-MM-DD)`;
-    case CliValueFormat.DateTime:
+    case ValueFormat.DateTime:
       return `Invalid date-time: ${value} (use RFC 3339, e.g. 2026-06-22T15:00:00Z)`;
   }
 }
 
 /** Validates a string value against format and/or pattern metadata. */
-export function validateFormatValue(value: string, format?: CliValueFormat, pattern?: string): void {
+export function validateFormatValue(value: string, format?: ValueFormat, pattern?: string): void {
   if (format !== undefined) {
     switch (format) {
-      case CliValueFormat.Duration:
+      case ValueFormat.Duration:
         validateDuration(value);
         return;
-      case CliValueFormat.CommaList:
+      case ValueFormat.CommaList:
         validateCommaList(value);
         return;
-      case CliValueFormat.Date:
+      case ValueFormat.Date:
         validateDate(value);
         return;
-      case CliValueFormat.DateTime:
+      case ValueFormat.DateTime:
         validateDateTime(value);
         return;
     }

@@ -3,10 +3,10 @@ TTY prompts for per-target install, skip, or uninstall during interactive `confi
 */
 
 import { readPromptLine } from "../prompt.ts";
-import type { CliInstallArtifactKey } from "./artifacts/target-types.ts";
+import type { InstallArtifactKey } from "./artifacts/target-types.ts";
 
 /** Human-readable labels for each install artifact key in interactive prompts. */
-const LABELS: Record<CliInstallArtifactKey, string> = {
+const LABELS: Record<InstallArtifactKey, string> = {
   app: "App binary",
   skill: "Agent skill",
   agentsMcp: "Agents MCP",
@@ -14,7 +14,7 @@ const LABELS: Record<CliInstallArtifactKey, string> = {
 };
 
 /** Returns the prompt label for an install artifact key. */
-export function artifactPromptLabel(key: CliInstallArtifactKey): string {
+export function artifactPromptLabel(key: InstallArtifactKey): string {
   return LABELS[key];
 }
 

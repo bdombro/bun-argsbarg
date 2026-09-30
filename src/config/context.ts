@@ -2,7 +2,7 @@
 Handler-facing resolved app config snapshot (ctx.appConfig).
 */
 
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { isFrameworkConfigKey, setBinding } from "./bindings.ts";
 import {
   readAppConfigFileRaw,
@@ -13,25 +13,25 @@ import {
 } from "./file.ts";
 import type { ResolvedConfig } from "./resolve.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "./resolve.ts";
-import { configPropertySchema, effectiveJsonSchema } from "./schema.ts";
-import { validateParsedConfigValue } from "./validate.ts";
+import { configKeySchema } from "./schema.ts";
+import { validateConfigValue } from "./validate.ts";
 
-function rebuildResolved(program: CliProgram, fileData: Record<string, unknown>): ResolvedConfig {
+function rebuildResolved(program: AppSpec, fileData: Record<string, unknown>): ResolvedConfig {
   const hostEnv = captureMappedHostEnv(program);
   const resolved = resolveAppConfig(program, fileData, hostEnv);
   exportConfigToEnv(program, resolved, hostEnv);
   return resolved;
 }
 
-/** Empty snapshot when program.appConfig is not set. */
+/** Empty snapshot when appConfig is not set. */
 export class EmptyAppConfigSnapshot {
   private fileData: Record<string, unknown>;
 
   constructor(
-    private readonly program: CliProgram,
+    private readonly spec: AppSpec,
     fileData?: Record<string, unknown>,
   ) {
-    this.fileData = fileData ?? readAppConfigFileRaw(resolveAppConfigPath(program));
+    this.fileData = fileData ?? readAppConfigFileRaw(resolveAppConfigPath(spec));
   }
 
   get(_key: string): undefined {
@@ -39,11 +39,11 @@ export class EmptyAppConfigSnapshot {
   }
 
   require(key: string): never {
-    throw new Error(`Configuration key '${key}' is not available (program.appConfig is not set)`);
+    throw new Error(`Configuration key '${key}' is not available (appConfig is not set)`);
   }
 
   set(_key: string, _value: unknown): void {
-    throw new Error("program.appConfig is not set");
+    throw new Error("appConfig is not set");
   }
 
   read(): ResolvedConfig {
@@ -60,28 +60,28 @@ export class EmptyAppConfigSnapshot {
 
   setUnsafe(key: string, value: unknown): void {
     const next = { ...this.fileData, [key]: value };
-    writeAppConfigFileRaw(this.program, next);
+    writeAppConfigFileRaw(this.spec, next);
     this.fileData = next;
   }
 
-  /** Resolved absolute path to the app JSON config file (OS default from `program.key`). */
+  /** Resolved absolute path to the app JSON config file (OS default from `key`). */
   get path(): string {
-    return resolveAppConfigPath(this.program);
+    return resolveAppConfigPath(this.spec);
   }
 
   /** Resolved absolute directory containing the config file. */
   get dir(): string {
-    return resolveAppConfigDir(this.program);
+    return resolveAppConfigDir(this.spec);
   }
 }
 
-/** Resolved config for handlers with program.appConfig set. */
+/** Resolved config for handlers with appConfig set. */
 export class AppConfigSnapshot {
   private snapshot: ResolvedConfig;
   private fileData: Record<string, unknown>;
 
   constructor(
-    private readonly program: CliProgram,
+    private readonly spec: AppSpec,
     fileData: Record<string, unknown>,
     resolved: ResolvedConfig,
   ) {
@@ -104,12 +104,7 @@ export class AppConfigSnapshot {
 
   set(key: string, value: unknown): void {
     this.assertEntryKey(key);
-    const jsonSchema = effectiveJsonSchema(this.program);
-    if (!jsonSchema) {
-      throw new Error("Internal error: missing effective jsonSchema.");
-    }
-    const propSchema = configPropertySchema(jsonSchema, key);
-    validateParsedConfigValue(value, propSchema, jsonSchema);
+    validateConfigValue(value, configKeySchema(this.spec, key));
     const next = setBinding({ ...this.fileData, [key]: value }, key, "file");
     this.persistFileData(next);
   }
@@ -134,12 +129,12 @@ export class AppConfigSnapshot {
 
   /** Resolved absolute path to the app JSON config file (`~/.local/lib/<key>/config.json`). */
   get path(): string {
-    return resolveAppConfigPath(this.program);
+    return resolveAppConfigPath(this.spec);
   }
 
   /** Resolved absolute directory containing the config file. */
   get dir(): string {
-    return resolveAppConfigDir(this.program);
+    return resolveAppConfigDir(this.spec);
   }
 
   /** Replace snapshot after external bootstrap (internal). */
@@ -149,13 +144,13 @@ export class AppConfigSnapshot {
   }
 
   private persistFileData(next: Record<string, unknown>): void {
-    writeAppConfigFile(this.program, next, { partial: true });
+    writeAppConfigFile(this.spec, next, { partial: true });
     this.fileData = next;
-    this.snapshot = rebuildResolved(this.program, next);
+    this.snapshot = rebuildResolved(this.spec, next);
   }
 
   private assertEntryKey(key: string): void {
-    const entries = this.program.appConfig?.entries;
+    const entries = this.spec.appConfig?.entries;
     if (!entries || !(key in entries)) {
       throw new Error(`Unknown configuration key: ${key}`);
     }
@@ -170,7 +165,7 @@ export class AppConfigSnapshot {
 export type AnyAppConfigSnapshot = AppConfigSnapshot | EmptyAppConfigSnapshot;
 
 export function createAppConfigSnapshot(
-  program: CliProgram,
+  program: AppSpec,
   fileData: Record<string, unknown>,
   resolved: ResolvedConfig,
 ): AnyAppConfigSnapshot {

@@ -5,7 +5,7 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 
 import { randomUUID } from "node:crypto";
 import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "../headless/tool-call.ts";
-import type { Cli } from "../runtime/cli.ts";
+import type { App } from "../runtime/cli.ts";
 import { allMcpResources, collectMcpTools, resolveMcpServerInfo } from "./tools.ts";
 
 /** Protocol versions this server understands, newest first. `initialize` echoes a match or answers the first. */
@@ -47,8 +47,8 @@ function supportsStructuredOutput(version: string | undefined): boolean {
 }
 
 /** Handles one NDJSON request line. */
-async function handleRequestLine(cli: Cli, line: string): Promise<void> {
-  const root = cli.program;
+async function handleRequestLine(cli: App, line: string): Promise<void> {
+  const root = cli.spec;
   const requestId = randomUUID();
   const started = performance.now();
   const hooks = cli.server?.mcpHooks ?? root.mcpServer?.hooks;
@@ -275,7 +275,7 @@ async function handleRequestLine(cli: Cli, line: string): Promise<void> {
 }
 
 /** Runs the MCP NDJSON read loop on stdin until EOF. */
-export async function mcpServeStdioLoop(cli: Cli): Promise<void> {
+export async function mcpServeStdioLoop(cli: App): Promise<void> {
   let buffer = "";
   const decoder = new TextDecoder();
   for await (const chunk of process.stdin) {

@@ -14,7 +14,7 @@ export interface EcsServiceFields {
   version: string;
 }
 
-/** Context for {@link CliLogConfig.enrich} and {@link CliLogConfig.serialize}. */
+/** Context for {@link LogConfig.enrich} and {@link LogConfig.serialize}. */
 export interface LogEnrichContext {
   level: EcsLogLevel;
   message: string;
@@ -45,7 +45,7 @@ export interface EcsLogEvent {
   requestId?: string;
   traceId?: string;
   spanId?: string;
-  /** Populated on HTTP/MCP access log events for {@link CliLogConfig.enrich}. */
+  /** Populated on HTTP/MCP access log events for {@link LogConfig.enrich}. */
   http?: LogEnrichContext["http"];
 }
 

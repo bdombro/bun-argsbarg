@@ -2,8 +2,8 @@
 Safe async hook runner, failure classification, and invoke error pipeline.
 */
 
-import type { CliContext } from "../core/context.ts";
-import { LeafInputError } from "../core/leaf-inputs.ts";
+import type { CommandContext } from "../core/context.ts";
+import { InputError } from "../core/leaf-inputs.ts";
 import type {
   ClientErrorOverride,
   ErrorHookContext,
@@ -41,7 +41,7 @@ export function classifyFailureKind(
   if (opts.notReady) {
     return "not_ready";
   }
-  if (opts.parseError || err instanceof LeafInputError) {
+  if (opts.parseError || err instanceof InputError) {
     return "validation";
   }
   if (err instanceof Error) {
@@ -66,9 +66,9 @@ export function failureKindHttpStatus(kind: InvokeFailureKind): number {
   }
 }
 
-/** Builds {@link InvokeHookContext} from a live {@link CliContext}. */
+/** Builds {@link InvokeHookContext} from a live {@link CommandContext}. */
 export function buildInvokeHookContext(
-  ctx: CliContext,
+  ctx: CommandContext,
   extras: {
     path: string[];
     runtime?: ServerRuntime;
@@ -79,7 +79,7 @@ export function buildInvokeHookContext(
   return {
     invocation: ctx.invocation,
     path: extras.path,
-    pathParams: { ...ctx.pathParams },
+    pathParams: { ...ctx.rawPathParams },
     opts: ctx.opts,
     locals: ctx.locals,
     runtime: extras.runtime,
@@ -106,7 +106,7 @@ export async function runErrorPipeline(
   hookCtx: InvokeHookContext,
   err: unknown,
   failureKind: InvokeFailureKind,
-  hooks: import("../core/types.ts").CliProgramHooks | undefined,
+  hooks: import("../core/types.ts").AppHooks | undefined,
   emitter: LogEmitter | undefined,
   obscureUnexpected: boolean,
 ): Promise<ErrorPipelineResult> {

@@ -1,5 +1,5 @@
 import { appConfigInstalled, displayAppConfigPath, uninstallAppConfig } from "../../../config/file.ts";
-import type { CliProgram } from "../../../core/types.ts";
+import type { AppSpec } from "../../../core/types.ts";
 import type { InstallPaths } from "../paths.ts";
 import { InstallTarget } from "../target-base.ts";
 import type {
@@ -17,21 +17,21 @@ class ConfigureInstallTarget extends InstallTarget {
   readonly actionKind = "configure" as const;
   readonly category = "core" as const;
 
-  isAvailable(_root: CliProgram, _paths: InstallPaths): boolean {
+  isAvailable(_root: AppSpec, _paths: InstallPaths): boolean {
     return true;
   }
 
-  isDetected(_paths: InstallPaths, root: CliProgram): boolean {
+  isDetected(_paths: InstallPaths, root: AppSpec): boolean {
     return appConfigInstalled(root);
   }
 
-  applyDetected(_paths: InstallPaths, _root: CliProgram, _out: InstalledArtifacts): void {}
+  applyDetected(_paths: InstallPaths, _root: AppSpec, _out: InstalledArtifacts): void {}
 
   protected isDetectedFromSnapshot(detected: DetectedSnapshot): boolean {
     return detected.appConfig ?? false;
   }
 
-  protected formatStatusLine(_paths: InstallPaths, root: CliProgram): string {
+  protected formatStatusLine(_paths: InstallPaths, root: AppSpec): string {
     return displayAppConfigPath(root);
   }
 

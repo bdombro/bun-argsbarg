@@ -4,8 +4,9 @@ object-root schema wrapping, and the MCP tool schema startup check.
 */
 
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
 import { cliPresentationRoot } from "../builtins/presentation.ts";
-import { CliOptionKind } from "../core/types.ts";
+import { OptionKind } from "../core/types.ts";
 import { cliValidateProgram } from "../core/validate.ts";
 import { cliHelpRender } from "../help.ts";
 import { requireMcpTool, testProgram } from "../test/fixtures.ts";
@@ -64,7 +65,7 @@ describe("mcpSizeReport", () => {
             {
               name: "mode",
               description: "Mode.",
-              kind: CliOptionKind.Enum,
+              kind: OptionKind.Enum,
               choices: Array.from({ length: 4_000 }, (_, i) => `choice-${i}`),
             },
           ],
@@ -165,8 +166,8 @@ describe("mcpTool.notes", () => {
   });
 });
 
-/** Discriminated-union input: `anyOf` root with `$ref` branches, as ts-json-schema-generator writes it. */
-const unionInputSchema: Record<string, unknown> = {
+/** Discriminated-union input as emitted JSON Schema (`anyOf` root with `$ref` branches). */
+const unionInputJson: Record<string, unknown> = {
   $schema: "http://json-schema.org/draft-07/schema#",
   description: "Edit operation.",
   anyOf: [{ $ref: "#/definitions/Append" }, { $ref: "#/definitions/Replace" }],
@@ -186,6 +187,19 @@ const unionInputSchema: Record<string, unknown> = {
   },
 };
 
+/** The same discriminated union authored in Zod (emits a `oneOf` root, so MCP wraps it). */
+const unionInput = z
+  .discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("append"), text: z.string() }),
+    z.strictObject({ kind: z.literal("replace"), find: z.string(), text: z.string() }),
+  ])
+  .describe("Edit operation.");
+
+/** Recursive union root: Zod emits `$ref: "#"`, which breaks once MCP wraps the root. */
+const recursiveInput: z.ZodType = z.lazy(() =>
+  z.union([z.strictObject({ leaf: z.string() }), z.array(recursiveInput)]),
+);
+
 describe("MCP object-root wrapping", () => {
   test("object-rooted schemas pass through unchanged", () => {
     const schema = { type: "object", properties: { a: { type: "string" } } };
@@ -193,15 +207,15 @@ describe("MCP object-root wrapping", () => {
   });
 
   test("union roots wrap under input with $schema and definitions moved to the new root", () => {
-    const { schema, wrapped } = wrapMcpRootSchema(unionInputSchema, MCP_INPUT_WRAPPER_KEY);
+    const { schema, wrapped } = wrapMcpRootSchema(unionInputJson, MCP_INPUT_WRAPPER_KEY);
     expect(wrapped).toBe(true);
     expect(schema).toEqual({
-      $schema: unionInputSchema.$schema,
+      $schema: unionInputJson.$schema,
       type: "object",
-      properties: { input: { description: "Edit operation.", anyOf: unionInputSchema.anyOf } },
+      properties: { input: { description: "Edit operation.", anyOf: unionInputJson.anyOf } },
       required: ["input"],
       additionalProperties: false,
-      definitions: unionInputSchema.definitions,
+      definitions: unionInputJson.definitions,
     });
   });
 
@@ -215,8 +229,8 @@ describe("MCP object-root wrapping", () => {
           key: "edit",
           description: "Edit.",
           kind: "document",
-          inputSchema: unionInputSchema,
-          outputSchema: { type: "array", items: { type: "string" } },
+          inputSchema: unionInput,
+          outputSchema: z.array(z.string()),
           handler: () => [],
         },
         { key: "plain", description: "Plain.", handler: () => {} },
@@ -228,6 +242,7 @@ describe("MCP object-root wrapping", () => {
     expect(edit.inputSchema.type).toBe("object");
     expect(edit.outputWrapped).toBe(true);
     expect(edit.outputSchema).toEqual({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
       properties: { result: { type: "array", items: { type: "string" } } },
       required: ["result"],
@@ -240,8 +255,8 @@ describe("MCP object-root wrapping", () => {
 });
 
 describe("MCP tool schema startup check", () => {
-  /** Program with one document leaf using `inputSchema`, MCP on or off. */
-  function schemaProgram(inputSchema: Record<string, unknown>, mcpEnabled: boolean) {
+  /** App spec with one document leaf using `inputSchema`, MCP on or off. */
+  function schemaProgram(inputSchema: z.ZodType, mcpEnabled: boolean) {
     return testProgram({
       key: "checkapp",
       description: "Check demo.",
@@ -250,25 +265,16 @@ describe("MCP tool schema startup check", () => {
     });
   }
 
-  test("accepts wrapped schemas whose definitions still resolve", () => {
-    expect(() => cliValidateProgram(schemaProgram(unionInputSchema, true))).not.toThrow();
-  });
-
-  test("rejects an unresolved local $ref when MCP is enabled", () => {
-    const dangling = { $ref: "#/definitions/Missing", definitions: {} };
-    expect(() => cliValidateProgram(schemaProgram(dangling, true))).toThrow(
-      'MCP tool "run" inputSchema has an unresolved $ref: #/definitions/Missing',
-    );
+  test("accepts wrapped union schemas", () => {
+    expect(() => cliValidateProgram(schemaProgram(unionInput, true))).not.toThrow();
   });
 
   test('rejects $ref "#" in a wrapped schema', () => {
-    const recursive = { anyOf: [{ type: "object" }, { type: "array", items: { $ref: "#" } }] };
-    expect(() => cliValidateProgram(schemaProgram(recursive, true))).toThrow('uses $ref "#"');
+    expect(() => cliValidateProgram(schemaProgram(recursiveInput, true))).toThrow('uses $ref "#"');
   });
 
   test("skips the check when MCP is disabled", () => {
-    const dangling = { $ref: "#/definitions/Missing", definitions: {} };
-    expect(() => cliValidateProgram(schemaProgram(dangling, false))).not.toThrow();
+    expect(() => cliValidateProgram(schemaProgram(recursiveInput, false))).not.toThrow();
   });
 
   test("skips MCP-hidden leaves", () => {
@@ -281,7 +287,7 @@ describe("MCP tool schema startup check", () => {
           key: "run",
           description: "Run.",
           kind: "document",
-          inputSchema: { $ref: "#/definitions/Missing", definitions: {} },
+          inputSchema: recursiveInput,
           mcpTool: { hidden: true },
           handler: () => {},
         },

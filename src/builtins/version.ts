@@ -1,7 +1,7 @@
-import type { CliLeaf } from "../core/types.ts";
+import type { RunnableCommand } from "../core/types.ts";
 
 /** Top-level `version` built-in (leaf). */
-export function cliBuiltinVersionCommand(): CliLeaf {
+export function cliBuiltinVersionCommand(): RunnableCommand {
   return {
     key: "version",
     description: "Print the program version.",

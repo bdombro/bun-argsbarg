@@ -1,9 +1,0 @@
-node_modules/
-dist/*
-!dist/mcp-plugin.mjs
-Formula/.staging/
-workspaces.db
-.DS_Store
-
-# argsbarg schemagen output (run `just schemagen`)
-**/__generated__/

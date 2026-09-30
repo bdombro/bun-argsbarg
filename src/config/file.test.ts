@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { CONFIG_BINDINGS_KEY } from "./bindings.ts";
 import { bootstrapAppConfig } from "./bootstrap.ts";
 import {
@@ -22,7 +22,7 @@ import {
 import { buildProgramUserConfig } from "./manifest.ts";
 import { formatMissingConfigMessage, missingRequiredConfig, resolveAppConfig } from "./resolve.ts";
 
-const program: CliProgram = {
+const program: AppSpec = {
   key: "myapp",
   version: "1.0.0",
   description: "Demo.",
@@ -50,7 +50,7 @@ function withHome<T>(fn: (home: string) => T): T {
 
 /** Tests for config/file. */
 describe("config/file", () => {
-  test("buildProgramUserConfig from program.appConfig env entries", () => {
+  test("buildProgramUserConfig from appConfig env entries", () => {
     const cfg = buildProgramUserConfig(program);
     expect(cfg?.api_token).toMatchObject({
       title: "apiToken",

@@ -44,7 +44,7 @@ Exclusively support Bun as the sole runtime for ArgsBarg and its consumer applic
 
 ### Status
 
-Accepted
+Superseded by [ADR 4](#adr-4-zod-as-the-schema-authoring-and-validation-layer) (argsbarg 8.0)
 
 ### Context
 
@@ -93,4 +93,41 @@ Emit server access and error logs to `stderr` formatted as Elastic Common Schema
   - **Zero Heavy Dependencies:** Avoids bundling heavy OpenTelemetry SDKs or other binary telemetry clients in the core open-source library.
 - **Cons:**
   - Requires minor log collector or format mapper adjustments if the deployment environment is strictly standardized on a non-ECS log layout.
+
+---
+
+## ADR 4: Zod as the Schema Authoring and Validation Layer
+
+### Status
+
+Accepted (8.0.0). Supersedes ADR 2.
+
+### Context
+
+ADR 2 used JSON Schema as the contract, generated from TypeScript with `ts-json-schema-generator` (`argsbarg schemagen`, `/** @sg */` markers, `__generated__/` artifacts) and validated with `@cfworker/json-schema` plus argsbarg's own union-error narrowing. In practice:
+
+- Every consumer carried a codegen step and generated artifacts that drifted from types. One consumer committed 14 generated files.
+- The generator pulled `typescript` and seven other packages into every consumer's production dependency tree.
+- Consumers that wanted their own validation added a second validator.
+- Union errors needed about 300 lines of narrowing to be readable.
+- Handlers cast `ctx.inputsAs<T>()` with no link to the schema.
+
+A spike ported gdocsmith's contracts to Zod 4: the inferred types were equivalent, the emitted schemas were 37–50% smaller, and descriptions reached parity.
+
+### Decision
+
+Author schemas in Zod 4 (a peer dependency). argsbarg validates with Zod and emits JSON Schema (draft 2020-12) via `z.toJSONSchema` for MCP, OpenAPI, help, schema export, and config coercion. JSON Schema remains the internal presentation format, so every wire-format transform (MCP root wrapping, OpenAPI `$ref` inlining, help YAML) is unchanged. Only one adapter module imports Zod at runtime. `command()` infers `ctx.inputs` and handler returns from the schemas.
+
+### Consequences
+
+- **Pros:**
+  - No codegen step, generated artifacts, or drift; consumers reuse the same schemas for their own validation.
+  - Fewer and lighter dependencies (no TypeScript chain at runtime); smaller wire schemas.
+  - Typed handlers (`command`) and precise native union errors (`z.discriminatedUnion`).
+  - Unrepresentable schemas fail at startup instead of shipping a wrong contract.
+- **Cons:**
+  - Descriptions move from JSDoc to `.describe()`, so authors must copy documentation explicitly (Zod does not read JSDoc).
+  - `z.object` strips unknown keys silently; argsbarg warns at MCP/HTTP startup and the templates use `z.strictObject`.
+  - Refinements validate at runtime but do not appear in emitted JSON Schema, so agents see a looser contract than the one enforced.
+  - Tied to Zod 4's `toJSONSchema`. The adapter boundary keeps a later move to Standard Schema / Standard JSON Schema a one-module change.
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { CliAppConfigEntry } from "../core/types.ts";
+import type { AppConfigEntry } from "../core/types.ts";
 import { shouldWizardPromptConfigKey } from "./bootstrap.ts";
 
-const requiredEntry: CliAppConfigEntry = {
+const requiredEntry: AppConfigEntry = {
   description: "API token.",
   required: true,
 };

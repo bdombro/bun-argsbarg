@@ -4,7 +4,7 @@ Tests for formats module behavior.
 
 import { expect, test } from "bun:test";
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs, validateFormatValue } from "./formats.ts";
-import { CliValueFormat } from "./types.ts";
+import { ValueFormat } from "./types.ts";
 
 test("parseDurationMs parses minutes and hours", () => {
   expect(parseDurationMs("30s")).toBe(30_000);
@@ -29,5 +29,5 @@ test("parseDateTime normalizes to UTC ISO", () => {
 });
 
 test("validateFormatValue rejects invalid duration", () => {
-  expect(() => validateFormatValue("nope", CliValueFormat.Duration)).toThrow();
+  expect(() => validateFormatValue("nope", ValueFormat.Duration)).toThrow();
 });

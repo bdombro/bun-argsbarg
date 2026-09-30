@@ -5,9 +5,10 @@ Domain-specific regression tests (split from index.test.ts).
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
-import { cliSchemaExport } from "../../core/schema.ts";
+import { z } from "zod";
+import { schemaExport } from "../../core/schema.ts";
 import { cliValidateProgram } from "../../core/validate.ts";
-import type { CliProgram } from "../../index.ts";
+import type { AppSpec } from "../../index.ts";
 import { buildToolCallSuccessFromResponse } from "../../mcp/result.ts";
 import {
   collectMcpTools,
@@ -35,7 +36,7 @@ test("mcpToolName sanitizes path segments to underscores", () => {
   expect(mcpToolName(nestedMcpFixture, ["render-invoice"])).toBe("render_invoice");
 });
 
-test("collectMcpTools lists user leaf commands only", () => {
+test("collectMcpTools lists user commands with a handler only", () => {
   const tools = collectMcpTools(nestedMcpFixture);
   const names = tools.map((t) => t.name);
   expect(names).toContain("stat_owner_lookup");
@@ -109,8 +110,8 @@ test("collectMcpTools resolves {argsbarg:program} in appended notes", () => {
   expect(tools[0]?.description).toContain("See `myapp docs cli`.");
 });
 
-/** CliSchemaExport includes leaf outputSchema. */
-test("cliSchemaExport includes leaf outputSchema", () => {
+/** SchemaExport includes leaf outputSchema. */
+test("schemaExport includes leaf outputSchema", () => {
   const root = testProgram({
     key: "app",
     version: "1.0.0",
@@ -120,23 +121,20 @@ test("cliSchemaExport includes leaf outputSchema", () => {
       {
         key: "run",
         description: "Run.",
-        outputSchema: {
-          type: "object",
-          properties: { ok: { type: "boolean" } },
-        },
+        outputSchema: z.object({ ok: z.boolean().optional() }),
         handler: () => {},
       },
     ],
   });
-  const schema = cliSchemaExport(root);
-  expect(schema.commands?.[0]?.outputSchema).toEqual({
+  const schema = schemaExport(root);
+  expect(schema.commands?.[0]?.outputSchema).toMatchObject({
     type: "object",
     properties: { ok: { type: "boolean" } },
   });
 });
 
-/** Tests that outputSchema must be a JSON Schema object. */
-test("outputSchema must be a JSON Schema object", () => {
+/** Tests that outputSchema must be a Zod schema (argsbarg 8 migration error). */
+test("outputSchema must be a Zod schema", () => {
   const root = testProgram({
     key: "app",
     version: "1.0.0",
@@ -145,12 +143,12 @@ test("outputSchema must be a JSON Schema object", () => {
       {
         key: "run",
         description: "Run.",
-        outputSchema: [] as unknown as Record<string, unknown>,
+        outputSchema: { type: "object" } as unknown as z.ZodType,
         handler: () => {},
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/outputSchema must be a JSON Schema object/);
+  expect(() => cliValidateProgram(root)).toThrow(/outputSchema on run must be a Zod schema/);
 });
 
 test("collectMcpTools uses leaf-local options in inputSchema", () => {
@@ -173,18 +171,14 @@ test("collectMcpTools includes outputSchema when set on leaf", () => {
       {
         key: "run",
         description: "Run with JSON output.",
-        outputSchema: {
-          type: "object",
-          properties: { ok: { type: "boolean" } },
-          required: ["ok"],
-        },
+        outputSchema: z.object({ ok: z.boolean() }),
         handler: () => {},
       },
     ],
   });
   const tools = collectMcpTools(root);
   expect(tools).toHaveLength(1);
-  expect(tools[0]?.outputSchema).toEqual({
+  expect(tools[0]?.outputSchema).toMatchObject({
     type: "object",
     properties: { ok: { type: "boolean" } },
     required: ["ok"],
@@ -277,8 +271,8 @@ test("mcpServer on non-root node is rejected", () => {
         handler: () => {},
       },
     ],
-  } as unknown as CliProgram;
-  expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the program root/);
+  } as unknown as AppSpec;
+  expect(() => cliValidateProgram(root)).toThrow(/mcpServer is only supported on the app root/);
 });
 
 test("mcpTool on root is rejected", () => {
@@ -288,7 +282,7 @@ test("mcpTool on root is rejected", () => {
     mcpTool: { enabled: false },
     handler: () => {},
   });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
+  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on commands with a handler/);
 });
 
 /** McpTool on routing node is rejected. */
@@ -311,7 +305,7 @@ test("mcpTool on routing node is rejected", () => {
       },
     ],
   });
-  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on leaf commands/);
+  expect(() => cliValidateProgram(root)).toThrow(/mcpTool is only supported on commands with a handler/);
 });
 
 test("buildToolCallSuccessFromResponse maps JSON object", () => {

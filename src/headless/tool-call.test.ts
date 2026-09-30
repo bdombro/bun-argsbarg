@@ -1,7 +1,8 @@
 /* Unit tests for shared headless error text (MCP and HTTP) and wrapped MCP tool calls. */
 
 import { describe, expect, test } from "bun:test";
-import { Cli, type CliContext } from "../index.ts";
+import { z } from "zod";
+import { argsbarg, type CommandContext } from "../index.ts";
 import { collectMcpTools } from "../mcp/tools.ts";
 import { requireMcpTool, testProgram } from "../test/fixtures.ts";
 import {
@@ -50,29 +51,16 @@ describe("wrapped MCP tools", () => {
         key: "edit",
         description: "Edit.",
         kind: "document",
-        inputSchema: {
-          anyOf: [{ $ref: "#/definitions/Append" }, { $ref: "#/definitions/Replace" }],
-          definitions: {
-            Append: {
-              type: "object",
-              properties: { kind: { const: "append" }, text: { type: "string" } },
-              required: ["kind", "text"],
-              additionalProperties: false,
-            },
-            Replace: {
-              type: "object",
-              properties: { kind: { const: "replace" }, find: { type: "string" }, text: { type: "string" } },
-              required: ["kind", "find", "text"],
-              additionalProperties: false,
-            },
-          },
-        },
-        outputSchema: { type: "array" },
-        handler: (ctx: CliContext) => [ctx.inputs],
+        inputSchema: z.discriminatedUnion("kind", [
+          z.strictObject({ kind: z.literal("append"), text: z.string() }),
+          z.strictObject({ kind: z.literal("replace"), find: z.string(), text: z.string() }),
+        ]),
+        outputSchema: z.array(z.unknown()),
+        handler: (ctx: CommandContext) => [ctx.inputs],
       },
     ],
   });
-  const cli = new Cli(program);
+  const cli = argsbarg(program);
   const tool = requireMcpTool(collectMcpTools(program), "edit");
 
   test("unwraps input and wraps structuredContent under result", async () => {

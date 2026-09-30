@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { expectedMcpEntry } from "./mcp-config.ts";
 
 export const OPENCODE_CONFIG_SCHEMA = "https://opencode.ai/config.json";
@@ -45,7 +45,7 @@ export function detectOpenCodeMcpConfigPath(home: string, name: string): string 
   return undefined;
 }
 
-export function expectedOpenCodeMcpEntry(root: CliProgram): OpenCodeLocalMcpEntry {
+export function expectedOpenCodeMcpEntry(root: AppSpec): OpenCodeLocalMcpEntry {
   const entry = expectedMcpEntry(root);
   return { type: "local", command: [entry.command, ...entry.args], enabled: true };
 }

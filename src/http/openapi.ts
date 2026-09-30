@@ -2,9 +2,10 @@
 Hand-built OpenAPI 3.1 document from exposed HTTP REST routes.
 */
 
-import type { CliHttpMethod, CliNode, CliProgram } from "../core/types.ts";
-import { isCliLeaf, isDocumentLeaf } from "../core/types.ts";
-import { buildLeafInputSchema, leafWireOptions } from "../core/wire-schema.ts";
+import type { AppSpec, Command, HttpMethod } from "../core/types.ts";
+import { hasHandler, isDocumentCommand, leafOutputSchema } from "../core/types.ts";
+import { buildCommandInputSchema, commandWireOptions } from "../core/wire-schema.ts";
+import { toJsonSchema } from "../core/zod-schema.ts";
 import { collectHttpRoutes, defaultSuccessStatus } from "./routes.ts";
 import { dereferenceJsonSchema } from "./schema-deref.ts";
 
@@ -18,12 +19,12 @@ function defaultErrorSchema(): Record<string, unknown> {
   };
 }
 
-function errorResponseSchema(program: CliProgram): Record<string, unknown> {
+function errorResponseSchema(program: AppSpec): Record<string, unknown> {
   const custom = program.httpServer?.errors?.errorSchema;
-  return custom ? dereferenceJsonSchema(custom) : defaultErrorSchema();
+  return custom ? dereferenceJsonSchema(toJsonSchema(custom, "output")) : defaultErrorSchema();
 }
 
-function errorResponseEntry(program: CliProgram, description: string): Record<string, unknown> {
+function errorResponseEntry(program: AppSpec, description: string): Record<string, unknown> {
   return {
     description,
     content: {
@@ -41,7 +42,7 @@ function buildSuccessResponses(route: ReturnType<typeof collectHttpRoutes>[numbe
   const method = route.method;
 
   if (contentType.includes("application/json")) {
-    const outputSchema = route.leaf.outputSchema ?? { type: "object" };
+    const outputSchema = leafOutputSchema(route.leaf) ?? { type: "object" };
     media[contentType] = {
       schema: dereferenceJsonSchema(outputSchema),
     };
@@ -65,7 +66,7 @@ function buildSuccessResponses(route: ReturnType<typeof collectHttpRoutes>[numbe
   };
 }
 
-function methodLower(method: CliHttpMethod): string {
+function methodLower(method: HttpMethod): string {
   return method.toLowerCase();
 }
 
@@ -151,20 +152,20 @@ function buildHealthPaths(): Record<string, unknown> {
 type HttpRoute = ReturnType<typeof collectHttpRoutes>[number];
 
 /** Top-level command key for OpenAPI grouping (first non-`:param` segment). */
-function topLevelCommandKey(route: HttpRoute, program: CliProgram): string {
+function topLevelCommandKey(route: HttpRoute, program: AppSpec): string {
   const key = route.commandPath.find((k) => !k.startsWith(":"));
   return key ?? program.key;
 }
 
-function findTopLevelCommand(program: CliProgram, key: string): CliNode | undefined {
-  if (isCliLeaf(program)) {
+function findTopLevelCommand(program: AppSpec, key: string): Command | undefined {
+  if (hasHandler(program)) {
     return program.key === key ? program : undefined;
   }
   return program.commands.find((c) => c.key === key);
 }
 
 /** OpenAPI tags for user command routes, one per top-level command. */
-function collectCommandTags(program: CliProgram, routes: HttpRoute[]): { name: string; description?: string }[] {
+function collectCommandTags(program: AppSpec, routes: HttpRoute[]): { name: string; description?: string }[] {
   const names = [...new Set(routes.map((route) => topLevelCommandKey(route, program)))].sort();
   return names.map((name) => {
     const node = findTopLevelCommand(program, name);
@@ -173,7 +174,7 @@ function collectCommandTags(program: CliProgram, routes: HttpRoute[]): { name: s
 }
 
 /** Generates an OpenAPI 3.1 document for the program's HTTP routes. */
-export function generateOpenApi(program: CliProgram): Record<string, unknown> {
+export function generateOpenApi(program: AppSpec): Record<string, unknown> {
   const routes = collectHttpRoutes(program);
   const paths: Record<string, unknown> = program.httpServer?.enabled ? buildHealthPaths() : {};
   const commandTags = collectCommandTags(program, routes);
@@ -195,19 +196,29 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
     };
 
     if (route.paramNames.length > 0) {
-      op.parameters = route.paramNames.map((name) => ({
-        name,
-        in: "path",
-        required: true,
-        schema: { type: "string" },
-      }));
+      const declared =
+        route.leaf.pathParams === undefined
+          ? undefined
+          : (dereferenceJsonSchema(toJsonSchema(route.leaf.pathParams, "input")).properties as
+              | Record<string, Record<string, unknown>>
+              | undefined);
+      op.parameters = route.paramNames.map((name) => {
+        const { description, ...schema } = declared?.[name] ?? { type: "string" };
+        return {
+          name,
+          in: "path",
+          required: true,
+          ...(typeof description === "string" ? { description } : {}),
+          schema,
+        };
+      });
     }
 
     const method = methodLower(route.method);
     if (method === "get" || method === "delete") {
       op.parameters = [
         ...((op.parameters as unknown[]) ?? []),
-        ...leafWireOptions(route.leaf).map((opt) => ({
+        ...commandWireOptions(route.leaf).map((opt) => ({
           name: opt.name,
           in: "query",
           required: opt.required ?? false,
@@ -217,10 +228,10 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
       ];
     } else {
       op.requestBody = {
-        required: isDocumentLeaf(route.leaf),
+        required: isDocumentCommand(route.leaf),
         content: {
           [JSON_CONTENT_TYPE]: {
-            schema: dereferenceJsonSchema(buildLeafInputSchema(route.leaf)),
+            schema: dereferenceJsonSchema(buildCommandInputSchema(route.leaf)),
           },
         },
       };
@@ -253,6 +264,6 @@ export function generateOpenApi(program: CliProgram): Record<string, unknown> {
 }
 
 /** Pretty-printed OpenAPI JSON (same document as `GET /openapi.json`). */
-export function openApiJson(program: CliProgram): string {
+export function openApiJson(program: AppSpec): string {
   return `${JSON.stringify(generateOpenApi(program), null, 2)}\n`;
 }

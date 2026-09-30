@@ -4,10 +4,10 @@ Not exported from the public package barrel.
 */
 
 import { configCommandsEnabled } from "../config/entry.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 
 /** Platform builtins derived from program config and runtime. */
-export interface CliCapabilities {
+export interface Capabilities {
   http: boolean;
   completion: boolean;
   mcp: boolean;
@@ -17,7 +17,7 @@ export interface CliCapabilities {
 }
 
 /** Resolves which capabilities are enabled for a program. */
-export function resolveCapabilities(program: CliProgram): CliCapabilities {
+export function resolveCapabilities(program: AppSpec): Capabilities {
   const configure = program.configure?.enabled !== false;
   return {
     http: program.httpServer?.enabled === true,
@@ -30,7 +30,7 @@ export function resolveCapabilities(program: CliProgram): CliCapabilities {
 }
 
 /** Reserved top-level command names for the given capabilities. */
-export function reservedCommandNames(caps: CliCapabilities): string[] {
+export function reservedCommandNames(caps: Capabilities): string[] {
   const names = ["version"];
   if (caps.completion) {
     names.unshift("completion");
@@ -51,7 +51,7 @@ export function reservedCommandNames(caps: CliCapabilities): string[] {
 }
 
 /** Commands that may run without required appConfig values (read-only / config introspection / lifecycle). */
-export function skipsRequiredAppConfigExit(path: string[], caps: CliCapabilities): boolean {
+export function skipsRequiredAppConfigExit(path: string[], caps: Capabilities): boolean {
   const root = path[0];
   if (root === "configure" && caps.configure) {
     const sub = path[1];
@@ -84,7 +84,7 @@ export function capabilityDeniedMessage(feature: CapabilityFeature): string {
 }
 
 /** Exit 1 when argv[0] names a built-in that capabilities disallow. */
-export function assertBuiltinAllowed(argv: string[], caps: CliCapabilities): void {
+export function assertBuiltinAllowed(argv: string[], caps: Capabilities): void {
   if (argv.length < 1) {
     return;
   }

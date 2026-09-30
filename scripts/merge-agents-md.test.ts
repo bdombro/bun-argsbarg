@@ -12,7 +12,7 @@ import {
   stripManagedPlaceholders,
 } from "./merge-agents-md.ts";
 
-const TEMPLATE = `# full-example-json
+const TEMPLATE = `# example-api
 
 <!-- argsbarg:managed — overwritten on merge; framework baseline; app-specific sections below take precedence -->
 
@@ -141,7 +141,7 @@ old managed
     const managed = extractManagedBlock(TEMPLATE);
     const stripped = stripManagedPlaceholders(managed);
     expect(stripped).not.toContain("Replace with app-specific");
-    expect(stripped).not.toContain("**full-example-json conventions:**");
+    expect(stripped).not.toContain("**example-api conventions:**");
   });
 
   test("mergeAgentsMd places managed block at top and app sections below", () => {

@@ -1,7 +1,7 @@
-import type { CliConfigureConfig, CliProgram, InstallTargetSpec } from "../../core/types.ts";
+import type { AppSpec, ConfigureConfig, InstallTargetSpec } from "../../core/types.ts";
 import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import { INSTALL_ARTIFACT_KEYS, installTargetForKey, mcpServerRequiredForArtifact } from "./target-registry.ts";
-import type { CliInstallArtifactKey, InstallPlanMode } from "./target-types.ts";
+import type { InstallArtifactKey, InstallPlanMode } from "./target-types.ts";
 
 export type { InstallTargetSpec, ResolvedInstallTarget } from "../../core/types.ts";
 
@@ -28,8 +28,8 @@ export function resolveInstallTargetSpec(
 }
 
 function artifactDefaults(
-  key: CliInstallArtifactKey,
-  program?: Pick<CliProgram, "mcpServer" | "skill">,
+  key: InstallArtifactKey,
+  program?: Pick<AppSpec, "mcpServer">,
 ): { enabled: boolean; includedInAll: boolean } {
   if (key === "skill") {
     return { enabled: false, includedInAll: false };
@@ -47,11 +47,11 @@ function artifactDefaults(
 
 /** Effective per-artifact gates for install.targets. */
 export function resolveEffectiveInstallTargets(
-  configure?: CliConfigureConfig,
-  program?: Pick<CliProgram, "mcpServer" | "skill">,
-): Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }> {
+  configure?: ConfigureConfig,
+  program?: Pick<AppSpec, "mcpServer">,
+): Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }> {
   const user = configure?.targets;
-  const out = {} as Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
+  const out = {} as Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   for (const key of INSTALL_ARTIFACT_KEYS) {
     const userSpec = key === "skill" || key === "agentsMcp" ? undefined : user?.[key];
     out[key] = resolveInstallTargetSpec(userSpec, artifactDefaults(key, program));
@@ -60,14 +60,14 @@ export function resolveEffectiveInstallTargets(
 }
 
 /** MCP enabled check for scoped uninstall/install mcp category. */
-export function mcpCategoryEnabled(root: CliProgram): boolean {
+export function mcpCategoryEnabled(root: AppSpec): boolean {
   return resolveCapabilities(root).mcp;
 }
 
 export interface InstallTargetPreview {
-  all: CliInstallArtifactKey[];
-  mcp: CliInstallArtifactKey[];
-  skill: CliInstallArtifactKey[];
+  all: InstallArtifactKey[];
+  mcp: InstallArtifactKey[];
+  skill: InstallArtifactKey[];
 }
 
 /** Derives plan mode from install CLI flags. */

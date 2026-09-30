@@ -1,10 +1,10 @@
 /*
-Shared helpers for program.appConfig schema entries.
+Shared helpers for appConfig schema entries.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../core/types.ts";
+import type { AppConfigEntry, AppSpec } from "../core/types.ts";
 
-/** Default title when `CliAppConfigEntry.title` is omitted. */
+/** Default title when `AppConfigEntry.title` is omitted. */
 export function defaultConfigEntryTitle(key: string): string {
   return key;
 }
@@ -17,7 +17,7 @@ export function defaultConfigEntrySensitive(key: string): boolean {
 /** Whether a schema entry is required for bootstrap / MCP enforcement. */
 export function configEntryRequired(
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   jsonSchemaRequired: Set<string> | undefined,
 ): boolean {
   if (entry.required === false) {
@@ -30,7 +30,7 @@ export function configEntryRequired(
 }
 
 /** Whether prompts and `configure get` should redact this entry. */
-export function configEntrySensitive(key: string, entry: CliAppConfigEntry): boolean {
+export function configEntrySensitive(key: string, entry: AppConfigEntry): boolean {
   return entry.sensitive ?? defaultConfigEntrySensitive(key);
 }
 
@@ -55,7 +55,7 @@ export function jsonSchemaRequiredKeys(jsonSchema: Record<string, unknown>): Set
 }
 
 /** Whether built-in `configure get` / `configure set` subcommands are enabled. */
-export function configCommandsEnabled(program: CliProgram): boolean {
+export function configCommandsEnabled(program: AppSpec): boolean {
   if (!program.appConfig) {
     return false;
   }
@@ -70,7 +70,7 @@ export function configCommandsEnabled(program: CliProgram): boolean {
 }
 
 /** Whether MCP exposes config set (config_get always on when commands enabled). */
-export function configMcpSetEnabled(program: CliProgram): boolean {
+export function configMcpSetEnabled(program: AppSpec): boolean {
   const commands = program.appConfig?.commands;
   if (typeof commands === "object" && commands.mcpSet === false) {
     return false;

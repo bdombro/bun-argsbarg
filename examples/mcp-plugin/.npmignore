@@ -1,7 +1,0 @@
-node_modules/
-dist/*
-!dist/mcp-plugin.mjs
-Formula/.staging/
-.private/
-.DS_Store
-**/__generated__/

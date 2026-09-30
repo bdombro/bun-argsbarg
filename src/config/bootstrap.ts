@@ -4,7 +4,8 @@ settings are present before the CLI or MCP server handles a request.
 */
 
 import { readSync } from "node:fs";
-import type { CliAppConfigEntry, CliProgram, ServerRuntime } from "../core/types.ts";
+import type { z } from "zod";
+import type { AppConfigEntry, AppSpec, ServerRuntime } from "../core/types.ts";
 import type { LogEmitter } from "../log/emitter.ts";
 import { readPromptLine as readStdinLine } from "../prompt.ts";
 import { bindingForKey, clearFileValue, isKeyAddressed, readBindings, setBinding } from "./bindings.ts";
@@ -26,7 +27,7 @@ import {
   resolveAppConfig,
   stringifyConfigValue,
 } from "./resolve.ts";
-import { configPropertySchema, effectiveJsonSchema } from "./schema.ts";
+import { configKeySchema, configPropertySchema, effectiveJsonSchema } from "./schema.ts";
 import { configValueInputHint, parseConfigSetValue } from "./validate.ts";
 
 export { displayAppConfigPath } from "./file.ts";
@@ -58,7 +59,7 @@ export interface BootstrapAppConfigOpts {
 }
 
 /** Read the config file, merge env overrides, and export mapped values into `process.env`. */
-export function bootstrapAppConfig(program: CliProgram, opts: BootstrapAppConfigOpts): ConfigBootstrapResult {
+export function bootstrapAppConfig(program: AppSpec, opts: BootstrapAppConfigOpts): ConfigBootstrapResult {
   let fileData: Record<string, unknown>;
   if (opts.validateFile === true) {
     fileData = readAppConfigFile(program);
@@ -152,7 +153,7 @@ function readPromptLine(mask: boolean): string {
 }
 
 /** Whether this setting already has a non-empty value in the user's shell environment. */
-function resolvedFromEnv(entry: CliAppConfigEntry, hostEnv: Record<string, string | undefined>): boolean {
+function resolvedFromEnv(entry: AppConfigEntry, hostEnv: Record<string, string | undefined>): boolean {
   if (!entry.env) {
     return false;
   }
@@ -163,12 +164,13 @@ function resolvedFromEnv(entry: CliAppConfigEntry, hostEnv: Record<string, strin
 /** Ask the user for one setting and return what they chose (or nothing if they skipped it). */
 function promptConfigKey(
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   current: unknown,
   configure: boolean,
   jsonSchemaRequired: Set<string> | undefined,
   hostEnv: Record<string, string | undefined>,
   jsonSchema: Record<string, unknown> | undefined,
+  keySchema: z.ZodType | undefined,
 ): { value: unknown; userTyped: boolean } {
   const baseTitle = entry.title ?? defaultConfigEntryTitle(key);
   const titleWithEnv = entry.env ? `${baseTitle} (${entry.env})` : baseTitle;
@@ -196,7 +198,7 @@ function promptConfigKey(
   }
   if (input.length > 0) {
     const rootSchema = jsonSchema ?? { type: "object", properties: {} };
-    const parsed = parseConfigSetValue(input, propSchema, rootSchema, false);
+    const parsed = parseConfigSetValue(input, propSchema, rootSchema, false, keySchema);
     return { value: parsed, userTyped: true };
   }
   return { value: undefined, userTyped: false };
@@ -218,7 +220,7 @@ function writeConfigureSetupHeading(): void {
 }
 
 /** Whether this app has any settings worth prompting during configure. */
-function shouldShowConfigureSetupHeading(program: CliProgram): boolean {
+function shouldShowConfigureSetupHeading(program: AppSpec): boolean {
   if (!program.appConfig) return false;
   return Object.keys(program.appConfig.entries).length > 0;
 }
@@ -237,7 +239,7 @@ function bindingsDiffer(a: Record<string, unknown>, b: Record<string, unknown>):
 export function shouldWizardPromptConfigKey(
   key: string,
   fileData: Record<string, unknown>,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   resolved: Record<string, unknown>,
   opts: Pick<RunInstallConfigureOpts, "rePromptAll">,
 ): boolean {
@@ -252,7 +254,7 @@ export function shouldWizardPromptConfigKey(
 }
 
 /** Ask the user for each required setting that is still empty; returns updates to save to the config file. */
-function promptMissingRequired(program: CliProgram): Record<string, unknown> {
+function promptMissingRequired(program: AppSpec): Record<string, unknown> {
   const appConfig = program.appConfig;
   const updates: Record<string, unknown> = {};
   if (!appConfig) {
@@ -280,7 +282,16 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
       writeConfigureSetupHeading();
       headingWritten = true;
     }
-    const { value, userTyped } = promptConfigKey(key, entry, current, false, fromSchema, hostEnv, jsonSchema);
+    const { value, userTyped } = promptConfigKey(
+      key,
+      entry,
+      current,
+      false,
+      fromSchema,
+      hostEnv,
+      jsonSchema,
+      configKeySchema(program, key),
+    );
     if (userTyped && value !== undefined && String(value).length > 0) {
       updates[key] = value;
       Object.assign(updates, setBinding(updates, key, "file"));
@@ -290,12 +301,9 @@ function promptMissingRequired(program: CliProgram): Record<string, unknown> {
 }
 
 /** Run the full interactive app config wizard (`configure`). */
-export function runConfigure(
-  program: CliProgram,
-  opts: RunInstallConfigureOpts = {},
-): { path: string; changed: boolean } {
+export function runConfigure(program: AppSpec, opts: RunInstallConfigureOpts = {}): { path: string; changed: boolean } {
   if (!program.appConfig) {
-    throw new Error("configure requires program.appConfig on the program root.");
+    throw new Error("configure requires appConfig on the app root.");
   }
   if (!process.stdin.isTTY) {
     const { resolved } = bootstrapAppConfig(program, { validateFile: false });
@@ -330,7 +338,16 @@ export function runConfigure(
     const bindingsBefore = readBindings(next);
     const current = resolved[key];
     const required = configEntryRequired(key, entry, fromSchema);
-    const { value, userTyped } = promptConfigKey(key, entry, current, true, fromSchema, hostEnv, jsonSchema);
+    const { value, userTyped } = promptConfigKey(
+      key,
+      entry,
+      current,
+      true,
+      fromSchema,
+      hostEnv,
+      jsonSchema,
+      configKeySchema(program, key),
+    );
 
     if (userTyped && value !== undefined && String(value).length > 0) {
       if (JSON.stringify(value) !== JSON.stringify(before) || bindingsBefore[key] !== "file") {
@@ -376,7 +393,7 @@ function inputWasSkipped(value: unknown, userTyped: boolean): boolean {
 }
 
 /** Summary for `configure --status`: config path, whether the file exists, and which required settings are set (never their values). */
-export function appConfigStatus(program: CliProgram):
+export function appConfigStatus(program: AppSpec):
   | {
       path: string;
       exists: boolean;
@@ -412,7 +429,7 @@ export function appConfigStatus(program: CliProgram):
 }
 
 /** Load config at startup, optionally prompt the user, and fail if required settings are still missing. */
-export function ensureAppConfig(program: CliProgram, opts: EnsureAppConfigOpts): ConfigBootstrapResult | undefined {
+export function ensureAppConfig(program: AppSpec, opts: EnsureAppConfigOpts): ConfigBootstrapResult | undefined {
   if (!program.appConfig) {
     return undefined;
   }

@@ -3,23 +3,23 @@ HTTP REST route collection and request matching from the CLI command tree.
 */
 
 import {
-  type CliHttpMethod,
-  type CliLeaf,
-  type CliNode,
-  type CliProgram,
-  isCliLeaf,
-  isDocumentLeaf,
-  CliOptionKind as OptKind,
+  type AppSpec,
+  type Command,
+  type HttpMethod,
+  hasHandler,
+  isDocumentCommand,
+  OptionKind as OptKind,
+  type RunnableCommand,
 } from "../core/types.ts";
-import { formatMcpOptionValue, leafHasYesOption, leafWireOptions } from "../mcp/tools.ts";
+import { commandWireOptions, formatMcpOptionValue, leafHasYesOption } from "../mcp/tools.ts";
 import { isHttpDisabled, isHttpHidden } from "../runtime/exposure.ts";
 import { buildHttpUserPath, httpUserPathRegexPrefix, resolveHttpPathPrefix } from "./paths.ts";
 
 const VERB_KEYS = new Set(["get", "post", "put", "patch", "delete"]);
 
-/** One HTTP route derived from a user leaf command. */
+/** One HTTP route derived from a user command with a handler. */
 export interface HttpRouteDef {
-  method: CliHttpMethod;
+  method: HttpMethod;
   /** OpenAPI-style path e.g. `/workspaces/{id}` or `/api/workspaces/{id}`. */
   openApiPath: string;
   /** Regex matching pathname (no query). */
@@ -28,33 +28,33 @@ export interface HttpRouteDef {
   commandPath: string[];
   /** Param names in URL order (without `:`). */
   paramNames: string[];
-  leaf: CliLeaf;
+  leaf: RunnableCommand;
 }
 
 function isParamRouterKey(key: string): boolean {
   return key.startsWith(":");
 }
 
-function inferHttpMethod(leaf: CliLeaf): CliHttpMethod {
+function inferHttpMethod(leaf: RunnableCommand): HttpMethod {
   if (leaf.http?.method) {
     return leaf.http.method;
   }
   const lower = leaf.key.toLowerCase();
   if (VERB_KEYS.has(lower)) {
-    return lower.toUpperCase() as CliHttpMethod;
+    return lower.toUpperCase() as HttpMethod;
   }
   return "POST";
 }
 
-function isVerbLeaf(leaf: CliLeaf): boolean {
+function isVerbLeaf(leaf: RunnableCommand): boolean {
   return VERB_KEYS.has(leaf.key.toLowerCase()) && leaf.http?.method === undefined;
 }
 
-function segmentForNode(node: CliNode): string {
+function segmentForNode(node: Command): string {
   return node.http?.segment ?? node.key;
 }
 
-function leafHttpExposed(leaf: CliLeaf): boolean {
+function leafHttpExposed(leaf: RunnableCommand): boolean {
   if (isHttpDisabled(leaf) || isHttpHidden(leaf)) {
     return false;
   }
@@ -67,7 +67,7 @@ type WalkState = {
   paramNames: string[];
 };
 
-function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState, pathPrefix: string): void {
+function pushRoute(routes: HttpRouteDef[], leaf: RunnableCommand, state: WalkState, pathPrefix: string): void {
   const urlSegments = [...state.urlSegments];
   const commandPath = [...state.commandPath];
   if (!isVerbLeaf(leaf)) {
@@ -94,12 +94,12 @@ function pushRoute(routes: HttpRouteDef[], leaf: CliLeaf, state: WalkState, path
   });
 }
 
-function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[], pathPrefix: string): void {
+function walk(node: Command, state: WalkState, routes: HttpRouteDef[], pathPrefix: string): void {
   if (isHttpDisabled(node) || isHttpHidden(node)) {
     return;
   }
 
-  if (isCliLeaf(node)) {
+  if (hasHandler(node)) {
     if (leafHttpExposed(node)) {
       pushRoute(routes, node, state, pathPrefix);
     }
@@ -121,7 +121,7 @@ function walk(node: CliNode, state: WalkState, routes: HttpRouteDef[], pathPrefi
       );
       continue;
     }
-    if (isCliLeaf(child)) {
+    if (hasHandler(child)) {
       walk(
         child,
         {
@@ -153,7 +153,7 @@ function escapeRegex(s: string): string {
 }
 
 /** Collects all HTTP routes for exposed user leaves. */
-export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
+export function collectHttpRoutes(program: AppSpec): HttpRouteDef[] {
   const routes: HttpRouteDef[] = [];
   if (!program.httpServer?.enabled) {
     return routes;
@@ -161,7 +161,7 @@ export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
 
   const pathPrefix = resolveHttpPathPrefix(program);
 
-  if (isCliLeaf(program)) {
+  if (hasHandler(program)) {
     walk(program, { urlSegments: [], commandPath: [], paramNames: [] }, routes, pathPrefix);
     return routes;
   }
@@ -177,7 +177,7 @@ export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
     ) {
       continue;
     }
-    if (isCliLeaf(child)) {
+    if (hasHandler(child)) {
       walk(child, { urlSegments: [], commandPath: [child.key], paramNames: [] }, routes, pathPrefix);
     } else {
       walk(
@@ -196,7 +196,7 @@ export function collectHttpRoutes(program: CliProgram): HttpRouteDef[] {
 export type HttpRouteMatch = { ok: true; route: HttpRouteDef; pathParams: Record<string, string> } | { ok: false };
 
 /** Finds the best matching route for method + pathname. */
-export function matchHttpRoute(program: CliProgram, method: string, pathname: string): HttpRouteMatch {
+export function matchHttpRoute(program: AppSpec, method: string, pathname: string): HttpRouteMatch {
   const routes = collectHttpRoutes(program);
   const upper = method.toUpperCase();
   let best: { route: HttpRouteDef; pathParams: Record<string, string>; score: number } | undefined;
@@ -231,7 +231,7 @@ export function matchHttpRoute(program: CliProgram, method: string, pathname: st
 
 /** Builds argv from an HTTP route match, query string, and optional JSON body. */
 export function httpRequestToArgv(
-  _program: CliProgram,
+  _program: AppSpec,
   route: HttpRouteDef,
   pathParams: Record<string, string>,
   query: Record<string, string>,
@@ -252,7 +252,7 @@ export function httpRequestToArgv(
   }
 
   const leaf = route.leaf;
-  if (isDocumentLeaf(leaf)) {
+  if (isDocumentCommand(leaf)) {
     return argv;
   }
 
@@ -267,7 +267,7 @@ export function httpRequestToArgv(
     }
   }
 
-  for (const opt of leafWireOptions(leaf)) {
+  for (const opt of commandWireOptions(leaf)) {
     if (opt.kind === OptKind.Json) {
       continue;
     }
@@ -328,7 +328,7 @@ export function httpRequestToArgv(
 }
 
 /** Default success HTTP status for a route method when handler omits status. */
-export function defaultSuccessStatus(method: CliHttpMethod, hasBody: boolean): number {
+export function defaultSuccessStatus(method: HttpMethod, hasBody: boolean): number {
   switch (method) {
     case "GET":
       return 200;

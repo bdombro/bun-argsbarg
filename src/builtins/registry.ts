@@ -1,15 +1,15 @@
-import type { CliNode, CliProgram } from "../core/types.ts";
+import type { AppSpec, Command } from "../core/types.ts";
 import { cliBuiltinDocsGroupIfEnabled } from "../docs/builtin.ts";
-import type { CliCapabilities } from "../runtime/capabilities.ts";
+import type { Capabilities } from "../runtime/capabilities.ts";
 import { cliBuiltinCompletionGroup } from "./completion-group.ts";
 import { cliBuiltinConfigureCommand } from "./configure.ts";
 import { cliBuiltinHttpCommand } from "./http.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliBuiltinVersionCommand } from "./version.ts";
 
-type BuiltinFactory = (program: CliProgram) => CliNode | null;
+type BuiltinFactory = (program: AppSpec) => Command | null;
 
-function pushBuiltin(builtins: CliNode[], program: CliProgram, factory: BuiltinFactory | null): void {
+function pushBuiltin(builtins: Command[], program: AppSpec, factory: BuiltinFactory | null): void {
   if (!factory) {
     return;
   }
@@ -20,8 +20,8 @@ function pushBuiltin(builtins: CliNode[], program: CliProgram, factory: BuiltinF
 }
 
 /** Capability-gated built-in command nodes in stable order (parse, help, export). */
-export function resolveBuiltins(program: CliProgram, caps: CliCapabilities): CliNode[] {
-  const builtins: CliNode[] = [];
+export function resolveBuiltins(program: AppSpec, caps: Capabilities): Command[] {
+  const builtins: Command[] = [];
   if (caps.completion) {
     pushBuiltin(builtins, program, (p) => cliBuiltinCompletionGroup(p));
   }

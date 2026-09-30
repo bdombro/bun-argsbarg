@@ -8,13 +8,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { exportPresentationBuiltins } from "../builtins/export.ts";
 import { cliParseRoot, cliPresentationRoot } from "../builtins/presentation.ts";
-import { cliSchemaExport } from "../core/schema.ts";
-import { CliOptionKind, type CliProgram } from "../core/types.ts";
+import { schemaExport } from "../core/schema.ts";
+import { type AppSpec, OptionKind } from "../core/types.ts";
 import { cliHelpRender } from "../help.ts";
 import { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle, runMcpBundle } from "./bundle.ts";
 import { collectMcpTools } from "./tools.ts";
 
-const hiddenFixture: CliProgram = {
+const hiddenFixture: AppSpec = {
   key: "myapp",
   version: "1.0.0",
   description: "Hidden demo.",
@@ -39,13 +39,13 @@ const hiddenFixture: CliProgram = {
         {
           name: "visible",
           description: "Shown in help.",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
         },
         {
           name: "secret-flag",
           cli: { hidden: true },
           description: "Hidden option.",
-          kind: CliOptionKind.Presence,
+          kind: OptionKind.Presence,
         },
       ],
       handler: () => {},
@@ -85,7 +85,7 @@ describe("hidden commands and options", () => {
   });
 
   test("schema export omits hidden nodes and options", () => {
-    const schema = cliSchemaExport(hiddenFixture);
+    const schema = schemaExport(hiddenFixture);
     const keys = schema.commands?.map((c) => c.key) ?? [];
     expect(keys).toContain("public");
     expect(keys).not.toContain("secret");
@@ -198,7 +198,7 @@ describe("mcp bundle", () => {
       stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
       return true;
     }) as typeof process.stdout.write;
-    const fixture: CliProgram = {
+    const fixture: AppSpec = {
       ...hiddenFixture,
       mcpServer: { enabled: true, claudePlugin: true },
     };
@@ -231,7 +231,7 @@ describe("mcp bundle", () => {
       stdout.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
       return true;
     }) as typeof process.stdout.write;
-    const fixture: CliProgram = {
+    const fixture: AppSpec = {
       ...hiddenFixture,
       mcpServer: { enabled: true, cursorPlugin: true },
     };
@@ -256,7 +256,7 @@ describe("mcp bundle", () => {
   });
 
   test("runMcpBundle errors when no bundle flags enabled", () => {
-    const fixture: CliProgram = {
+    const fixture: AppSpec = {
       ...hiddenFixture,
       mcpServer: { enabled: true },
     };

@@ -2,7 +2,7 @@
 Per-server mutable handle context passed through HTTP/MCP dispatch.
 */
 
-import type { CliHttpWireHooks, CliMcpWireHooks, ServerRuntime, ServerState } from "../core/types.ts";
+import type { HttpWireHooks, McpWireHooks, ServerRuntime, ServerState } from "../core/types.ts";
 import type { LogEmitter } from "../log/emitter.ts";
 import type { ResolvedHttpServeConfig, ResolvedMcpServeConfig } from "./overrides.ts";
 
@@ -12,8 +12,8 @@ export interface ServerHandleContext {
   emitter: LogEmitter;
   http?: ResolvedHttpServeConfig;
   mcp?: ResolvedMcpServeConfig;
-  httpHooks?: CliHttpWireHooks;
-  mcpHooks?: CliMcpWireHooks;
+  httpHooks?: HttpWireHooks;
+  mcpHooks?: McpWireHooks;
   /**
    * The MCP protocol version negotiated with `initialize`, or the newest supported version before
    * `initialize` has been handled. Later requests (`tools/list`, `tools/call`) gate version-specific
@@ -24,8 +24,8 @@ export interface ServerHandleContext {
 
 /** Creates a fresh {@link ServerRuntime} for HTTP or MCP. */
 export function createServerRuntime(
-  program: import("../core/types.ts").CliProgram,
+  program: import("../core/types.ts").AppSpec,
   surface: "http" | "mcp",
 ): ServerRuntime {
-  return { state: {} as ServerState, program, surface };
+  return { state: {} as ServerState, spec: program, surface };
 }

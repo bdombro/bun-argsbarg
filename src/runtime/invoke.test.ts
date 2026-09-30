@@ -6,17 +6,17 @@ import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
 import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
-import type { CliLeaf } from "../core/types.ts";
-import { isCliRouter } from "../core/types.ts";
+import type { RunnableCommand } from "../core/types.ts";
+import { hasSubcommands } from "../core/types.ts";
 import { cliValidateProgram } from "../core/validate.ts";
-import { Cli, type CliContext, CliOptionKind } from "../index.ts";
+import { argsbarg, type CommandContext, OptionKind } from "../index.ts";
 import { testProgram, varargsReadFixture } from "../test/fixtures.ts";
 
-/** Tests that ctx.invocation is cli via Cli.run. */
-test("ctx.invocation is cli via Cli.run", async () => {
+/** Tests that ctx.invocation is cli via app.run. */
+test("ctx.invocation is cli via app.run", async () => {
   const indexPath = join(import.meta.dir, "../index.ts");
   const { stdout } = await $`bun -e ${`
-import { Cli, CliProgram } from ${JSON.stringify(indexPath)};
+import { argsbarg } from ${JSON.stringify(indexPath)};
 const program = {
   key: "t",
   description: "d",
@@ -24,35 +24,35 @@ const program = {
   configure: { enabled: false },
   handler: (ctx) => console.log(ctx.invocation),
 };
-await new Cli(program).run([]);
+await argsbarg(program).run([]);
   `}`.quiet();
   expect(stdout.toString().trim()).toBe("cli");
 });
 
-/** Tests that ctx.invocation is mcp via Cli.invoke. */
-test("ctx.invocation is mcp via Cli.invoke", async () => {
+/** Tests that ctx.invocation is mcp via App.invoke. */
+test("ctx.invocation is mcp via App.invoke", async () => {
   let seen = "";
   const root = testProgram({
     key: "app",
     description: "",
-    handler: (ctx: CliContext) => {
+    handler: (ctx: CommandContext) => {
       seen = ctx.invocation;
     },
   });
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke([]);
+  const result = await argsbarg(root).invoke([]);
   expect(result.kind).toBe("ok");
   expect(seen).toBe("mcp");
 });
 
 /** Tests that ctx.locals.requestId is seeded before handler on invoke. */
-test("Cli.invoke seeds ctx.locals.requestId", async () => {
+test("App.invoke seeds ctx.locals.requestId", async () => {
   let requestId = "";
   const root = testProgram({
     key: "app",
     description: "",
     hooks: {
-      beforeInvoke: (ctx: CliContext) => {
+      beforeInvoke: (ctx: CommandContext) => {
         requestId = String(ctx.locals.requestId ?? "");
       },
     },
@@ -60,7 +60,7 @@ test("Cli.invoke seeds ctx.locals.requestId", async () => {
   });
   cliValidateProgram(root);
   const wireId = "00000000-0000-4000-8000-000000000001";
-  const result = await new Cli(root).invoke([], {
+  const result = await argsbarg(root).invoke([], {
     invocation: "http",
     requestId: wireId,
     http: { request: new Request("http://localhost/"), clientIp: "127.0.0.1", requestId: wireId },
@@ -69,8 +69,8 @@ test("Cli.invoke seeds ctx.locals.requestId", async () => {
   expect(requestId).toBe(wireId);
 });
 
-/** Cli.invoke rejects invalid Enum value. */
-test("Cli.invoke rejects invalid Enum value", async () => {
+/** App.invoke rejects invalid Enum value. */
+test("App.invoke rejects invalid Enum value", async () => {
   const root = testProgram({
     key: "app",
     description: "",
@@ -79,43 +79,43 @@ test("Cli.invoke rejects invalid Enum value", async () => {
       {
         name: "mode",
         description: "Mode.",
-        kind: CliOptionKind.Enum,
+        kind: OptionKind.Enum,
         choices: ["dev", "prod"],
         required: true,
       },
     ],
   });
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["--mode", "staging"]);
+  const result = await argsbarg(root).invoke(["--mode", "staging"]);
   expect(result.kind).toBe("error");
   expect(result.errorMsg).toContain("not one of");
 });
 
-/** Cli.invoke accepts valid Enum value. */
-test("Cli.invoke accepts valid Enum value", async () => {
+/** App.invoke accepts valid Enum value. */
+test("App.invoke accepts valid Enum value", async () => {
   const root = testProgram({
     key: "app",
     description: "",
-    handler: (ctx: CliContext) => {
+    handler: (ctx: CommandContext) => {
       console.log(ctx.stringOpt("mode"));
     },
     options: [
       {
         name: "mode",
         description: "Mode.",
-        kind: CliOptionKind.Enum,
+        kind: OptionKind.Enum,
         choices: ["dev", "prod"],
         required: true,
       },
     ],
   });
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["--mode", "dev"]);
+  const result = await argsbarg(root).invoke(["--mode", "dev"]);
   expect(result.kind).toBe("ok");
   expect(result.stdout.trim()).toBe("dev");
 });
 
-test("varargs trailing option after positionals via Cli.invoke", async () => {
+test("varargs trailing option after positionals via App.invoke", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
   const pr = postParseValidate(root, parse(root, ["read", "file.txt", "--json"]));
@@ -154,7 +154,7 @@ test("varargs double dash forces positional", () => {
 test("varargs unknown flag errors", async () => {
   const root = varargsReadFixture();
   cliValidateProgram(root);
-  const result = await new Cli(root).invoke(["read", "--unknown"]);
+  const result = await argsbarg(root).invoke(["read", "--unknown"]);
   expect(result.kind).toBe("error");
   expect(result.stderr).toContain("--unknown");
 });
@@ -177,8 +177,8 @@ test("ctx.positional returns single slot value", async () => {
       {
         key: "x",
         description: "",
-        positionals: [{ name: "path", description: "", kind: CliOptionKind.String }],
-        handler: (ctx: CliContext) => {
+        positionals: [{ name: "path", description: "", kind: OptionKind.String }],
+        handler: (ctx: CommandContext) => {
           captured = ctx.positional("path");
         },
       },
@@ -186,20 +186,20 @@ test("ctx.positional returns single slot value", async () => {
   });
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
-  await new Cli(root).invoke(["x", "./file"]);
+  await argsbarg(root).invoke(["x", "./file"]);
   expect(captured).toBe("./file");
 });
 
 test("ctx.positional returns varargs array", async () => {
   const root = varargsReadFixture();
   let captured: string | string[] | undefined;
-  if (isCliRouter(root)) {
-    (root.commands[0] as CliLeaf).handler = (ctx) => {
+  if (hasSubcommands(root)) {
+    (root.commands[0] as RunnableCommand).handler = (ctx) => {
       captured = ctx.positional("files");
     };
   }
   cliValidateProgram(root);
-  await new Cli(root).invoke(["read", "a.txt", "b.txt"]);
+  await argsbarg(root).invoke(["read", "a.txt", "b.txt"]);
   expect(captured).toEqual(["a.txt", "b.txt"]);
 });
 
@@ -212,8 +212,8 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
       {
         key: "x",
         description: "",
-        positionals: [{ name: "opt", description: "", kind: CliOptionKind.String, argMin: 0, argMax: 1 }],
-        handler: (ctx: CliContext) => {
+        positionals: [{ name: "opt", description: "", kind: OptionKind.String, argMin: 0, argMax: 1 }],
+        handler: (ctx: CommandContext) => {
           captured = ctx.positional("opt");
         },
       },
@@ -221,7 +221,7 @@ test("ctx.positional returns undefined for absent optional slot", async () => {
   });
   let captured: string | string[] | undefined;
   cliValidateProgram(root);
-  await new Cli(root).invoke(["x"]);
+  await argsbarg(root).invoke(["x"]);
   expect(captured).toBeUndefined();
 });
 
@@ -230,13 +230,13 @@ test("ctx.positional varargs matches ctx.args", async () => {
   const root = varargsReadFixture();
   let positional: string | string[] | undefined;
   let args: string[] = [];
-  if (isCliRouter(root)) {
-    (root.commands[0] as CliLeaf).handler = (ctx) => {
+  if (hasSubcommands(root)) {
+    (root.commands[0] as RunnableCommand).handler = (ctx) => {
       positional = ctx.positional("files");
       args = ctx.args;
     };
   }
   cliValidateProgram(root);
-  await new Cli(root).invoke(["read", "a.txt", "b.txt"]);
+  await argsbarg(root).invoke(["read", "a.txt", "b.txt"]);
   expect(positional).toEqual(args);
 });

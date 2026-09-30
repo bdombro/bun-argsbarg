@@ -4,7 +4,7 @@ MCP size-warning integration test fixture (not a public example). One leaf with 
 triggering the "description" startup size warning on stderr.
 */
 
-import { Cli, type CliProgram } from "../index.ts";
+import { type AppSpec, argsbarg } from "../index.ts";
 
 const program = {
   commands: [
@@ -25,7 +25,7 @@ const program = {
   key: "mcp-size-test",
   mcpServer: { enabled: true },
   version: "0.0.0-test",
-} satisfies CliProgram;
+} satisfies AppSpec;
 
-const cli = new Cli(program);
+const cli = argsbarg(program);
 await cli.run();

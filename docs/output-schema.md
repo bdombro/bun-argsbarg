@@ -1,20 +1,35 @@
 # Output schemas (`outputSchema`)
 
-How to describe JSON stdout on leaf commands — and the **argsbarg schemagen** pipeline used in production apps.
+How to describe JSON stdout on commands with a handler with a Zod schema.
 
 ## Argsbarg contract
 
-On **leaf commands**, set `outputSchema` to a JSON Schema object when the handler emits JSON (typically with `--json`, always for JSON-only commands, or on the MCP headless path).
+On **commands with a handler**, set `outputSchema` to a Zod schema when the handler emits JSON (typically with `--json`, always for JSON-only commands, or on the MCP headless path). Declare the command with `command` so the handler's return value is typed from the schema.
 
 ```typescript
-import { StatusJsonOutputSchema } from "./__generated__";
+// src/commands/status/types.ts
+import { z } from "zod";
 
-export const status = {
+/** JSON stdout for `myapp status --json`. */
+export const StatusJsonOutput = z.strictObject({
+  version: z.string().describe("App version from the app spec."),
+});
+
+/** `status --json` payload. */
+export type StatusJsonOutput = z.infer<typeof StatusJsonOutput>;
+```
+
+```typescript
+// src/commands/status/command.ts
+import { command } from "argsbarg";
+import { StatusJsonOutput } from "./types.ts";
+
+export const statusCommand = command({
   key: "status",
   description: "Show environment status.",
-  outputSchema: StatusJsonOutputSchema,
-  handler: async (ctx) => { /* writes JSON to stdout */ },
-} satisfies CliLeaf;
+  outputSchema: StatusJsonOutput,
+  handler: (ctx) => ({ version: ctx.spec.version }), // typed against StatusJsonOutput
+});
 ```
 
 | Where argsbarg uses it | Purpose |
@@ -25,212 +40,52 @@ export const status = {
 | HTTP `GET /openapi.json` | Response schema per tool |
 | CLI `--help` (non-TTY) | YAML output schema for zero-drift in-band agent discovery |
 
-**Not validated at runtime** — argsbarg does not parse or reject handler stdout against the schema today. The schema is documentation and MCP/HTTP metadata.
+argsbarg emits the schema as JSON Schema (draft 2020-12) with `z.toJSONSchema(schema, { io: "output" })`.
 
-**Set on the leaf only** — not under `mcpTool`.
+- **Not validated at runtime.** argsbarg does not parse or reject handler stdout against the schema. The schema is documentation and MCP/HTTP metadata, and with `command` it also type-checks handler returns.
+- **Set it on the command only,** not under `mcpTool`.
+- **Handlers that only print** (returning nothing) still type-check: the return type is the schema's output type or `void`.
 
-**Draft version** — for **`inputSchema`** and **`appConfig.jsonSchema`**, argsbarg validates using the draft declared in `$schema` (default Draft-07 when omitted). Schemas from schemagen, `zod-to-json-schema`, or `z.toJSONSchema()` may use Draft-07 or 2020-12. **`outputSchema`** is embedded in docs/MCP/OpenAPI as-is and is not runtime-validated.
-
-See [cli-program.md — Structured stdout](cli-program.md#structured-stdout) for when to use `outputSchema` vs `notes`, and [mcp.md](mcp.md) for how MCP returns parsed JSON as `structuredContent`.
-
-## Hand-written vs generated
-
-| Approach | When |
-| --- | --- |
-| **Inline object** on the leaf | One-off commands, spikes, very small shapes |
-| **Codegen from TypeScript** | Multiple commands share a shape, nested objects, or you want rich `description` fields in `docs cli` / skills |
-
-Production CLIs with several JSON commands tend to use **codegen** so types, handlers, and schemas stay aligned.
-
-## Schemagen pipeline (built into argsbarg)
-
-No per-repo scripts to copy — run **`argsbarg schemagen`** (or `import { runSchemagen } from "argsbarg/schemagen"`).
-
-Reference implementations: **sqsp-qa-manager-poc**, **sqsp-workspaces**, **sqsp-i18n-tools-poc**, **pdf-gen** (see each repo’s `docs/architecture.md` for which commands use which schema root).
-
-```mermaid
-flowchart LR
-  subgraph src [src/**/*.ts]
-    Sg["/** @sg */ export interface TypeName"]
-  end
-  subgraph gen [argsbarg schemagen]
-    Walk["walk src/ minus tests and __generated__"]
-    Gen["ts-json-schema-generator"]
-  end
-  subgraph artifacts [Gitignored __generated__]
-    Json["TypeNameSchema.json"]
-    Index["index.ts re-exports"]
-  end
-  subgraph runtime [Runtime]
-    Leaves["import { TypeNameSchema } from ./__generated__"]
-    Docgen["just docgen"]
-  end
-  src --> Walk --> Gen --> Json
-  Gen --> Index --> Leaves --> Docgen
-```
-
-| Piece | Convention |
-| --- | --- |
-| Generator | [`ts-json-schema-generator`](https://github.com/vega/ts-json-schema-generator) (bundled as an argsbarg dependency) |
-| Discovery | Walk `src/**/*.ts` (exclude `*.test.ts`, `__generated__/`); find `/** @sg */` JSDoc immediately followed by `export interface` or `export type` |
-| Artifacts | One `__generated__/` per source directory; `{TypeName}Schema.json` + `export const {TypeName}Schema` in `index.ts` |
-| Invocation | `just schemagen` — justfile exports `node_modules/.bin` on `PATH` for local `argsbarg` |
-| tsconfig | `"resolveJsonModule": true` |
-| CI | `just check`: `schemagen` → typecheck (no git diff on generated files) |
-| Cleanup | Schemagen removes orphan `__generated__/` dirs and stale JSON when roots are removed |
-| Docgen | `docgen` depends on `schemagen` so saved `./docs/cli.md` and `./docs/cli-schema.json` are fresh |
-
-### Declaring a schema root
-
-Mark any exported interface or type with `/** @sg */` on the line immediately above the declaration (no blank line):
-
-```typescript
-// src/commands/status/types.ts
-/** @sg */
-export interface StatusJsonOutput {
-  version: string;
-}
-```
-
-Root shapes:
-
-- **`interface`** or object type literal → object root (`type: "object"`, `additionalProperties: false`).
-- **Alias of a named type** (`export type Input = Inner`, `= Box<string>`, or an alias chain) → schemagen hoists the root `$ref` so the generated root is the object definition itself; `definitions` are kept so recursive references still resolve.
-- **Union** (`export type Input = A | B`) → `anyOf` root; no root `additionalProperties` (it would reject every property). As an MCP `inputSchema`/`outputSchema` it is wrapped as `{ input }` / `{ result }` — see [mcp.md — Object-rooted schemas and wrapping](mcp.md#object-rooted-schemas-and-wrapping).
-
-Handlers import types from the same module; leaves import schemas from `./__generated__`:
-
-```typescript
-import { StatusJsonOutputSchema } from "./__generated__";
-```
-
-Shared shapes in one directory share one `__generated__/index.ts`:
-
-```typescript
-// src/ui/runHeadless/types.ts
-/** @sg */
-export interface HeadlessOpResult {
-  command: string;
-  exitCode: number;
-  tasks: HeadlessTaskResult[];
-}
-```
-
-```typescript
-// src/commands/render-invoice/types.ts
-/** @sg */
-export interface RenderInvoiceInput {
-  format: "pdf" | "html";
-  invoice: InvoiceData;
-}
-
-/** @sg */
-export interface RenderInvoiceOutput {
-  bytes: number;
-}
-```
-
-Wire on the leaf or `program.appConfig`:
-
-| Generated export | Typical use |
-| --- | --- |
-| `AppConfigSchema` | `program.appConfig.jsonSchema` (optional — `src/config/types.ts`) |
-| `StatusJsonOutputSchema` | `leaf.outputSchema` |
-| `RenderInvoiceInputSchema` | `leaf.inputSchema` |
-
-For nested MCP/HTTP bodies, add a `kind: Json` option (same name as the schema property) and use `ctx.jsonOpt(...)`, `ctx.inputs`, or `ctx.inputsAs<T>()` — see [cli-program.md](cli-program.md#json-options-and-piped-stdin).
-
-When you do **not** set `inputSchema`, argsbarg builds tool input from CLI `options` + `positionals`.
-
-### Generated artifacts
-
-Schemagen writes under `__generated__/` beside the `@sg` source files in each directory:
-
-| Type name | Generated file | Exported const |
-| --- | --- | --- |
-| `StatusJsonOutput` | `StatusJsonOutputSchema.json` | `StatusJsonOutputSchema` |
-| `RenderInvoiceInput` | `RenderInvoiceInputSchema.json` | `RenderInvoiceInputSchema` |
-
-Wire on the leaf:
-
-```typescript
-import { StatusJsonOutputSchema } from "./__generated__";
-
-export const statusCommand = {
-  outputSchema: StatusJsonOutputSchema,
-  // …
-} satisfies CliLeaf;
-```
-
-App config (when used):
-
-```typescript
-import { AppConfigSchema } from "./config/__generated__";
-
-appConfig: { jsonSchema: AppConfigSchema, entries: { … } },
-```
+See [cli-program.md — Structured stdout](cli-program.md#structured-stdout) for when to use `outputSchema` vs `notes`, [mcp.md](mcp.md) for how MCP returns parsed JSON as `structuredContent`, and [json-schema-subset.md](json-schema-subset.md) for authoring rules shared by all schemas.
 
 ## Schema-facing types
 
-**Goal:** generated schemas match what handlers actually print, with descriptions agents can read in `docs cli`.
+**Goal:** emitted schemas match what handlers actually print, with descriptions agents can read in `docs cli`, `--help`, and MCP.
 
-1. **Schema roots** — `/** @sg */` immediately above `export interface` or `export type`, with per-field JSDoc.
-2. **Per property** — `/** … */` on every field that should appear in JSON Schema `properties` (including nested named types).
-3. **Unions / enums** — document the alias; generator emits `enum` / `anyOf` with type-level description.
-4. **Formats** — property JSDoc can include `@format date-time` for ISO timestamps; add a smoke test that the generated property has `format: "date-time"`.
-5. **Do not hand-edit** `__generated__/` — change types/JSDoc in source files, run `just schemagen`.
+1. **One schema per shape, with a same-named type.** Export `export const X = z.…` and `export type X = z.infer<typeof X>`. The same name works as both a value and a type, so `import type { X }` keeps working.
+2. **Describe every field with `.describe("…")`.** Zod does not read JSDoc, so a `/** … */` comment is invisible to agents. Put the text in `.describe()` on each field, and on nested and aliased schemas too.
+3. **Unions:** `z.discriminatedUnion("kind", [...])` emits `oneOf` with one precise error per bad discriminator. As an MCP `inputSchema`/`outputSchema`, a non-object root is wrapped as `{ input }` / `{ result }` (see [mcp.md — Object-rooted schemas and wrapping](mcp.md#object-rooted-schemas-and-wrapping)).
+4. **Formats:** `z.iso.datetime()` / `z.iso.date()` emit `format: "date-time"` / `"date"`.
+5. **Representable constructs only.** `z.date()`, transforms, and other constructs JSON Schema cannot express fail at startup, naming the command. Emit strings (`z.iso.datetime()`) instead.
 
 ### Narrowing when runtime ≠ stdout
 
-When a shared runtime type is **wider** than one command’s JSON, add a **schema-facing** root in `types.ts`:
-
-```typescript
-/** JSON stdout for `myapp pr` and `myapp file`. */
-export interface TranslationReadinessResult {
-  source: TranslationReadinessSource;
-  evaluatedAt: string;
-}
-
-/** @sg */
-export interface TranslationReadinessResult {
-```
-
-Patterns:
-
-- **Shallow dashboard types** — separate interfaces from fat API types so generated schema stays readable.
-- **Assignability tests** — ensure runtime rows satisfy schema-facing types so refactors cannot drift.
-
-Handlers keep using runtime types; only discovered roots (and their type graph) feed codegen.
+When a shared runtime type is **wider** than one command's JSON, define a **schema-facing** schema in the command's `types.ts` (`.pick()`, `.omit()`, or a fresh `z.strictObject`). Add an assignability test so runtime rows keep satisfying the schema-facing type.
 
 ## Tests
 
-In argsbarg: `src/cli-tool/schemagen/schemagen.test.ts` locks discovery and generation against `examples/full-example-json/`.
-
-Per consumer repo (optional):
-
-- **`src/generated-schemas.test.ts`** — smoke-test that key `outputSchema` objects have expected shape.
+Per consumer repo (optional): smoke-test key `outputSchema` values, e.g. `z.toJSONSchema(StatusJsonOutput)` has the expected properties and descriptions.
 
 ## Contributor workflow
 
-1. Add or edit `/** @sg */` roots in `src/**/*.ts` with per-field JSDoc.
-2. `just schemagen` — refresh `src/**/__generated__/`.
-3. Import `{ TypeNameSchema }` from the relevant `./__generated__` barrel.
-4. `just docgen` / `myapp docs cli --save` — refresh consumer docs.
-5. Document which commands use which roots in **your** `docs/architecture.md` (argsbarg does not maintain per-app tables).
+1. Add or edit Zod schemas in `src/**/types.ts`, with `.describe()` on every field.
+2. Wire them on commands with `command({ outputSchema, … })`.
+3. Run `just docgen` / `myapp docs cli --save` to refresh consumer docs.
 
-Add a bullet under your app’s `## App conventions` section in `AGENTS.md` pointing at `node_modules/argsbarg/docs/output-schema.md`.
+Add a bullet under your app's `## App conventions` section in `AGENTS.md` pointing at `node_modules/argsbarg/docs/output-schema.md`.
 
-**Reference implementation:** [`examples/full-example-json/`](../examples/full-example-json/) in this repo — `@sg` on command types, `__generated__/`, and `status` leaf with `StatusJsonOutputSchema`.
+**Reference implementation:** [`examples/api/`](../examples/api/): the `status` command with `StatusJsonOutput`, and `shape-area` with a discriminated-union input.
 
 ## Out of scope
 
-- Runtime Zod / `.parse()` on stdout in argsbarg
+- Runtime validation of handler stdout
 - `outputSchema` for plain-text, streaming, or Ink-only commands
 
 ## See also
 
-- [config-schema.md](config-schema.md) — `configType` / `program.appConfig`
-- [cli-program.md](cli-program.md) — structured stdout, headless JSON, `read*Flags`
-- [mcp.md](mcp.md) — `tools/list`, `structuredContent`
-- [bundled-docs.md](bundled-docs.md) — `docs cli` / `docs cli-schema` docgen
-- [docs/README.md](README.md) — documentation map
+- [json-schema-subset.md](json-schema-subset.md): authoring schemas with Zod
+- [config-schema.md](config-schema.md): `appConfig.schema`
+- [cli-program.md](cli-program.md): structured stdout, headless JSON, `read*Flags`
+- [mcp.md](mcp.md): `tools/list`, `structuredContent`
+- [bundled-docs.md](bundled-docs.md): `docs cli` / `docs cli-schema` docgen
+- [docs/README.md](README.md): documentation map

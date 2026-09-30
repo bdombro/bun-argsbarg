@@ -1,11 +1,11 @@
-import type { CliContext } from "../core/context.ts";
+import type { CommandContext } from "../core/context.ts";
 import { isInteractiveTty } from "../utils.ts";
 
 /** Minimal context for headless routing helpers. */
-export type HeadlessContext = Pick<CliContext, "invocation">;
+export type HeadlessContext = Pick<CommandContext, "invocation">;
 
 /** True when the handler was invoked via MCP or HTTP API. */
-function isToolInvocation(invocation: CliContext["invocation"]): boolean {
+function isToolInvocation(invocation: CommandContext["invocation"]): boolean {
   return invocation === "mcp" || invocation === "http";
 }
 

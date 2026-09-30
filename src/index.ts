@@ -4,12 +4,15 @@ It gathers the package surface in one place while the actual execution flow live
 focused files for parsing, help, validation, completion, and runtime dispatch.
 
 It gives consumers one stable import path without forcing them to know the internal
-module layout.
+module layout. It is the package's only entry point: every public type is exported here explicitly.
 */
 
+export type { SchemaExport } from "./builtins/export.ts";
+export type { AnyAppConfigSnapshot } from "./config/context.ts";
 export { displayAppConfigPath, resolveAppConfigPath } from "./config/file.ts";
-export type { CliLeafInputs } from "./core/context.ts";
-export { CliContext } from "./core/context.ts";
+export type { ResolvedConfig } from "./config/resolve.ts";
+export type { CommandInputs } from "./core/context.ts";
+export { CommandContext } from "./core/context.ts";
 export {
   parseCommaList,
   parseDate,
@@ -17,63 +20,82 @@ export {
   parseDurationMs,
 } from "./core/formats.ts";
 export {
-  LeafInputError,
+  InputError,
   parseDocumentText,
   preloadPipableJson,
   readJsonOptionValue,
 } from "./core/leaf-inputs.ts";
+export type { SchemaRootExport } from "./core/schema.ts";
 export type {
-  CliAppConfig,
-  CliAppConfigEntry,
-  CliAppConfigResolveContext,
-  CliAppConfigResolveFn,
-  CliConfigureConfig,
-  CliConfigureTargets,
-  CliDocsConfig,
-  CliDocsTopic,
+  AppConfig,
+  AppConfigEntry,
+  AppConfigResolveContext,
+  AppConfigResolveFn,
+  AppHooks,
+  AppSpec,
+  AppSpecFields,
+  CliExposureConfig,
   ClientErrorOverride,
-  CliHandler,
-  CliHttpServerConfig,
-  CliHttpWireContext,
-  CliHttpWireHooks,
-  CliInvocation,
-  CliInvokeHookResult,
-  CliLeafKind,
-  CliLocals,
-  CliLogConfig,
-  CliMcpBundleConfig,
-  CliMcpResource,
-  CliMcpServerConfig,
-  CliMcpSizeLimits,
-  CliMcpToolConfig,
-  CliMcpWireContext,
-  CliMcpWireHooks,
-  CliOption,
-  CliPositional,
-  CliProgram,
-  CliProgramHooks,
-  CliRespondBody,
-  CliRespondOptions,
-  CliSkillConfig,
+  Command,
+  CommandBase,
+  CommandDef,
+  CommandGroup,
+  CommandInputsOf,
+  CommandKind,
+  CommandOption,
+  CommandOptionInputs,
+  CommandOptionValueOf,
+  CommandPathParamsOf,
+  CommandPositional,
+  CommandPositionalInputs,
+  CommandResultOf,
+  CompletionConfig,
+  ConfigureConfig,
   ConfigureHookContext,
+  ConfigureTargets,
+  DocsConfig,
+  DocsTopic,
   ErrorHookContext,
+  HttpExposureConfig,
+  HttpMethod,
+  HttpResponseConfig,
+  HttpServerConfig,
+  HttpWireContext,
+  HttpWireHooks,
   InstallTargetSpec,
+  Invocation,
   InvokeFailureKind,
   InvokeHookContext,
+  InvokeHookResult,
+  JsonSchema,
+  Locals,
+  LogConfig,
+  McpBundleConfig,
+  McpResource,
+  McpServerConfig,
+  McpServerErrorsConfig,
+  McpSizeLimits,
+  McpToolConfig,
+  McpWireContext,
+  McpWireHooks,
   ReadinessContext,
   ResolvedInstallTarget,
+  RespondBody,
+  RespondOptions,
+  RunnableCommand,
   ServerRuntime,
   ServerState,
 } from "./core/types.ts";
 export {
-  CliFallbackMode,
-  CliOptionKind,
-  CliSchemaValidationError,
-  CliValueFormat,
-  isDocumentLeaf,
-  isJsonLeaf,
+  command,
+  FallbackMode,
+  isDocumentCommand,
+  OptionKind,
+  SchemaValidationError,
+  ValueFormat,
 } from "./core/types.ts";
-export { buildLeafInputSchema, leafWireOptions } from "./core/wire-schema.ts";
+export { schemaStrictnessWarnings } from "./core/validate.ts";
+export { buildCommandInputSchema, commandWireOptions } from "./core/wire-schema.ts";
 export type { HeadlessContext } from "./headless/routing.ts";
 export {
   formatDryRunMessage,
@@ -84,13 +106,30 @@ export {
   wantsExplicitJson,
 } from "./headless/routing.ts";
 export { generateOpenApi, openApiJson } from "./http/openapi.ts";
-export type { EcsLogEvent, LogEnrichContext } from "./log/ecs.ts";
+export { handleApiRequest, httpServeHttp, resolveHttpListenAddress } from "./http/server.ts";
+export type { EcsLogEvent, EcsLogLevel, EcsServiceFields, FormatEcsLineOpts, LogEnrichContext } from "./log/ecs.ts";
 export { ECS_VERSION, formatEcsLine } from "./log/ecs.ts";
+export type { LogEmitterOpts, ResolvedLogConfig } from "./log/emitter.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/bundle.ts";
+export {
+  defaultClaudePluginPaths,
+  generatePluginManifest,
+  generatePluginMcpJson,
+  packClaudePlugin,
+} from "./mcp/claude.ts";
+export {
+  defaultCursorPluginPaths,
+  generateCursorPluginManifest,
+  generateCursorPluginMcpJson,
+  packCursorPlugin,
+} from "./mcp/cursor.ts";
 export type { McpSizeReport, McpToolSize } from "./mcp/tools.ts";
 export { DEFAULT_MCP_SIZE_LIMITS, mcpSizeReport } from "./mcp/tools.ts";
 export { userHome } from "./paths/host.ts";
-export { Cli, type CliInvokeKind, type CliInvokeResult } from "./runtime/cli.ts";
+export type { Capabilities } from "./runtime/capabilities.ts";
+export { type App, argsbarg, type InvokeKind, type InvokeResult } from "./runtime/cli.ts";
 export { cliErrWithHelp } from "./runtime/cli-errors.ts";
+export type { ServerHandleContext } from "./server/context.ts";
+export type { ResolvedHttpServeConfig, ResolvedMcpServeConfig, ServeOverrides } from "./server/overrides.ts";
 export { isInteractiveTty } from "./utils.ts";

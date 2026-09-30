@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import { resolveInstallPaths } from "./paths.ts";
 import { printInstallStatus } from "./status.ts";
 import { resolveInstallTargetPreview } from "./target-scope.ts";
@@ -29,7 +29,7 @@ afterEach(() => {
 /** Tests for resolveInstallTargetPreview. */
 describe("resolveInstallTargetPreview", () => {
   test("mcp app includes agentsMcp in all scope when mcpServer enabled", () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "mcpapp",
       version: "1",
       description: "x",
@@ -44,11 +44,10 @@ describe("resolveInstallTargetPreview", () => {
   });
 
   test("skill app does not include skill in all scope (skill gen removed)", () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "cliapp",
       version: "1",
       description: "x",
-      skill: { enabled: true },
       handler: () => {},
     };
     const paths = resolveInstallPaths(program);
@@ -62,12 +61,11 @@ describe("resolveInstallTargetPreview", () => {
 /** Tests for printInstallStatus json. */
 describe("printInstallStatus json", () => {
   test("includes effective scopes", () => {
-    const program: CliProgram = {
+    const program: AppSpec = {
       key: "app",
       version: "1",
       description: "x",
       mcpServer: { enabled: true },
-      skill: { enabled: true },
       handler: () => {},
     };
     const chunks: string[] = [];

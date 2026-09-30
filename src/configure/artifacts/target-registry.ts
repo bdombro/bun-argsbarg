@@ -1,32 +1,30 @@
 import type { InstallTarget } from "./target-base.ts";
 import type { SkillInstallTarget } from "./target-skill.ts";
-import type { CliInstallArtifactKey, InstallActionKind } from "./target-types.ts";
+import type { InstallActionKind, InstallArtifactKey } from "./target-types.ts";
 import { INSTALL_TARGETS } from "./targets";
 
 export { INSTALL_TARGETS } from "./targets";
 
-export const INSTALL_ARTIFACT_KEYS: CliInstallArtifactKey[] = INSTALL_TARGETS.map((t) => t.key);
+export const INSTALL_ARTIFACT_KEYS: InstallArtifactKey[] = INSTALL_TARGETS.map((t) => t.key);
 
-export const SKILL_KEYS: CliInstallArtifactKey[] = INSTALL_TARGETS.filter((t) => t.category === "skill").map(
-  (t) => t.key,
-);
+export const SKILL_KEYS: InstallArtifactKey[] = INSTALL_TARGETS.filter((t) => t.category === "skill").map((t) => t.key);
 
-export const MCP_KEYS: CliInstallArtifactKey[] = INSTALL_TARGETS.filter((t) => t.category === "mcp").map((t) => t.key);
+export const MCP_KEYS: InstallArtifactKey[] = INSTALL_TARGETS.filter((t) => t.category === "mcp").map((t) => t.key);
 
 /** Maps plan action kinds to install.targets artifact keys. */
-export const ACTION_KIND_TO_ARTIFACT: Record<InstallActionKind, CliInstallArtifactKey> = Object.fromEntries(
+export const ACTION_KIND_TO_ARTIFACT: Record<InstallActionKind, InstallArtifactKey> = Object.fromEntries(
   INSTALL_TARGETS.map((t) => [t.actionKind, t.key]),
-) as Record<InstallActionKind, CliInstallArtifactKey>;
+) as Record<InstallActionKind, InstallArtifactKey>;
 
 const targetByKey = new Map(INSTALL_TARGETS.map((t) => [t.key, t]));
 
 /** Lookup a registered install target by artifact key. */
-export function installTargetForKey(key: CliInstallArtifactKey): InstallTarget | undefined {
+export function installTargetForKey(key: InstallArtifactKey): InstallTarget | undefined {
   return targetByKey.get(key);
 }
 
 /** True when the artifact key is an MCP install target (requires mcpServer.enabled). */
-export function isMcpArtifactKey(key: CliInstallArtifactKey): boolean {
+export function isMcpArtifactKey(key: InstallArtifactKey): boolean {
   return installTargetForKey(key)?.category === "mcp";
 }
 
@@ -35,7 +33,7 @@ export function isMcpArtifactKey(key: CliInstallArtifactKey): boolean {
  * Defaults: artifactDefaults in target-effective.ts.
  * Explicit spec rejection: validateConfigureConfig in validate.ts.
  */
-export function mcpServerRequiredForArtifact(key: CliInstallArtifactKey, mcpServerEnabled: boolean): boolean {
+export function mcpServerRequiredForArtifact(key: InstallArtifactKey, mcpServerEnabled: boolean): boolean {
   return !isMcpArtifactKey(key) || mcpServerEnabled;
 }
 

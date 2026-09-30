@@ -3,10 +3,10 @@ This module generates the MCP routing skill (SKILL.md) for Claude Code plugin zi
 */
 
 import { defaultConfigEntryTitle } from "../config/entry.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import {
   collectMcpTools,
-  leafWireOptions,
+  commandWireOptions,
   mcpServerId,
   resolveMcpSchemaUri,
   sanitizeToolSegment,
@@ -27,7 +27,7 @@ function truncate(text: string, maxLen: number): string {
 }
 
 /** Builds MCP-oriented skill description for Claude plugin YAML frontmatter. */
-function pluginSkillDescription(root: CliProgram): string {
+function pluginSkillDescription(root: AppSpec): string {
   const tools = collectMcpTools(root);
   const paths = tools.map((t) => (t.path.length > 0 ? t.path.join(" ") : root.key));
   const sample = paths.slice(0, 5).join(", ");
@@ -37,7 +37,7 @@ function pluginSkillDescription(root: CliProgram): string {
 }
 
 /** Builds configuration section lines for YAML and markdown. */
-function buildConfigurationSection(root: CliProgram): string[] {
+function buildConfigurationSection(root: AppSpec): string[] {
   if (!root.appConfig || Object.keys(root.appConfig.entries).length === 0) {
     return [];
   }
@@ -56,7 +56,7 @@ function buildConfigurationSection(root: CliProgram): string[] {
 }
 
 /** Builds SKILL.md for Claude Code plugin zips (MCP routing only). */
-function buildPluginSkillMd(root: CliProgram, dirName: string): string {
+function buildPluginSkillMd(root: AppSpec, dirName: string): string {
   const lines: string[] = [
     "---",
     `name: ${dirName}`,
@@ -84,7 +84,7 @@ function buildPluginSkillMd(root: CliProgram, dirName: string): string {
     for (const tool of tools) {
       const toolName = sanitizeToolSegment(tool.path.join("_"));
       const desc = tool.leaf.description;
-      const wire = leafWireOptions(tool.leaf);
+      const wire = commandWireOptions(tool.leaf);
       const flags = wire.length > 0 ? ` (flags: ${wire.map((o) => `--${o.name}`).join(", ")})` : "";
       lines.push(`- \`${toolName}\` — ${desc}${flags}`);
     }
@@ -104,7 +104,7 @@ function buildPluginSkillMd(root: CliProgram, dirName: string): string {
 }
 
 /** Generates MCP routing SKILL.md for Claude Code plugin zips. */
-export function generatePluginSkillBundle(root: CliProgram): PluginSkillBundle {
+export function generatePluginSkillBundle(root: AppSpec): PluginSkillBundle {
   const dirName = sanitizeToolSegment(root.key);
   return {
     dirName,

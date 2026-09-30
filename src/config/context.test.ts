@@ -6,12 +6,12 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { createAppConfigSnapshot } from "./context.ts";
 import { resolveAppConfigDir, resolveAppConfigPath } from "./file.ts";
 import { resolveAppConfig } from "./resolve.ts";
 
-const program: CliProgram = {
+const program: AppSpec = {
   key: "ctx-test",
   version: "1.0.0",
   description: "Context test.",
@@ -56,9 +56,9 @@ describe("config/context", () => {
     }
   });
 
-  /** Tests that EmptyAppConfigSnapshot when program.appConfig unset. */
-  test("EmptyAppConfigSnapshot when program.appConfig unset", () => {
-    const programWithoutConfig: CliProgram = {
+  /** Tests that EmptyAppConfigSnapshot when appConfig unset. */
+  test("EmptyAppConfigSnapshot when appConfig unset", () => {
+    const programWithoutConfig: AppSpec = {
       key: "x",
       version: "1.0.0",
       description: "No config.",
@@ -66,7 +66,7 @@ describe("config/context", () => {
     };
     const empty = createAppConfigSnapshot(programWithoutConfig, {}, {});
     expect(empty.get("any")).toBeUndefined();
-    expect(() => empty.set("any", "v")).toThrow(/program.appConfig is not set/);
+    expect(() => empty.set("any", "v")).toThrow(/appConfig is not set/);
     expect(empty.path).toContain("x");
     expect(empty.path.endsWith("/config.json") || empty.path.endsWith("\\config.json")).toBe(true);
     expect(empty.dir).toBe(dirname(empty.path));
@@ -108,7 +108,7 @@ describe("config/context", () => {
     const prevTestHome = process.env.TEST_USER_HOME;
     process.env.TEST_USER_HOME = dir;
     try {
-      const programWithoutConfig: CliProgram = {
+      const programWithoutConfig: AppSpec = {
         key: "rawapp",
         version: "1.0.0",
         description: "No config.",

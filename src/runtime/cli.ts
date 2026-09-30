@@ -4,29 +4,34 @@ Runtime entry point: validate program, cache derived state, run / invoke / MCP s
 
 import { randomUUID } from "node:crypto";
 import { format } from "node:util";
+import type { z } from "zod";
 import { builtinInterceptRoot, dispatchBuiltin } from "../builtins/dispatch.ts";
 import { cliParseRoot, cliPresentationRoot } from "../builtins/presentation.ts";
 import { bootstrapAppConfig, type EnsureAppConfigOpts, ensureAppConfig } from "../config/bootstrap.ts";
 import { type AnyAppConfigSnapshot, createAppConfigSnapshot } from "../config/context.ts";
 import { readAppConfigFileRaw, resolveAppConfigPath } from "../config/file.ts";
 import { effectiveJsonSchema } from "../config/schema.ts";
-import { CliContext } from "../core/context.ts";
-import { LeafInputError, preloadPipableJson } from "../core/leaf-inputs.ts";
+import { CommandContext } from "../core/context.ts";
+import { InputError, preloadPipableJson } from "../core/leaf-inputs.ts";
 import { ParseKind, type ParseResult, parse, postParseValidate } from "../core/parse.ts";
-import { type CliSchemaRootExport, cliSchemaExport } from "../core/schema.ts";
+import { type SchemaRootExport, schemaExport } from "../core/schema.ts";
 import type {
-  CliHandler,
-  CliInvocation,
-  CliLeaf,
-  CliLocals,
-  CliNode,
-  CliProgram,
-  CliRespondOptions,
-  CliRouter,
+  AppSpec,
+  AppSpecFields,
+  Command,
+  CommandDef,
+  CommandGroup,
+  CommandOption,
+  CommandPositional,
+  Invocation,
   InvokeFailureKind,
+  JsonSchema,
+  Locals,
+  RespondOptions,
+  RunnableCommand,
 } from "../core/types.ts";
-import { isCliLeaf, isCliRouter } from "../core/types.ts";
-import { cliValidateProgram } from "../core/validate.ts";
+import { hasHandler, hasSubcommands } from "../core/types.ts";
+import { cliValidateProgram, schemaStrictnessWarnings } from "../core/validate.ts";
 import { cliHelpRender } from "../help.ts";
 import { isBuiltinInvokePath } from "../hooks/builtin.ts";
 import { buildInvokeHookContext, classifyFailureKind, runErrorPipeline, runHook } from "../hooks/run.ts";
@@ -39,17 +44,17 @@ import { createServerRuntime, type ServerHandleContext } from "../server/context
 import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
 import {
   assertBuiltinAllowed,
-  type CliCapabilities,
+  type Capabilities,
   resolveCapabilities,
   skipsRequiredAppConfigExit,
 } from "./capabilities.ts";
 
 /** Outcome of a non-exiting CLI invocation. */
-export type CliInvokeKind = "ok" | "help" | "error";
+export type InvokeKind = "ok" | "help" | "error";
 
-/** Result of Cli.invoke: captured output and exit metadata without process.exit. */
-export interface CliInvokeResult {
-  kind: CliInvokeKind;
+/** Result of App.invoke: captured output and exit metadata without process.exit. */
+export interface InvokeResult {
+  kind: InvokeKind;
   exitCode: number;
   stdout: string;
   stderr: string;
@@ -57,7 +62,7 @@ export interface CliInvokeResult {
   /** Classified failure for HTTP/MCP status mapping. */
   failureKind?: InvokeFailureKind;
   /** Headless response payload when invocation is `api` or `mcp` and the handler succeeded. */
-  response?: CliRespondOptions;
+  response?: RespondOptions;
 }
 
 class CliInvokeExit extends Error {
@@ -72,26 +77,55 @@ class CliInvokeExit extends Error {
 
 interface PreparedDispatch {
   pr: ParseResult;
-  parseRoot: CliNode;
-  completionParseRoot: CliRouter;
+  parseRoot: Command;
+  completionParseRoot: CommandGroup;
   isLeafCompletionIntercept: boolean;
-  leaf: CliLeaf & { handler: CliHandler };
+  leaf: RunnableCommand;
 }
 
-/** Argsbarg runtime for a validated, frozen {@link CliProgram}. */
-export class Cli {
-  readonly program: CliProgram;
-  readonly caps: CliCapabilities;
-  private readonly parseRootMerged: CliRouter;
-  private readonly presentationRoot: CliRouter;
+/**
+ * Builds an argsbarg app: validates and freezes the spec, then returns the runtime (`await app.run()`).
+ * A runnable root (`handler`) gets `ctx.inputs` typed from its `inputSchema` or `options` / `positionals`, like
+ * {@link command}.
+ */
+export function argsbarg<const T extends CommandGroup & AppSpecFields>(
+  /** Spec whose root groups commands. */
+  spec: T,
+): App;
+export function argsbarg<
+  I extends z.ZodType | undefined = undefined,
+  O extends z.ZodType | undefined = undefined,
+  const Opts extends readonly CommandOption[] = [],
+  const Pos extends readonly CommandPositional[] = [],
+>(
+  /** Spec whose root runs a handler (a one-command CLI). */
+  spec: CommandDef<I, O, undefined, Opts, Pos> & AppSpecFields,
+): App;
+export function argsbarg(
+  /** Already-typed app spec. */
+  spec: AppSpec,
+): App;
+export function argsbarg(
+  /** App spec. */
+  spec: AppSpec,
+): App {
+  return new App(spec);
+}
+
+/** Argsbarg runtime for a validated, frozen {@link AppSpec}. */
+export class App {
+  readonly spec: AppSpec;
+  readonly caps: Capabilities;
+  private readonly parseRootMerged: CommandGroup;
+  private readonly presentationRoot: CommandGroup;
   private _appConfig?: AnyAppConfigSnapshot;
   /** Active HTTP/MCP server handle (set during serve). */
   server?: ServerHandleContext;
 
-  constructor(program: CliProgram) {
+  constructor(program: AppSpec) {
     cliValidateProgram(program);
     Object.freeze(program);
-    this.program = program;
+    this.spec = program;
     this.caps = resolveCapabilities(program);
     this.parseRootMerged = cliParseRoot(program);
     this.presentationRoot = cliPresentationRoot(program);
@@ -107,12 +141,12 @@ export class Cli {
     return this._appConfig;
   }
 
-  exportCommandSchema(): CliSchemaRootExport {
-    return cliSchemaExport(this.program);
+  exportCommandSchema(): SchemaRootExport {
+    return schemaExport(this.spec);
   }
 
-  exportAppConfigSchema(): Record<string, unknown> | undefined {
-    return effectiveJsonSchema(this.program);
+  exportAppConfigSchema(): JsonSchema | undefined {
+    return effectiveJsonSchema(this.spec);
   }
 
   async run(argv: string[] = process.argv.slice(2)): Promise<never> {
@@ -134,7 +168,7 @@ export class Cli {
     const { pr, completionParseRoot, isLeafCompletionIntercept, leaf } = prep;
 
     if (pr.kind === ParseKind.Ok) {
-      await dispatchBuiltin(this.program, pr, {
+      await dispatchBuiltin(this.spec, pr, {
         isLeafCompletionIntercept,
         parseRoot: completionParseRoot,
       });
@@ -148,9 +182,9 @@ export class Cli {
 
     let preloadedJson: Record<string, unknown> = {};
     try {
-      preloadedJson = await preloadPipableJson(this.program, pr.path, pr.opts, "cli", pr.args);
+      preloadedJson = await preloadPipableJson(this.spec, pr.path, pr.opts, "cli", pr.args);
     } catch (err) {
-      if (err instanceof LeafInputError) {
+      if (err instanceof InputError) {
         this.exitLeafInputError(err, pr.path);
       }
       const msg = err instanceof Error ? err.message : String(err);
@@ -159,28 +193,28 @@ export class Cli {
       process.exit(1);
     }
 
-    const ctx = new CliContext(
-      this.program.key,
+    const ctx = new CommandContext(
+      this.spec.key,
       pr.path,
       pr.args,
       pr.opts,
-      this.program,
+      this.spec,
       "cli",
       snapshot,
       undefined,
       preloadedJson,
       pr.pathParams,
-      { requestId: randomUUID() } as CliLocals,
+      { requestId: randomUUID() } as Locals,
     );
     try {
       this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {
-        ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
+        ctx.respond({ body: handlerResult as RespondOptions["body"] });
       }
       process.exit(0);
     } catch (err) {
-      if (err instanceof LeafInputError) {
+      if (err instanceof InputError) {
         this.exitLeafInputError(err, pr.path);
       }
       if (err instanceof Error) {
@@ -193,13 +227,13 @@ export class Cli {
   async invoke(
     argv: string[],
     opts?: {
-      invocation?: CliInvocation;
+      invocation?: Invocation;
       toolArgs?: Record<string, unknown>;
       requestId?: string;
       http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
       mcp?: { rpcMethod: string; toolName?: string; requestId: string };
     },
-  ): Promise<CliInvokeResult> {
+  ): Promise<InvokeResult> {
     const invocation = opts?.invocation ?? "mcp";
     const prep = this.prepareDispatch(argv, { presentationFallback: true });
     if ("error" in prep) {
@@ -231,28 +265,28 @@ export class Cli {
 
     const runtime = this.server?.runtime;
     const requestId = opts?.requestId ?? opts?.http?.requestId ?? opts?.mcp?.requestId ?? randomUUID();
-    const ctx = new CliContext(
-      this.program.key,
+    const ctx = new CommandContext(
+      this.spec.key,
       pr.path,
       pr.args,
       pr.opts,
-      this.program,
+      this.spec,
       invocation,
       snapshot,
       opts?.toolArgs,
       {},
       pr.pathParams,
-      { requestId } as CliLocals,
+      { requestId } as Locals,
       runtime,
     );
 
     const skipHooks = isBuiltinInvokePath(pr.path);
-    const hooks = this.program.hooks;
+    const hooks = this.spec.hooks;
     const obscureUnexpected =
       invocation === "http"
-        ? (this.server?.http?.obscureUnexpected ?? this.program.httpServer?.errors?.obscureUnexpected ?? false)
+        ? (this.server?.http?.obscureUnexpected ?? this.spec.httpServer?.errors?.obscureUnexpected ?? false)
         : invocation === "mcp"
-          ? (this.server?.mcp?.obscureUnexpected ?? this.program.mcpServer?.errors?.obscureUnexpected ?? false)
+          ? (this.server?.mcp?.obscureUnexpected ?? this.spec.mcpServer?.errors?.obscureUnexpected ?? false)
           : false;
     const emitter = this.server?.emitter;
 
@@ -310,7 +344,7 @@ export class Cli {
     const finishError = async (
       err: unknown,
       kindOpts: Parameters<typeof classifyFailureKind>[1],
-    ): Promise<CliInvokeResult> => {
+    ): Promise<InvokeResult> => {
       const failureKind = classifyFailureKind(err, kindOpts);
       if (!skipHooks) {
         const piped = await runErrorPipeline(hookCtx(), err, failureKind, hooks, emitter, obscureUnexpected);
@@ -336,7 +370,7 @@ export class Cli {
 
     try {
       if (pr.kind === ParseKind.Ok) {
-        await dispatchBuiltin(this.program, pr, {
+        await dispatchBuiltin(this.spec, pr, {
           isLeafCompletionIntercept,
           parseRoot: completionParseRoot,
         });
@@ -349,11 +383,11 @@ export class Cli {
       this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {
-        ctx.respond({ body: handlerResult as CliRespondOptions["body"] });
+        ctx.respond({ body: handlerResult as RespondOptions["body"] });
       }
 
       const response = ctx.getResponse();
-      const okResult: CliInvokeResult = {
+      const okResult: InvokeResult = {
         kind: "ok",
         exitCode: 0,
         stdout,
@@ -370,7 +404,7 @@ export class Cli {
       if (err instanceof CliInvokeExit) {
         if (err.code === 0) {
           const response = ctx.getResponse();
-          const okResult: CliInvokeResult = {
+          const okResult: InvokeResult = {
             kind: "ok",
             exitCode: 0,
             stdout,
@@ -384,7 +418,7 @@ export class Cli {
         }
         return finishError(err, {});
       }
-      if (err instanceof LeafInputError) {
+      if (err instanceof InputError) {
         return finishError(err, { parseError: true });
       }
       if (err instanceof Error) {
@@ -404,30 +438,33 @@ export class Cli {
 
   async serveMcp(overrides: ServeOverrides = {}): Promise<never> {
     try {
-      if (this.program.mcpServer) {
-        bootstrapMcpEnv(this.program.mcpServer);
+      if (this.spec.mcpServer) {
+        bootstrapMcpEnv(this.spec.mcpServer);
       }
-      const resolved = resolveMcpServeConfig(this.program, overrides);
-      const runtime = createServerRuntime(this.program, "mcp");
-      const emitter = new LogEmitter({ program: this.program, resolved: resolved.log });
+      const resolved = resolveMcpServeConfig(this.spec, overrides);
+      const runtime = createServerRuntime(this.spec, "mcp");
+      const emitter = new LogEmitter({ spec: this.spec, resolved: resolved.log });
       this.server = {
         runtime,
         emitter,
         mcp: resolved,
-        mcpHooks: this.program.mcpServer?.hooks,
+        mcpHooks: this.spec.mcpServer?.hooks,
         mcpProtocolVersion: MCP_PROTOCOL_VERSIONS[0],
       };
-      bootstrapAppConfig(this.program, { validateFile: "soft", runtime, emitter });
+      bootstrapAppConfig(this.spec, { validateFile: "soft", runtime, emitter });
       const shutdown = () => {
         emitter.emit({ level: "info", message: "server stopping", action: "server.stop" });
         process.exit(0);
       };
       process.once("SIGINT", shutdown);
       process.once("SIGTERM", shutdown);
-      for (const message of mcpSizeReport(this.program).warnings) {
+      for (const message of mcpSizeReport(this.spec).warnings) {
         emitter.emit({ level: "warn", message, action: "mcp.size" });
       }
-      emitter.emitLifecycle(`${this.program.key} ${this.program.version} — MCP ready (stdio)`, "mcp.server.ready");
+      for (const message of schemaStrictnessWarnings(this.spec)) {
+        emitter.emit({ level: "warn", message, action: "schema.strictness" });
+      }
+      emitter.emitLifecycle(`${this.spec.key} ${this.spec.version} — MCP ready (stdio)`, "mcp.server.ready");
       await mcpServeStdioLoop(this);
       process.exit(0);
     } catch (err) {
@@ -442,16 +479,16 @@ export class Cli {
 
   async serveHttp(overrides: ServeOverrides = {}): Promise<never> {
     try {
-      const resolved = resolveHttpServeConfig(this.program, overrides);
-      const runtime = createServerRuntime(this.program, "http");
-      const emitter = new LogEmitter({ program: this.program, resolved: resolved.log });
+      const resolved = resolveHttpServeConfig(this.spec, overrides);
+      const runtime = createServerRuntime(this.spec, "http");
+      const emitter = new LogEmitter({ spec: this.spec, resolved: resolved.log });
       this.server = {
         runtime,
         emitter,
         http: resolved,
-        httpHooks: this.program.httpServer?.hooks,
+        httpHooks: this.spec.httpServer?.hooks,
       };
-      bootstrapAppConfig(this.program, { validateFile: "soft", runtime, emitter });
+      bootstrapAppConfig(this.spec, { validateFile: "soft", runtime, emitter });
       const shutdown = () => {
         emitter.emit({ level: "info", message: "server stopping", action: "server.stop" });
         process.exit(0);
@@ -470,14 +507,16 @@ export class Cli {
     }
   }
 
-  private ensureValidatedLeafInputs(ctx: CliContext, leaf: CliLeaf): void {
-    if (leaf.inputSchema === undefined) {
-      return;
+  private ensureValidatedLeafInputs(ctx: CommandContext, leaf: RunnableCommand): void {
+    if (leaf.pathParams !== undefined) {
+      ctx.pathParams;
     }
-    ctx.inputs;
+    if (leaf.inputSchema !== undefined) {
+      ctx.inputs;
+    }
   }
 
-  private exitLeafInputError(err: LeafInputError, helpPath: string[]): never {
+  private exitLeafInputError(err: InputError, helpPath: string[]): never {
     const color = process.stderr.isTTY;
     const msg = color ? `\u001B[31m${err.message}\u001B[0m` : err.message;
     process.stderr.write(`${msg}\n`);
@@ -489,16 +528,16 @@ export class Cli {
     argv: string[],
     opts?: { presentationFallback?: boolean },
   ): PreparedDispatch | { error: ParseResult } {
-    const program = this.program;
-    let parseRoot: CliNode;
-    let completionParseRoot: CliRouter = opts?.presentationFallback ? this.presentationRoot : this.parseRootMerged;
+    const program = this.spec;
+    let parseRoot: Command;
+    let completionParseRoot: CommandGroup = opts?.presentationFallback ? this.presentationRoot : this.parseRootMerged;
     let isLeafCompletionIntercept = false;
 
-    if (isCliLeaf(program)) {
+    if (hasHandler(program)) {
       const intercept = builtinInterceptRoot(program, argv);
       if (intercept.isLeafCompletionIntercept || intercept.parseRoot !== program) {
         parseRoot = intercept.parseRoot;
-        completionParseRoot = isCliRouter(intercept.parseRoot)
+        completionParseRoot = hasSubcommands(intercept.parseRoot)
           ? intercept.parseRoot
           : opts?.presentationFallback
             ? this.presentationRoot
@@ -518,9 +557,9 @@ export class Cli {
       return { error: pr };
     }
 
-    let current: CliNode = parseRoot;
+    let current: Command = parseRoot;
     for (const seg of pr.path) {
-      if (!isCliRouter(current)) {
+      if (!hasSubcommands(current)) {
         const msg = "Internal error: missing handler for path.";
         return {
           error: {
@@ -556,7 +595,7 @@ export class Cli {
       current = ch;
     }
 
-    if (!isCliLeaf(current) || !current.handler) {
+    if (!hasHandler(current) || !current.handler) {
       const msg = "Internal error: missing handler for path.";
       return {
         error: {
@@ -583,10 +622,10 @@ export class Cli {
   }
 
   private buildAppConfigSnapshot(opts: EnsureAppConfigOpts): AnyAppConfigSnapshot {
-    const bootstrap = ensureAppConfig(this.program, opts);
+    const bootstrap = ensureAppConfig(this.spec, opts);
     const snapshot = bootstrap
-      ? createAppConfigSnapshot(this.program, bootstrap.fileData, bootstrap.resolved)
-      : createAppConfigSnapshot(this.program, readAppConfigFileRaw(resolveAppConfigPath(this.program)), {});
+      ? createAppConfigSnapshot(this.spec, bootstrap.fileData, bootstrap.resolved)
+      : createAppConfigSnapshot(this.spec, readAppConfigFileRaw(resolveAppConfigPath(this.spec)), {});
     this._appConfig = snapshot;
     return snapshot;
   }

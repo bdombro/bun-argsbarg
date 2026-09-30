@@ -12,24 +12,24 @@ import {
 } from "../config/entry.ts";
 import { writeAppConfigFile } from "../config/file.ts";
 import { captureMappedHostEnv, exportConfigToEnv, resolveAppConfig } from "../config/resolve.ts";
-import { configPropertySchema, effectiveJsonSchema } from "../config/schema.ts";
+import { configKeySchema, configPropertySchema, effectiveJsonSchema } from "../config/schema.ts";
 import { parseConfigSetValue } from "../config/validate.ts";
-import type { CliLeaf, CliOption, CliProgram } from "../core/types.ts";
-import { CliOptionKind } from "../core/types.ts";
+import type { AppSpec, CommandOption, RunnableCommand } from "../core/types.ts";
+import { OptionKind } from "../core/types.ts";
 
-const JSON_OPTION: CliOption = {
+const JSON_OPTION: CommandOption = {
   name: "json",
   description: "Emit JSON (compact).",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
 };
 
-const PRETTY_OPTION: CliOption = {
+const PRETTY_OPTION: CommandOption = {
   name: "pretty",
   description: "Pretty-print JSON (requires --json).",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
 };
 
-function configGetOutput(program: CliProgram, key: string | undefined, json: boolean, pretty: boolean): void {
+function configGetOutput(program: AppSpec, key: string | undefined, json: boolean, pretty: boolean): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return;
@@ -102,13 +102,13 @@ function configGetOutput(program: CliProgram, key: string | undefined, json: boo
   }
 }
 
-const FROM_ENV_OPTION: CliOption = {
+const FROM_ENV_OPTION: CommandOption = {
   name: "from-env",
   description: "Bind this key to its mapped environment variable (no literal value stored).",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
 };
 
-function configSetFromEnv(program: CliProgram, key: string): void {
+function configSetFromEnv(program: AppSpec, key: string): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return;
@@ -127,7 +127,7 @@ function configSetFromEnv(program: CliProgram, key: string): void {
   exportConfigToEnv(program, resolved, hostEnv);
 }
 
-function configSetRun(program: CliProgram, key: string, rawValue: string, useJson: boolean): void {
+function configSetRun(program: AppSpec, key: string, rawValue: string, useJson: boolean): void {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return;
@@ -147,7 +147,7 @@ function configSetRun(program: CliProgram, key: string, rawValue: string, useJso
   const propSchema = configPropertySchema(jsonSchema, key);
   let parsed: unknown;
   try {
-    parsed = parseConfigSetValue(rawValue, propSchema, jsonSchema, useJson);
+    parsed = parseConfigSetValue(rawValue, propSchema, jsonSchema, useJson, configKeySchema(program, key));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     process.stderr.write(`${msg}\n`);
@@ -162,7 +162,7 @@ function configSetRun(program: CliProgram, key: string, rawValue: string, useJso
   exportConfigToEnv(program, resolved, hostEnv);
 }
 
-function configGetLeaf(program: CliProgram): CliLeaf {
+function configGetLeaf(program: AppSpec): RunnableCommand {
   return {
     key: "get",
     description: "Print resolved configuration value(s).",
@@ -171,7 +171,7 @@ function configGetLeaf(program: CliProgram): CliLeaf {
       {
         name: "key",
         description: "Schema key to read (omit for all keys).",
-        kind: CliOptionKind.String,
+        kind: OptionKind.String,
         argMin: 0,
         argMax: 1,
       },
@@ -183,7 +183,7 @@ function configGetLeaf(program: CliProgram): CliLeaf {
   };
 }
 
-function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
+function configSetLeaf(program: AppSpec, mcpSetEnabled: boolean): RunnableCommand {
   return {
     key: "set",
     description: "Write one configuration key to the config file.",
@@ -193,7 +193,7 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
       {
         name: "key",
         description: "Schema key to write.",
-        kind: CliOptionKind.String,
+        kind: OptionKind.String,
         argMin: 1,
         argMax: 1,
       },
@@ -201,7 +201,7 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
         name: "value",
         description:
           "Value to store (comma-separated or JSON for primitive arrays; --json for objects and nested arrays).",
-        kind: CliOptionKind.String,
+        kind: OptionKind.String,
         argMin: 0,
         argMax: 1,
       },
@@ -237,11 +237,11 @@ function configSetLeaf(program: CliProgram, mcpSetEnabled: boolean): CliLeaf {
 
 /** `configure get` / `configure set` leaves when app config commands are enabled. */
 export function configureConfigSubcommands(
-  program: CliProgram,
+  program: AppSpec,
   mcpSetEnabled = configMcpSetEnabled(program),
-): CliLeaf[] {
+): RunnableCommand[] {
   if (!program.appConfig) {
-    throw new Error("configure config subcommands require program.appConfig");
+    throw new Error("configure config subcommands require appConfig");
   }
   return [configGetLeaf(program), configSetLeaf(program, mcpSetEnabled)];
 }

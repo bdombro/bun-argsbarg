@@ -3,8 +3,9 @@ Help rendering and label formatting tests.
 */
 
 import { describe, expect, test } from "bun:test";
+import { z } from "zod";
 import { cliPresentationRoot } from "./builtins/presentation.ts";
-import { type CliOption, CliOptionKind, type CliPositional } from "./core/types.ts";
+import { type CommandOption, type CommandPositional, OptionKind } from "./core/types.ts";
 import {
   CLI_NOTES_PROGRAM,
   cliHelpRender,
@@ -20,7 +21,7 @@ describe("cliOptionLabel", () => {
   test.each([
     {
       name: "string option",
-      option: { name: "out", description: "Output path.", kind: CliOptionKind.String },
+      option: { name: "out", description: "Output path.", kind: OptionKind.String },
       expected: "--out <string>",
     },
     {
@@ -28,7 +29,7 @@ describe("cliOptionLabel", () => {
       option: {
         name: "format",
         description: "Format.",
-        kind: CliOptionKind.Enum,
+        kind: OptionKind.Enum,
         choices: ["pdf", "html"],
         required: true,
       },
@@ -39,18 +40,18 @@ describe("cliOptionLabel", () => {
       option: {
         name: "verbose",
         description: "Verbose.",
-        kind: CliOptionKind.Presence,
+        kind: OptionKind.Presence,
         shortName: "v",
       },
       expected: "--verbose, -v",
     },
     {
       name: "json option",
-      option: { name: "body", description: "JSON body.", kind: CliOptionKind.Json },
+      option: { name: "body", description: "JSON body.", kind: OptionKind.Json },
       expected: "--body <json>",
     },
   ])("$name", ({ option, expected }) => {
-    expect(cliOptionLabel(option as CliOption, false)).toBe(expected);
+    expect(cliOptionLabel(option as CommandOption, false)).toBe(expected);
   });
 });
 
@@ -61,7 +62,7 @@ describe("cliPositionalLabel", () => {
     { positional: { name: "paths", description: "Paths.", argMax: 0 }, expected: "<paths...>" },
     { positional: { name: "paths", description: "Paths.", argMin: 0, argMax: 0 }, expected: "[paths...]" },
   ])("$expected", ({ positional, expected }) => {
-    expect(cliPositionalLabel(positional as CliPositional, false)).toBe(expected);
+    expect(cliPositionalLabel(positional as CommandPositional, false)).toBe(expected);
   });
 });
 
@@ -172,7 +173,7 @@ describe("cliHelpRender", () => {
               name: "verbose",
               shortName: "v",
               description: "Verbose output.",
-              kind: CliOptionKind.Presence,
+              kind: OptionKind.Presence,
             },
           ],
           handler: () => {},
@@ -197,13 +198,7 @@ describe("cliHelpRender", () => {
         {
           key: "status",
           description: "Show status.",
-          outputSchema: {
-            type: "object",
-            properties: {
-              version: { type: "string", description: "App version." },
-            },
-            required: ["version"],
-          },
+          outputSchema: z.object({ version: z.string().describe("App version.") }),
           handler: () => {},
         },
       ],
@@ -260,13 +255,7 @@ describe("cliHelpRender", () => {
         {
           key: "status",
           description: "Show status.",
-          outputSchema: {
-            type: "object",
-            properties: {
-              version: { type: "string", description: "App version." },
-            },
-            required: ["version"],
-          },
+          outputSchema: z.object({ version: z.string().describe("App version.") }),
           handler: () => {},
         },
       ],
@@ -277,8 +266,8 @@ describe("cliHelpRender", () => {
     expect(help).toContain("version: string");
   });
 
-  /** Tests that json leaf commands render Output Schema (JSON) and Input Schema. */
-  test("json leaf renders Output Schema (JSON) and Input Schema in non-TTY mode", () => {
+  /** Tests that json commands with a handler render Output Schema (JSON) and Input Schema. */
+  test("document leaf renders Output Schema (JSON) and Input Schema in non-TTY mode", () => {
     const root = testProgram({
       key: "myapp",
       version: "1.0.0",
@@ -286,22 +275,10 @@ describe("cliHelpRender", () => {
       commands: [
         {
           key: "create",
-          kind: "json",
+          kind: "document",
           description: "Create resource.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              name: { type: "string", description: "Resource name." },
-            },
-            required: ["name"],
-          },
-          outputSchema: {
-            type: "object",
-            properties: {
-              id: { type: "string", description: "Generated ID." },
-            },
-            required: ["id"],
-          },
+          inputSchema: z.object({ name: z.string().describe("Resource name.") }),
+          outputSchema: z.object({ id: z.string().describe("Generated ID.") }),
           handler: () => {},
         },
       ],
@@ -315,7 +292,7 @@ describe("cliHelpRender", () => {
     expect(help).toContain("id: string");
   });
 
-  /** Tests that document leaf commands render [DOCUMENT] usage and schema sections. */
+  /** Tests that document commands with a handler render [DOCUMENT] usage and schema sections. */
   test("document leaf renders [DOCUMENT] usage and schemas in non-TTY mode", () => {
     const root = testProgram({
       key: "myapp",
@@ -326,20 +303,8 @@ describe("cliHelpRender", () => {
           key: "deploy",
           kind: "document",
           description: "Deploy from document.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              target: { type: "string", description: "Deployment target." },
-            },
-            required: ["target"],
-          },
-          outputSchema: {
-            type: "object",
-            properties: {
-              url: { type: "string", description: "Deployment URL." },
-            },
-            required: ["url"],
-          },
+          inputSchema: z.object({ target: z.string().describe("Deployment target.") }),
+          outputSchema: z.object({ url: z.string().describe("Deployment URL.") }),
           handler: () => {},
         },
       ],

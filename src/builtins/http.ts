@@ -1,38 +1,38 @@
 import {
-  CliFallbackMode,
-  type CliLeaf,
-  type CliOption,
-  CliOptionKind,
-  type CliProgram,
-  type CliRouter,
+  type AppSpec,
+  type CommandGroup,
+  type CommandOption,
+  FallbackMode,
+  OptionKind,
+  type RunnableCommand,
 } from "../core/types.ts";
 import { docsEnabled } from "../docs/resolve.ts";
 import { httpUserPathGlob, resolveHttpPathPrefix } from "../http/paths.ts";
 import { resolveHttpListenAddress } from "../http/server.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 
-const HTTP_SERVE_OPTIONS: CliOption[] = [
-  { name: "host", description: "Listen host.", kind: CliOptionKind.String },
-  { name: "port", description: "Listen port.", kind: CliOptionKind.Number },
-  { name: "trust-proxy", description: "Honor X-Forwarded-For for client IP.", kind: CliOptionKind.Presence },
-  { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: CliOptionKind.Presence },
+const HTTP_SERVE_OPTIONS: readonly CommandOption[] = [
+  { name: "host", description: "Listen host.", kind: OptionKind.String },
+  { name: "port", description: "Listen port.", kind: OptionKind.Number },
+  { name: "trust-proxy", description: "Honor X-Forwarded-For for client IP.", kind: OptionKind.Presence },
+  { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: OptionKind.Presence },
   {
     name: "log-format",
     description: "Log format: json (ECS Logging) or text.",
-    kind: CliOptionKind.Enum,
+    kind: OptionKind.Enum,
     choices: ["json", "text"],
   },
   {
     name: "log-file",
     description: "Append logs to this file (relative → app config dir).",
-    kind: CliOptionKind.String,
+    kind: OptionKind.String,
   },
-  { name: "no-access-log", description: "Disable HTTP access logs.", kind: CliOptionKind.Presence },
-  { name: "dev", description: "Print full stacks to stderr on errors.", kind: CliOptionKind.Presence },
+  { name: "no-access-log", description: "Disable HTTP access logs.", kind: OptionKind.Presence },
+  { name: "dev", description: "Print full stacks to stderr on errors.", kind: OptionKind.Presence },
 ];
 
 /** Built-in `http` router: bare `myapp http` runs the HTTP server (via hidden `serve` fallback). */
-export function cliBuiltinHttpCommand(program: CliProgram): CliRouter {
+export function cliBuiltinHttpCommand(program: AppSpec): CommandGroup {
   const caps = resolveCapabilities(program);
   const { hostname, port } = resolveHttpListenAddress(program);
   const userGlob = httpUserPathGlob(resolveHttpPathPrefix(program));
@@ -49,7 +49,7 @@ export function cliBuiltinHttpCommand(program: CliProgram): CliRouter {
     lines.push("Full setup guide: {argsbarg:program} docs http");
   }
 
-  const serve: CliLeaf = {
+  const serve: RunnableCommand = {
     key: "serve",
     cli: { hidden: true },
     description: "Run as an HTTP API server for tools.",
@@ -62,7 +62,7 @@ export function cliBuiltinHttpCommand(program: CliProgram): CliRouter {
     notes: lines.join("\n"),
     options: [...HTTP_SERVE_OPTIONS],
     fallbackCommand: "serve",
-    fallbackMode: CliFallbackMode.MissingOnly,
+    fallbackMode: FallbackMode.MissingOnly,
     commands: [serve],
   };
 }

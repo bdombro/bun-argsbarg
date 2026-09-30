@@ -4,7 +4,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Local argsbarg consumer repos (machine-specific).
-consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc ~/dev/ss/sqsp-i18n-tools-poc"
+consumer_apps := "~/dev/ss/sqsp-workspaces ~/dev/ss/sqsp-qa-manager-poc"
 
 # List available recipes (default)
 _:
@@ -25,33 +25,27 @@ create-smoke:
     test -d "$tmpdir/smoke-cli/.git"
     git -C "$tmpdir/smoke-cli" log -1 --oneline | grep -q Initial
 
-# Run schemagen in each local consumer app (paths must exist)
-consumers-schemagen:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    root="$(cd "{{justfile_directory()}}" && pwd)"
-    for path in {{consumer_apps}}; do
-      dir="${path/#\~/$HOME}"
-      if [[ ! -d "$dir" ]]; then
-        echo "missing consumer: $dir" >&2
-        exit 1
-      fi
-      echo "==> schemagen $(basename "$dir")"
-      (cd "$dir" && bun "$root/src/cli-tool/main.ts" schemagen)
-    done
-
 # Point local consumer apps at this repo (file: dep) for pre-publish development
 consumers-dev:
     #!/usr/bin/env bash
+    set -euo pipefail
     root="$(cd "{{justfile_directory()}}" && pwd)"
+    # A file: install copies examples/*/node_modules into the consumer (recursively); clear them first.
+    rm -rf "$root"/examples/*/node_modules
     echo "argsbarg@file:<relative-to-consumer> → ${root}"
     for path in {{consumer_apps}}; do
       dir="${path/#\~/$HOME}"
       dir="$(cd "$dir" && pwd)"
       rel="$(bun -e "console.log(require('node:path').relative(process.argv[1], process.argv[2]))" "$dir" "$root")"
       echo "==> $(basename "$dir") ($dir) → bun add argsbarg@file:${rel}"
-      (cd "$dir" && bun add "argsbarg@file:${rel}" && test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg && bun "${root}/scripts/merge-agents-md.ts" "$dir")
+      # --force: bun's cached file: snapshot goes stale when argsbarg files are deleted (ENOENT).
+      # Drop argsbarg's own dev copy of zod so the consumer bundles a single zod.
+      (cd "$dir" && bun add "argsbarg@file:${rel}" --force && bun add zod@^4 \
+        && rm -rf node_modules/argsbarg/node_modules/zod \
+        && test -f node_modules/argsbarg/bin/argsbarg && ln -sf ../argsbarg/bin/argsbarg node_modules/.bin/argsbarg \
+        && bun "${root}/scripts/merge-agents-md.ts" "$dir")
     done
+    echo "Examples' node_modules were cleared; run \`just examples-install\` to restore them."
 
 # Pin consumers to ^<version>; merge rules; build, docgen, install-local (configure install → ~/.agents/)
 consumers-sync:
@@ -81,9 +75,22 @@ consumers-up:
       (cd "$dir" && bun add "argsbarg@^${latest}")
     done
 
-# Run the full example (use the justfile in the examples/full-example directory)
+# Reinstall the in-repo examples against this checkout (after typegen, deletions, or consumers-dev)
+examples-install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{justfile_directory()}}"
+    rm -rf "$root"/examples/*/node_modules
+    for d in cli api agent-plugin; do
+      echo "==> $d"
+      (cd "$root/examples/$d" && bun install --force)
+    done
+    # Each file: install copies the other examples' node_modules and argsbarg's dev zod; drop both.
+    rm -rf "$root"/examples/*/node_modules/argsbarg/examples/*/node_modules "$root"/examples/*/node_modules/argsbarg/node_modules/zod
+
+# Run the full example (use the justfile in the examples/cli directory)
 example-full:
-    echo "Use the justfile in the examples/full-example directory."
+    echo "Use the justfile in the examples/cli directory."
     exit 1
 
 # Verify in-repo copy templates match argsbarg create output
@@ -91,8 +98,9 @@ example-full-check:
     #!/usr/bin/env bash
     set -euo pipefail
     root="{{justfile_directory()}}"
-    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/full-example"
-    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/full-example-json"
+    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/cli"
+    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/api"
+    bun "$root/src/cli-tool/main.ts" create --check "$root/examples/agent-plugin"
 
 # Run the minimal example once
 example-minimal *ARGS:

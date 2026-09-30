@@ -3,7 +3,7 @@ Tests for docs/mcp-resources module behavior.
 */
 
 import { expect, test } from "bun:test";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import {
   defaultDocsTopicResourceUri,
   docsMcpResources,
@@ -11,7 +11,7 @@ import {
   resolveDocsTopicResourceUri,
 } from "./mcp-resources.ts";
 
-function fixture(opts?: { docs?: boolean; mcp?: boolean }): CliProgram {
+function fixture(opts?: { docs?: boolean; mcp?: boolean }): AppSpec {
   const docs = opts?.docs !== false;
   const mcp = opts?.mcp !== false;
   return {

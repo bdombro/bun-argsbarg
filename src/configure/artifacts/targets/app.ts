@@ -1,4 +1,4 @@
-import type { CliProgram } from "../../../core/types.ts";
+import type { AppSpec } from "../../../core/types.ts";
 import { isExternallyManagedBinary } from "../binary-placement.ts";
 import type { InstallPaths } from "../paths.ts";
 import { InstallTarget } from "../target-base.ts";
@@ -21,15 +21,15 @@ class AppInstallTarget extends InstallTarget {
     return false;
   }
 
-  isAvailable(_root: CliProgram, _paths: InstallPaths): boolean {
+  isAvailable(_root: AppSpec, _paths: InstallPaths): boolean {
     return true;
   }
 
-  isDetected(_paths: InstallPaths, root: CliProgram): boolean {
+  isDetected(_paths: InstallPaths, root: AppSpec): boolean {
     return isExternallyManagedBinary(root.key) || false;
   }
 
-  applyDetected(_paths: InstallPaths, root: CliProgram, out: InstalledArtifacts): void {
+  applyDetected(_paths: InstallPaths, root: AppSpec, out: InstalledArtifacts): void {
     out.app = isExternallyManagedBinary(root.key);
   }
 
@@ -37,7 +37,7 @@ class AppInstallTarget extends InstallTarget {
     return detected.app;
   }
 
-  protected formatStatusLine(_paths: InstallPaths, root: CliProgram): string {
+  protected formatStatusLine(_paths: InstallPaths, root: AppSpec): string {
     if (isExternallyManagedBinary(root.key)) {
       return "system (PATH)";
     }

@@ -1,0 +1,16 @@
+{
+  "name": "example-agent-plugin",
+  "version": "1.0.0",
+  "description": "Argsbarg MCP plugin template for Cursor and Claude Code marketplaces",
+  "author": {
+    "name": "Brian Dombrowski"
+  },
+  "homepage": "https://github.com/bdombro/bun-argsbarg",
+  "repository": "https://github.com/bdombro/bun-argsbarg",
+  "mcpServers": {
+    "example-agent-plugin": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/example-agent-plugin.mjs", "mcp"]
+    }
+  }
+}

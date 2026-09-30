@@ -1,32 +1,32 @@
 import {
-  CliFallbackMode,
-  type CliLeaf,
-  type CliOption,
-  CliOptionKind,
-  type CliProgram,
-  type CliRouter,
+  type AppSpec,
+  type CommandGroup,
+  type CommandOption,
+  FallbackMode,
+  OptionKind,
+  type RunnableCommand,
 } from "../core/types.ts";
 import { docsEnabled } from "../docs/resolve.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 
-const MCP_SERVE_OPTIONS: CliOption[] = [
-  { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: CliOptionKind.Presence },
+const MCP_SERVE_OPTIONS: readonly CommandOption[] = [
+  { name: "obscure-errors", description: "Hide unexpected errors from clients.", kind: OptionKind.Presence },
   {
     name: "log-format",
     description: "Log format: json (ECS Logging) or text.",
-    kind: CliOptionKind.Enum,
+    kind: OptionKind.Enum,
     choices: ["json", "text"],
   },
   {
     name: "log-file",
     description: "Append logs to this file (relative → app config dir).",
-    kind: CliOptionKind.String,
+    kind: OptionKind.String,
   },
-  { name: "dev", description: "Print full stacks to stderr on errors.", kind: CliOptionKind.Presence },
+  { name: "dev", description: "Print full stacks to stderr on errors.", kind: OptionKind.Presence },
 ];
 
 /** Built-in `mcp` router: bare `myapp mcp` runs stdio (via hidden `serve` fallback); `mcp bundle` packs `.mcpb`. */
-export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
+export function cliBuiltinMcpCommand(program: AppSpec): CommandGroup {
   const caps = resolveCapabilities(program);
   const lines = [
     "Stdio MCP server. Add to Cursor, Claude Code, or Claude Desktop:",
@@ -42,14 +42,14 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
     lines.push("Full setup guide: {argsbarg:program} docs mcp");
   }
 
-  const serve: CliLeaf = {
+  const serve: RunnableCommand = {
     key: "serve",
     cli: { hidden: true },
     description: "Run as an MCP server over stdio for AI agents.",
     handler: () => {},
   };
 
-  const bundle: CliLeaf = {
+  const bundle: RunnableCommand = {
     key: "bundle",
     description: "Pack dist MCP artifacts (`.mcpb`, Claude Code plugin zip, Cursor plugin zip) from dist/<key>.",
     handler: () => {},
@@ -61,7 +61,7 @@ export function cliBuiltinMcpCommand(program: CliProgram): CliRouter {
     notes: lines.join("\n"),
     options: [...MCP_SERVE_OPTIONS],
     fallbackCommand: "serve",
-    fallbackMode: CliFallbackMode.MissingOnly,
+    fallbackMode: FallbackMode.MissingOnly,
     commands: [serve, bundle],
   };
 }

@@ -7,7 +7,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFil
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { buildPluginMcpEnvMapping, buildProgramUserConfig } from "../config/manifest.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { defaultMcpBundlePaths, type PackMcpBundleOpts } from "./bundle.ts";
 import { collectZipEntries, defaultAuthor, pluginName, stagePluginSkills } from "./plugin-shared.ts";
 import { mcpServerId } from "./tools.ts";
@@ -22,7 +22,7 @@ const CLAUDE_PLUGIN_DIR = "claude-plugin";
 /** Default plugin zip output under cwd. */
 export function defaultClaudePluginPaths(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Working directory (defaults to cwd). */
   cwd = process.cwd(),
 ) {
@@ -39,7 +39,7 @@ export function defaultClaudePluginPaths(
 /** Generates `.claude-plugin/plugin.json` object. */
 export function generatePluginManifest(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Staged executable name. */
   _binaryName: string,
 ): Record<string, unknown> {
@@ -61,7 +61,7 @@ export function generatePluginManifest(
 /** Generates plugin `.mcp.json` stdio server config. */
 export function generatePluginMcpJson(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Staged executable name. */
   binaryName: string,
 ): Record<string, unknown> {
@@ -85,7 +85,7 @@ function writePluginTree(
   /** Staging root directory. */
   pluginRoot: string,
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Absolute path to compiled binary. */
   binaryPath: string,
   /** Executable filename. */
@@ -116,7 +116,7 @@ function writePluginTree(
  */
 export function packClaudePlugin(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Packaging options. */
   opts: PackMcpBundleOpts = {},
 ): string {

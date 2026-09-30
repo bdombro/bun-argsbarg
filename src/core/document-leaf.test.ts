@@ -3,29 +3,20 @@ Tests for structured document leaves (kind: "document") supporting JSON and YAML
 */
 
 import { describe, expect, test } from "bun:test";
-import { Cli } from "../index.ts";
-import { LeafInputError, parseDocumentText } from "./leaf-inputs.ts";
+import { z } from "zod";
+import { argsbarg } from "../index.ts";
+import { InputError, parseDocumentText } from "./leaf-inputs.ts";
 import { ParseKind, parse } from "./parse.ts";
-import { CliOptionKind, type CliProgram, CliSchemaValidationError } from "./types.ts";
+import { type AppSpec, OptionKind, SchemaValidationError } from "./types.ts";
 import { cliValidateProgram } from "./validate.ts";
 
-/** JSON Schema for the deployment test document body. */
-const deploySchema = {
-  type: "object",
-  properties: {
-    target: { type: "string", enum: ["staging", "production"] },
-    config: {
-      type: "object",
-      properties: { replicas: { type: "integer" } },
-      required: ["replicas"],
-      additionalProperties: false,
-    },
-  },
-  required: ["target", "config"],
-  additionalProperties: false,
-} as const;
+/** Zod schema for the deployment test document body. */
+const deploySchema = z.strictObject({
+  target: z.enum(["staging", "production"]),
+  config: z.strictObject({ replicas: z.number().int() }),
+});
 
-/** Creates a test program with a single `kind: "document"` leaf command. */
+/** Creates a test program with a single `kind: "document"` command with a handler. */
 function documentLeafProgram() {
   return {
     key: "document-leaf-test",
@@ -37,13 +28,13 @@ function documentLeafProgram() {
         description: "Deploy from document body",
         kind: "document",
         inputSchema: deploySchema,
-        handler: (ctx) => ctx.inputsAs<{ target: string; config: { replicas: number } }>(),
+        handler: (ctx) => ctx.inputs,
       },
     ],
-  } satisfies CliProgram;
+  } satisfies AppSpec;
 }
 
-/** Tests for `kind: "document"` leaf commands. */
+/** Tests for `kind: "document"` commands with a handler. */
 describe("kind: document leaf", () => {
   /** Tests validation rules for document leaves. */
   test("validate requires inputSchema and forbids options/positionals", () => {
@@ -54,7 +45,7 @@ describe("kind: document leaf", () => {
         description: "bad",
         commands: [{ key: "x", description: "x", kind: "document", handler: () => {} }],
       }),
-    ).toThrow(CliSchemaValidationError);
+    ).toThrow(SchemaValidationError);
 
     expect(() =>
       cliValidateProgram({
@@ -67,12 +58,12 @@ describe("kind: document leaf", () => {
             description: "x",
             kind: "document",
             inputSchema: deploySchema,
-            options: [{ name: "f", description: "f", kind: CliOptionKind.String }],
+            options: [{ name: "f", description: "f", kind: OptionKind.String }],
             handler: () => {},
           },
         ],
       }),
-    ).toThrow(CliSchemaValidationError);
+    ).toThrow(SchemaValidationError);
 
     expect(() =>
       cliValidateProgram({
@@ -85,12 +76,12 @@ describe("kind: document leaf", () => {
             description: "x",
             kind: "document",
             inputSchema: deploySchema,
-            positionals: [{ name: "file", description: "file", kind: CliOptionKind.String }],
+            positionals: [{ name: "file", description: "file", kind: OptionKind.String }],
             handler: () => {},
           },
         ],
       }),
-    ).toThrow(CliSchemaValidationError);
+    ).toThrow(SchemaValidationError);
   });
 
   /** Tests that flags on document leaves are rejected. */
@@ -111,7 +102,7 @@ describe("kind: document leaf", () => {
 
   /** Tests reading body from YAML positional argv. */
   test("invoke reads body from YAML positional argv", async () => {
-    const cli = new Cli(documentLeafProgram());
+    const cli = argsbarg(documentLeafProgram());
     const yaml = "target: staging\nconfig:\n  replicas: 3";
     const result = await cli.invoke(["deploy", yaml], { invocation: "mcp" });
     expect(result.kind).toBe("ok");
@@ -124,7 +115,7 @@ describe("kind: document leaf", () => {
 
   /** Tests reading body from JSON positional argv. */
   test("invoke reads body from JSON positional argv", async () => {
-    const cli = new Cli(documentLeafProgram());
+    const cli = argsbarg(documentLeafProgram());
     const json = '{"target":"production","config":{"replicas":5}}';
     const result = await cli.invoke(["deploy", json], { invocation: "mcp" });
     expect(result.kind).toBe("ok");
@@ -133,7 +124,7 @@ describe("kind: document leaf", () => {
 
   /** Tests reading body from toolArgs. */
   test("invoke reads body from toolArgs", async () => {
-    const cli = new Cli(documentLeafProgram());
+    const cli = argsbarg(documentLeafProgram());
     const result = await cli.invoke(["deploy"], {
       invocation: "http",
       toolArgs: { target: "production", config: { replicas: 10 } },
@@ -144,7 +135,7 @@ describe("kind: document leaf", () => {
 
   /** Tests error message when document body is missing. */
   test("invoke errors when body is missing", async () => {
-    const cli = new Cli(documentLeafProgram());
+    const cli = argsbarg(documentLeafProgram());
     const result = await cli.invoke(["deploy"], { invocation: "cli" });
     expect(result.kind).toBe("error");
     expect(result.errorMsg).toContain("Missing document input");
@@ -164,8 +155,8 @@ describe("kind: document leaf", () => {
           },
         },
       ],
-    } satisfies CliProgram;
-    const cli = new Cli(program);
+    } satisfies AppSpec;
+    const cli = argsbarg(program);
     const result = await cli.invoke(["deploy", "target: invalid-target\nconfig:\n  replicas: 1"], {
       invocation: "cli",
     });
@@ -175,45 +166,23 @@ describe("kind: document leaf", () => {
 
   /** Tests non-object document body returns error. */
   test("non-object document body returns error", async () => {
-    const cli = new Cli(documentLeafProgram());
+    const cli = argsbarg(documentLeafProgram());
     const result = await cli.invoke(["deploy", '"just-a-string"'], { invocation: "cli" });
     expect(result.kind).toBe("error");
     expect(result.errorMsg).toContain("Document input must be a JSON or YAML object");
   });
 
-  /** Tests that a discriminated-union inputSchema surfaces only the matching branch's narrowed error. */
-  test("invoke surfaces a narrowed discriminated-union error end to end", async () => {
-    const stepSchema = {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      type: "object",
-      properties: { steps: { type: "array", items: { $ref: "#/definitions/Step" } } },
-      required: ["steps"],
-      additionalProperties: false,
-      definitions: {
-        Step: {
-          anyOf: [
-            {
-              type: "object",
-              properties: { kind: { const: "alpha" }, title: { type: "string" } },
-              required: ["kind", "title"],
-              additionalProperties: false,
-            },
-            {
-              type: "object",
-              properties: { kind: { enum: ["beta", "bravo"] }, count: { type: "number" } },
-              required: ["kind"],
-              additionalProperties: false,
-            },
-            {
-              type: "object",
-              properties: { kind: { const: "gamma" }, flag: { type: "boolean" } },
-              required: ["kind"],
-              additionalProperties: false,
-            },
-          ],
-        },
-      },
-    } as const;
+  /** Tests that a discriminated-union inputSchema surfaces one precise discriminator error. */
+  test("invoke surfaces a discriminated-union error end to end", async () => {
+    const stepSchema = z.strictObject({
+      steps: z.array(
+        z.discriminatedUnion("kind", [
+          z.strictObject({ kind: z.literal("alpha"), title: z.string() }),
+          z.strictObject({ kind: z.enum(["beta", "bravo"]), count: z.number().optional() }),
+          z.strictObject({ kind: z.literal("gamma"), flag: z.boolean().optional() }),
+        ]),
+      ),
+    });
     const program = {
       key: "steptest",
       version: "1.0.0",
@@ -224,14 +193,14 @@ describe("kind: document leaf", () => {
           description: "run",
           kind: "document",
           inputSchema: stepSchema,
-          handler: (ctx) => ctx.inputsAs(),
+          handler: (ctx) => ctx.inputs,
         },
       ],
-    } satisfies CliProgram;
-    const cli = new Cli(program);
+    } satisfies AppSpec;
+    const cli = argsbarg(program);
     const result = await cli.invoke(["run", JSON.stringify({ steps: [{ kind: "alfa" }] })], { invocation: "cli" });
     expect(result.kind).toBe("error");
-    expect(result.errorMsg).toBe('steps.0.kind: unknown kind "alfa" (expected one of: alpha, beta, bravo, gamma)');
+    expect(result.errorMsg).toStartWith("steps.0.kind: Invalid discriminator value");
   });
 });
 
@@ -251,11 +220,11 @@ describe("parseDocumentText", () => {
 
   /** Tests empty string throws error. */
   test("throws on empty string", () => {
-    expect(() => parseDocumentText("   ", "test")).toThrow(LeafInputError);
+    expect(() => parseDocumentText("   ", "test")).toThrow(InputError);
   });
 
   /** Tests invalid syntax throws error. */
   test("throws on invalid syntax", () => {
-    expect(() => parseDocumentText("{bad json", "test")).toThrow(LeafInputError);
+    expect(() => parseDocumentText("{bad json", "test")).toThrow(InputError);
   });
 });

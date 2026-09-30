@@ -1,8 +1,8 @@
 /*
-MCP bundle / plugin manifest builders for program.appConfig env-mapped entries.
+MCP bundle / plugin manifest builders for appConfig env-mapped entries.
 */
 
-import type { CliAppConfigEntry, CliProgram } from "../core/types.ts";
+import type { AppConfigEntry, AppSpec } from "../core/types.ts";
 import {
   configEntryRequired,
   configEntrySensitive,
@@ -14,7 +14,7 @@ import { effectiveJsonSchema } from "./schema.ts";
 
 function buildConfigUserConfigEntry(
   key: string,
-  entry: CliAppConfigEntry,
+  entry: AppConfigEntry,
   jsonSchemaRequired: Set<string> | undefined,
 ): Record<string, unknown> {
   return {
@@ -27,7 +27,7 @@ function buildConfigUserConfigEntry(
 }
 
 /** Builds MCPB/plugin user_config from schema entries with `env` set. */
-export function buildProgramUserConfig(program: CliProgram): Record<string, unknown> | undefined {
+export function buildProgramUserConfig(program: AppSpec): Record<string, unknown> | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return undefined;
@@ -44,8 +44,8 @@ export function buildProgramUserConfig(program: CliProgram): Record<string, unkn
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-/** Plugin .mcp.json env mapping from program.appConfig env entries. */
-export function buildPluginMcpEnvMapping(program: CliProgram): Record<string, string> | undefined {
+/** Plugin .mcp.json env mapping from appConfig env entries. */
+export function buildPluginMcpEnvMapping(program: AppSpec): Record<string, string> | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {
     return undefined;
@@ -62,11 +62,11 @@ export function buildPluginMcpEnvMapping(program: CliProgram): Record<string, st
 }
 
 /**
- * Plugin mcp.json env mapping for Cursor from program.appConfig env entries.
+ * Plugin mcp.json env mapping for Cursor from appConfig env entries.
  */
 export function buildCursorPluginMcpEnvMapping(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
 ): Record<string, string> | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {
@@ -83,11 +83,11 @@ export function buildCursorPluginMcpEnvMapping(
 }
 
 /**
- * Builds Cursor plugin variables schema from program.appConfig env-mapped entries.
+ * Builds Cursor plugin variables schema from appConfig env-mapped entries.
  */
 export function buildCursorPluginVariables(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
 ): Record<string, unknown> | undefined {
   const appConfig = program.appConfig;
   if (!appConfig) {

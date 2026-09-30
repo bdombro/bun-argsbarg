@@ -2,22 +2,22 @@
 Shared completion scope walk used by bash, zsh, and fish emitters.
 */
 
-import { type CliNode, type CliRouter, isCliLeaf, isCliRouter } from "../core/types.ts";
+import { type Command, type CommandGroup, hasHandler, hasSubcommands } from "../core/types.ts";
 
 /** One tab-completion scope: child commands, options, and path key for the schema walk. */
 export interface ScopeRec {
-  kids: CliNode[];
-  opts: import("../core/types.ts").CliOption[];
+  kids: Command[];
+  opts: readonly import("../core/types.ts").CommandOption[];
   path: string;
   wantsFiles: boolean;
 }
 
-function hasPositionalArguments(cmd: CliNode): boolean {
-  return isCliLeaf(cmd) && (cmd.positionals ?? []).length > 0;
+function hasPositionalArguments(cmd: Command): boolean {
+  return hasHandler(cmd) && (cmd.positionals ?? []).length > 0;
 }
 
-function walkScopes(cmdPath: string, cmd: CliNode, acc: ScopeRec[]): void {
-  const kids = isCliRouter(cmd) ? cmd.commands : [];
+function walkScopes(cmdPath: string, cmd: Command, acc: ScopeRec[]): void {
+  const kids = hasSubcommands(cmd) ? cmd.commands : [];
   acc.push({
     kids,
     opts: cmd.options ?? [],
@@ -31,7 +31,7 @@ function walkScopes(cmdPath: string, cmd: CliNode, acc: ScopeRec[]): void {
 }
 
 /** Flattens the schema into a list of completion scopes (root + every command path). */
-export function collectScopes(schema: CliRouter): ScopeRec[] {
+export function collectScopes(schema: CommandGroup): ScopeRec[] {
   const acc: ScopeRec[] = [];
   acc.push({
     kids: schema.commands ?? [],

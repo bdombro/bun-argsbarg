@@ -4,7 +4,7 @@ Tests for builtins/builtins module behavior.
 
 import { describe, expect, test } from "bun:test";
 import { ParseKind, parse, postParseValidate } from "../core/parse.ts";
-import type { CliProgram } from "../core/types.ts";
+import type { AppSpec } from "../core/types.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { completionBashScript, completionFishScript, completionZshScript } from ".";
 import { cliBuiltinConfigureCommand } from "./configure.ts";
@@ -13,12 +13,11 @@ import { exportPresentationBuiltins } from "./export.ts";
 import { cliBuiltinMcpCommand } from "./mcp.ts";
 import { cliParseRoot, cliPresentationRoot } from "./presentation.ts";
 
-const fixture: CliProgram = {
+const fixture: AppSpec = {
   key: "myapp",
   version: "0.0.0",
   description: "Demo app.",
   mcpServer: { enabled: true },
-  skill: { enabled: true },
   commands: [
     {
       key: "hello",
@@ -28,11 +27,10 @@ const fixture: CliProgram = {
   ],
 };
 
-const noMcp: CliProgram = {
+const noMcp: AppSpec = {
   key: "skillonly",
   version: "0.0.0",
   description: "Skills only.",
-  skill: { enabled: true },
   commands: [{ key: "ping", description: "Ping.", handler: () => {} }],
 };
 
@@ -79,7 +77,7 @@ describe("builtins help copy", () => {
   });
 
   test("mcp builtin description is user-facing", () => {
-    const withDocs: CliProgram = {
+    const withDocs: AppSpec = {
       ...fixture,
       docs: { topics: { readme: { text: "# r\n" } } },
     };
@@ -102,7 +100,7 @@ describe("presentation root", () => {
   });
 
   test("omits configure when configure.enabled is false", () => {
-    const disabled: CliProgram = { ...fixture, configure: { enabled: false } };
+    const disabled: AppSpec = { ...fixture, configure: { enabled: false } };
     const root = cliPresentationRoot(disabled);
     expect(root.commands?.map((c) => c.key)).not.toContain("configure");
   });
@@ -146,7 +144,7 @@ describe("completion emitters", () => {
 /** Tests for schema export builtins. */
 describe("schema export builtins", () => {
   test("exportPresentationBuiltins nests configure get/set when appConfig set", () => {
-    const withConfig: CliProgram = {
+    const withConfig: AppSpec = {
       ...fixture,
       appConfig: {
         entries: {

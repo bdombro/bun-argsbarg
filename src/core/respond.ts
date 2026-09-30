@@ -2,10 +2,10 @@
 Helpers for ctx.respond(): content-type defaults and CLI stdout serialization.
 */
 
-import type { CliRespondBody, CliRespondOptions } from "./types.ts";
+import type { RespondBody, RespondOptions } from "./types.ts";
 
 /** Fills default contentType on respond options based on body shape. */
-export function normalizeRespondOptions(opts: CliRespondOptions): CliRespondOptions {
+export function normalizeRespondOptions(opts: RespondOptions): RespondOptions {
   if (opts.contentType !== undefined) {
     return opts;
   }
@@ -20,7 +20,7 @@ export function normalizeRespondOptions(opts: CliRespondOptions): CliRespondOpti
 }
 
 /** Writes a respond body to process.stdout for CLI invocations. */
-export function writeRespondBodyToStdout(body: CliRespondBody): void {
+export function writeRespondBodyToStdout(body: RespondBody): void {
   if (body instanceof Uint8Array) {
     process.stdout.write(body);
     return;

@@ -1,9 +1,9 @@
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 import type {
-  CliInstallArtifactKey,
   DetectedSnapshot,
   InstallAction,
+  InstallArtifactKey,
   InstalledArtifacts,
   InstallStatus,
   TargetPlanContext,
@@ -12,7 +12,7 @@ import type {
 
 /** Shared lifecycle for one install artifact. */
 export abstract class InstallTarget {
-  abstract readonly key: CliInstallArtifactKey;
+  abstract readonly key: InstallArtifactKey;
   abstract readonly actionKind: import("./target-types.ts").InstallActionKind;
   abstract readonly category: import("./target-types.ts").InstallTargetCategory;
 
@@ -20,13 +20,13 @@ export abstract class InstallTarget {
     return false;
   }
 
-  abstract isAvailable(root: CliProgram, paths: InstallPaths): boolean;
+  abstract isAvailable(root: AppSpec, paths: InstallPaths): boolean;
 
   /** Whether this artifact is installed (for scoped uninstall / refresh). */
-  abstract isDetected(paths: InstallPaths, root: CliProgram): boolean;
+  abstract isDetected(paths: InstallPaths, root: AppSpec): boolean;
 
   /** Writes detection flags into the shared snapshot. */
-  applyDetected(_paths: InstallPaths, _root: CliProgram, _out: InstalledArtifacts): void {
+  applyDetected(_paths: InstallPaths, _root: AppSpec, _out: InstalledArtifacts): void {
     // default: subclasses override
   }
 
@@ -37,7 +37,7 @@ export abstract class InstallTarget {
 
   protected abstract isDetectedFromSnapshot(detected: DetectedSnapshot): boolean;
 
-  statusLine(paths: InstallPaths, root: CliProgram, detected: InstalledArtifacts): string | undefined {
+  statusLine(paths: InstallPaths, root: AppSpec, detected: InstalledArtifacts): string | undefined {
     if (!this.isDetectedFromInstalled(detected)) return undefined;
     return this.formatStatusLine(paths, root);
   }
@@ -46,7 +46,7 @@ export abstract class InstallTarget {
     return this.isDetectedFromSnapshot(detected as DetectedSnapshot);
   }
 
-  protected abstract formatStatusLine(paths: InstallPaths, root: CliProgram): string;
+  protected abstract formatStatusLine(paths: InstallPaths, root: AppSpec): string;
 
   planInstall(ctx: TargetPlanContext): InstallAction[] {
     if (!ctx.include(this.key)) return [];
@@ -65,7 +65,7 @@ export abstract class InstallTarget {
 
   protected abstract buildUninstallActions(ctx: TargetPlanContext): UninstallAction[];
 
-  contributeStatus(paths: InstallPaths, root: CliProgram, detected: InstalledArtifacts, status: InstallStatus): void {
+  contributeStatus(paths: InstallPaths, root: AppSpec, detected: InstalledArtifacts, status: InstallStatus): void {
     const line = this.statusLine(paths, root, detected);
     if (!line) return;
     this.assignStatusLine(status, line);

@@ -3,7 +3,7 @@ Tests for config/bindings module.
 */
 
 import { describe, expect, test } from "bun:test";
-import type { CliAppConfigEntry } from "../core/types.ts";
+import type { AppConfigEntry } from "../core/types.ts";
 import {
   bindingForKey,
   CONFIG_BINDINGS_KEY,
@@ -14,8 +14,8 @@ import {
   setBinding,
 } from "./bindings.ts";
 
-const optionalEntry: CliAppConfigEntry = { description: "Optional.", required: false };
-const requiredEntry: CliAppConfigEntry = { description: "Required.", env: "API_TOKEN" };
+const optionalEntry: AppConfigEntry = { description: "Optional.", required: false };
+const requiredEntry: AppConfigEntry = { description: "Required.", env: "API_TOKEN" };
 
 describe("config/bindings", () => {
   test("readBindings returns empty when absent", () => {

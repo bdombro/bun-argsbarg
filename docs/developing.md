@@ -36,15 +36,26 @@ Sibling consumer repos (machine-specific paths in the root `justfile` `consumer_
 
 | Recipe | When | Effect |
 | --- | --- | --- |
-| `just consumers-dev` | Before publish; hacking on argsbarg locally | `bun add argsbarg@file:<relative>`; fix `.bin/argsbarg` symlink; refresh `AGENTS.md` from template (preserves app-specific sections below managed block) |
+| `just consumers-dev` | Before publish; hacking on argsbarg locally | Clears `examples/*/node_modules`, then per consumer: `bun add argsbarg@file:<relative> --force`, `bun add zod@^4`, removes the nested dev `zod`, fixes `.bin/argsbarg`, refreshes `AGENTS.md` from the template (preserves app-specific sections). Run `just examples-install` afterwards. |
 | `just consumers-sync` | After release | Sets `"argsbarg": "^<this package.json version>"`, `bun install`, merge `AGENTS.md`, `just build`, `just docgen`, `just install-local` (Homebrew dev formula + agent artifacts; `just install` is an alias) |
-| `just consumers-schemagen` | After `@sg` type changes in consumers | Runs `argsbarg schemagen` in each `consumer_apps` path (fails if missing) |
 
 `consumers-sync` reads the version from **this repo’s** `package.json` — not npm. Run it **after** `just release` so consumers pin a version that exists on the registry.
 
-**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/full-example-json/AGENTS.md` into each consumer. The framework baseline is placed at the top, and all app-specific sections live below `<!-- /argsbarg:managed -->` where they take precedence over framework defaults.
+**Argsbarg authoring rules** — `scripts/merge-agents-md.ts` copies the template from `examples/api/AGENTS.md` into each consumer. The framework baseline is placed at the top, and all app-specific sections live below `<!-- /argsbarg:managed -->` where they take precedence over framework defaults.
 
 **Recommended in each consumer:** replace template placeholders under `## App conventions` with project-specific bullets. Commit `AGENTS.md`; merges refresh the managed section, not your app-specific sections.
+
+## Upgrading consumer apps to 8.0
+
+Breaking changes; see [CHANGELOG.md](../CHANGELOG.md) for the full migration notes.
+
+1. **Dependencies:** add `zod@^4` to the consumer's `dependencies` (argsbarg's peer).
+2. **Schemas:** convert each `/** @sg */` type into a Zod schema plus a same-named type (`export const X = z.strictObject({…}); export type X = z.infer<typeof X>`). Copy every JSDoc into `.describe("…")`, because agents read those descriptions and Zod does not read JSDoc.
+3. **Commands:** pass the Zod schemas to `inputSchema` / `outputSchema` / `errorSchema`, wrap every command in `command({ … })` (replacing `satisfies CliLeaf` / `CliRouter`), and build the app with `export const app = argsbarg({ … })` in `src/app.ts` (replacing `satisfies CliProgram` + `new Cli(program)`; `index.ts` becomes `await app.run()`). Rename `ctx.program` / `cli.program` to `ctx.spec` / `app.spec`, and drop the `Cli` prefix from types (see the CHANGELOG table). Replace `ctx.inputsAs<T>()` (removed) with `ctx.inputs`, use `ctx.pathParams` for `:param` command groups, change `kind: "json"` to `kind: "document"`, and drop `skill: { … }` from the app root.
+4. **Config:** `appConfig.jsonSchema` → `appConfig.schema` (a Zod object schema).
+5. **Imports:** subpath exports (`argsbarg/cli`, `/http`, `/mcp`, `/headless`, `/schemagen`) are removed; import from `"argsbarg"`.
+6. **Cleanup:** delete `__generated__/` directories, `schemagen` justfile recipes (and `setup` / `docgen` / `check` dependencies on them), and the `**/__generated__/` gitignore rule. Remove `@cfworker/json-schema` if it was only used alongside argsbarg.
+7. **Verify:** `just test`, `just docgen`, and compare `docs/cli-schema.json` before and after. Every description should survive.
 
 ## Upgrading consumer apps to 7.0
 
@@ -67,11 +78,11 @@ Breaking changes (no backward compat). See [CHANGELOG.md](../CHANGELOG.md) `[Unr
 
 When adding docs or examples intended for consumers, ensure they live under whitelisted paths (`docs/`, `examples/`, `src/`, etc.).
 
-Exclude `examples/full-example/node_modules/` and `examples/full-example-json/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
+Exclude `examples/cli/node_modules/` and `examples/api/node_modules/` from the npm tarball via [`.npmignore`](../.npmignore).
 
 ## Copy templates
 
-Both [`examples/full-example/`](../examples/full-example/) (CLI) and [`examples/full-example-json/`](../examples/full-example-json/) (schema-first) use `argsbarg: file:../..` in-repo; `just setup` fixes the Bun `.bin/argsbarg` symlink so `argsbarg schemagen` works. They must enable every builtin (`capabilities.test.ts`). After builtin or schemagen doc changes:
+Both [`examples/cli/`](../examples/cli/) (CLI) and [`examples/api/`](../examples/api/) (schema-first) use `argsbarg: file:../..` in-repo; `just setup` fixes the Bun `.bin/argsbarg` symlink. They must enable every builtin (`capabilities.test.ts`). Bun installs `file:` dependencies as per-file symlinks (edits show up live) from a cached snapshot, so after adding, deleting, or renaming argsbarg files — or after `just consumers-dev` / gdocsmith's `just argsbarg-local`, which clear them — run **`just examples-install`**. It reinstalls all three examples with `--force` (a stale cache fails with `ENOENT … failed copying files from cache`) and removes the nested copies a `file:` install drags along (other examples' `node_modules`, argsbarg's dev `zod`). After builtin or schema doc changes:
 
 ```bash
 just example-full-check
@@ -80,17 +91,9 @@ just test
 
 See [docs/README.md](README.md) for the full documentation map.
 
-## Advanced imports
+## Imports and tooling
 
-Subpath exports (root barrel still re-exports everything):
-
-```typescript
-import { Cli, type CliProgram } from "argsbarg/cli";
-import { generateOpenApi, httpServeHttp } from "argsbarg/http";
-import { packMcpBundle } from "argsbarg/mcp"; // @experimental
-import { shouldRunHeadless } from "argsbarg/headless";
-import { runSchemagen } from "argsbarg/schemagen";
-```
+The package has a single entry point: import everything from `"argsbarg"`. Public types ship in the bundled `index.d.ts` (`just typegen`, via dts-bundle-generator), so consumers never type-check argsbarg's source. dts-bundle-generator 9.5.1 crashes on TypeScript 7, so keep argsbarg's own `typescript` devDependency on `^5.9`. Consumers can use any TypeScript version.
 
 ## Module boundaries
 
@@ -102,7 +105,7 @@ import { runSchemagen } from "argsbarg/schemagen";
 | `configure/artifacts/` | Agent artifact install/refresh (`configure` capability) |
 | `docs/` | Built-in documentation generators |
 
-Capabilities are declared on `CliProgram`; builtins wire them in [`src/builtins/`](../src/builtins/).
+Capabilities are declared on `Program`; builtins wire them in [`src/builtins/`](../src/builtins/).
 
 ## Docs
 

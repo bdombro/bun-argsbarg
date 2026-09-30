@@ -1,21 +1,27 @@
 import { configCommandsEnabled, configMcpSetEnabled } from "../config/entry.ts";
 import { cliConfigureInstall, cliConfigureStatus, cliConfigureUninstall } from "../configure/index.ts";
-import { type CliLeaf, type CliOption, CliOptionKind, type CliProgram, type CliRouter } from "../core/types.ts";
+import {
+  type AppSpec,
+  type CommandGroup,
+  type CommandOption,
+  OptionKind,
+  type RunnableCommand,
+} from "../core/types.ts";
 import { resolveCapabilities } from "../runtime/capabilities.ts";
 import { configureConfigSubcommands } from "./config.ts";
 import { configureCommandDescription, configureCommandNotes } from "./configure-copy.ts";
 
-const YES_OPTION: CliOption = {
+const YES_OPTION: CommandOption = {
   name: "yes",
   description: "Skip uninstall confirmation.",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
   shortName: "y",
 };
 
-const JSON_OPTION: CliOption = {
+const JSON_OPTION: CommandOption = {
   name: "json",
   description: "Print status JSON on stdout.",
-  kind: CliOptionKind.Presence,
+  kind: OptionKind.Presence,
 };
 
 /** True when argv resolved to `configure get` or `configure set`. */
@@ -23,7 +29,7 @@ export function isConfigureConfigPath(path: string[]): boolean {
   return path.length >= 2 && (path[1] === "get" || path[1] === "set");
 }
 
-function configureInstallLeaf(program: CliProgram): CliLeaf {
+function configureInstallLeaf(program: AppSpec): RunnableCommand {
   return {
     key: "install",
     description: "Install agent artifacts and bootstrap app config.",
@@ -33,7 +39,7 @@ function configureInstallLeaf(program: CliProgram): CliLeaf {
   };
 }
 
-function configureUninstallLeaf(program: CliProgram): CliLeaf {
+function configureUninstallLeaf(program: AppSpec): RunnableCommand {
   return {
     key: "uninstall",
     description: "Remove agent artifacts and app config.",
@@ -44,7 +50,7 @@ function configureUninstallLeaf(program: CliProgram): CliLeaf {
   };
 }
 
-function configureStatusLeaf(program: CliProgram): CliLeaf {
+function configureStatusLeaf(program: AppSpec): RunnableCommand {
   return {
     key: "status",
     description: "Print what is currently installed (read-only).",
@@ -56,9 +62,13 @@ function configureStatusLeaf(program: CliProgram): CliLeaf {
 }
 
 /** Builds the `configure` built-in router. */
-export function cliBuiltinConfigureCommand(root: CliProgram): CliRouter {
+export function cliBuiltinConfigureCommand(root: AppSpec): CommandGroup {
   const caps = resolveCapabilities(root);
-  const commands: CliLeaf[] = [configureInstallLeaf(root), configureUninstallLeaf(root), configureStatusLeaf(root)];
+  const commands: RunnableCommand[] = [
+    configureInstallLeaf(root),
+    configureUninstallLeaf(root),
+    configureStatusLeaf(root),
+  ];
   if (configCommandsEnabled(root)) {
     commands.push(...configureConfigSubcommands(root, configMcpSetEnabled(root)));
   }

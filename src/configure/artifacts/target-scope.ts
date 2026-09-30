@@ -1,5 +1,5 @@
 import { appConfigFileExists } from "../../config/file.ts";
-import type { CliConfigureTargets, CliProgram } from "../../core/types.ts";
+import type { AppSpec, ConfigureTargets } from "../../core/types.ts";
 import { resolveCapabilities } from "../../runtime/capabilities.ts";
 import type { InstallPaths } from "./paths.ts";
 import {
@@ -17,8 +17,8 @@ import {
   SKILL_KEYS,
 } from "./target-registry.ts";
 import type {
-  CliInstallArtifactKey,
   DetectedSnapshot,
+  InstallArtifactKey,
   InstalledArtifacts,
   InstallOpts,
   TargetPlanContext,
@@ -35,7 +35,7 @@ function emptyInstalledArtifacts(): InstalledArtifacts {
 }
 
 /** Detects which install artifacts are currently present. */
-export function detectInstalledArtifacts(paths: InstallPaths, root: CliProgram): InstalledArtifacts {
+export function detectInstalledArtifacts(paths: InstallPaths, root: AppSpec): InstalledArtifacts {
   const out = emptyInstalledArtifacts();
   for (const target of INSTALL_TARGETS) {
     target.applyDetected(paths, root, out);
@@ -55,7 +55,7 @@ export function resolveInstallScope(opts: InstallOpts): InstallScope {
 }
 
 /** Builds detected snapshot including app config for plan scoping. */
-export function buildDetectedSnapshot(root: CliProgram, paths: InstallPaths): DetectedSnapshot {
+export function buildDetectedSnapshot(root: AppSpec, paths: InstallPaths): DetectedSnapshot {
   const base = detectInstalledArtifacts(paths, root);
   return {
     ...base,
@@ -63,18 +63,18 @@ export function buildDetectedSnapshot(root: CliProgram, paths: InstallPaths): De
   };
 }
 
-function targetExplicitlyConfigured(user: CliConfigureTargets | undefined, key: CliInstallArtifactKey): boolean {
+function targetExplicitlyConfigured(user: ConfigureTargets | undefined, key: InstallArtifactKey): boolean {
   if (key === "skill" || key === "agentsMcp") return false;
   return user?.[key] !== undefined;
 }
 
 function agentCategoryInScope(
-  key: CliInstallArtifactKey,
-  categoryKeys: readonly CliInstallArtifactKey[],
+  key: InstallArtifactKey,
+  categoryKeys: readonly InstallArtifactKey[],
   category: "skill" | "mcp",
-  effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
-  targets: CliConfigureTargets | undefined,
-  root: CliProgram,
+  effective: Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
+  targets: ConfigureTargets | undefined,
+  root: AppSpec,
 ): boolean {
   if (!categoryKeys.includes(key)) return false;
   if (!effective[key].enabled) return false;
@@ -84,12 +84,12 @@ function agentCategoryInScope(
 
 /** Whether an artifact is in scope for the current CLI flags and install mode. */
 export function isArtifactInScope(
-  key: CliInstallArtifactKey,
+  key: InstallArtifactKey,
   scope: InstallScope,
-  effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
+  effective: Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
   mode: InstallPlanMode,
-  root: CliProgram,
-  targets?: CliConfigureTargets,
+  root: AppSpec,
+  targets?: ConfigureTargets,
 ): boolean {
   const userTargets = targets ?? root.configure?.targets;
 
@@ -127,13 +127,13 @@ export function isArtifactInScope(
 
 /** Whether to include an artifact in the current install/uninstall/refresh plan. */
 export function shouldIncludeArtifact(
-  key: CliInstallArtifactKey,
-  root: CliProgram,
+  key: InstallArtifactKey,
+  root: AppSpec,
   paths: InstallPaths,
   scope: InstallScope,
   mode: InstallPlanMode,
-  effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
-  detected?: Partial<Record<CliInstallArtifactKey, boolean>>,
+  effective: Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }>,
+  detected?: Partial<Record<InstallArtifactKey, boolean>>,
 ): boolean {
   const target = installTargetForKey(key);
   const targets = root.configure?.targets;
@@ -177,7 +177,7 @@ export function shouldIncludeArtifact(
 
 /** Builds plan context shared by install and uninstall planners. */
 export function buildTargetPlanContext(
-  root: CliProgram,
+  root: AppSpec,
   paths: InstallPaths,
   opts: InstallOpts,
   detected: DetectedSnapshot,
@@ -187,9 +187,9 @@ export function buildTargetPlanContext(
   const scope = resolveInstallScope(opts);
   const detPartial = Object.fromEntries(
     INSTALL_TARGETS.map((t) => [t.key, t.detectedForSnapshot(detected)]),
-  ) as Partial<Record<CliInstallArtifactKey, boolean>>;
+  ) as Partial<Record<InstallArtifactKey, boolean>>;
 
-  const include = (key: CliInstallArtifactKey) =>
+  const include = (key: InstallArtifactKey) =>
     shouldIncludeArtifact(key, root, paths, scope, mode, effective, detPartial);
 
   return {
@@ -206,7 +206,7 @@ export function buildTargetPlanContext(
 }
 
 /** Maps detected snapshot to artifact key (for tests and legacy callers). */
-export function detectedForArtifact(key: CliInstallArtifactKey, detected: DetectedSnapshot): boolean {
+export function detectedForArtifact(key: InstallArtifactKey, detected: DetectedSnapshot): boolean {
   const target = installTargetForKey(key);
   if (key === "configure") {
     return detected.appConfig ?? false;
@@ -215,10 +215,10 @@ export function detectedForArtifact(key: CliInstallArtifactKey, detected: Detect
 }
 
 /** Resolved artifact keys for `--all`, `--mcp`, and `--skill` (availability-gated). */
-export function resolveInstallTargetPreview(program: CliProgram, paths: InstallPaths): InstallTargetPreview {
+export function resolveInstallTargetPreview(program: AppSpec, paths: InstallPaths): InstallTargetPreview {
   const effective = resolveEffectiveInstallTargets(program.configure, program);
 
-  const keysForScope = (scope: InstallScope, mode: InstallPlanMode): CliInstallArtifactKey[] =>
+  const keysForScope = (scope: InstallScope, mode: InstallPlanMode): InstallArtifactKey[] =>
     INSTALL_ARTIFACT_KEYS.filter((key) => shouldIncludeArtifact(key, program, paths, scope, mode, effective));
 
   return {

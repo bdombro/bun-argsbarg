@@ -3,12 +3,13 @@ Tests for docs/cli-guide module behavior.
 */
 
 import { expect, test } from "bun:test";
-import { cliSchemaExport } from "../core/schema.ts";
-import type { CliProgram } from "../core/types.ts";
-import { CliOptionKind } from "../core/types.ts";
+import { z } from "zod";
+import { schemaExport } from "../core/schema.ts";
+import type { AppSpec } from "../core/types.ts";
+import { OptionKind } from "../core/types.ts";
 import { generateCliGuide, generateCliGuideBody } from "./cli-guide.ts";
 
-const nestedFixture: CliProgram = {
+const nestedFixture: AppSpec = {
   key: "nested.ts",
   version: "1.0.0",
   description: "Nested groups demo.",
@@ -29,7 +30,7 @@ const nestedFixture: CliProgram = {
                 {
                   name: "user-name",
                   description: "User to look up.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                   shortName: "u",
                 },
               ],
@@ -37,7 +38,7 @@ const nestedFixture: CliProgram = {
                 {
                   name: "path",
                   description: "File or directory.",
-                  kind: CliOptionKind.String,
+                  kind: OptionKind.String,
                 },
               ],
               handler: () => {},
@@ -57,9 +58,9 @@ test("generateCliGuideBody matches command section of full API guide", () => {
   expect(body).not.toContain("CLI API reference");
 });
 
-test("generateCliGuide covers the same command keys as cliSchemaExport", () => {
+test("generateCliGuide covers the same command keys as schemaExport", () => {
   const md = generateCliGuide(nestedFixture);
-  const schema = cliSchemaExport(nestedFixture);
+  const schema = schemaExport(nestedFixture);
   expect(md).toContain("`nested.ts stat owner lookup`");
   expect(md).toContain("`--user-name` (`-u`)");
   expect(md).toContain("`<path>`");
@@ -67,7 +68,7 @@ test("generateCliGuide covers the same command keys as cliSchemaExport", () => {
 });
 
 test("generateCliGuide configure notes point to README not brew install", () => {
-  const fixture: CliProgram = {
+  const fixture: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo app.",
@@ -81,7 +82,7 @@ test("generateCliGuide configure notes point to README not brew install", () => 
 });
 
 test("generateCliGuide mentions Homebrew upgrade", () => {
-  const fixture: CliProgram = {
+  const fixture: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo app.",
@@ -94,7 +95,7 @@ test("generateCliGuide mentions Homebrew upgrade", () => {
 
 /** Tests that generateCliGuide resolves {argsbarg:program} in consumer notes. */
 test("generateCliGuide resolves {argsbarg:program} in consumer notes", () => {
-  const fixture: CliProgram = {
+  const fixture: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo app.",
@@ -111,9 +112,9 @@ test("generateCliGuide resolves {argsbarg:program} in consumer notes", () => {
   expect(md).toContain("Invoke `myapp run`.");
 });
 
-/** Tests that generateCliGuide and cliSchemaExport include leaf outputSchema. */
-test("generateCliGuide and cliSchemaExport include leaf outputSchema", () => {
-  const fixture: CliProgram = {
+/** Tests that generateCliGuide and schemaExport include leaf outputSchema. */
+test("generateCliGuide and schemaExport include leaf outputSchema", () => {
+  const fixture: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo app.",
@@ -121,17 +122,13 @@ test("generateCliGuide and cliSchemaExport include leaf outputSchema", () => {
       {
         key: "run",
         description: "Run.",
-        outputSchema: {
-          type: "object",
-          properties: { id: { type: "string" } },
-          required: ["id"],
-        },
+        outputSchema: z.object({ id: z.string() }),
         handler: () => {},
       },
     ],
   };
-  const schema = cliSchemaExport(fixture);
-  expect(schema.commands?.[0]?.outputSchema).toEqual({
+  const schema = schemaExport(fixture);
+  expect(schema.commands?.[0]?.outputSchema).toMatchObject({
     type: "object",
     properties: { id: { type: "string" } },
     required: ["id"],
@@ -142,9 +139,9 @@ test("generateCliGuide and cliSchemaExport include leaf outputSchema", () => {
   expect(md).toContain('"type": "string"');
 });
 
-/** Tests that cliSchemaExport includes synthesized and custom inputSchema on leaf commands. */
-test("cliSchemaExport includes leaf inputSchema", () => {
-  const fixture: CliProgram = {
+/** Tests that schemaExport includes synthesized and custom inputSchema on commands with a handler. */
+test("schemaExport includes leaf inputSchema", () => {
+  const fixture: AppSpec = {
     key: "myapp",
     version: "1.0.0",
     description: "Demo app.",
@@ -153,8 +150,8 @@ test("cliSchemaExport includes leaf inputSchema", () => {
         key: "greet",
         description: "Greet user.",
         options: [
-          { name: "name", description: "User name", kind: CliOptionKind.String, required: true },
-          { name: "json", description: "JSON flag", kind: CliOptionKind.Presence },
+          { name: "name", description: "User name", kind: OptionKind.String, required: true },
+          { name: "json", description: "JSON flag", kind: OptionKind.Presence },
         ],
         handler: () => {},
       },
@@ -162,17 +159,13 @@ test("cliSchemaExport includes leaf inputSchema", () => {
         key: "deploy",
         description: "Deploy resource.",
         kind: "document",
-        inputSchema: {
-          type: "object",
-          properties: { target: { type: "string" } },
-          required: ["target"],
-        },
+        inputSchema: z.object({ target: z.string() }),
         handler: () => {},
       },
     ],
   };
 
-  const schema = cliSchemaExport(fixture);
+  const schema = schemaExport(fixture);
   const greet = schema.commands?.[0];
   const deploy = schema.commands?.[1];
 
@@ -188,7 +181,7 @@ test("cliSchemaExport includes leaf inputSchema", () => {
     required: ["name"],
   });
 
-  expect(deploy?.inputSchema).toEqual({
+  expect(deploy?.inputSchema).toMatchObject({
     type: "object",
     properties: { target: { type: "string" } },
     required: ["target"],

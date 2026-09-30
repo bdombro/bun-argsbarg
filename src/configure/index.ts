@@ -5,7 +5,7 @@
 import { bootstrapAppConfig, displayAppConfigPath, runConfigure } from "../config/bootstrap.ts";
 import { ensureAppConfigFile } from "../config/file.ts";
 import { formatMissingConfigMessage, missingRequiredConfig } from "../config/resolve.ts";
-import type { CliProgram, ConfigureHookContext } from "../core/types.ts";
+import type { AppSpec, ConfigureHookContext } from "../core/types.ts";
 import { readPromptLine } from "../prompt.ts";
 import { type InstallPaths, resolveInstallPaths } from "./artifacts/paths.ts";
 import { buildUpdatePlan } from "./artifacts/plan.ts";
@@ -13,15 +13,15 @@ import { installErr, printInstallStatus } from "./artifacts/status.ts";
 import type { InstallAction, InstallOpts, UninstallAction } from "./artifacts/target-types.ts";
 import { buildUninstallPlan } from "./artifacts/uninstall.ts";
 
-/** True when `program.appConfig` has wizard entries. */
-export function appConfigHasEntries(program: CliProgram): boolean {
+/** True when `appConfig` has wizard entries. */
+export function appConfigHasEntries(program: AppSpec): boolean {
   const entries = program.appConfig?.entries;
   return !!entries && Object.keys(entries).length > 0;
 }
 
-function configureHookContext(root: CliProgram, paths: InstallPaths): ConfigureHookContext {
+function configureHookContext(root: AppSpec, paths: InstallPaths): ConfigureHookContext {
   return {
-    program: root,
+    spec: root,
     dry: false,
     paths: {
       agentsSkillDir: paths.agentsSkillDir,
@@ -34,7 +34,7 @@ function configureHookContext(root: CliProgram, paths: InstallPaths): ConfigureH
 
 async function runConfigureLifecycleHook(
   hook: ((ctx: ConfigureHookContext) => void | Promise<void>) | undefined,
-  root: CliProgram,
+  root: AppSpec,
   paths: InstallPaths,
 ): Promise<void> {
   if (!hook) return;
@@ -47,7 +47,7 @@ function executePlan(actions: Array<InstallAction | UninstallAction>): void {
   }
 }
 
-function runInstallWizard(root: CliProgram): void {
+function runInstallWizard(root: AppSpec): void {
   if (!appConfigHasEntries(root)) return;
 
   const { resolved } = bootstrapAppConfig(root, { validateFile: false });
@@ -65,7 +65,7 @@ function runInstallWizard(root: CliProgram): void {
   }
 }
 
-function confirmUninstall(root: CliProgram, yes: boolean): void {
+function confirmUninstall(root: AppSpec, yes: boolean): void {
   if (yes || !process.stdin.isTTY) return;
   process.stderr.write(`Remove agent artifacts for ${root.key}? [y/N]: `);
   const ans = readPromptLine().trim().toLowerCase();
@@ -75,7 +75,7 @@ function confirmUninstall(root: CliProgram, yes: boolean): void {
 }
 
 /** Installs agent artifacts, bootstraps config, and runs the required-config wizard when needed. */
-export async function cliConfigureInstall(root: CliProgram): Promise<never> {
+export async function cliConfigureInstall(root: AppSpec): Promise<never> {
   const paths = resolveInstallPaths(root);
   const installOpts: InstallOpts = { reinstall: true, all: true };
 
@@ -98,7 +98,7 @@ export async function cliConfigureInstall(root: CliProgram): Promise<never> {
 }
 
 /** Removes agent artifacts and app config. */
-export async function cliConfigureUninstall(root: CliProgram, opts: { yes?: boolean }): Promise<never> {
+export async function cliConfigureUninstall(root: AppSpec, opts: { yes?: boolean }): Promise<never> {
   const paths = resolveInstallPaths(root);
   const uninstallOpts: InstallOpts = { uninstall: true, all: true };
 
@@ -117,7 +117,7 @@ export async function cliConfigureUninstall(root: CliProgram, opts: { yes?: bool
 }
 
 /** Prints install status (human or JSON). */
-export function cliConfigureStatus(root: CliProgram, opts: { json?: boolean }): never {
+export function cliConfigureStatus(root: AppSpec, opts: { json?: boolean }): never {
   printInstallStatus(root, { status: true, json: opts.json });
   process.exit(0);
 }

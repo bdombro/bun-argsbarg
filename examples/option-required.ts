@@ -8,9 +8,9 @@ It demonstrates the minimal Bun integration path.
 */
 
 import pkg from "../package.json" with { type: "json" };
-import { Cli, CliOptionKind, type CliProgram, isInteractiveTty } from "../src/index";
+import { OptionKind, isInteractiveTty, argsbarg } from "../src/index";
 
-const program = {
+const app = argsbarg({
   description: "Demo of a required option.",
   handler: (ctx) => {
     const requiredAlways = ctx.stringOpt("requiredAlways");
@@ -28,26 +28,25 @@ const program = {
     {
       name: "requiredAlways",
       description: "Always required string option.",
-      kind: CliOptionKind.String,
+      kind: OptionKind.String,
       required: true,
       shortName: "a",
     },
     {
       name: "requiredNonTty",
       description: "Required when not running in a tty.",
-      kind: CliOptionKind.String,
+      kind: OptionKind.String,
       required: !isInteractiveTty,
       shortName: "t",
     },
     {
       name: "optional",
       description: "optional string option.",
-      kind: CliOptionKind.String,
+      kind: OptionKind.String,
       shortName: "o",
     },
   ],
   version: pkg.version,
-} satisfies CliProgram;
+});
 
-const cli = new Cli(program);
-await cli.run();
+await app.run();

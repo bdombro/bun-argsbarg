@@ -14,7 +14,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import type { CliMcpBundleConfig, CliProgram } from "../core/types.ts";
+import type { AppSpec, McpBundleConfig } from "../core/types.ts";
 import { generatePluginSkillBundle } from "../skill/generate.ts";
 import { applyPluginSkillHint } from "../skill/hint.ts";
 import { sanitizeToolSegment } from "./tools.ts";
@@ -55,7 +55,7 @@ export function collectZipEntries(
  */
 export function defaultAuthor(
   /** Optional bundle configuration. */
-  bundle?: CliMcpBundleConfig,
+  bundle?: McpBundleConfig,
 ): {
   name: string;
   email?: string;
@@ -69,7 +69,7 @@ export function defaultAuthor(
  */
 export function pluginName(
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
 ): string {
   return program.key
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
@@ -85,7 +85,7 @@ export function stagePluginSkills(
   /** Plugin staging root directory. */
   pluginRoot: string,
   /** CLI program schema. */
-  program: CliProgram,
+  program: AppSpec,
   /** Working directory containing repository sources. */
   cwd: string,
 ): void {

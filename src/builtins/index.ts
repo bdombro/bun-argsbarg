@@ -4,7 +4,7 @@ export { cliBuiltinCompletionGroup } from "./completion-group.ts";
 export { completionZshScript } from "./completion-zsh.ts";
 export { cliBuiltinConfigureCommand } from "./configure.ts";
 export { builtinInterceptRoot, dispatchBuiltin } from "./dispatch.ts";
-export { type CliSchemaExport, exportPresentationBuiltins } from "./export.ts";
+export { exportPresentationBuiltins, type SchemaExport } from "./export.ts";
 export { cliBuiltinMcpCommand } from "./mcp.ts";
 export {
   cliParseRoot,

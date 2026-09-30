@@ -1,4 +1,4 @@
-import type { CliProgram } from "../../core/types.ts";
+import type { AppSpec } from "../../core/types.ts";
 import type { InstallPaths } from "./paths.ts";
 
 export type { InstallTargetSpec, ResolvedInstallTarget } from "../../core/types.ts";
@@ -14,7 +14,7 @@ export interface InstallScope {
 }
 
 /** Artifact keys for install.targets. */
-export type CliInstallArtifactKey = "app" | "agentsMcp" | "configure" | "skill";
+export type InstallArtifactKey = "app" | "agentsMcp" | "configure" | "skill";
 
 export type InstallActionKind = "app" | "agent-skill" | "agents-mcp" | "configure";
 
@@ -64,13 +64,13 @@ export interface InstallOpts {
 }
 
 export interface TargetPlanContext {
-  root: CliProgram;
+  root: AppSpec;
   paths: InstallPaths;
   opts: InstallOpts;
   dry: boolean;
   detected: DetectedSnapshot;
-  effective: Record<CliInstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
+  effective: Record<InstallArtifactKey, { enabled: boolean; includedInAll: boolean }>;
   scope: InstallScope;
   mode: InstallPlanMode;
-  include: (key: CliInstallArtifactKey) => boolean;
+  include: (key: InstallArtifactKey) => boolean;
 }

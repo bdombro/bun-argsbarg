@@ -12,7 +12,7 @@ Homebrew installs the **binary and shell completions** into the prefix. **Agent 
 | --- | --- | --- |
 | **Binary & Autocompletions** | Formula `install` block | Installs compiled binary and registers native shell autocompletions. |
 | **Agent artifacts** | `{key} configure install` | User- or script-run after `brew install` / `brew upgrade`; installs skills/MCP and bootstraps `config.json`. |
-| **Application Configuration** | `{key} configure install` | Required-config wizard on TTY when `program.appConfig` defines required parameters. |
+| **Application Configuration** | `{key} configure install` | Required-config wizard on TTY when `appConfig` defines required parameters. |
 | **Clean Uninstall** | `{key} configure uninstall` then `brew uninstall` | Removes `~/.agents` artifacts and app config; must run **before** uninstall while the binary is still on PATH. |
 
 *Note: `just install-local` runs both steps for developers. End users see the commands in formula `caveats` and `brew info`.*

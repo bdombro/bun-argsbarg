@@ -1,4 +1,4 @@
-import { CliOptionKind, type CliRouter } from "../core/types.ts";
+import { type CommandGroup, OptionKind } from "../core/types.ts";
 import { collectScopes } from "./scopes.ts";
 import { escFishSingleQuoted, identToken } from "./shell-helpers.ts";
 
@@ -20,7 +20,7 @@ function scopeCondition(ident: string, scopeIndex: number, path: string): string
 }
 
 /** Returns a self-contained fish completion script for the given program schema. */
-export function completionFishScript(schema: CliRouter): string {
+export function completionFishScript(schema: CommandGroup): string {
   const ident = identToken(schema.key);
   const app = schema.key;
   const scopes = collectScopes(schema);
@@ -38,10 +38,10 @@ export function completionFishScript(schema: CliRouter): string {
     out += `complete -c ${app} -n '${cond}' -s h -l help -d '${escFishSingleQuoted("Show help for this command.")}'\n`;
 
     for (const op of sc.opts) {
-      if (op.kind === CliOptionKind.Presence) {
+      if (op.kind === OptionKind.Presence) {
         const shortPart = op.shortName ? `-s ${op.shortName} ` : "";
         out += `complete -c ${app} -n '${cond}' ${shortPart}-l ${op.name} -d '${escFishSingleQuoted(op.description)}'\n`;
-      } else if (op.kind === CliOptionKind.Enum && (op.choices?.length ?? 0) > 0) {
+      } else if (op.kind === OptionKind.Enum && (op.choices?.length ?? 0) > 0) {
         const shortPart = op.shortName ? `-s ${op.shortName} ` : "";
         out += `complete -c ${app} -n '${cond}' ${shortPart}-l ${op.name} -d '${escFishSingleQuoted(op.description)}'\n`;
         const enumCond = `${cond}; and __fish_seen_argument -l ${op.name}`;
