@@ -3,3 +3,5 @@ node_modules
 
 # argsbarg schemagen output (run `just schemagen` or `argsbarg schemagen`)
 **/__generated__/
+
+dist

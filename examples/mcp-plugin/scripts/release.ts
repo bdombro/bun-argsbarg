@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /*
-Bump version and publish a source-only Bun plugin release tag.
+Bump version, rebuild the committed Node bundle, and publish a plugin release tag.
 */
 
 import * as fs from "node:fs";
@@ -39,10 +39,7 @@ async function main(): Promise<void> {
 
 /** Prints usage and exits. */
 function usage(): never {
-  process.stderr.write(
-    "Usage:\n" +
-      "  bun scripts/release.ts <major|minor|patch> [--yes] [--dry-run]\n",
-  );
+  process.stderr.write("Usage:\n" + "  bun scripts/release.ts <major|minor|patch> [--yes] [--dry-run]\n");
   process.exit(1);
 }
 
@@ -80,7 +77,7 @@ async function runRelease(
   const newVersion = applyBump(currentVersion, bump);
   if (options.dryRun) {
     console.log(
-      `[dry-run] Would run checks, bump ${currentVersion} to ${newVersion}, update the changelog, regenerate docs, commit, tag v${newVersion}, push, and create a GitHub release.`,
+      `[dry-run] Would run checks, bump ${currentVersion} to ${newVersion}, update the changelog, regenerate docs, rebuild the bundle, commit, tag v${newVersion}, push, and create a GitHub release.`,
     );
     return;
   }
@@ -95,6 +92,9 @@ async function runRelease(
 
   const docgenResult = await $`just docgen`.nothrow();
   if (docgenResult.exitCode !== 0) process.exit(docgenResult.exitCode);
+
+  const buildResult = await $`just build`.nothrow();
+  if (buildResult.exitCode !== 0) process.exit(buildResult.exitCode);
 
   await commitAndTag(newVersion);
   await createGithubRelease(`v${newVersion}`);
@@ -153,31 +153,19 @@ function updateVersion(
 ): void {
   const pkgPath = "package.json";
   const pkgContent = fs.readFileSync(pkgPath, "utf-8");
-  fs.writeFileSync(
-    pkgPath,
-    pkgContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`),
-  );
+  fs.writeFileSync(pkgPath, pkgContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
 
   const progContent = fs.readFileSync(programPath, "utf-8");
-  fs.writeFileSync(
-    programPath,
-    progContent.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`),
-  );
+  fs.writeFileSync(programPath, progContent.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`));
 
   if (fs.existsSync(cursorManifestPath)) {
     const cursorContent = fs.readFileSync(cursorManifestPath, "utf-8");
-    fs.writeFileSync(
-      cursorManifestPath,
-      cursorContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`),
-    );
+    fs.writeFileSync(cursorManifestPath, cursorContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
   }
 
   if (fs.existsSync(claudeManifestPath)) {
     const claudeContent = fs.readFileSync(claudeManifestPath, "utf-8");
-    fs.writeFileSync(
-      claudeManifestPath,
-      claudeContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`),
-    );
+    fs.writeFileSync(claudeManifestPath, claudeContent.replace(/"version":\s*"[^"]+"/, `"version": "${newVersion}"`));
   }
 }
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.4] - 2026-09-30
+
+### Changed
+
+- The MCP plugin example now ships a committed, self-contained Node bundle (`dist/mcp-plugin.mjs`) that both plugin manifests run with `node`, replacing source-only `bun start`. Plugin users need Node >=20 instead of Bun, and startup installs nothing. `just check` rebuilds the bundle, the release script rebuilds it after the version bump, and the optional `docs/node-distro.md` guide is removed.
+
 ## [7.1.3] - 2026-09-29
 
 ### Added
@@ -1083,7 +1089,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v7.1.4...HEAD
+[7.1.4]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.4
 [7.1.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.3
 [7.1.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.2
 [7.1.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v7.1.1

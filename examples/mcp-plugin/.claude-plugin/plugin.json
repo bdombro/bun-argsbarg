@@ -9,8 +9,8 @@
   "repository": "https://github.com/bdombro/bun-argsbarg",
   "mcpServers": {
     "mcp-plugin": {
-      "command": "bun",
-      "args": ["--cwd", "${CLAUDE_PLUGIN_ROOT}", "start"]
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mcp-plugin.mjs", "mcp"]
     }
   }
 }

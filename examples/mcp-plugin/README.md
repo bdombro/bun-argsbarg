@@ -6,14 +6,14 @@ Argsbarg MCP plugin template for Cursor and Claude Code marketplaces (@sg schema
 
 `mcp-plugin` packages an MCP server and agent skills directly for Cursor and Claude Code marketplaces:
 
-- **Cursor Plugin**: inline MCP configuration in `.cursor-plugin/plugin.json` runs `bun --cwd ${CURSOR_PLUGIN_ROOT} start`.
-- **Claude Code Plugin**: inline MCP configuration in `.claude-plugin/plugin.json` runs `bun --cwd ${CLAUDE_PLUGIN_ROOT} start`.
+- **Cursor Plugin**: inline MCP configuration in `.cursor-plugin/plugin.json` runs `node ${CURSOR_PLUGIN_ROOT}/dist/mcp-plugin.mjs mcp`.
+- **Claude Code Plugin**: inline MCP configuration in `.claude-plugin/plugin.json` runs `node ${CLAUDE_PLUGIN_ROOT}/dist/mcp-plugin.mjs mcp`.
 - **In-repo skills**: `skills/mcp-plugin/SKILL.md` discovered and loaded by agent platforms.
-- **Source-only distribution**: TypeScript and `bun.lock` are shipped; dependencies and generated schemas are prepared locally. No compiled bundle is shipped.
+- **Committed Node bundle**: `dist/mcp-plugin.mjs` is self-contained (dependencies and schemas bundled), so a fresh clone runs with no install step.
 
 ## Installation
 
-Requires Bun >=1.3 on the host's PATH, a writable plugin directory, and network access for uncached dependencies. `bun start` installs locked dependencies and generates schemas before starting MCP. Setup output goes to stderr; stdout contains only MCP messages. Startup stops if preparation fails.
+Requires Node >=20 on the host's PATH. Nothing is installed at startup; stdout contains only MCP messages. Maintainers need Bun to develop and rebuild the bundle (`just check`).
 
 The in-repo example retains its `argsbarg: file:../..` development dependency. Before distributing a standalone copy, resolve that dependency for the destination repository and regenerate its lockfile; the parent-checkout path is not portable.
 
@@ -58,8 +58,9 @@ cd bun-argsbarg/examples/mcp-plugin
 # Install dependencies and generate schemas
 just setup
 
-# Run the source-only MCP server
-bun start
+# Rebuild the committed Node bundle and run the MCP server from it
+just build
+node dist/mcp-plugin.mjs mcp
 
 # Link into local Cursor plugins for live testing
 just plugin-cursor-upsert
@@ -68,7 +69,7 @@ just plugin-cursor-upsert
 just plugin-claude-install
 ```
 
-Restart Claude Code after installing. Use `bun src/index.ts <command>` for CLI commands; `bun start` is specifically the MCP entry point. In-repo development uses `just setup` to repair the local dependency's CLI executable link.
+Restart Claude Code after installing. Use `bun src/index.ts <command>` for CLI commands from source. Commit `dist/mcp-plugin.mjs` whenever source changes; `just check` rebuilds it. In-repo development uses `just setup` to repair the local dependency's CLI executable link.
 
 ## Documentation
 
@@ -78,4 +79,3 @@ Restart Claude Code after installing. Use `bun src/index.ts <command>` for CLI c
 | MCP tools | [docs/mcp.md](docs/mcp.md) or `mcp-plugin docs mcp` |
 | HTTP API | [docs/http.md](docs/http.md) or `mcp-plugin docs http` |
 | OpenAPI 3.1 | [docs/openapi.json](docs/openapi.json) |
-| Optional Node distribution | [docs/node-distro.md](docs/node-distro.md) |

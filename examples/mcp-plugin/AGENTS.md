@@ -76,10 +76,9 @@ Avoid needless extraction: keep single-use helpers in the calling file by defaul
 
 ## Tooling
 
-- Use Bun for development and the default plugin runtime (`bun`, `bun x`, `bun test`).
-- `bun start` installs locked dependencies, generates schemas, then starts MCP. Keep setup output on stderr; stdout is the MCP protocol.
-- Ship source, `bun.lock`, and inline plugin manifests. Do not ship `node_modules`, generated schemas, or a compiled bundle.
-- Node distribution is an explicit alternative documented in `docs/node-distro.md`; do not change the default runtime implicitly.
+- Use Bun for development, schemagen, tests, and bundling (`bun`, `bun x`, `bun test`).
+- Plugins run the committed Node bundle `dist/mcp-plugin.mjs` via inline manifest MCP configs. `just check` rebuilds it; commit it with its source and never hand-edit it.
+- Keep the MCP runtime Node-compatible: no Bun-only APIs (`Bun.serve`, `bun:sqlite`) on MCP paths. stdout is the MCP protocol.
 
 ## Testing Boundaries
 
@@ -93,7 +92,6 @@ Avoid needless extraction: keep single-use helpers in the calling file by defaul
 ## Documentation
 
 - `README.md` — user-facing install/commands
-- `docs/node-distro.md` — optional conversion from source-only Bun plugins to a bundled Node MCP distribution
 - `docs/architecture.md` — maintainer internals (create if missing)
 - Generated: `just docgen` → `docs/cli.md`, `docs/cli-schema.json`
 - `skills/mcp-plugin/SKILL.md` — agent skill router (scaffolded from template; customize as needed)

@@ -7,8 +7,12 @@ export PATH := justfile_directory() + "/node_modules/.bin:" + env_var("PATH")
 _:
     @just --list
 
-# Run schemagen, typecheck, and format
-check: schemagen format typecheck
+# Run schemagen, format, typecheck, and rebuild the committed Node bundle
+check: schemagen format typecheck build
+
+# Bundle the Node MCP server that plugins run (commit dist/mcp-plugin.mjs)
+build: schemagen
+    bun build ./src/index.ts --target=node --minify-whitespace --minify-syntax --outfile=./dist/mcp-plugin.mjs
 
 # demo the HTTP API
 demo-http:
@@ -53,12 +57,12 @@ lint:
     bun run biome check ./src ./scripts
 
 # Install the Claude Code plugin from this checkout (restart Claude Code afterwards)
-plugin-claude-install:
+plugin-claude-install: build
     claude plugin marketplace add "$(pwd)"
     claude plugin install mcp-plugin@mcp-plugin
 
 # Link plugin into ~/.cursor/plugins/local/mcp-plugin for local testing
-plugin-cursor-upsert:
+plugin-cursor-upsert: build
     mkdir -p ~/.cursor/plugins/local
     ln -sfn '{{justfile_directory()}}' ~/.cursor/plugins/local/mcp-plugin
     @echo "Linked MCP plugin to ~/.cursor/plugins/local/mcp-plugin"
@@ -81,7 +85,7 @@ setup:
 test: check
     bun test .
 
-# Bump version and publish a source-only release
+# Bump version, rebuild the bundle, and publish a release
 release *ARGS:
     bun scripts/release.ts {{ARGS}}
 

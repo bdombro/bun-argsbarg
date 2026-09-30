@@ -6,12 +6,8 @@
   "module": "src/index.ts",
   "description": "Argsbarg MCP plugin template for Cursor and Claude Code marketplaces.",
   "engines": {
-    "bun": ">=1.3"
-  },
-  "scripts": {
-    "biome": "biome",
-    "prestart": "bun install --frozen-lockfile 1>&2 && bun run argsbarg schemagen 1>&2",
-    "start": "bun src/index.ts mcp"
+    "bun": ">=1.3",
+    "node": ">=20"
   },
   "dependencies": {
     "argsbarg": "file:../.."
