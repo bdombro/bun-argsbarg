@@ -1,13 +1,10 @@
 /*
-Plugin release script (`just release <major|minor|patch> [--yes] [--dry-run]`).
-Runs tests, bumps the version in `package.json` and both plugin manifests, promotes the changelog, rebuilds the committed bundle, commits, tags, pushes, and creates a GitHub release. `--dry-run` prints the
-plan and changes nothing; without `--yes` it asks before touching anything.
+Plugin release script (`just release <major|minor|patch>`).
+Runs tests, bumps the version in `package.json` and both plugin manifests, promotes the changelog, rebuilds the committed bundle, commits all changes, tags, pushes, and creates a GitHub release.
 */
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { stdin as input, stdout as output } from "node:process";
-import * as readline from "node:readline/promises";
 
 /** Allowed semver bump kinds. */
 type Bump = "major" | "minor" | "patch";
@@ -35,32 +32,12 @@ function applyBump(current: string, bump: Bump): string {
 
 const argv = process.argv.slice(2);
 const bump = argv.find((a): a is Bump => a === "major" || a === "minor" || a === "patch");
-if (!bump || argv.some((a) => a.startsWith("--") && a !== "--yes" && a !== "--dry-run")) {
-  process.stderr.write("Usage: just release <major|minor|patch> [--yes] [--dry-run]\n");
+if (!bump || argv.length !== 1) {
+  process.stderr.write("Usage: just release <major|minor|patch>\n");
   process.exit(1);
 }
 const current = (JSON.parse(readFileSync("package.json", "utf8")) as { version: string }).version;
 const next = applyBump(current, bump);
-
-if (argv.includes("--dry-run")) {
-  console.log(
-    `[dry-run] Would run tests, bump ${current} → ${next} (package.json + plugin manifests), update the changelog, rebuild the bundle, commit, tag v${next}, push, and create a GitHub release. Nothing was changed.`,
-  );
-  process.exit(0);
-}
-if (!argv.includes("--yes")) {
-  if (!input.isTTY) {
-    process.stderr.write("Not a TTY; pass --yes to confirm the release.\n");
-    process.exit(1);
-  }
-  const rl = readline.createInterface({ input, output });
-  const answer = await rl.question(`Release v${next} (commit, tag, push, GitHub release)? [y/N] `);
-  rl.close();
-  if (answer.trim().toLowerCase() !== "y") {
-    console.log("Aborted.");
-    process.exit(0);
-  }
-}
 
 run("just", ["test"]);
 for (const path of VERSIONED_FILES) {

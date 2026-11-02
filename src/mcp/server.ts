@@ -4,9 +4,17 @@ resources, and ping. Responses are newline-delimited JSON on stdout only.
 */
 
 import { randomUUID } from "node:crypto";
+import type { AppSpec } from "../core/types.ts";
 import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "../headless/tool-call.ts";
 import type { App } from "../runtime/cli.ts";
-import { allMcpResources, collectMcpTools, resolveMcpServerInfo } from "./tools.ts";
+import {
+  allMcpResources,
+  collectMcpTools,
+  MCP_RESOURCE_READ_HINT,
+  MCP_RESOURCE_READ_TOOL,
+  mcpResourceReadTool,
+  resolveMcpServerInfo,
+} from "./tools.ts";
 
 /** Protocol versions this server understands, newest first. `initialize` echoes a match or answers the first. */
 export const MCP_PROTOCOL_VERSIONS = ["2025-06-18", "2024-11-05"] as const;
@@ -44,6 +52,31 @@ function supportsStructuredOutput(version: string | undefined): boolean {
   const idx = version ? (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(version) : -1;
   const sinceIdx = (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(MCP_STRUCTURED_OUTPUT_SINCE);
   return idx !== -1 && idx <= sinceIdx;
+}
+
+/** Outcome of reading one `mcpServer.resources` entry by URI. */
+type ResourceReadResult =
+  | { ok: true; uri: string; mimeType: string; text: string }
+  | { ok: false; failureKind: "unexpected" | "unknown_route" | "validation"; message: string; error: unknown };
+
+/** Looks up a resource by URI and runs its `load()`; shared by `resources/read` and the resource-read tool. */
+function readMcpResource(
+  /** App root. */
+  root: AppSpec,
+  /** Requested resource URI. */
+  uri: string,
+): ResourceReadResult {
+  const found = allMcpResources(root).find((r) => r.uri === uri);
+  if (!found) {
+    const message = `Unknown resource: ${uri}`;
+    return { ok: false, failureKind: "unknown_route", message, error: new Error(message) };
+  }
+  try {
+    return { ok: true, uri: found.uri, mimeType: found.mimeType, text: found.load() };
+  } catch (err) {
+    const message = `Resource load failed: ${err instanceof Error ? err.message : String(err)}`;
+    return { ok: false, failureKind: "unexpected", message, error: err };
+  }
 }
 
 /** Handles one NDJSON request line. */
@@ -117,7 +150,11 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
       if (cli.server) {
         cli.server.mcpProtocolVersion = negotiated;
       }
-      const instructions = root.mcpServer?.instructions;
+      const baseInstructions = root.mcpServer?.instructions;
+      const instructions =
+        baseInstructions && mcpResourceReadTool(root)
+          ? `${baseInstructions}\n\n${MCP_RESOURCE_READ_HINT}`
+          : baseInstructions;
       writeResponse({
         jsonrpc: "2.0",
         id,
@@ -146,6 +183,10 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
         inputSchema: t.inputSchema,
         ...(structured && t.outputSchema !== undefined ? { outputSchema: t.outputSchema } : {}),
       }));
+      const resourceTool = mcpResourceReadTool(root);
+      if (resourceTool) {
+        tools.push(resourceTool);
+      }
       writeResponse({ jsonrpc: "2.0", id, result: { tools } });
       await finish();
       return;
@@ -162,6 +203,34 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
       if (rawArgs !== undefined && (typeof rawArgs !== "object" || rawArgs === null || Array.isArray(rawArgs))) {
         writeError(id, -32602, "Invalid params: arguments must be an object");
         await finish("validation", new Error("Invalid params: arguments must be an object"));
+        return;
+      }
+      if (name === MCP_RESOURCE_READ_TOOL && mcpResourceReadTool(root)) {
+        const uri = (rawArgs as Record<string, unknown> | undefined)?.uri;
+        const read: ResourceReadResult =
+          typeof uri === "string"
+            ? readMcpResource(root, uri)
+            : {
+                ok: false,
+                failureKind: "validation",
+                message: "Missing argument: uri",
+                error: new Error("Missing argument: uri"),
+              };
+        if (read.ok) {
+          writeResponse({
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: read.text }], isError: false },
+          });
+          await finish();
+        } else {
+          writeResponse({
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: read.message }], isError: true },
+          });
+          await finish(read.failureKind, read.error);
+        }
         return;
       }
       const lookup = lookupHeadlessTool(root, name);
@@ -232,34 +301,16 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
         await finish("validation", new Error("Invalid params: uri required"));
         return;
       }
-      const all = allMcpResources(root);
-      const found = all.find((r) => r.uri === uri);
-      if (!found) {
-        writeError(id, -32602, `Unknown resource: ${uri}`);
-        await finish("unknown_route", new Error(`Unknown resource: ${uri}`));
-        return;
-      }
-      let text: string;
-      try {
-        text = found.load();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        writeError(id, -32603, `Resource load failed: ${message}`);
-        await finish("unexpected", err);
+      const read = readMcpResource(root, uri);
+      if (!read.ok) {
+        writeError(id, read.failureKind === "unknown_route" ? -32602 : -32603, read.message);
+        await finish(read.failureKind, read.error);
         return;
       }
       writeResponse({
         jsonrpc: "2.0",
         id,
-        result: {
-          contents: [
-            {
-              uri: found.uri,
-              mimeType: found.mimeType,
-              text,
-            },
-          ],
-        },
+        result: { contents: [{ uri: read.uri, mimeType: read.mimeType, text: read.text }] },
       });
       await finish();
       return;

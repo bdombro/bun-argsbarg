@@ -12,6 +12,9 @@ import type { AppSpec } from "../../index.ts";
 import { buildToolCallSuccessFromResponse } from "../../mcp/result.ts";
 import {
   collectMcpTools,
+  MCP_RESOURCE_READ_HINT,
+  MCP_RESOURCE_READ_TOOL,
+  mcpResourceReadTool,
   mcpToolCallToArgv,
   mcpToolDescription,
   mcpToolName,
@@ -388,12 +391,12 @@ test("2024-11-05 sessions omit outputSchema and structuredContent", async () => 
   assert.equal(callRes.result.structuredContent, undefined);
 });
 
-test("MCP initialize includes configured instructions", async () => {
+test("MCP initialize includes configured instructions plus the resource-read hint", async () => {
   const responses = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }], {
     script: "src/test/mcp-integration-fixture.ts",
   });
   const res = responses.get(1) as { result: { instructions?: string } };
-  assert.equal(res.result.instructions, "Read the fixture skill.");
+  assert.equal(res.result.instructions, `Read the fixture skill.\n\n${MCP_RESOURCE_READ_HINT}`);
 });
 
 test("MCP startup warns about oversized tools on stderr", async () => {
@@ -521,4 +524,62 @@ test("MCP resources/read unknown URI returns error", async () => {
   );
   const res = responses.get(12) as { error: { code: number } };
   assert.equal(res.error.code, -32602);
+});
+
+test("MCP tools/list adds mcp_resource_read with resource URIs only when resources exist", async () => {
+  const withResources = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }], {
+    script: "src/test/mcp-integration-fixture.ts",
+  });
+  const tools = (
+    withResources.get(1) as { result: { tools: { name: string; inputSchema: Record<string, unknown> }[] } }
+  ).result.tools;
+  const tool = tools.find((t) => t.name === MCP_RESOURCE_READ_TOOL);
+  assert.ok(tool);
+  assert.deepEqual((tool.inputSchema.properties as { uri: { enum: string[] } }).uri.enum, ["test://hello"]);
+
+  const without = await mcpRequest([{ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }]);
+  const names = (without.get(1) as { result: { tools: { name: string }[] } }).result.tools.map((t) => t.name);
+  assert.ok(!names.includes(MCP_RESOURCE_READ_TOOL));
+});
+
+test("a command mapping to mcp_resource_read wins over the built-in tool", () => {
+  const root = testProgram({
+    key: "app",
+    description: "",
+    mcpServer: { enabled: true, resources: [{ uri: "test://x", name: "x", load: () => "body" }] },
+    commands: [{ key: "mcp-resource-read", description: "user command", handler: () => {} }],
+  });
+  assert.equal(mcpResourceReadTool(root), undefined);
+  assert.ok(collectMcpTools(root).some((t) => t.name === MCP_RESOURCE_READ_TOOL));
+});
+
+test("MCP mcp_resource_read tool returns the resource body or an isError result", async () => {
+  const responses = await mcpRequest(
+    [
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: MCP_RESOURCE_READ_TOOL, arguments: { uri: "test://hello" } },
+      },
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: MCP_RESOURCE_READ_TOOL, arguments: { uri: "missing://nope" } },
+      },
+      { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: MCP_RESOURCE_READ_TOOL, arguments: {} } },
+    ],
+    { script: "src/test/mcp-integration-fixture.ts" },
+  );
+  type CallRes = { result: { isError: boolean; content: { text: string }[] } };
+  const ok = responses.get(1) as CallRes;
+  assert.equal(ok.result.isError, false);
+  assert.equal(ok.result.content[0]?.text, "hello resource");
+  const unknown = responses.get(2) as CallRes;
+  assert.equal(unknown.result.isError, true);
+  assert.equal(unknown.result.content[0]?.text, "Unknown resource: missing://nope");
+  const missing = responses.get(3) as CallRes;
+  assert.equal(missing.result.isError, true);
+  assert.equal(missing.result.content[0]?.text, "Missing argument: uri");
 });

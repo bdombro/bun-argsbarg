@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.0.3] - 2026-11-02
+
+### Added
+
+- `mcp_resource_read` MCP tool: when `mcpServer.resources` is non-empty, `tools/list` gains a tool that returns any resource body by URI (`uri` is an enum of the registered URIs), so hosts that only expose tools to the model (e.g. Copilot) can still read resources. `initialize.instructions` gets a one-line pointer to it when instructions are set, and `.mcpb` manifests list it. A command that already maps to `mcp_resource_read` keeps the name and the built-in is skipped.
+
+### Changed
+
+- `agent-plugin` template: `just release` no longer asks for confirmation and has no `--dry-run`; it tests, bumps, builds, commits all changes, tags, pushes and creates the GitHub release in one go.
+- Templates (`api`, `agent-plugin`) define each command's Zod schemas at the top of its `command.ts` instead of a per-command `types.ts`; docs and template `AGENTS.md` now recommend a sibling `schemas.ts` only when a schema is shared or large.
+
 ## [8.0.2] - 2026-09-30
 
 ### Removed (breaking)
@@ -1205,7 +1216,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.2...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.3...HEAD
+[8.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.3
 [8.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.2
 [8.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.1
 [8.0.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.0

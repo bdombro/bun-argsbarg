@@ -3,7 +3,15 @@ Status leaf — demonstrates outputSchema.
 */
 
 import { command, OptionKind } from "argsbarg";
-import { StatusJsonOutput } from "./types.ts";
+import { z } from "zod";
+
+/** JSON stdout for `example-agent-plugin status --json`. */
+export const StatusJsonOutput = z.strictObject({
+  version: z.string().describe("App version from program root."),
+});
+
+/** `status --json` payload. */
+export type StatusJsonOutput = z.infer<typeof StatusJsonOutput>;
 
 /** Prints the app version (JSON with `--json`). */
 export const statusCommand = command({

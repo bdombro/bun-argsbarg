@@ -38,7 +38,6 @@ example-agent-plugin <subcommand> [options] [args]
 
 - Always run `example-agent-plugin <subcommand> --help` instead of guessing options or reading large doc files.
 - Pass `--` before arguments that look like flags.
-- Pass `--yes` for non-interactive execution when confirmation is required.
 - Pass `--json` when machine-readable structured output is supported.
 
 ## Install location

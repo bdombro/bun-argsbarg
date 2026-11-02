@@ -42,6 +42,6 @@ setup:
 test: check
     node --test "src/**/*.test.ts"
 
-# Bump version, test, build, commit, tag, push, publish (asks first; --dry-run changes nothing)
+# Bump version, test, build, commit, tag, push, publish
 release *ARGS:
     node scripts/release.ts {{ARGS}}

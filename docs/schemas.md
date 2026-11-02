@@ -17,7 +17,7 @@ Declare commands with `command({ … })` so `ctx.inputs`, `ctx.pathParams`, and 
 
 - **Describe everything with `.describe("…")`.** Descriptions are the documentation agents read. Zod doesn't read JSDoc, so copy any JSDoc into `.describe()` on each field, nested object, union branch, and alias.
 - **Prefer `z.strictObject`.** It emits `additionalProperties: false` and rejects unknown keys, so agents get feedback on typos. `z.object` silently strips unknown keys; MCP and HTTP servers log a `schema.strictness` warning at startup for input objects that accept them. `schemaStrictnessWarnings(app.spec)` returns the same list — assert it's empty in a test (the schema templates do, in `src/app.test.ts`).
-- **One schema per shape, with a same-named type:** `export const X = z.strictObject({…}); export type X = z.infer<typeof X>;`, in the command's `types.ts`. The same name works as a value and a type, so `import type { X }` keeps working.
+- **One schema per shape, with a same-named type:** `export const X = z.strictObject({…}); export type X = z.infer<typeof X>;`, at the top of the command's `command.ts` (move them to a sibling `schemas.ts` only when shared or large). The same name works as a value and a type, so `import type { X }` keeps working.
 - **Discriminated unions:** `z.discriminatedUnion("kind", [...])` emits `oneOf` and reports one precise error (`kind: Invalid discriminator value. Expected 'circle' | 'rect'`). MCP wraps non-object roots as `{ input }` / `{ result }` (see [mcp.md](mcp.md#object-rooted-schemas-and-wrapping)).
 - **Defaults:** `.default(v)` makes a field optional in the emitted input schema, records `default`, and fills the value into `ctx.inputs`.
 - **Recursion:** getters or `z.lazy` emit `$ref`. A recursive *union root* emits `$ref: "#"`, which breaks once MCP wraps the root; argsbarg rejects it at startup when MCP is enabled. Give the recursive part an object root instead.
@@ -51,7 +51,8 @@ $: Unrecognized key: "extra" (allowed: name, tags)
 Set `outputSchema` on a command when its handler emits JSON (with `--json`, always for JSON-only commands, or on the MCP headless path):
 
 ```typescript
-// src/commands/status/types.ts
+// src/commands/status/command.ts
+import { command } from "argsbarg";
 import { z } from "zod";
 
 /** JSON stdout for `myapp status --json`. */
@@ -60,7 +61,6 @@ export const StatusJsonOutput = z.strictObject({
 });
 export type StatusJsonOutput = z.infer<typeof StatusJsonOutput>;
 
-// src/commands/status/command.ts
 export const statusCommand = command({
   key: "status",
   description: "Show environment status.",

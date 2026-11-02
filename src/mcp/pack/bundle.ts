@@ -7,7 +7,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rm
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { AppSpec, McpBundleConfig } from "../../core/types.ts";
-import { collectMcpTools, mcpServerId } from "../tools.ts";
+import { collectMcpTools, mcpResourceReadTool, mcpServerId } from "../tools.ts";
 import { packClaudePlugin } from "./claude.ts";
 import { packCursorPlugin } from "./cursor.ts";
 import { zipStore } from "./zip.ts";
@@ -49,6 +49,10 @@ export function generateMcpManifest(program: AppSpec, binaryName: string): Recor
     name: t.name,
     description: t.description.split("\n")[0] ?? t.description,
   }));
+  const resourceTool = mcpResourceReadTool(program);
+  if (resourceTool) {
+    tools.push({ name: resourceTool.name, description: resourceTool.description.split("\n")[0] ?? "" });
+  }
 
   const manifest: Record<string, unknown> = {
     manifest_version: MANIFEST_VERSION,

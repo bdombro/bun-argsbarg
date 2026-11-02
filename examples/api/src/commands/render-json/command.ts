@@ -3,7 +3,15 @@ Render-json leaf — JSON body demo with a Zod inputSchema and typed ctx.inputs 
 */
 
 import { type AppSpec, command } from "argsbarg";
-import { RenderJsonInput } from "./types.ts";
+import { z } from "zod";
+
+/** JSON body for `render-json`. */
+export const RenderJsonInput = z.strictObject({
+  message: z.string().describe("Message to echo back."),
+});
+
+/** Parsed `render-json` body. */
+export type RenderJsonInput = z.infer<typeof RenderJsonInput>;
 
 /** Echoes the `message` field of a JSON body. */
 export const renderJsonCommand = command({

@@ -16,12 +16,11 @@ When adding or changing commands, schemas, or MCP exposure:
 - Reserved root commands: `completion`, `mcp`, `http`, `version`.
 - `argsbarg({ … })` builds the app in `src/app.ts`; `command({ … })` declares every command (typed `ctx.inputs` / `ctx.pathParams`). Give the root, commands, options, and positionals action-oriented `description`s.
 - Omit `mcpTool` unless a command is genuinely CLI-only (`enabled: false`) or hits an irreducible wire limit; fix the schema and headless path first.
-- Interactive commands have one headless path shared by MCP, non-TTY CLI, and `--yes` / `--dry-run` / `--json` (`shouldRunHeadless*`, `requireYesInNonTty`); don't branch on raw `isTTY`.
 - String options: `format` / `default` / `pattern` per `cli-program.md`; use `ctx.inputs` for multi-flag commands.
 - Varargs (`argMax: 0`): space-separated on the CLI, a JSON array over MCP; never comma-split positionals.
 - App settings are app code (env vars or your own file); argsbarg doesn't manage them.
 - Multi-surface commands (Ink + headless + MCP): one `read*Flags(ctx)` per command and one `resolve*Input(flags)` for cross-field rules, so every path shares one struct.
-- Schemas live in the command's `types.ts`: export the Zod schema and a same-named `z.infer` type. Prefer `z.strictObject`; document every field with `.describe("…")` (agents read it; JSDoc isn't emitted).
+- Schemas live at the top of the command's `command.ts` (a sibling `schemas.ts` only when shared or large): export the Zod schema and a same-named `z.infer` type. Prefer `z.strictObject`; document every field with `.describe("…")` (agents read it; JSDoc isn't emitted).
 
 ## Code conventions
 
@@ -40,7 +39,7 @@ When adding or changing commands, schemas, or MCP exposure:
 | `src/create-identity.ts` | Key, release repo, description (rewritten by `argsbarg create`) | Anything else |
 | `src/types/` | Module augmentations (`argsbarg.d.ts`: `Locals`, `ServerState`) | Runtime logic |
 | `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrations/*.sql` | Command handlers |
-| `src/commands/<name>/` | One command: `command.ts`, optional `types.ts` with Zod schemas, colocated `*.test.ts` | Shared helpers (lift them out) |
+| `src/commands/<name>/` | One command: `command.ts` (with its Zod schemas), colocated `*.test.ts` | Shared helpers (lift them out) |
 | `scripts/` | Dev tooling (release) | Production command paths |
 
 ## Tooling
@@ -49,7 +48,7 @@ When adding or changing commands, schemas, or MCP exposure:
 - `just setup`, `just check` (Biome + `tsc --noEmit`), `just test` (check + `node --test`), `just run …` (from source, type-stripped).
 - `just build` rebuilds the committed bundle `dist/example-agent-plugin.mjs` (esbuild). Plugins run it with `node` via inline manifest MCP configs; commit it with its source and never hand-edit it. stdout is the MCP protocol.
 - `just plugin-claude-install`, `just plugin-cursor-upsert` install this checkout locally.
-- Release: `just release <major|minor|patch>` (asks first; `--dry-run` changes nothing).
+- Release: `just release <major|minor|patch>` (no prompt: tests, bumps, builds, commits all changes, tags, pushes, GitHub release).
 
 ## Testing boundaries
 

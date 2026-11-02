@@ -206,6 +206,42 @@ export function allMcpResources(root: AppSpec): McpResourceEntry[] {
   }));
 }
 
+/**
+ * Name of the built-in tool that reads `mcpServer.resources`, for hosts that only expose tools to the model.
+ * Can't collide with command-derived names in practice: the root `mcp` command key is reserved when MCP is on.
+ */
+export const MCP_RESOURCE_READ_TOOL = "mcp_resource_read";
+
+/** Line appended to `mcpServer.instructions` when {@link MCP_RESOURCE_READ_TOOL} is registered. */
+export const MCP_RESOURCE_READ_HINT = `If you can't read MCP resources directly, call the \`${MCP_RESOURCE_READ_TOOL}\` tool with the resource URI.`;
+
+/**
+ * `tools/list` entry for {@link MCP_RESOURCE_READ_TOOL}, or undefined when the app has no resources
+ * or a command already maps to that name (the command wins).
+ */
+export function mcpResourceReadTool(
+  /** App root. */
+  root: AppSpec,
+): { name: string; description: string; inputSchema: Record<string, unknown> } | undefined {
+  const resources = allMcpResources(root);
+  if (resources.length === 0 || collectMcpTools(root).some((t) => t.name === MCP_RESOURCE_READ_TOOL)) {
+    return undefined;
+  }
+  const lines = resources.map((r) => `- ${r.uri}${r.description ? ` — ${r.description}` : ` — ${r.name}`}`);
+  return {
+    name: MCP_RESOURCE_READ_TOOL,
+    description: `Read an MCP resource by URI. Same body as resources/read, for hosts that can't read resources.\n\nResources:\n${lines.join("\n")}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        uri: { type: "string", enum: resources.map((r) => r.uri), description: "Resource URI." },
+      },
+      required: ["uri"],
+      additionalProperties: false,
+    },
+  };
+}
+
 /** Recursively collects MCP tool definitions from user commands with a handler. */
 export function collectMcpTools(root: AppSpec): McpToolDef[] {
   const out: McpToolDef[] = [];

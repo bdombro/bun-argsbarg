@@ -67,5 +67,5 @@ just plugin-cursor-upsert
 just plugin-claude-install
 ```
 
-Restart Claude Code after installing. Use `node src/index.ts <command>` for CLI commands from source. Commit `dist/example-agent-plugin.mjs` whenever source changes (`just build`). Release with `just release <major|minor|patch>` (asks first; `--dry-run` changes nothing).
+Restart Claude Code after installing. Use `node src/index.ts <command>` for CLI commands from source. Commit `dist/example-agent-plugin.mjs` whenever source changes (`just build`). Release with `just release <major|minor|patch>` (no prompt; commits all changes, tags, pushes and creates the GitHub release).
 

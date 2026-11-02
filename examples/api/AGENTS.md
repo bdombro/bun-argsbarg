@@ -21,7 +21,7 @@ When adding or changing commands, schemas, or MCP exposure:
 - Varargs (`argMax: 0`): space-separated on the CLI, a JSON array over MCP; never comma-split positionals.
 - App settings are app code (env vars or your own file); argsbarg doesn't manage them.
 - Multi-surface commands (Ink + headless + MCP): one `read*Flags(ctx)` per command and one `resolve*Input(flags)` for cross-field rules, so every path shares one struct.
-- Schemas live in the command's `types.ts`: export the Zod schema and a same-named `z.infer` type. Prefer `z.strictObject`; document every field with `.describe("…")` (agents read it; JSDoc isn't emitted).
+- Schemas live at the top of the command's `command.ts` (a sibling `schemas.ts` only when shared or large): export the Zod schema and a same-named `z.infer` type. Prefer `z.strictObject`; document every field with `.describe("…")` (agents read it; JSDoc isn't emitted).
 
 ## Code conventions
 
@@ -40,7 +40,7 @@ When adding or changing commands, schemas, or MCP exposure:
 | `src/create-identity.ts` | Key, release repo, description (rewritten by `argsbarg create`) | Anything else |
 | `src/types/` | Module augmentations (`argsbarg.d.ts`: `Locals`, `ServerState`) | Runtime logic |
 | `src/db/` | `AppDb` (SQLite connect, migrate, domain access), `migrations/*.sql` | Command handlers |
-| `src/commands/<name>/` | One command: `command.ts`, optional `types.ts` with Zod schemas, colocated `*.test.ts` | Shared helpers (lift them out) |
+| `src/commands/<name>/` | One command: `command.ts` (with its Zod schemas), colocated `*.test.ts` | Shared helpers (lift them out) |
 | `scripts/` | Dev tooling (release) | Production command paths |
 
 ## Tooling

@@ -224,7 +224,9 @@ const { limit, "skip-readiness": skipReadiness, timeout } = ctx.inputs;
 
 ```typescript
 import { command } from "argsbarg";
-import { RenderInvoiceInput } from "./types.ts"; // z.strictObject({ format: z.enum(["pdf", "html"]), invoice: … })
+import { z } from "zod";
+
+const RenderInvoiceInput = z.strictObject({ format: z.enum(["pdf", "html"]), invoice: … });
 
 export const renderInvoice = command({
   key: "render-invoice",

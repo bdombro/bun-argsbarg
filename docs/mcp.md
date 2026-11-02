@@ -108,7 +108,7 @@ Set `mcpServer` on the **app root only** (the object passed to `argsbarg({ … }
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
 | `instructions` | *(none)* | Returned as `initialize.result.instructions` for every negotiated protocol version. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or not the agent ends up using this server, so keep it to a one- or two-line pointer (when to reach for this tool, and to read the accompanying skill first), not usage docs. Must be non-empty when set. |
 | `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
-| `resources` | `[]` | Custom `McpResource` entries (argsbarg adds none of its own) |
+| `resources` | `[]` | Custom `McpResource` entries (argsbarg adds none of its own); also readable through the `mcp_resource_read` tool (see [Custom resources](#custom-resources)) |
 | `errors.errorSchema` | `{ error: string }` | Error body shape for tool errors |
 | `errors.obscureUnexpected` | `false` | Hide unexpected error messages from the client (logs keep them) |
 | `hooks` | — | Wire hooks per JSON-RPC message: `onRequest` (awaited before dispatch, so it can gate calls), `onResponse`, `onError` |
@@ -287,6 +287,8 @@ mcpServer: {
 
 URIs must be unique. `load()` runs synchronously at `resources/read` time.
 
+Some hosts (Copilot, for one) only hand MCP tools to the model, so an agent told to "read `myapp://config`" has no way to do it. When `resources` is non-empty, argsbarg also registers an `mcp_resource_read` tool: its `uri` argument is an enum of your URIs, its description lists each one, and it returns the same body as `resources/read` (failures come back as `isError` results). When `instructions` is set, one line pointing at the tool is appended to it. If one of your commands already maps to `mcp_resource_read`, the command wins and the built-in is skipped.
+
 ## Invocation context
 
 Handlers receive `ctx.invocation`: `"cli"` for `app.run()`, `"http"` for the HTTP server, `"mcp"` for MCP `tools/call`.
@@ -343,8 +345,8 @@ argsbarg does not manage app settings. Read credentials from `process.env` (host
 | `initialize` | Negotiates protocol version, returns capabilities (`tools`, `resources`), `serverInfo`, and optional `instructions`. |
 | `notifications/initialized` | Acknowledged; no response (notification). |
 | `ping` | Returns `{}`. |
-| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and `outputSchema` (`2025-06-18` sessions only). |
-| `tools/call` | Runs a command handler; params: `name`, `arguments` (object). |
+| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and `outputSchema` (`2025-06-18` sessions only), plus `mcp_resource_read` when custom resources exist. |
+| `tools/call` | Runs a command handler (or reads a resource for `mcp_resource_read`); params: `name`, `arguments` (object). |
 | `resources/list` | Lists custom resources (`mcpServer.resources`). |
 | `resources/read` | Returns resource body; params: `uri`. |
 
