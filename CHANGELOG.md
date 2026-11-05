@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.2.0] - 2026-11-05
+
+### Changed
+
+- MCP negotiation now includes `2025-11-25`, retaining `2025-06-18`, `2024-11-05`, initialization, ping, and once-per-session roots discovery with its five-second fallback.
+- Optional `mcpServer.validateOutputs` checks typed MCP results without coercion, defaults, or key stripping. Opted-in typed results and JSON text match the advertised object-rooted schema; default string envelopes and scalar/array wrappers remain compatible. CLI and REST output validation is unchanged.
+- MCP handlers receive cooperative cancellation and opted-in progress through `ctx.mcp`. Cancelled queued work is skipped, active abortable children can stop, and tools remain serialized.
+- Explicit standard tool annotations are emitted without inferred safety claims. Parse/envelope/metadata failures now return recoverable protocol errors.
+- Non-serializable MCP results return tool errors without ending the session. Updated docs and npm examples for a compatible minor; the modern-only rewrite, native media, and Streamable HTTP remain deferred.
+
 ## [8.1.0] - 2026-11-05
 
 ### Added
@@ -1227,7 +1237,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.1.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.2.0...HEAD
+[8.2.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.2.0
 [8.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.1.0
 [8.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.3
 [8.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.2

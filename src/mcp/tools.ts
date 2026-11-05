@@ -11,6 +11,7 @@ import {
   isDocumentCommand,
   leafOutputSchema,
   type McpSizeLimits,
+  type McpToolConfig,
   OptionKind,
   type RunnableCommand,
   ValueFormat,
@@ -46,12 +47,14 @@ export interface McpToolDef {
   inputSchema: Record<string, unknown>;
   /** True when {@link inputSchema} wraps the leaf schema; tools/call arguments are unwrapped before invoke. */
   inputWrapped: boolean;
-  /** JSON Schema for structured tool results (wrapped under {@link MCP_OUTPUT_WRAPPER_KEY} when not object-rooted). */
+  /** Object-rooted JSON Schema for the structured result. */
   outputSchema?: Record<string, unknown>;
-  /** True when {@link outputSchema} wraps the leaf schema; `structuredContent` is wrapped to match. */
+  /** Whether structuredContent wraps the leaf result under `result`. */
   outputWrapped: boolean;
   /** `:param` names on the tool's path (without `:`); each is a required top-level tool argument. */
   pathParamNames: string[];
+  /** Explicit advisory hints from the leaf, without inferred safety claims. */
+  annotations?: McpToolConfig["annotations"];
 }
 
 /**
@@ -86,11 +89,11 @@ function withMcpPathParams(
 /** Property holding the leaf input when an MCP `inputSchema` is wrapped to get an object root. */
 export const MCP_INPUT_WRAPPER_KEY = "input";
 
-/** Property holding the leaf result when an MCP `outputSchema` is wrapped to get an object root. */
+/** Property holding a non-object leaf output in structuredContent. */
 export const MCP_OUTPUT_WRAPPER_KEY = "result";
 
 /**
- * MCP requires `type: "object"` at the root of tool input and output schemas. Returns object-rooted
+ * MCP requires `type: "object"` at the root of tool schemas. Returns object-rooted
  * schemas unchanged; wraps anything else (e.g. a discriminated-union `anyOf` root) as a single
  * required property, moving `$schema`, `$id`, `definitions`, and `$defs` up so `#/definitions/…`
  * references still resolve.
@@ -98,7 +101,7 @@ export const MCP_OUTPUT_WRAPPER_KEY = "result";
 export function wrapMcpRootSchema(
   /** Leaf input or output schema. */
   schema: Record<string, unknown>,
-  /** Wrapper property name ({@link MCP_INPUT_WRAPPER_KEY} or {@link MCP_OUTPUT_WRAPPER_KEY}). */
+  /** Wrapper property name (`input` or `result`). */
   key: string,
 ): { schema: Record<string, unknown>; wrapped: boolean } {
   if (schema.type === "object") {
@@ -222,7 +225,14 @@ export const MCP_RESOURCE_READ_HINT = `If you can't read MCP resources directly,
 export function mcpResourceReadTool(
   /** App root. */
   root: AppSpec,
-): { name: string; description: string; inputSchema: Record<string, unknown> } | undefined {
+):
+  | {
+      name: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      annotations: McpToolConfig["annotations"];
+    }
+  | undefined {
   const resources = allMcpResources(root);
   if (resources.length === 0 || collectMcpTools(root).some((t) => t.name === MCP_RESOURCE_READ_TOOL)) {
     return undefined;
@@ -239,6 +249,7 @@ export function mcpResourceReadTool(
       required: ["uri"],
       additionalProperties: false,
     },
+    annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true, readOnlyHint: false },
   };
 }
 
@@ -269,6 +280,7 @@ export function collectMcpTools(root: AppSpec): McpToolDef[] {
         pathParamNames,
         ...(output === undefined ? {} : { outputSchema: output.schema }),
         outputWrapped: output?.wrapped ?? false,
+        ...(cmd.mcpTool?.annotations === undefined ? {} : { annotations: cmd.mcpTool.annotations }),
       });
       return;
     }
@@ -288,7 +300,7 @@ export function collectMcpTools(root: AppSpec): McpToolDef[] {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Resolves MCP server name and version for initialize. */
+/** Resolves MCP server identity for response metadata. */
 export function resolveMcpServerInfo(root: AppSpec): { name: string; version: string } {
   return {
     name: mcpServerId(root),
@@ -418,6 +430,7 @@ function mcpToolDefinitionJson(tool: McpToolDef): string {
       description: tool.description,
       inputSchema: tool.inputSchema,
       ...(tool.outputSchema === undefined ? {} : { outputSchema: tool.outputSchema }),
+      ...(tool.annotations === undefined ? {} : { annotations: tool.annotations }),
     },
     null,
     2,

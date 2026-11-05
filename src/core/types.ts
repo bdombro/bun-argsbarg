@@ -198,10 +198,8 @@ export interface McpServerConfig {
   /** When `true`, enables the `mcp` built-in and MCP stdio server. */
   enabled: boolean;
   /**
-   * Returned as `initialize.result.instructions`. Claude Code adds it to the system prompt of every
-   * session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or
-   * not the agent ends up using this server, so keep it to a one- or two-line pointer (e.g. when to
-   * reach for this tool, and to read the accompanying skill first) rather than usage documentation.
+   * Returned as `initialize.result.instructions`. Keep it to a short pointer explaining when
+   * to use the tools and where to read their skill, rather than duplicating usage documentation.
    */
   instructions?: string;
   /** MCP error response defaults. */
@@ -228,6 +226,8 @@ export interface McpServerConfig {
   bundle?: McpBundleConfig;
   /** Overrides the default startup size warnings (see {@link McpSizeLimits}). */
   sizeLimits?: McpSizeLimits;
+  /** Opt into strict outputSchema validation and schema-conforming typed MCP results. Default false. */
+  validateOutputs?: boolean;
 }
 
 /**
@@ -282,6 +282,10 @@ export interface McpWireContext {
   rpcMethod: string;
   requestId: string;
   toolName?: string;
+  /** Cooperative cancellation for this invocation; pass it to child-process APIs. */
+  signal?: AbortSignal;
+  /** Reports increasing progress when the client supplied a progress token; otherwise a no-op. */
+  reportProgress?: (progress: number, total?: number, message?: string) => void;
 }
 
 /**
@@ -327,7 +331,7 @@ export interface HttpResponseConfig {
 }
 
 /** Body types accepted by {@link CommandContext.respond}. */
-export type RespondBody = string | Uint8Array | Record<string, unknown> | unknown[];
+export type RespondBody = string | number | boolean | null | Uint8Array | Record<string, unknown> | unknown[];
 
 /** Options for {@link CommandContext.respond} and headless invoke results. */
 export interface RespondOptions {
@@ -375,6 +379,19 @@ export interface McpToolConfig {
    * when the full CLI notes would push a definition past a size limit (see {@link McpSizeLimits}).
    */
   notes?: string | false;
+  /** Advisory MCP hints, never authorization or automatic confirmation. Omitted hints use MCP's conservative defaults. */
+  annotations?: {
+    /** Human-readable tool title. */
+    title?: string;
+    /** True only when the tool does not modify its environment. */
+    readOnlyHint?: boolean;
+    /** Whether the tool can perform destructive updates. */
+    destructiveHint?: boolean;
+    /** Whether repeated calls have no additional effect. */
+    idempotentHint?: boolean;
+    /** Whether the tool can interact with external entities. */
+    openWorldHint?: boolean;
+  };
 }
 
 /** Opt-out for the `completion` built-in (default: enabled). */
@@ -437,7 +454,8 @@ export type RunnableCommand<
   positionals?: readonly CommandPositional[];
   /**
    * Zod schema for structured stdout (e.g. with `--json` or MCP when the handler emits JSON).
-   * Emitted in schema export, MCP `tools/list`, and OpenAPI; not validated at runtime.
+   * Emitted in schema export, MCP `tools/list`, and OpenAPI. MCP runtime validation requires
+   * `mcpServer.validateOutputs: true`; CLI and REST output are not runtime-validated.
    */
   outputSchema?: O;
   /**

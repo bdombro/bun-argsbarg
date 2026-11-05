@@ -113,7 +113,7 @@ export async function mcpRequest(
   opts?: { script?: string; env?: Record<string, string> },
 ): Promise<Map<string | number, object>> {
   const script = opts?.script ?? "examples/nested.ts";
-  const input = requests.map((r) => `${JSON.stringify(r)}\n`).join("");
+  const input = requests.map((request) => `${JSON.stringify(request)}\n`).join("");
   const { stdout } = runNode([script, "mcp"], { env: opts?.env, input });
 
   const byId = new Map<string | number, object>();

@@ -10,7 +10,16 @@ parsed values.
 import { parseCommaList, parseDate, parseDateTime, parseDurationMs } from "./formats.ts";
 import { InputError, loadLeafInputs, readJsonOptionValue } from "./leaf-inputs.ts";
 import { normalizeRespondOptions, writeRespondBodyToStdout } from "./respond.ts";
-import type { AppSpec, Command, Invocation, Locals, RespondOptions, RunnableCommand, ServerRuntime } from "./types.ts";
+import type {
+  AppSpec,
+  Command,
+  Invocation,
+  Locals,
+  McpWireContext,
+  RespondOptions,
+  RunnableCommand,
+  ServerRuntime,
+} from "./types.ts";
 import { hasHandler, hasSubcommands } from "./types.ts";
 import { strictParseDouble } from "./utils.ts";
 import { validateWithSchema } from "./zod-schema.ts";
@@ -39,6 +48,8 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
   readonly locals: Locals;
   /** Shared server state for HTTP/MCP invocations. */
   runtime?: ServerRuntime;
+  /** Request-scoped MCP cancellation and progress; absent for CLI and HTTP handlers. */
+  readonly mcp?: McpWireContext;
 
   private response?: RespondOptions;
   /** Cached result of {@link pathParams} (validated once per invocation). */
@@ -59,6 +70,7 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
     pathParams: Record<string, string> = {},
     locals: Locals = {} as Locals,
     runtime?: ServerRuntime,
+    mcp?: McpWireContext,
   ) {
     this.appName = appName;
     this.commandPath = commandPath;
@@ -71,6 +83,7 @@ export class CommandContext<I = CommandInputs, PP = Record<string, string>> {
     this.rawPathParams = pathParams;
     this.locals = locals;
     this.runtime = runtime;
+    this.mcp = mcp;
   }
 
   /**

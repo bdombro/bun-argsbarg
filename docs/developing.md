@@ -28,6 +28,8 @@ The release script bumps `package.json`, promotes `[Unreleased]` in `CHANGELOG.m
 
 Update `CHANGELOG.md` under `[Unreleased]` before releasing.
 
+The next minor adds MCP `2025-11-25` while preserving both previously supported revisions, lifecycle, session roots discovery, and default result envelopes. Output validation is opt-in. Before publishing, check negotiation, listing, real tool calls, output errors/recovery, cancellation, and progress with current clients. Record exact versions and runtime/harness; CLI checks do not prove editor compatibility. See [MCP upgrade notes](mcp.md#upgrading-from-810). The `2026-07-28`-only rewrite, native media, and MCP HTTP remain deferred.
+
 ## Cursor test hook (optional)
 
 Copy templates and the argsbarg repo root include `.cursor/hooks.json` plus `.cursor/hooks/run-tests-on-stop.ts`. On agent **stop** (completed turn), when git shows changes to `justfile` or `*.{ts,tsx,js,jsx}` (excluding `node_modules/`, `dist/`, `.cursor/`), the hook runs `just test`. Failures return a `followup_message` (up to **20** auto-retries via `loop_limit`). Requires [Cursor hooks](https://cursor.com/docs/hooks); not part of `AGENTS.md`. New projects get hooks via `argsbarg create`.

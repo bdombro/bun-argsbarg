@@ -1,12 +1,12 @@
 /*
-This module implements the MCP JSON-RPC server over stdio: initialize, tools,
-resources, ping, and automatic workspace cwd selection from client roots.
-Responses are newline-delimited JSON on stdout only.
+This module serves session-based MCP tools and resources over stdio.
+Initialization negotiates capabilities; application calls remain serialized.
+Responses are newline-delimited JSON on stdout only, independent of tool output capture.
 */
 
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import type { AppSpec } from "../core/types.ts";
+import type { AppSpec, McpWireContext } from "../core/types.ts";
 import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "../headless/tool-call.ts";
 import type { App } from "../runtime/cli.ts";
 import {
@@ -18,36 +18,22 @@ import {
   resolveMcpServerInfo,
 } from "./tools.ts";
 
-/** Protocol versions this server understands, newest first. `initialize` echoes a match or answers the first. */
-export const MCP_PROTOCOL_VERSIONS = ["2025-06-18", "2024-11-05"] as const;
-
-/** The first protocol version to define `outputSchema` (tools/list) and `structuredContent` (tools/call). */
-const MCP_STRUCTURED_OUTPUT_SINCE = "2025-06-18";
+/** Supported session-based protocol revisions, newest first. */
+export const MCP_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2024-11-05"] as const;
 
 /** Maximum wait for the client's initial workspace roots response. */
 const MCP_ROOTS_TIMEOUT_MS = 5_000;
 
-/** JSON-RPC request or response from stdin. */
+/** Validated JSON-RPC request or notification from stdin. */
 interface JsonRpcRequest {
   /** JSON-RPC version declared by the sender. */
-  jsonrpc?: string;
+  jsonrpc: "2.0";
   /** Request identity, scoped to the direction of the request. */
-  id?: string | number | null;
-  /** Request or notification method; absent on responses. */
-  method?: string;
+  id?: string | number;
+  /** Request or notification method. */
+  method: string;
   /** Arguments supplied by the client. */
-  params?: unknown;
-  /** Successful response to a server request. */
-  result?: unknown;
-  /** Failed response to a server request. */
-  error?: unknown;
-}
-
-/** True when `version` is at or after {@link MCP_STRUCTURED_OUTPUT_SINCE} in {@link MCP_PROTOCOL_VERSIONS}. */
-function supportsStructuredOutput(version: string | undefined): boolean {
-  const idx = version ? (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(version) : -1;
-  const sinceIdx = (MCP_PROTOCOL_VERSIONS as readonly string[]).indexOf(MCP_STRUCTURED_OUTPUT_SINCE);
-  return idx !== -1 && idx <= sinceIdx;
+  params?: Record<string, unknown>;
 }
 
 /** Outcome of reading one `mcpServer.resources` entry by URI. */
@@ -83,6 +69,8 @@ async function handleRequestLine(
   req: JsonRpcRequest,
   /** Connection writer that bypasses tool output capture. */
   writeResponse: (message: Record<string, unknown>) => void,
+  /** Cancellation and progress for this request only. */
+  controls: Required<Pick<McpWireContext, "signal" | "reportProgress">>,
 ): Promise<void> {
   const root = cli.spec;
   const requestId = randomUUID();
@@ -92,17 +80,17 @@ async function handleRequestLine(
   const obscureUnexpected = cli.server?.mcp?.obscureUnexpected ?? root.mcpServer?.errors?.obscureUnexpected ?? false;
 
   /** Writes an error only when the incoming message expects a response. */
-  function writeError(id: string | number | null | undefined, code: number, message: string): void {
+  function writeError(id: string | number | undefined, code: number, message: string, data?: unknown): void {
     if (id !== undefined) {
-      writeResponse({ error: { code, message }, id, jsonrpc: "2.0" });
+      writeResponse({ error: { code, message, ...(data === undefined ? {} : { data }) }, id, jsonrpc: "2.0" });
     }
   }
 
   const id = req.id;
   const hasId = id !== undefined;
-  const method = req.method ?? "";
-  const params = (req.params ?? {}) as Record<string, unknown>;
-  const wireCtx = { rpcMethod: method, requestId };
+  const method = req.method;
+  const params = req.params ?? {};
+  const wireCtx = { ...controls, rpcMethod: method, requestId };
 
   await hooks?.onRequest?.(wireCtx);
 
@@ -126,18 +114,6 @@ async function handleRequestLine(
     });
   };
 
-  if (req.jsonrpc !== "2.0") {
-    if (hasId) {
-      writeError(id, -32600, "Invalid Request");
-    }
-    await finish("validation", new Error("Invalid Request"));
-    return;
-  }
-
-  if (method === "notifications/initialized") {
-    return;
-  }
-
   if (!hasId) {
     return;
   }
@@ -150,20 +126,18 @@ async function handleRequestLine(
         typeof requested === "string" && (MCP_PROTOCOL_VERSIONS as readonly string[]).includes(requested)
           ? requested
           : MCP_PROTOCOL_VERSIONS[0];
-      if (cli.server) {
-        cli.server.mcpProtocolVersion = negotiated;
-      }
+      if (cli.server) cli.server.mcpProtocolVersion = negotiated;
       const baseInstructions = root.mcpServer?.instructions;
       const instructions =
         baseInstructions && mcpResourceReadTool(root)
           ? `${baseInstructions}\n\n${MCP_RESOURCE_READ_HINT}`
           : baseInstructions;
       writeResponse({
-        jsonrpc: "2.0",
         id,
+        jsonrpc: "2.0",
         result: {
+          capabilities: { resources: {}, tools: {} },
           protocolVersion: negotiated,
-          capabilities: { tools: {}, resources: {} },
           serverInfo: { name: info.name, version: info.version },
           ...(instructions ? { instructions } : {}),
         },
@@ -171,20 +145,42 @@ async function handleRequestLine(
       await finish();
       return;
     }
-
+    const meta = params._meta;
+    if (meta !== undefined && (typeof meta !== "object" || meta === null || Array.isArray(meta))) {
+      writeError(id, -32602, "Invalid params: _meta must be an object");
+      await finish("validation", new Error("Malformed request metadata"));
+      return;
+    }
+    const progressToken = (meta as Record<string, unknown> | undefined)?.progressToken;
+    if (
+      progressToken !== undefined &&
+      typeof progressToken !== "string" &&
+      (typeof progressToken !== "number" || !Number.isFinite(progressToken))
+    ) {
+      writeError(id, -32602, "Invalid params: malformed request metadata");
+      await finish("validation", new Error("Malformed request metadata"));
+      return;
+    }
+    if (params.cursor !== undefined) {
+      writeError(id, -32602, "Invalid params: this server does not issue pagination cursors");
+      await finish("validation", new Error("Unknown pagination cursor"));
+      return;
+    }
     if (method === "ping") {
-      writeResponse({ jsonrpc: "2.0", id, result: {} });
+      writeResponse({ id, jsonrpc: "2.0", result: {} });
       await finish();
       return;
     }
 
     if (method === "tools/list") {
-      const structured = supportsStructuredOutput(cli.server?.mcpProtocolVersion);
       const tools = collectMcpTools(root).map((t) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
-        ...(structured && t.outputSchema !== undefined ? { outputSchema: t.outputSchema } : {}),
+        ...(cli.server?.mcpProtocolVersion !== "2024-11-05" && t.outputSchema !== undefined
+          ? { outputSchema: t.outputSchema }
+          : {}),
+        ...(t.annotations === undefined ? {} : { annotations: t.annotations }),
       }));
       const resourceTool = mcpResourceReadTool(root);
       if (resourceTool) {
@@ -238,20 +234,8 @@ async function handleRequestLine(
       }
       const lookup = lookupHeadlessTool(root, name);
       if (!lookup.ok) {
-        if (lookup.kind === "unknown") {
-          writeError(id, -32602, lookup.message);
-          await finish("unknown_route", new Error(lookup.message));
-          return;
-        }
-        writeResponse({
-          jsonrpc: "2.0",
-          id,
-          result: {
-            content: [{ type: "text", text: lookup.message }],
-            isError: true,
-          },
-        });
-        await finish("missing_config", new Error(lookup.message));
+        writeError(id, -32602, lookup.message);
+        await finish("unknown_route", new Error(lookup.message));
         return;
       }
       const invokeResult = await executeHeadlessToolCall(
@@ -259,15 +243,16 @@ async function handleRequestLine(
         lookup.tool,
         (rawArgs ?? {}) as Record<string, unknown>,
         "mcp",
-        { rpcMethod: method, toolName: name, requestId },
+        { ...wireCtx, toolName: name },
       );
       if (invokeResult.ok) {
-        const structured = supportsStructuredOutput(cli.server?.mcpProtocolVersion);
-        const { structuredContent: _structuredContent, ...rest } = invokeResult.mcpResult;
         writeResponse({
           jsonrpc: "2.0",
           id,
-          result: structured ? invokeResult.mcpResult : rest,
+          result:
+            cli.server?.mcpProtocolVersion === "2024-11-05"
+              ? { content: invokeResult.mcpResult.content, isError: false }
+              : invokeResult.mcpResult,
         });
         await finish();
         return;
@@ -281,7 +266,7 @@ async function handleRequestLine(
           isError: true,
         },
       });
-      await finish(invokeResult.failureKind ?? "invoke", new Error(invokeResult.message));
+      await finish(invokeResult.failureKind ?? "unexpected", new Error(invokeResult.message));
       return;
     }
 
@@ -313,7 +298,9 @@ async function handleRequestLine(
       writeResponse({
         jsonrpc: "2.0",
         id,
-        result: { contents: [{ uri: read.uri, mimeType: read.mimeType, text: read.text }] },
+        result: {
+          contents: [{ uri: read.uri, mimeType: read.mimeType, text: read.text }],
+        },
       });
       await finish();
       return;
@@ -334,16 +321,18 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
   const decoder = new TextDecoder();
   const writeStdout = process.stdout.write.bind(process.stdout);
   let execution = Promise.resolve();
+  const pending = new Map<string | number, AbortController>();
   const rootsRequestId = `argsbarg:roots:${randomUUID()}`;
   let rootsSupported: boolean | undefined;
   let workspaceSelected = false;
   let inputClosed = false;
-  let settleRoots: ((response: JsonRpcRequest | Error) => void) | undefined;
+  let settleRoots: ((reply: Record<string, unknown> | Error) => void) | undefined;
 
   /** Stops reading when the connection or application queue cannot continue. */
   function stopInput(error: unknown): void {
     const failure = error instanceof Error ? error : new Error(String(error));
     settleRoots?.(failure);
+    for (const controller of pending.values()) controller.abort(failure);
     process.stdin.destroy(failure);
   }
 
@@ -354,26 +343,21 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
     writeStdout(`${JSON.stringify(message)}\n`);
   }
 
-  /** Selects one local workspace once, falling back to launch cwd on discovery failure. */
+  /** Selects one local workspace once; failures retain the server's launch cwd. */
   async function selectWorkspace(): Promise<void> {
     let reason = "Client does not support roots";
     try {
       if (rootsSupported) {
-        if (inputClosed) {
-          throw new Error("MCP input disconnected");
-        }
-        const response = await new Promise<JsonRpcRequest>((resolve, reject) => {
+        if (inputClosed) throw new Error("MCP input disconnected");
+        const response = await new Promise<Record<string, unknown>>((resolve, reject) => {
           const timeout = setTimeout(() => {
             settleRoots?.(new Error("Client roots/list response timed out after 5 seconds"));
           }, MCP_ROOTS_TIMEOUT_MS);
           settleRoots = (reply) => {
             clearTimeout(timeout);
             settleRoots = undefined;
-            if (reply instanceof Error) {
-              reject(reply);
-            } else {
-              resolve(reply);
-            }
+            if (reply instanceof Error) reject(reply);
+            else resolve(reply);
           };
           try {
             writeResponse({ id: rootsRequestId, jsonrpc: "2.0", method: "roots/list" });
@@ -381,20 +365,13 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
             settleRoots?.(error instanceof Error ? error : new Error(String(error)));
           }
         });
-        if ("error" in response) {
-          throw new Error("Client roots/list request failed");
-        }
+        if ("error" in response) throw new Error("Client roots/list request failed");
         const result = response.result as { roots?: unknown } | null;
-        if (!result || !Array.isArray(result.roots)) {
-          throw new Error("Invalid roots/list response");
-        }
-        if (result.roots.length !== 1) {
+        if (!result || !Array.isArray(result.roots)) throw new Error("Invalid roots/list response");
+        if (result.roots.length !== 1)
           throw new Error(`Client returned ${result.roots.length} workspace roots; expected exactly one`);
-        }
         const root = result.roots[0] as { uri?: unknown } | null;
-        if (!root || typeof root.uri !== "string") {
-          throw new Error("Invalid workspace root URI");
-        }
+        if (!root || typeof root.uri !== "string") throw new Error("Invalid workspace root URI");
         process.chdir(fileURLToPath(root.uri));
         cli.server?.emitter.emitLifecycle(`MCP workspace cwd: ${process.cwd()}`, "mcp.workspace.selected");
         return;
@@ -405,44 +382,130 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
     cli.server?.emitter.emitLifecycle(`MCP workspace cwd unchanged: ${reason}`, "mcp.workspace.fallback");
   }
 
-  /** Routes responses immediately and queues application requests in arrival order. */
+  /** Validates envelopes before queuing application requests in arrival order. */
   function routeLine(line: string): void {
-    let request: JsonRpcRequest;
+    let message: unknown;
     try {
-      request = JSON.parse(line) as JsonRpcRequest;
+      message = JSON.parse(line);
     } catch {
+      writeResponse({ error: { code: -32700, message: "Parse error" }, id: null, jsonrpc: "2.0" });
       return;
     }
-    if (typeof request !== "object" || request === null || Array.isArray(request)) {
+    if (typeof message !== "object" || message === null || Array.isArray(message)) {
+      writeResponse({ error: { code: -32600, message: "Invalid Request" }, id: null, jsonrpc: "2.0" });
       return;
     }
-    if (request.method === undefined && ("result" in request || "error" in request)) {
-      if (request.jsonrpc === "2.0" && request.id === rootsRequestId) {
-        settleRoots?.(request);
+    const request = message as Record<string, unknown>;
+    const validId = typeof request.id === "string" || (typeof request.id === "number" && Number.isFinite(request.id));
+    if (
+      request.jsonrpc === "2.0" &&
+      validId &&
+      request.method === undefined &&
+      "result" in request !== "error" in request
+    ) {
+      if (request.id === rootsRequestId) settleRoots?.(request);
+      return;
+    }
+    if (
+      request.jsonrpc !== "2.0" ||
+      typeof request.method !== "string" ||
+      ("id" in request && !validId) ||
+      "result" in request ||
+      "error" in request
+    ) {
+      writeResponse({
+        error: { code: -32600, message: "Invalid Request" },
+        id: validId ? request.id : null,
+        jsonrpc: "2.0",
+      });
+      return;
+    }
+    if (
+      request.params !== undefined &&
+      (typeof request.params !== "object" || request.params === null || Array.isArray(request.params))
+    ) {
+      if (validId)
+        writeResponse({ error: { code: -32602, message: "Invalid params" }, id: request.id, jsonrpc: "2.0" });
+      return;
+    }
+    if (!validId) {
+      if (request.method === "notifications/initialized") {
+        execution = execution.then(async () => {
+          if (rootsSupported !== undefined && !workspaceSelected) {
+            workspaceSelected = true;
+            await selectWorkspace();
+          }
+        });
+        void execution.catch(stopInput);
+      }
+      if (request.method === "notifications/cancelled") {
+        const params = request.params as Record<string, unknown> | undefined;
+        if (typeof params?.requestId === "string" || typeof params?.requestId === "number") {
+          pending.get(params.requestId)?.abort(typeof params.reason === "string" ? params.reason : undefined);
+        }
       }
       return;
     }
+    const id = request.id as string | number;
+    if (pending.has(id)) {
+      writeResponse({ error: { code: -32600, message: "Request ID is already in flight" }, id, jsonrpc: "2.0" });
+      return;
+    }
+    const controller = new AbortController();
+    pending.set(id, controller);
     execution = execution.then(async () => {
-      if (
-        request.jsonrpc === "2.0" &&
-        request.method === "notifications/initialized" &&
-        request.id === undefined &&
-        rootsSupported !== undefined &&
-        !workspaceSelected
-      ) {
-        workspaceSelected = true;
-        await selectWorkspace();
+      if (controller.signal.aborted) {
+        pending.delete(id);
+        return;
       }
-      await handleRequestLine(cli, request, writeResponse);
-      if (
-        request.jsonrpc === "2.0" &&
-        request.method === "initialize" &&
-        request.id !== undefined &&
-        !workspaceSelected
-      ) {
-        const params = request.params as { capabilities?: { roots?: unknown } } | undefined;
-        const roots = params?.capabilities?.roots;
-        rootsSupported = typeof roots === "object" && roots !== null && !Array.isArray(roots);
+      let completed = false;
+      let previousProgress = -1;
+      try {
+        await handleRequestLine(
+          cli,
+          request as unknown as JsonRpcRequest,
+          (message) => {
+            completed = true;
+            if (!controller.signal.aborted) writeResponse(message);
+          },
+          {
+            signal: controller.signal,
+            /** Emits opted-in progress independently of application output capture. */
+            reportProgress: (progress, total, message) => {
+              const meta = (request.params as Record<string, unknown> | undefined)?._meta as
+                | Record<string, unknown>
+                | undefined;
+              const progressToken = meta?.progressToken;
+              if (completed || controller.signal.aborted || progressToken === undefined) return;
+              if (
+                !Number.isFinite(progress) ||
+                progress < 0 ||
+                progress <= previousProgress ||
+                (total !== undefined && (!Number.isFinite(total) || total < progress))
+              ) {
+                throw new RangeError("Progress must increase and must not exceed its finite total");
+              }
+              previousProgress = progress;
+              writeResponse({
+                jsonrpc: "2.0",
+                method: "notifications/progress",
+                params: {
+                  progress,
+                  progressToken,
+                  ...(total === undefined ? {} : { total }),
+                  ...(message === undefined ? {} : { message }),
+                },
+              });
+            },
+          },
+        );
+        if (request.method === "initialize" && !workspaceSelected) {
+          const roots = (request.params as { capabilities?: { roots?: unknown } } | undefined)?.capabilities?.roots;
+          rootsSupported = typeof roots === "object" && roots !== null && !Array.isArray(roots);
+        }
+      } finally {
+        completed = true;
+        pending.delete(id);
       }
     });
     void execution.catch(stopInput);

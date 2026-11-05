@@ -48,6 +48,8 @@ example-api mcp
 
 `example-api` includes an MCP server and an agent skill:
 
+MCP negotiates through `2025-11-25` and retains both previously supported revisions. Output validation is opt-in with `mcpServer.validateOutputs: true`; default result envelopes are unchanged. Completion, version, MCP, and HTTP remain enabled.
+
 - **MCP server**: add `{ "command": "npx", "args": ["-y", "example-api", "mcp"] }` to your client's MCP config.
 - **Agent skill**: See `skills/example-api/SKILL.md` for agent command group instructions.
 

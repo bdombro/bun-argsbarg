@@ -27,6 +27,7 @@ export const statusCommand = command({
   outputSchema: StatusJsonOutput,
   handler: (ctx) => {
     const out: StatusJsonOutput = { version: ctx.spec.version };
+    if (ctx.invocation !== "cli") return out;
     if (ctx.hasFlag("json")) {
       console.log(JSON.stringify(out, null, 2));
     } else {

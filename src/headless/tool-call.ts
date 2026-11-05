@@ -2,7 +2,9 @@
 Shared headless tool dispatch for MCP and HTTP: tool lookup, argv conversion, and invoke.
 */
 
-import type { AppSpec, Invocation, InvokeFailureKind } from "../core/types.ts";
+import { isDeepStrictEqual } from "node:util";
+import type { AppSpec, Invocation, InvokeFailureKind, McpWireContext } from "../core/types.ts";
+import { validateWithSchema } from "../core/zod-schema.ts";
 import { apiErrorResponse, apiSuccessResponse, stripAnsi } from "../http/result.ts";
 import { type HttpRouteDef, httpRequestToArgv } from "../http/routes.ts";
 import { obscureUnexpectedClientMessage } from "../log/emitter.ts";
@@ -111,15 +113,14 @@ function unwrapToolArgs(
 
 /**
  * Converts flat tool arguments to argv and invokes the leaf handler headlessly.
- * Wrapped tools (see `wrapMcpRootSchema`) receive `{ input: {...} }`, unwrapped here, and return
- * `structuredContent` wrapped as `{ result: ... }` to match their `outputSchema`.
+ * Wrapped inputs receive `{ input: {...} }`; non-object output schemas use a `result` wrapper.
  */
 export async function executeHeadlessToolCall(
   cli: App,
   tool: McpToolDef,
   args: Record<string, unknown>,
   invocation: Invocation,
-  mcp?: { rpcMethod: string; toolName?: string; requestId: string },
+  mcp?: McpWireContext,
 ): Promise<HeadlessToolCallResult> {
   const leafArgs = tool.inputWrapped ? unwrapToolArgs(args, tool.pathParamNames) : args;
   if (leafArgs === undefined) {
@@ -139,13 +140,39 @@ export async function executeHeadlessToolCall(
   }
 
   if (invokeResult.kind === "ok" && invokeResult.exitCode === 0 && invokeResult.response) {
-    const mcpResult = buildToolCallSuccessFromResponse(invokeResult.response);
+    let mcpResult: ReturnType<typeof buildToolCallSuccessFromResponse>;
+    try {
+      mcpResult = buildToolCallSuccessFromResponse(invokeResult.response);
+      if (invocation === "mcp" && cli.spec.mcpServer?.validateOutputs && tool.leaf.outputSchema !== undefined) {
+        const wireValue = JSON.parse(JSON.stringify(invokeResult.response.body)) as unknown;
+        const validation = validateWithSchema(tool.leaf.outputSchema, wireValue);
+        if (!validation.valid || !isDeepStrictEqual(validation.value, wireValue)) {
+          throw new Error("Handler result does not match outputSchema");
+        }
+        mcpResult.structuredContent = wireValue;
+      }
+      if (tool.outputWrapped) {
+        mcpResult.structuredContent = { [MCP_OUTPUT_WRAPPER_KEY]: mcpResult.structuredContent };
+      }
+      if (invocation === "mcp" && cli.spec.mcpServer?.validateOutputs && tool.leaf.outputSchema !== undefined) {
+        mcpResult.content = [{ type: "text", text: JSON.stringify(mcpResult.structuredContent, null, 2) }];
+      }
+      JSON.stringify(mcpResult);
+    } catch (error) {
+      return {
+        ok: false,
+        kind: "invoke",
+        message: error instanceof Error ? error.message : "Handler result is not JSON serializable",
+        exitCode: 1,
+        stdout: invokeResult.stdout,
+        stderr: invokeResult.stderr,
+        failureKind: "unexpected",
+      };
+    }
     return {
       ok: true,
       response: invokeResult.response,
-      mcpResult: tool.outputWrapped
-        ? { ...mcpResult, structuredContent: { [MCP_OUTPUT_WRAPPER_KEY]: mcpResult.structuredContent } }
-        : mcpResult,
+      mcpResult,
     };
   }
 

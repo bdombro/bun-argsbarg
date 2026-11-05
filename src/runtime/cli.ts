@@ -22,6 +22,7 @@ import type {
   Invocation,
   InvokeFailureKind,
   Locals,
+  McpWireContext,
   RespondOptions,
   RunnableCommand,
 } from "../core/types.ts";
@@ -209,7 +210,7 @@ export class App {
       toolArgs?: Record<string, unknown>;
       requestId?: string;
       http?: { request: Request; clientIp: string; requestId: string; traceId?: string; spanId?: string };
-      mcp?: { rpcMethod: string; toolName?: string; requestId: string };
+      mcp?: McpWireContext;
     },
   ): Promise<InvokeResult> {
     const invocation = opts?.invocation ?? "mcp";
@@ -251,6 +252,7 @@ export class App {
       pr.pathParams,
       { requestId } as Locals,
       runtime,
+      opts?.mcp,
     );
 
     const skipHooks = isBuiltinInvokePath(pr.path, this.caps);
@@ -353,6 +355,7 @@ export class App {
         await runHook(() => hooks?.beforeInvoke?.(hookCtx()), "beforeInvoke");
       }
 
+      opts?.mcp?.signal?.throwIfAborted();
       this.ensureValidatedLeafInputs(ctx, leaf);
       const handlerResult = await Promise.resolve(leaf.handler(ctx));
       if (handlerResult !== undefined && ctx.getResponse() === undefined) {

@@ -6,6 +6,8 @@ ArgsBarg can expose your CLI to AI agents through the [Model Context Protocol (M
 
 MCP is **opt-in**. Apps that do not set `mcpServer` on the app root behave exactly as before.
 
+The server negotiates MCP `2025-11-25`, `2025-06-18`, or `2024-11-05`. This minor preserves initialization, session capabilities, workspace roots discovery, and existing output envelopes. The modern-only `2026-07-28` rewrite is deferred. Configuration examples below do not establish compatibility with a particular client version or runtime.
+
 ## Quick start
 
 1. Add `mcpServer` to your app root:
@@ -97,7 +99,7 @@ args = ["mcp"]
 
 ### Other MCP hosts
 
-Add the same command to the host's native MCP config. Any host that spawns a subprocess and wires stdin/stdout works the same way: the **command** is your app, and **`mcp`** starts the server.
+Add the same command to a host that supports one of the negotiated MCP revisions over stdio. The **command** is your app, and **`mcp`** starts the server.
 
 ## Configuration
 
@@ -106,16 +108,17 @@ Set `mcpServer` on the **app root only** (the object passed to `argsbarg({ … }
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `enabled` | *(required)* | Must be `true` when `mcpServer` is set |
-| `instructions` | *(none)* | Returned as `initialize.result.instructions` for every negotiated protocol version. Claude Code adds it to the system prompt of every session; Cursor writes it to `mcps/<server>/INSTRUCTIONS.md`. Both cases cost context whether or not the agent ends up using this server, so keep it to a one- or two-line pointer (when to reach for this tool, and to read the accompanying skill first), not usage docs. Must be non-empty when set. |
+| `instructions` | *(none)* | Returned by `initialize`. Keep it to a short pointer describing when to use the tools and where to read the skill. Must be non-empty when set. |
 | `shellEnv` | on (opt-out with `false`) | Capture login-shell `env` at startup (`true` uses `$SHELL`, or pass a shell path) |
 | `resources` | `[]` | Custom `McpResource` entries (argsbarg adds none of its own); also readable through the `mcp_resource_read` tool (see [Custom resources](#custom-resources)) |
 | `errors.errorSchema` | `{ error: string }` | Error body shape for tool errors |
 | `errors.obscureUnexpected` | `false` | Hide unexpected error messages from the client (logs keep them) |
-| `hooks` | — | Wire hooks for incoming requests and notifications: `onRequest` (awaited before application dispatch, so it can gate calls), `onResponse`, `onError`. Client responses are routed independently. |
+| `hooks` | — | Request hooks: `onRequest` (awaited before application dispatch), `onResponse`, `onError`. Cancellation notifications bypass application execution. |
 | `mcpd`, `claudePlugin`, `cursorPlugin`, `bundle` | off | Packaging for `mcp bundle` (see [MCP Bundle](#mcp-bundle-mcp-bundle)) |
 | `sizeLimits` | see [Tool sizes](#tool-sizes) | Overrides the default startup size warnings for tool descriptions, definitions, and `instructions` |
+| `validateOutputs` | `false` | Validate declared output schemas and emit schema-conforming typed MCP results; see [Tool results](#tool-results) |
 
-MCP `serverInfo.name` uses the sanitized program `key` (non-alphanumeric characters become `_`). Program `version` comes from `Program.version` (also used by the `version` built-in).
+The initialization result's `serverInfo` uses the sanitized program `key` and app `version` (also used by the `version` built-in).
 
 Example with optional fields:
 
@@ -128,17 +131,13 @@ mcpServer: {
 
 ## Workspace cwd
 
-For the supported `2025-06-18` and `2024-11-05` protocol versions, MCP servers automatically use the client's workspace as process cwd when the client reports exactly one usable local directory. Existing `mcpServer: { enabled: true }` configuration is enough; there is no separate setting.
+After initialization, argsbarg requests `roots/list` once if the client advertised roots support. Exactly one usable local file URI selects cwd before invocation hooks and handlers run; child CLIs inherit it. Application calls remain serialized while the input reader handles the roots response independently.
 
-After `notifications/initialized`, argsbarg requests `roots/list` if the client advertised roots support. Initialization declares support but does not include paths. This request asks for workspace folders, not their contents; MCP does not define a standard workspace environment variable.
+Unsupported, empty, multiple, malformed, remote, or inaccessible roots retain launch cwd. Errors, disconnects, and an unanswered request after five seconds also fall back. There is no roots refresh, public roots API, or settings change. A client that does not advertise roots receives no roots request.
 
-The initial lookup finishes before invocation hooks and tools run. Stdin continues reading while the server waits, and tool execution stays serialized. A single local `file://` root is decoded and used with `process.chdir()`; child CLIs inherit that cwd unless given their own `cwd` option.
+The selected cwd persists for the server session. `hooks.beforeInvoke` can override it, and children can receive an explicit `cwd`; application changes to process cwd also persist. Do not overlap `app.invoke()` calls while output capture and cwd are process-global.
 
-Unsupported, empty, ambiguous, malformed, inaccessible, or failed roots leave launch cwd unchanged. An unanswered client request falls back after five seconds. That limit covers the MCP response, not filesystem operations; there is no separate existence probe or filesystem timeout. Selection and fallback reasons are logged to stderr.
-
-Cwd is selected once per stdio session. Later root-change notifications do not trigger another lookup or directory switch. Existing `hooks.beforeInvoke` can apply an app-specific override, and subprocesses can receive an explicit `cwd`.
-
-Code running before MCP initialization still sees launch cwd, including module initialization, earlier configuration loading, and opening files. Switching does not rerun that work or relocate open files. This is an argsbarg convenience, not an MCP requirement or a filesystem sandbox. CLI and HTTP behavior are unchanged.
+Roots are untrusted client input, not authorization or a filesystem sandbox. MCP has no standard workspace environment variable. Lack of roots support does not prevent a host from launching the process in the workspace or supplying an explicit path through its configuration. Startup configuration, module initialization, and already-open files still use launch cwd and are not rerun. CLI and REST behavior are unchanged.
 
 ## Tools
 
@@ -188,6 +187,7 @@ mcpTool: {
   enabled: true,
   description: "Custom tools/list text (overrides auto-generated path + help).",
   notes: false, // omit this command's `notes` from the MCP description; a string replaces them
+  annotations: { readOnlyHint: true, openWorldHint: false }, // only when true for this command
 }
 ```
 
@@ -195,6 +195,7 @@ Set **`outputSchema` on the command** (not under `mcpTool`) — see [cli-program
 
 - **`description`** — when set, replaces the auto-generated `path — help` description entirely.
 - **`notes`** — overrides the command's `notes` in the MCP description only; CLI `--help` always shows the command's own `notes` unchanged. `false` omits notes from the MCP description entirely; a string replaces them; omit `notes` to use the command's `notes` as given. Useful when a note only makes sense with `--help` in front of it, or to keep a tool's definition under a size limit (see [Tool sizes](#tool-sizes)).
+- **`annotations`** — explicit `title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint`. These are advisory, not authorization or a replacement for host confirmation. Omitted hints retain MCP's conservative defaults; argsbarg does not infer safety from names or `--yes`. The built-in resource reader keeps conservative mutation/external-access hints because application `load()` callbacks are arbitrary code. Override it with your own command to make more specific claims.
 
 ### Tool arguments
 
@@ -225,7 +226,7 @@ Tools under `:param` command groups (e.g. `workspaces :id get` → `workspaces__
 
 #### Object-rooted schemas and wrapping
 
-MCP requires `type: "object"` at the root of every tool `inputSchema` and `outputSchema`. Object-rooted command schemas (every `z.object` / `z.strictObject`, every synthesized options/positionals schema) are served as-is. Any other root — typically a discriminated union (`oneOf`) from `z.discriminatedUnion(...)` — is **wrapped** under a single required property, and `$schema`, `$id`, `definitions`, and `$defs` move up to the new root so `#/definitions/…` references still resolve:
+MCP requires `type: "object"` at the root of tool `inputSchema` and `outputSchema`. Object-rooted command schemas are served as-is. Other roots, such as a discriminated union, are **wrapped** under a single required property; `$schema`, `$id`, `definitions`, and `$defs` move up so local references still resolve:
 
 ```json
 {
@@ -238,7 +239,7 @@ MCP requires `type: "object"` at the root of every tool `inputSchema` and `outpu
 ```
 
 - **Arguments** — clients send `{ "input": { "kind": "circle", "radius": 1 } }`. argsbarg unwraps `input` before invoke, so handlers, `ctx.inputs`, and `inputSchema` validation see the bare object (the exact union, unchanged). Extra top-level keys or a non-object `input` fail with a validation error.
-- **Results** — a wrapped `outputSchema` nests under `result`, and `structuredContent` is wrapped to match (`{ "result": [ … ] }`).
+- **Results** — non-object output schemas use a `result` property, for example `{ "result": ["a", "b"] }`. Handlers return the bare value; argsbarg wraps it. Default string results retain the released `{ content, contentType }` envelope inside that wrapper. Enable `validateOutputs` for schema-conforming typed values instead.
 - **CLI and HTTP are unaffected** — only MCP `tools/list` and `tools/call` see the wrapper.
 
 When MCP is enabled, startup validation checks every exposed tool's served schemas: each local `$ref` must resolve, and a wrapped schema must not use `$ref: "#"` (after wrapping it would point at the wrapper — reference a named definition instead). See `examples/api` `shape-area` for a union-input leaf.
@@ -247,9 +248,10 @@ When MCP is enabled, startup validation checks every exposed tool's served schem
 
 On success (`isError: false`):
 
-- **stdout** — first `content` text block with the handler’s captured stdout (raw, unchanged).
-- **stderr** — when non-empty, a second `content` text block with trimmed stderr (no prefix). The block’s position signals stderr; hosts may label it themselves.
-- **structuredContent** — when trimmed stdout is valid JSON, the parsed value is also returned per the [MCP tools spec](https://modelcontextprotocol.io/specification/draft/server/tools) — only for `2025-06-18` sessions (see [Protocol](#protocol)); `2024-11-05` sessions get `content` only. Objects and arrays from flags like `--json` are the common case. JSON **primitives** (`true`, `42`, `"hello"`) are parsed too — a handler that prints the literal string `true` as human text would get `structuredContent: true`. Prefer objects for machine-readable output.
+- Return a JSON value from the handler or call `ctx.respond({ body })`. Printing alone does not supply a tool result. Captured stdout/stderr are not treated as a response or mixed into protocol output.
+- **Default results remain compatible.** JSON objects are returned as structured content; strings use `{ content, contentType }`; binary responses use `{ data, contentType, encoding: "base64" }`. A non-object output schema adds the `result` wrapper described above. Text content keeps the released formatting. Native media blocks are not implemented.
+- **Output validation is opt-in:** set `mcpServer: { enabled: true, validateOutputs: true }`. A typed handler's JSON value must match `outputSchema` without coercion, defaults, or key stripping. Invalid results return `isError: true`; valid results use the raw typed value inside any required `result` wrapper, and text serializes that same structured value. For `z.string()` returning `"hello"`, both represent `{ "result": "hello" }`. Untyped results keep the default formatting.
+- CLI and REST output validation is unchanged. The `2024-11-05` session omits `outputSchema` and `structuredContent`; text results still work.
 
 On failure (parse error, validation error, non-zero exit, thrown error), the **full** error message is returned as text content with `isError: true` (ANSI stripped, newlines preserved). HTTP JSON `{ "error": "…" }` uses the same full text. Do not collapse headless errors to the first line.
 
@@ -257,7 +259,7 @@ Help is not available through tool calls; tool schemas come from `tools/list`.
 
 ## Tool sizes
 
-Some hosts have their own limits on how much of a tool's `description` or full definition they'll read, independent of anything the MCP spec itself defines. `mcpSizeReport(root)` (exported from `argsbarg`) measures every tool's `description` length and pretty-printed `{name, description, inputSchema, outputSchema}` definition (bytes and lines) against configurable limits, and returns human-readable warnings for anything over. `serveMcp` runs this at startup and writes any warnings to stderr (`action: "mcp.size"`) before the "MCP ready" line; `mcpSizeReport(app.spec)` returns the same per-tool `ok` / `over: …` status.
+Some hosts have their own limits on how much of a tool's `description` or full definition they'll read, independent of anything the MCP spec itself defines. `mcpSizeReport(root)` (exported from `argsbarg`) measures every tool's `description` length and pretty-printed `{name, description, inputSchema, outputSchema, annotations}` definition (bytes and lines) against configurable limits, and returns human-readable warnings for anything over. `serveMcp` runs this at startup and writes any warnings to stderr (`action: "mcp.size"`) before the "MCP ready" line; `mcpSizeReport(app.spec)` returns the same per-tool `ok` / `over: …` status.
 
 Default limits — observed client behaviors, not MCP spec requirements, so they may need retuning as those clients change:
 
@@ -320,11 +322,29 @@ handler: async (ctx) => {
 };
 ```
 
-Inheriting stdout (`stdio: "inherit"`) under MCP corrupts the wire. Prefer `"pipe"` and let argsbarg return captured handler stdout in the tool result.
+Inheriting stdout (`stdio: "inherit"`) under MCP corrupts the wire. Prefer `"pipe"` and return the child's captured output explicitly, for example `return stdout`, rather than only printing it.
+
+### Cancellation and progress
+
+`ctx.mcp.signal` is a cooperative `AbortSignal` for MCP handlers and invocation hooks. Pass it to Node child-process APIs and other abortable work. Cancellation is handled immediately while tools remain serialized; cancelled queued calls never invoke their handler. Cancelled results are suppressed, and unknown/completed IDs are ignored. String and numeric IDs remain distinct. A signal cannot interrupt synchronous code or children that do not receive it.
+
+```typescript
+handler: async (ctx) => {
+  ctx.mcp?.reportProgress?.(0, 1, "Starting");
+  const { stdout } = await execFileAsync("my-tool", [], {
+    signal: ctx.mcp?.signal,
+    cwd: "/explicit/workspace",
+  });
+  ctx.mcp?.reportProgress?.(1, 1, "Finished");
+  return stdout;
+}
+```
+
+Progress is opt-in through request `_meta.progressToken`; the reporter is a no-op without it or after completion/cancellation. Values must be finite, nonnegative, strictly increasing, and not exceed an optional finite total. Notifications use the original token and bypass output capture. Ordinary stdout remains buffered. `ctx.mcp` is absent for CLI and REST handlers.
 
 ### `app.invoke` (public API)
 
-`app.invoke(argv)` runs a command handler without exiting the process — useful for tests and headless integrations. Returns `{ kind, exitCode, stdout, stderr }`. MCP tool dispatch uses this internally.
+`app.invoke(argv)` runs a command handler without exiting the process — useful for tests and headless integrations. Returns `{ kind, exitCode, stdout, stderr, response? }`. MCP tool dispatch uses the explicit `response` internally.
 
 **Note:** Tool output is buffered until the handler completes. Live streaming (e.g. `tail -f`) is not supported yet; see [Design notes](#design-notes).
 
@@ -350,29 +370,36 @@ argsbarg does not manage app settings. Read credentials from `process.env` (host
 
 - **Transport:** stdio, newline-delimited JSON (NDJSON).
 - **JSON-RPC:** version `2.0`.
-- **MCP protocol version negotiation:** the server supports `2025-06-18` and `2024-11-05`. `initialize` echoes `params.protocolVersion` when it's one of those; otherwise (unsupported, or omitted) it answers `2025-06-18`, the newest. The negotiated version is fixed for the lifetime of the stdio session (one `initialize` per connection) and gates `outputSchema` (`tools/list`) and `structuredContent` (`tools/call`): both are present only for `2025-06-18` sessions, since those fields are defined starting there. `2025-03-26` is not supported (it mandates JSON-RPC batching, which this server doesn't implement).
+- **MCP versions:** `2025-11-25`, `2025-06-18`, and `2024-11-05`. `initialize` echoes a supported requested revision; otherwise it offers `2025-11-25`. Clients unable to support the offered revision should disconnect. Capabilities are negotiated for the session, not required on each request.
+- **Results:** ordinary JSON-RPC `result` or `error` responses. No modern `resultType`, discovery, or MRTR fields are required.
+- **Errors:** malformed JSON gets `-32700`; invalid envelopes get `-32600`; malformed params/metadata get `-32602`. Unknown methods get `-32601`. Parse and invalid-request errors without a usable ID use `id: null`. Recoverable errors do not stop the reader. Batch arrays are not supported.
 
 ### Supported methods
 
 | Method | Description |
 | --- | --- |
-| `initialize` | Negotiates protocol version, returns capabilities (`tools`, `resources`), `serverInfo`, and optional `instructions`. |
-| `notifications/initialized` | Acknowledged; no response (notification). |
-| `ping` | Returns `{}`. |
-| `tools/list` | Lists all tools with `name`, `description`, `inputSchema`, and `outputSchema` (`2025-06-18` sessions only), plus `mcp_resource_read` when custom resources exist. |
-| `tools/call` | Runs a command handler (or reads a resource for `mcp_resource_read`); params: `name`, `arguments` (object). |
+| `initialize` | Negotiates the protocol revision; returns server identity, tools/resources capabilities, and optional `instructions`. |
+| `notifications/initialized` | Starts once-per-session workspace discovery when roots are supported. |
+| `ping` | Returns an empty result. |
+| `tools/list` | Lists tools with `name`, `description`, `inputSchema`, optional `outputSchema`/`annotations`, plus `mcp_resource_read` when resources exist. |
+| `tools/call` | Runs a handler or resource reader; params: `name`, optional object `arguments`, and optional `_meta.progressToken`. |
 | `resources/list` | Lists custom resources (`mcpServer.resources`). |
 | `resources/read` | Returns resource body; params: `uri`. |
+| `notifications/cancelled` | Cooperatively cancels the exact request ID outside the execution queue. |
 
-Requests without an `id` are treated as notifications and do not receive a response (except `notifications/initialized`, which is ignored after parsing).
+Valid notifications have no `id`, receive no response, and never invoke tools. The private server-to-client `roots/list` request is answered through the continuous input reader without waiting behind application execution.
 
 ### Manual smoke test
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | node examples/nested.ts mcp
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}' | node examples/nested.ts mcp
 ```
 
-You should get one JSON line on stdout with `result.capabilities` and `result.serverInfo`.
+You should get one JSON line with `result.protocolVersion`, `result.capabilities`, and `result.serverInfo`.
+
+### Upgrading from 8.1.0
+
+No lifecycle or output-shape migration is required. Existing clients retain their negotiated revision and result envelopes. Cancellation and progress are optional; pass `ctx.mcp.signal` to abortable work and use `ctx.mcp.reportProgress` when useful. Enable `validateOutputs` only after checking handlers and consumers: typed string results then use `{ result: "text" }` instead of `{ result: { content, contentType } }`. The `2026-07-28` architecture remains a separate future major.
 
 ## MCP Bundle (`mcp bundle`)
 
@@ -446,5 +473,5 @@ When MCP is enabled, `mcp` is reserved at the root (as are `completion` and `ver
 - **Zero extra dependencies** — hand-rolled NDJSON JSON-RPC on top of ArgsBarg’s existing parser and schema.
 - **Same handlers** — tool calls run your real command handlers via an internal invoke path that captures stdout/stderr and does not exit the process, so the MCP server can handle many requests in one process.
 - **User schema only** — tool dispatch uses your app root, not merged presentation builtins.
-- **Buffered output** — MCP tool results are sent after the handler finishes. Incremental stdout (log tail, progress) is not streamed; a future release may add MCP progress notifications.
+- **Buffered output** — final results wait for the handler. Opted-in progress notifications are live, but incremental stdout is not streamed.
 

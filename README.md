@@ -15,7 +15,7 @@ Build well-behaved CLIs, HTTP REST services, and MCP servers from one schema. Ru
 - **Schema-first** — declare commands, options, positionals, and Zod input/output schemas once; argsbarg parses, validates, types `ctx.inputs`, and routes.
 - **Zod schemas** — validated with Zod and emitted as JSON Schema for MCP, OpenAPI, and help. No codegen step.
 - **HTTP REST server** — commands become routes, with `/health/liveness`, `/health/readiness`, `/openapi.json`, `/swagger`, and ECS JSON logs on stderr.
-- **MCP server** — every command becomes a stdio MCP tool; package it as a Claude Code / Cursor plugin or `.mcpb` bundle.
+- **MCP server** — MCP stdio tools with negotiation through `2025-11-25`, session workspace discovery, cancellation, progress, and optional output validation; package as a plugin or `.mcpb` bundle.
 - **Plain-text help** — scoped `-h` at any depth, no color or boxes; when piped, help includes the input and output schemas for agents.
 - **Shell completions** — `completion bash|zsh|fish`.
 

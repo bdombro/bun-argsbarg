@@ -18,9 +18,11 @@ export interface McpToolCallSuccess {
   isError: false;
 }
 
-/** Canonical MCP structuredContent for string respond bodies. */
+/** Released MCP content envelope for string respond bodies. */
 export interface McpStringRespondContent {
+  /** Unmodified response text. */
   content: string;
+  /** Response media type. */
   contentType: string;
 }
 
@@ -48,10 +50,7 @@ export function buildToolCallSuccessFromResponse(response: RespondOptions): McpT
     } satisfies McpBinaryRespondContent;
     text = `[Binary data: ${contentType}, ${body.length} bytes]`;
   } else if (typeof body === "string") {
-    structuredContent = {
-      content: body,
-      contentType,
-    } satisfies McpStringRespondContent;
+    structuredContent = { content: body, contentType } satisfies McpStringRespondContent;
     text = body;
   } else {
     structuredContent = body;

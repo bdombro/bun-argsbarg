@@ -40,6 +40,8 @@ example-cli mcp
 
 ## AI Agent & MCP Integration
 
+MCP negotiates through `2025-11-25` and retains both previously supported revisions. Cancellation, progress, and strict output validation are optional. Completion, version, MCP, and HTTP remain enabled.
+
 - **MCP server**: add `{ "command": "npx", "args": ["-y", "example-cli", "mcp"] }` to your client's MCP config.
 - **Agent skill**: `skills/example-cli/SKILL.md`; copy it into your agent's skill directory.
 

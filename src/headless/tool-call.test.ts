@@ -42,7 +42,7 @@ describe("headless error text", () => {
 });
 
 describe("wrapped MCP tools", () => {
-  /** Union input leaf that echoes its inputs; output is an array so structuredContent gets wrapped too. */
+  /** Union input leaf that echoes its inputs in a wrapped array. */
   const program = testProgram({
     key: "wrapcall",
     description: "Wrapped call demo.",
@@ -64,7 +64,7 @@ describe("wrapped MCP tools", () => {
   const cli = argsbarg(program);
   const tool = requireMcpTool(collectMcpTools(program), "edit");
 
-  test("unwraps input and wraps structuredContent under result", async () => {
+  test("unwraps input and wraps array structuredContent", async () => {
     const result = await executeHeadlessToolCall(cli, tool, { input: { kind: "append", text: "hi" } }, "mcp");
     assert.equal(result.ok, true);
     if (result.ok) {
@@ -90,4 +90,75 @@ describe("wrapped MCP tools", () => {
       assert.ok(result.message.includes('single "input" object property'));
     }
   });
+});
+
+test("MCP validates raw JSON outputs without coercing or defaulting handler results", async () => {
+  for (const [schema, value, valid] of [
+    [z.string(), "hello", true],
+    [z.number(), 42, true],
+    [z.boolean(), false, true],
+    [z.null(), null, true],
+    [z.array(z.string()), ["hello"], true],
+    [z.strictObject({ ok: z.boolean() }), { ok: true }, true],
+    [z.string(), 42, false],
+    [z.coerce.string(), 42, false],
+    [z.object({ ok: z.boolean().default(true) }), {}, false],
+  ] as const) {
+    const program = testProgram({
+      key: "output",
+      description: "Output validation.",
+      mcpServer: { enabled: true, validateOutputs: true },
+      commands: [{ key: "run", description: "Run.", outputSchema: schema, handler: () => value }],
+    });
+    const tool = requireMcpTool(collectMcpTools(program), "run");
+    const result = await executeHeadlessToolCall(argsbarg(program), tool, {}, "mcp");
+    assert.equal(result.ok, valid, JSON.stringify(value));
+    if (result.ok) {
+      const expected = tool.outputWrapped ? { result: value } : value;
+      assert.deepEqual(result.mcpResult.structuredContent, expected);
+      assert.deepEqual(JSON.parse(result.mcpResult.content[0]?.text ?? ""), expected);
+    }
+  }
+});
+
+test("MCP preserves released output contracts unless validation is enabled", async () => {
+  for (const body of ["hello", 42]) {
+    const program = testProgram({
+      commands: [{ description: "Return output.", handler: () => body, key: "run", outputSchema: z.string() }],
+      description: "Existing outputs.",
+      key: "output",
+      mcpServer: { enabled: true },
+    });
+    const result = await executeHeadlessToolCall(
+      argsbarg(program),
+      requireMcpTool(collectMcpTools(program), "run"),
+      {},
+      "mcp",
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.deepEqual(result.mcpResult.structuredContent, {
+        result: typeof body === "string" ? { content: body, contentType: "text/plain; charset=utf-8" } : body,
+      });
+    }
+  }
+});
+
+test("MCP turns non-serializable handler output into a tool failure", async () => {
+  const circular: Record<string, unknown> = {};
+  circular.self = circular;
+  const program = testProgram({
+    commands: [{ description: "Return invalid JSON.", handler: () => circular, key: "run" }],
+    description: "Invalid output.",
+    key: "output",
+    mcpServer: { enabled: true },
+  });
+  const result = await executeHeadlessToolCall(
+    argsbarg(program),
+    requireMcpTool(collectMcpTools(program), "run"),
+    {},
+    "mcp",
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.message, /circular/i);
 });

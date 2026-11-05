@@ -141,6 +141,7 @@ Many "MCP problems" are schema or handler gaps. Prefer these over escape hatches
 | --- | --- |
 | `enabled: false` | Command is **genuinely** CLI-only (open browser, Ink-only flow with no scriptable equivalent) |
 | `description: "..."` | **Irreducible** MCP limitation (e.g. live tail / `--watch` cannot be streamed on the MCP wire yet) |
+| `annotations: { ... }` | Explicit safety/idempotency hints that the CLI schema cannot express; hints are advisory, not authorization |
 
 ### Structured stdout
 
@@ -158,7 +159,7 @@ command({
 })
 ```
 
-Exported in MCP `tools/list`, OpenAPI, and piped `--help`. Not validated at runtime. Pair with `notes` for prose examples; do not duplicate the full schema in `notes`. See [schemas.md](schemas.md#output-schemas).
+Exported in MCP `tools/list`, OpenAPI, and piped `--help`. MCP output validation is opt-in with `mcpServer.validateOutputs: true`; it rejects results requiring coercion, defaults, or key stripping. Non-object output schemas use a `result` wrapper. Default string envelopes remain compatible; opted-in typed strings use the string itself inside `result`. CLI and REST output are not runtime-validated. Return a value or call `ctx.respond()`; printing alone is not an MCP response. Pair with `notes` for prose examples; do not duplicate the schema in `notes`. See [schemas.md](schemas.md#output-schemas).
 
 Do **not** use `mcpTool.description` to paper over missing `--yes`, non-standard flag names, or handlers that only work interactively — fix those instead.
 

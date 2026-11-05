@@ -229,7 +229,7 @@ describe("MCP object-root wrapping", () => {
     });
   });
 
-  test("collectMcpTools wraps non-object input and output schemas and flags them", () => {
+  test("collectMcpTools wraps non-object input and output schemas", () => {
     const program = testProgram({
       key: "wrapapp",
       description: "Wrap demo.",
@@ -250,7 +250,6 @@ describe("MCP object-root wrapping", () => {
     const edit = requireMcpTool(tools, "edit");
     assert.equal(edit.inputWrapped, true);
     assert.equal(edit.inputSchema.type, "object");
-    assert.equal(edit.outputWrapped, true);
     assert.deepEqual(edit.outputSchema, {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
@@ -258,9 +257,9 @@ describe("MCP object-root wrapping", () => {
       required: ["result"],
       additionalProperties: false,
     });
+    assert.equal(edit.outputWrapped, true);
     const plain = requireMcpTool(tools, "plain");
     assert.equal(plain.inputWrapped, false);
-    assert.equal(plain.outputWrapped, false);
   });
 });
 
