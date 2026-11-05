@@ -111,7 +111,7 @@ Set `mcpServer` on the **app root only** (the object passed to `argsbarg({ … }
 | `resources` | `[]` | Custom `McpResource` entries (argsbarg adds none of its own); also readable through the `mcp_resource_read` tool (see [Custom resources](#custom-resources)) |
 | `errors.errorSchema` | `{ error: string }` | Error body shape for tool errors |
 | `errors.obscureUnexpected` | `false` | Hide unexpected error messages from the client (logs keep them) |
-| `hooks` | — | Wire hooks per JSON-RPC message: `onRequest` (awaited before dispatch, so it can gate calls), `onResponse`, `onError` |
+| `hooks` | — | Wire hooks for incoming requests and notifications: `onRequest` (awaited before application dispatch, so it can gate calls), `onResponse`, `onError`. Client responses are routed independently. |
 | `mcpd`, `claudePlugin`, `cursorPlugin`, `bundle` | off | Packaging for `mcp bundle` (see [MCP Bundle](#mcp-bundle-mcp-bundle)) |
 | `sizeLimits` | see [Tool sizes](#tool-sizes) | Overrides the default startup size warnings for tool descriptions, definitions, and `instructions` |
 
@@ -125,6 +125,20 @@ mcpServer: {
   shellEnv: false, // opt out of login-shell capture
 }
 ```
+
+## Workspace cwd
+
+For the supported `2025-06-18` and `2024-11-05` protocol versions, MCP servers automatically use the client's workspace as process cwd when the client reports exactly one usable local directory. Existing `mcpServer: { enabled: true }` configuration is enough; there is no separate setting.
+
+After `notifications/initialized`, argsbarg requests `roots/list` if the client advertised roots support. Initialization declares support but does not include paths. This request asks for workspace folders, not their contents; MCP does not define a standard workspace environment variable.
+
+The initial lookup finishes before invocation hooks and tools run. Stdin continues reading while the server waits, and tool execution stays serialized. A single local `file://` root is decoded and used with `process.chdir()`; child CLIs inherit that cwd unless given their own `cwd` option.
+
+Unsupported, empty, ambiguous, malformed, inaccessible, or failed roots leave launch cwd unchanged. An unanswered client request falls back after five seconds. That limit covers the MCP response, not filesystem operations; there is no separate existence probe or filesystem timeout. Selection and fallback reasons are logged to stderr.
+
+Cwd is selected once per stdio session. Later root-change notifications do not trigger another lookup or directory switch. Existing `hooks.beforeInvoke` can apply an app-specific override, and subprocesses can receive an explicit `cwd`.
+
+Code running before MCP initialization still sees launch cwd, including module initialization, earlier configuration loading, and opening files. Switching does not rerun that work or relocate open files. This is an argsbarg convenience, not an MCP requirement or a filesystem sandbox. CLI and HTTP behavior are unchanged.
 
 ## Tools
 

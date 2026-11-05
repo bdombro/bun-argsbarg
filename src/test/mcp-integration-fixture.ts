@@ -3,10 +3,31 @@
 MCP integration test fixture for subprocess tests (not a public example).
 */
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { type AppSpec, argsbarg, OptionKind } from "../index.ts";
+
+/** Runs a child CLI with piped output while a tool invocation is active. */
+const execFileAsync = promisify(execFile);
+/** Cwd observed before an application-specific override. */
+let hookCwd = process.cwd();
+/** Active workspace handlers, used to detect accidental concurrent dispatch. */
+let activeWorkspaceCalls = 0;
 
 const program = {
   commands: [
+    {
+      description: "Report handler and child cwd.",
+      /** Reports cwd after an asynchronous child process without allowing overlapping tools. */
+      handler: async () => {
+        activeWorkspaceCalls++;
+        const overlap = activeWorkspaceCalls > 1;
+        const { stdout } = await execFileAsync(process.execPath, ["-p", "process.cwd()"]);
+        activeWorkspaceCalls--;
+        return { childCwd: stdout.trim(), cwd: process.cwd(), hookCwd, overlap };
+      },
+      key: "workspace-cwd",
+    },
     {
       key: "echo-env",
       description: "Echo an env var.",
@@ -52,6 +73,13 @@ const program = {
     },
   ],
   description: "MCP integration test fixture.",
+  hooks: {
+    /** Records cwd before each tool and optionally applies the fixture's application override. */
+    beforeInvoke: () => {
+      hookCwd = process.cwd();
+      if (process.env.MCP_TEST_CWD) process.chdir(process.env.MCP_TEST_CWD);
+    },
+  },
   key: "mcp-test",
   mcpServer: {
     enabled: true,

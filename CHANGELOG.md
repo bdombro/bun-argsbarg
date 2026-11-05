@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.1.0] - 2026-11-05
+
+### Added
+
+- MCP stdio servers automatically select workspace cwd once after client initialization when exactly one usable local root is reported. Child CLIs inherit it without consumer changes. Unsupported, ambiguous, unusable, or failed roots retain launch cwd; unanswered client requests fall back after five seconds.
+- Separate MCP follow-up plan covering protocol compatibility, JSON-RPC validation, structured results, cancellation/progress, tool annotations, native content, and optional Streamable HTTP. Future features remain unimplemented.
+
+### Fixed
+
+- MCP stdin keeps reading and routes client responses independently while application requests remain serialized. Wire writes bypass tool output capture, and pending workspace discovery settles on disconnect or write failure.
+
 ## [8.0.3] - 2026-11-02
 
 ### Added
@@ -1216,7 +1227,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.0.3...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.1.0...HEAD
+[8.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.1.0
 [8.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.3
 [8.0.2]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.2
 [8.0.1]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.1

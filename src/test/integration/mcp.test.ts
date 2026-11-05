@@ -3,8 +3,13 @@ Domain-specific regression tests (split from index.test.ts).
 */
 
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { createInterface } from "node:readline";
+import { type TestContext, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { schemaExport } from "../../core/schema.ts";
 import { cliValidateProgram } from "../../core/validate.ts";
@@ -21,6 +26,258 @@ import {
   sanitizeToolSegment,
 } from "../../mcp/tools.ts";
 import { mcpRequest, nestedMcpFixture, requireMcpTool, runNode, testProgram } from "../fixtures.ts";
+
+/** Starts an interactive MCP fixture outside its workspace and cleans up its process and files. */
+function workspaceClient(
+  /** Owns cleanup for the subprocess and temporary directories. */
+  context: TestContext,
+  /** Whether the application hook should override workspace cwd with launch cwd. */
+  override = false,
+) {
+  const launch = realpathSync(mkdtempSync(join(tmpdir(), "argsbarg-mcp-")));
+  const workspace = join(launch, "workspace with spaces");
+  mkdirSync(workspace);
+  const child = spawn(process.execPath, [join(import.meta.dirname, "..", "mcp-integration-fixture.ts"), "mcp"], {
+    cwd: launch,
+    env: { ...process.env, MCP_TEST_CWD: override ? launch : "" },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let stderr = "";
+  child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
+    stderr += chunk;
+  });
+  const lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+  const closed = new Promise<number | null>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+  void closed.catch(() => {});
+  context.after(() => {
+    child.kill("SIGKILL");
+    rmSync(launch, { force: true, recursive: true });
+  });
+  return {
+    child,
+    closed,
+    launch,
+    /** Reads one complete wire message without treating server requests as responses. */
+    read: async (): Promise<Record<string, unknown>> => {
+      const line = await lines.next();
+      assert.equal(line.done, false, stderr);
+      return JSON.parse(line.value as string) as Record<string, unknown>;
+    },
+    /** Collected framework stderr for lifecycle assertions. */
+    stderr: () => stderr,
+    workspace,
+    /** Writes a client request, notification, or response. */
+    write: (message: object) => child.stdin.write(`${JSON.stringify(message)}\n`),
+  };
+}
+
+test("MCP selects workspace cwd before queued tools and their children", { timeout: 12_000 }, async (context) => {
+  for (const protocolVersion of ["2024-11-05", "2025-06-18"]) {
+    const client = workspaceClient(context);
+    client.write({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "initialize",
+      params: { capabilities: { roots: {} }, protocolVersion },
+    });
+    assert.equal((await client.read()).id, 1);
+    client.write({ id: 2, jsonrpc: "2.0", method: "ping" });
+    assert.equal((await client.read()).id, 2);
+    client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+    for (const id of [3, 4]) {
+      client.write({ id, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+    }
+    const request = await client.read();
+    assert.equal(request.method, "roots/list");
+    assert.equal(typeof request.id, "string");
+    client.write({ id: 3, jsonrpc: "2.0", result: { roots: [] } });
+    client.write({
+      id: request.id,
+      jsonrpc: "2.0",
+      result: { roots: [{ uri: pathToFileURL(client.workspace).href }] },
+    });
+    for (const id of [3, 4]) {
+      const response = await client.read();
+      assert.equal(response.id, id);
+      const result = response.result as { content: { text: string }[]; isError: boolean };
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(result.content[0]?.text ?? ""), {
+        childCwd: client.workspace,
+        cwd: client.workspace,
+        hookCwd: client.workspace,
+        overlap: false,
+      });
+    }
+    client.child.stdin.end();
+    assert.equal(await client.closed, 0, client.stderr());
+    assert.match(client.stderr(), /mcp.workspace.selected/);
+  }
+});
+
+test("MCP skips roots discovery for unsupported clients", { timeout: 12_000 }, async (context) => {
+  for (const capabilities of [{}, { roots: true }]) {
+    const client = workspaceClient(context);
+    client.write({ id: 1, jsonrpc: "2.0", method: "initialize", params: { capabilities } });
+    assert.equal((await client.read()).id, 1);
+    client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+    client.write({ id: 2, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+    const response = await client.read();
+    assert.equal(response.id, 2);
+    const result = response.result as { content: { text: string }[] };
+    assert.equal(JSON.parse(result.content[0]?.text ?? "").cwd, client.launch);
+    client.child.stdin.end();
+    assert.equal(await client.closed, 0, client.stderr());
+    assert.match(client.stderr(), /mcp.workspace.fallback/);
+  }
+});
+
+test("MCP preserves launch cwd when roots cannot select a directory", { timeout: 15_000 }, async (context) => {
+  for (const scenario of [
+    "empty",
+    "multiple",
+    "missing",
+    "malformed",
+    "invalid",
+    "remote",
+    "file",
+    "denied",
+    "error",
+  ]) {
+    await context.test(scenario, async (subcontext) => {
+      if (scenario === "denied" && process.getuid?.() === 0) {
+        subcontext.skip("Root can enter directories without permission bits");
+        return;
+      }
+      const client = workspaceClient(subcontext);
+      const uri = pathToFileURL(client.workspace).href;
+      const file = join(client.launch, "not-a-directory");
+      writeFileSync(file, "fixture");
+      const replies: Record<string, object> = {
+        denied: { result: { roots: [{ uri }] } },
+        empty: { result: { roots: [] } },
+        error: { error: { code: -32603, message: "Roots unavailable" } },
+        file: { result: { roots: [{ uri: pathToFileURL(file).href }] } },
+        invalid: { result: { roots: [{ uri: "https://example.invalid/workspace" }] } },
+        malformed: { result: { roots: [{}] } },
+        missing: { result: { roots: [{ uri: pathToFileURL(join(client.launch, "missing")).href }] } },
+        multiple: { result: { roots: [{ uri }, { uri: pathToFileURL(client.launch).href }] } },
+        remote: { result: { roots: [{ uri: "file://example.invalid/workspace" }] } },
+      };
+      client.write({ id: 1, jsonrpc: "2.0", method: "initialize", params: { capabilities: { roots: {} } } });
+      assert.equal((await client.read()).id, 1);
+      client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+      client.write({ id: 2, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+      const request = await client.read();
+      assert.equal(request.method, "roots/list");
+      if (scenario === "denied") chmodSync(client.workspace, 0o000);
+      try {
+        client.write({ id: request.id, jsonrpc: "2.0", ...replies[scenario] });
+        const response = await client.read();
+        assert.equal(response.id, 2);
+        const result = response.result as { content: { text: string }[] };
+        const observed = JSON.parse(result.content[0]?.text ?? "");
+        assert.equal(observed.cwd, client.launch);
+        assert.equal(observed.childCwd, client.launch);
+        client.child.stdin.end();
+        assert.equal(await client.closed, 0, client.stderr());
+        assert.match(client.stderr(), /mcp.workspace.fallback/);
+      } finally {
+        if (scenario === "denied") chmodSync(client.workspace, 0o700);
+      }
+    });
+  }
+});
+
+test("MCP selects cwd only once and preserves invocation hook overrides", { timeout: 12_000 }, async (context) => {
+  const client = workspaceClient(context, true);
+  client.write({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "initialize",
+    params: { capabilities: { roots: { listChanged: true } } },
+  });
+  assert.equal((await client.read()).id, 1);
+  client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+  const request = await client.read();
+  assert.equal(request.method, "roots/list");
+  client.write({ id: request.id, jsonrpc: "2.0", result: { roots: [{ uri: pathToFileURL(client.workspace).href }] } });
+  for (const id of [2, 3]) {
+    client.write({ id, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+    const response = await client.read();
+    assert.equal(response.id, id);
+    const result = response.result as { content: { text: string }[] };
+    const observed = JSON.parse(result.content[0]?.text ?? "");
+    assert.equal(observed.hookCwd, id === 2 ? client.workspace : client.launch);
+    assert.equal(observed.cwd, client.launch);
+    assert.equal(observed.childCwd, client.launch);
+    client.write({ jsonrpc: "2.0", method: "notifications/roots/list_changed" });
+    client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+    client.write({
+      id: request.id,
+      jsonrpc: "2.0",
+      result: { roots: [{ uri: pathToFileURL(client.workspace).href }] },
+    });
+  }
+  client.child.stdin.end();
+  assert.equal(await client.closed, 0, client.stderr());
+});
+
+test("MCP disconnect settles roots discovery without waiting for its timeout", { timeout: 4_000 }, async (context) => {
+  const client = workspaceClient(context);
+  client.write({ id: 1, jsonrpc: "2.0", method: "initialize", params: { capabilities: { roots: {} } } });
+  assert.equal((await client.read()).id, 1);
+  client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+  client.write({ id: 2, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+  assert.equal((await client.read()).method, "roots/list");
+  client.child.stdin.end();
+  const response = await client.read();
+  assert.equal(response.id, 2);
+  const result = response.result as { content: { text: string }[] };
+  assert.equal(JSON.parse(result.content[0]?.text ?? "").cwd, client.launch);
+  assert.equal(await client.closed, 0, client.stderr());
+  assert.match(client.stderr(), /MCP input disconnected/);
+});
+
+test("MCP write failure settles roots discovery and stops serving", { timeout: 4_000 }, async (context) => {
+  const client = workspaceClient(context);
+  client.write({ id: 1, jsonrpc: "2.0", method: "initialize", params: { capabilities: { roots: {} } } });
+  assert.equal((await client.read()).id, 1);
+  client.child.stdout.destroy();
+  client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+  assert.equal(await client.closed, 1, client.stderr());
+  assert.match(client.stderr(), /mcp.workspace.fallback/);
+  assert.match(client.stderr(), /EPIPE/);
+});
+
+test("MCP times out an unanswered roots request and ignores its late reply", { timeout: 12_000 }, async (context) => {
+  const client = workspaceClient(context);
+  client.write({ id: 1, jsonrpc: "2.0", method: "initialize", params: { capabilities: { roots: {} } } });
+  assert.equal((await client.read()).id, 1);
+  client.write({ jsonrpc: "2.0", method: "notifications/initialized" });
+  client.write({ id: 2, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+  const request = await client.read();
+  assert.equal(request.method, "roots/list");
+  for (const id of [2, 3]) {
+    const response = await client.read();
+    assert.equal(response.id, id);
+    const result = response.result as { content: { text: string }[] };
+    assert.equal(JSON.parse(result.content[0]?.text ?? "").cwd, client.launch);
+    if (id === 2) {
+      client.write({
+        id: request.id,
+        jsonrpc: "2.0",
+        result: { roots: [{ uri: pathToFileURL(client.workspace).href }] },
+      });
+      client.write({ id: 3, jsonrpc: "2.0", method: "tools/call", params: { name: "workspace_cwd" } });
+    }
+  }
+  client.child.stdin.end();
+  assert.equal(await client.closed, 0, client.stderr());
+  assert.match(client.stderr(), /roots\/list response timed out/);
+});
 
 test("sanitizeToolSegment normalizes dotted app keys", () => {
   assert.equal(sanitizeToolSegment("minimal.ts"), "minimal_ts");

@@ -1,9 +1,11 @@
 /*
 This module implements the MCP JSON-RPC server over stdio: initialize, tools,
-resources, and ping. Responses are newline-delimited JSON on stdout only.
+resources, ping, and automatic workspace cwd selection from client roots.
+Responses are newline-delimited JSON on stdout only.
 */
 
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import type { AppSpec } from "../core/types.ts";
 import { executeHeadlessToolCall, headlessFailureMcpMessage, lookupHeadlessTool } from "../headless/tool-call.ts";
 import type { App } from "../runtime/cli.ts";
@@ -22,29 +24,23 @@ export const MCP_PROTOCOL_VERSIONS = ["2025-06-18", "2024-11-05"] as const;
 /** The first protocol version to define `outputSchema` (tools/list) and `structuredContent` (tools/call). */
 const MCP_STRUCTURED_OUTPUT_SINCE = "2025-06-18";
 
-/** JSON-RPC request shape from stdin. */
+/** Maximum wait for the client's initial workspace roots response. */
+const MCP_ROOTS_TIMEOUT_MS = 5_000;
+
+/** JSON-RPC request or response from stdin. */
 interface JsonRpcRequest {
+  /** JSON-RPC version declared by the sender. */
   jsonrpc?: string;
+  /** Request identity, scoped to the direction of the request. */
   id?: string | number | null;
+  /** Request or notification method; absent on responses. */
   method?: string;
+  /** Arguments supplied by the client. */
   params?: unknown;
-}
-
-/** Writes a JSON-RPC response line to stdout. */
-function writeResponse(msg: Record<string, unknown>): void {
-  process.stdout.write(`${JSON.stringify(msg)}\n`);
-}
-
-/** Writes a JSON-RPC error response. */
-function writeError(id: string | number | null | undefined, code: number, message: string): void {
-  if (id === undefined) {
-    return;
-  }
-  writeResponse({
-    jsonrpc: "2.0",
-    id,
-    error: { code, message },
-  });
+  /** Successful response to a server request. */
+  result?: unknown;
+  /** Failed response to a server request. */
+  error?: unknown;
 }
 
 /** True when `version` is at or after {@link MCP_STRUCTURED_OUTPUT_SINCE} in {@link MCP_PROTOCOL_VERSIONS}. */
@@ -79,8 +75,15 @@ function readMcpResource(
   }
 }
 
-/** Handles one NDJSON request line. */
-async function handleRequestLine(cli: App, line: string): Promise<void> {
+/** Handles one request on the serialized application queue. */
+async function handleRequestLine(
+  /** App serving this connection. */
+  cli: App,
+  /** Parsed client request or notification. */
+  req: JsonRpcRequest,
+  /** Connection writer that bypasses tool output capture. */
+  writeResponse: (message: Record<string, unknown>) => void,
+): Promise<void> {
   const root = cli.spec;
   const requestId = randomUUID();
   const started = performance.now();
@@ -88,11 +91,11 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
   const emitter = cli.server?.emitter;
   const obscureUnexpected = cli.server?.mcp?.obscureUnexpected ?? root.mcpServer?.errors?.obscureUnexpected ?? false;
 
-  let req: JsonRpcRequest;
-  try {
-    req = JSON.parse(line) as JsonRpcRequest;
-  } catch {
-    return;
+  /** Writes an error only when the incoming message expects a response. */
+  function writeError(id: string | number | null | undefined, code: number, message: string): void {
+    if (id !== undefined) {
+      writeResponse({ error: { code, message }, id, jsonrpc: "2.0" });
+    }
   }
 
   const id = req.id;
@@ -329,22 +332,142 @@ async function handleRequestLine(cli: App, line: string): Promise<void> {
 export async function mcpServeStdioLoop(cli: App): Promise<void> {
   let buffer = "";
   const decoder = new TextDecoder();
-  for await (const chunk of process.stdin) {
-    buffer += typeof chunk === "string" ? chunk : decoder.decode(chunk);
-    let nl = buffer.indexOf("\n");
-    while (nl !== -1) {
-      const line = buffer.slice(0, nl).trim();
-      buffer = buffer.slice(nl + 1);
-      if (line.length === 0) {
-        nl = buffer.indexOf("\n");
-        continue;
-      }
-      await handleRequestLine(cli, line);
-      nl = buffer.indexOf("\n");
-    }
+  const writeStdout = process.stdout.write.bind(process.stdout);
+  let execution = Promise.resolve();
+  const rootsRequestId = `argsbarg:roots:${randomUUID()}`;
+  let rootsSupported: boolean | undefined;
+  let workspaceSelected = false;
+  let inputClosed = false;
+  let settleRoots: ((response: JsonRpcRequest | Error) => void) | undefined;
+
+  /** Stops reading when the connection or application queue cannot continue. */
+  function stopInput(error: unknown): void {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    settleRoots?.(failure);
+    process.stdin.destroy(failure);
   }
-  const trailing = buffer.trim();
-  if (trailing.length > 0) {
-    await handleRequestLine(cli, trailing);
+
+  process.stdout.on("error", stopInput);
+
+  /** Writes protocol messages independently of App.invoke's stdout capture. */
+  function writeResponse(message: Record<string, unknown>): void {
+    writeStdout(`${JSON.stringify(message)}\n`);
+  }
+
+  /** Selects one local workspace once, falling back to launch cwd on discovery failure. */
+  async function selectWorkspace(): Promise<void> {
+    let reason = "Client does not support roots";
+    try {
+      if (rootsSupported) {
+        if (inputClosed) {
+          throw new Error("MCP input disconnected");
+        }
+        const response = await new Promise<JsonRpcRequest>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            settleRoots?.(new Error("Client roots/list response timed out after 5 seconds"));
+          }, MCP_ROOTS_TIMEOUT_MS);
+          settleRoots = (reply) => {
+            clearTimeout(timeout);
+            settleRoots = undefined;
+            if (reply instanceof Error) {
+              reject(reply);
+            } else {
+              resolve(reply);
+            }
+          };
+          try {
+            writeResponse({ id: rootsRequestId, jsonrpc: "2.0", method: "roots/list" });
+          } catch (error) {
+            settleRoots?.(error instanceof Error ? error : new Error(String(error)));
+          }
+        });
+        if ("error" in response) {
+          throw new Error("Client roots/list request failed");
+        }
+        const result = response.result as { roots?: unknown } | null;
+        if (!result || !Array.isArray(result.roots)) {
+          throw new Error("Invalid roots/list response");
+        }
+        if (result.roots.length !== 1) {
+          throw new Error(`Client returned ${result.roots.length} workspace roots; expected exactly one`);
+        }
+        const root = result.roots[0] as { uri?: unknown } | null;
+        if (!root || typeof root.uri !== "string") {
+          throw new Error("Invalid workspace root URI");
+        }
+        process.chdir(fileURLToPath(root.uri));
+        cli.server?.emitter.emitLifecycle(`MCP workspace cwd: ${process.cwd()}`, "mcp.workspace.selected");
+        return;
+      }
+    } catch (error) {
+      reason = error instanceof Error ? error.message : String(error);
+    }
+    cli.server?.emitter.emitLifecycle(`MCP workspace cwd unchanged: ${reason}`, "mcp.workspace.fallback");
+  }
+
+  /** Routes responses immediately and queues application requests in arrival order. */
+  function routeLine(line: string): void {
+    let request: JsonRpcRequest;
+    try {
+      request = JSON.parse(line) as JsonRpcRequest;
+    } catch {
+      return;
+    }
+    if (typeof request !== "object" || request === null || Array.isArray(request)) {
+      return;
+    }
+    if (request.method === undefined && ("result" in request || "error" in request)) {
+      if (request.jsonrpc === "2.0" && request.id === rootsRequestId) {
+        settleRoots?.(request);
+      }
+      return;
+    }
+    execution = execution.then(async () => {
+      if (
+        request.jsonrpc === "2.0" &&
+        request.method === "notifications/initialized" &&
+        request.id === undefined &&
+        rootsSupported !== undefined &&
+        !workspaceSelected
+      ) {
+        workspaceSelected = true;
+        await selectWorkspace();
+      }
+      await handleRequestLine(cli, request, writeResponse);
+      if (
+        request.jsonrpc === "2.0" &&
+        request.method === "initialize" &&
+        request.id !== undefined &&
+        !workspaceSelected
+      ) {
+        const params = request.params as { capabilities?: { roots?: unknown } } | undefined;
+        const roots = params?.capabilities?.roots;
+        rootsSupported = typeof roots === "object" && roots !== null && !Array.isArray(roots);
+      }
+    });
+    void execution.catch(stopInput);
+  }
+
+  try {
+    for await (const chunk of process.stdin) {
+      buffer += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+      let nl = buffer.indexOf("\n");
+      while (nl !== -1) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (line.length > 0) routeLine(line);
+        nl = buffer.indexOf("\n");
+      }
+    }
+    const trailing = `${buffer}${decoder.decode()}`.trim();
+    if (trailing.length > 0) routeLine(trailing);
+  } finally {
+    inputClosed = true;
+    settleRoots?.(new Error("MCP input disconnected"));
+    try {
+      await execution;
+    } finally {
+      process.stdout.off("error", stopInput);
+    }
   }
 }
