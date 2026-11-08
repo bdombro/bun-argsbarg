@@ -3,11 +3,40 @@ Argsbarg developer tools — bootstrap consumer CLIs via `create`.
 */
 
 import { argsbarg, command, OptionKind } from "../index.ts";
+import { mcpGatewayServe, parseGatewayEntries } from "../mcp/gateway.ts";
 import { argsbargPackageVersion, CREATE_TEMPLATES } from "./create.ts";
 import { runCreate } from "./run-create.ts";
 
 export const app = argsbarg({
   commands: [
+    command({
+      key: "gateway",
+      description:
+        "Serve several argsbarg MCP plugin bundles from one process over stdio (MCP). Tools are named <alias>_<tool>.",
+      options: [
+        {
+          name: "name",
+          description: "Server name reported to MCP clients (default: argsbarg-gateway).",
+          kind: OptionKind.String,
+        },
+      ],
+      positionals: [
+        {
+          name: "bundles",
+          description: "Plugin bundles as [alias=]path, e.g. notes=plugins/obsidian/dist/obsidian.mjs.",
+          kind: OptionKind.String,
+          argMin: 1,
+          argMax: 0,
+        },
+      ],
+      handler: async (ctx) => {
+        await mcpGatewayServe(parseGatewayEntries(ctx.positional("bundles") as string[]), {
+          name: ctx.inputs.name ?? "argsbarg-gateway",
+          version: argsbargPackageVersion(),
+        });
+        process.exit(0);
+      },
+    }),
     command({
       key: "create",
       description: "Copy a CLI template into a directory with substitutions.",

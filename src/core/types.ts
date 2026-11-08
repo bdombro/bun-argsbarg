@@ -608,6 +608,8 @@ export type AppSpec = Command & AppSpecFields;
 export type AppSpecFields = {
   /** Opt-out for shell completion generation (`completion bash|zsh|fish`). */
   completion?: CompletionConfig;
+  /** Reports unexpected command failures (CLI, HTTP, MCP) to a Sentry-compatible collector; see `createErrorReporter`. */
+  errorReporter?: import("../log/error-report.ts").ErrorReporter;
   /** Invoke and error hooks for user commands on CLI, HTTP, and MCP. */
   hooks?: AppHooks;
   /** When set with `enabled: true`, enables the `http` built-in HTTP server. */

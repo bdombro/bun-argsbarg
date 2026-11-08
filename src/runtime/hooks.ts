@@ -12,8 +12,10 @@ import type {
   InvokeHookContext,
   ServerRuntime,
 } from "../core/types.ts";
+import { SchemaValidationError } from "../core/types.ts";
 import { firstErrorLine } from "../http/result.ts";
 import { type LogEmitter, obscureUnexpectedClientMessage } from "../log/emitter.ts";
+import type { ErrorReporter } from "../log/error-report.ts";
 import type { Capabilities } from "./capabilities.ts";
 
 /** Root command keys owned by argsbarg built-ins. */
@@ -116,6 +118,21 @@ export interface ErrorPipelineResult {
   errorMsg: string;
 }
 
+/**
+ * True for failures worth an error report: handler throws and crashes. Bad input, help, unknown
+ * routes, cancellations and deliberate `process.exit` calls are the caller's business, not bugs.
+ */
+function isReportableFailure(
+  /** Thrown value. */
+  err: unknown,
+  /** Classified failure kind. */
+  failureKind: InvokeFailureKind,
+): boolean {
+  if (failureKind === "help" || failureKind === "unknown_route") return false;
+  if (err instanceof InputError || err instanceof SchemaValidationError) return false;
+  return !(err instanceof Error && (err.name === "CliInvokeExit" || err.name === "AbortError"));
+}
+
 /** Runs formatError → onError → ECS emit for one invoke failure. */
 export async function runErrorPipeline(
   hookCtx: InvokeHookContext,
@@ -124,6 +141,8 @@ export async function runErrorPipeline(
   hooks: import("../core/types.ts").AppHooks | undefined,
   emitter: LogEmitter | undefined,
   obscureUnexpected: boolean,
+  /** App's error reporter; receives unexpected failures only. */
+  reporter?: ErrorReporter,
 ): Promise<ErrorPipelineResult> {
   let clientError = defaultClientError(err, failureKind);
   if (failureKind === "unexpected" && obscureUnexpected) {
@@ -144,6 +163,10 @@ export async function runErrorPipeline(
   }
 
   await runHook(() => hooks?.onError?.(errorCtx), "onError");
+
+  if (reporter && isReportableFailure(err, failureKind)) {
+    await reporter.reportError(err, { invocation: hookCtx.invocation, path: hookCtx.path.join(" ") });
+  }
 
   const displayMessage =
     failureKind === "unexpected" && obscureUnexpected ? obscureUnexpectedClientMessage() : clientError.message;

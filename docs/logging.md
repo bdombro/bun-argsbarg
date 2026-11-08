@@ -142,6 +142,24 @@ If an upstream service (gateway, sidecar, mesh) sends a standard **`traceparent`
 
 No configuration required. If the header is missing, Argsbarg does not invent a trace id.
 
+## Error reporting
+
+Logs stay on stderr; to collect failures in a Sentry-compatible service (Sentry, Bugsink, GlitchTip), set `errorReporter` on the app spec. The reporter has no dependencies: it posts Sentry envelopes with `fetch`.
+
+```typescript
+import { argsbarg, createErrorReporter } from "argsbarg";
+
+/** Shared with code that reports silent failures. */
+export const errors = createErrorReporter({ dsn: "https://key@bugsink.example.com/3", env: "MYAPP_ERROR_DSN" });
+
+export const app = argsbarg({ key: "myapp", errorReporter: errors /* … */ });
+```
+
+- **Reported:** errors thrown by command handlers on CLI, HTTP and MCP, with `invocation` and `path` as extra context. Not reported: input and schema validation errors, help, unknown routes, cancellations and deliberate `process.exit` calls.
+- **Direct use:** `errors.reportError(err, extra)` and `errors.reportMessage(message, level, extra)` for failures a command handles itself (a background job's skipped step, say).
+- **`env`:** names an env var that overrides the DSN; an empty value turns reporting off (tests).
+- Reporting never throws and waits at most 10 seconds per event. Each reporter keeps its own DSN, so apps sharing an [MCP gateway](mcp.md#mcp-gateway) report to their own projects.
+
 ## Related
 
 - [http-server.md](http-server.md) — HTTP server setup and endpoints

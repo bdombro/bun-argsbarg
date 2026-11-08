@@ -25,7 +25,7 @@ export const MCP_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2024-11-05"] 
 const MCP_ROOTS_TIMEOUT_MS = 5_000;
 
 /** Validated JSON-RPC request or notification from stdin. */
-interface JsonRpcRequest {
+export interface JsonRpcRequest {
   /** JSON-RPC version declared by the sender. */
   jsonrpc: "2.0";
   /** Request identity, scoped to the direction of the request. */
@@ -61,8 +61,21 @@ function readMcpResource(
   }
 }
 
+/** Cancellation and progress controls for one request. */
+export type McpRequestControls = Required<Pick<McpWireContext, "signal" | "reportProgress">>;
+
+/** Handles one validated request and writes its response (one app, or the gateway router). */
+export type McpRequestHandler = (
+  /** Parsed client request (always has an id). */
+  req: JsonRpcRequest,
+  /** Connection writer that bypasses tool output capture. */
+  writeResponse: (message: Record<string, unknown>) => void,
+  /** Cancellation and progress for this request only. */
+  controls: McpRequestControls,
+) => Promise<void>;
+
 /** Handles one request on the serialized application queue. */
-async function handleRequestLine(
+export async function handleRequestLine(
   /** App serving this connection. */
   cli: App,
   /** Parsed client request or notification. */
@@ -70,7 +83,7 @@ async function handleRequestLine(
   /** Connection writer that bypasses tool output capture. */
   writeResponse: (message: Record<string, unknown>) => void,
   /** Cancellation and progress for this request only. */
-  controls: Required<Pick<McpWireContext, "signal" | "reportProgress">>,
+  controls: McpRequestControls,
 ): Promise<void> {
   const root = cli.spec;
   const requestId = randomUUID();
@@ -315,8 +328,21 @@ async function handleRequestLine(
   }
 }
 
-/** Runs the MCP NDJSON read loop on stdin until EOF. */
+/** Runs the MCP NDJSON read loop on stdin until EOF for one app. */
 export async function mcpServeStdioLoop(cli: App): Promise<void> {
+  await mcpServeStdio(
+    (req, writeResponse, controls) => handleRequestLine(cli, req, writeResponse, controls),
+    (message, action) => cli.server?.emitter.emitLifecycle(message, action),
+  );
+}
+
+/** Runs the MCP NDJSON read loop on stdin until EOF, sending each request to `handle` in arrival order. */
+export async function mcpServeStdio(
+  /** Request handler (one app, or the gateway router). */
+  handle: McpRequestHandler,
+  /** Lifecycle log line writer (workspace selection). */
+  emitLifecycle: (message: string, action: string) => void,
+): Promise<void> {
   let buffer = "";
   const decoder = new TextDecoder();
   const writeStdout = process.stdout.write.bind(process.stdout);
@@ -373,13 +399,13 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
         const root = result.roots[0] as { uri?: unknown } | null;
         if (!root || typeof root.uri !== "string") throw new Error("Invalid workspace root URI");
         process.chdir(fileURLToPath(root.uri));
-        cli.server?.emitter.emitLifecycle(`MCP workspace cwd: ${process.cwd()}`, "mcp.workspace.selected");
+        emitLifecycle(`MCP workspace cwd: ${process.cwd()}`, "mcp.workspace.selected");
         return;
       }
     } catch (error) {
       reason = error instanceof Error ? error.message : String(error);
     }
-    cli.server?.emitter.emitLifecycle(`MCP workspace cwd unchanged: ${reason}`, "mcp.workspace.fallback");
+    emitLifecycle(`MCP workspace cwd unchanged: ${reason}`, "mcp.workspace.fallback");
   }
 
   /** Validates envelopes before queuing application requests in arrival order. */
@@ -461,8 +487,7 @@ export async function mcpServeStdioLoop(cli: App): Promise<void> {
       let completed = false;
       let previousProgress = -1;
       try {
-        await handleRequestLine(
-          cli,
+        await handle(
           request as unknown as JsonRpcRequest,
           (message) => {
             completed = true;

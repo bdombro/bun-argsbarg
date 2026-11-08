@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **New:** `argsbarg gateway [alias=]bundle.mjs…` serves several argsbarg MCP plugins from one Node process over stdio, saving one Node runtime per plugin per agent session. Tools are named `<alias>_<tool>`, instructions get one section per plugin, resources merge, and one shared `mcp_resource_read` tool reads any of them. Bundles join unchanged: `app.run()` registers with the gateway when it imports them. Plugins must be built with this version or later. See [MCP gateway](docs/mcp.md#mcp-gateway).
+- **New:** `errorReporter` on the app spec, made with `createErrorReporter({ dsn, env })`, sends command failures (CLI, HTTP, MCP) to a Sentry-compatible collector such as Bugsink, with zero dependencies. Input errors, help, unknown routes, cancellations and deliberate `process.exit` calls are not reported. Apps can also call `reportError` / `reportMessage` directly. Each reporter holds its own DSN, so plugins sharing a gateway still report to their own projects. See [Error reporting](docs/logging.md#error-reporting).
+
 - **Fix:** `argsbarg create` writes the template's `.gitignore` when the installed package has none. npm never publishes `.gitignore` files, so projects created from the npm package had no `.gitignore` and their initial commit included `node_modules`.
 - **Fix:** `app.run()` now waits for stdout and stderr to drain before exiting. When stdout was a pipe, a handler result over ~64 KB was cut off at the pipe buffer size because the process exited while the write was still queued.
 

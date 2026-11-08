@@ -31,7 +31,8 @@ import { cliValidateProgram, schemaStrictnessWarnings } from "../core/validate.t
 import { httpServeHttp } from "../http/server.ts";
 import { LogEmitter } from "../log/emitter.ts";
 import { bootstrapMcpEnv } from "../mcp/env.ts";
-import { MCP_PROTOCOL_VERSIONS, mcpServeStdioLoop } from "../mcp/server.ts";
+import { type McpGatewayApp, mcpGatewayRegistry } from "../mcp/gateway.ts";
+import { handleRequestLine, MCP_PROTOCOL_VERSIONS, mcpServeStdioLoop } from "../mcp/server.ts";
 import { mcpSizeReport } from "../mcp/tools.ts";
 import { createServerRuntime, type ServerHandleContext } from "../server/context.ts";
 import { resolveHttpServeConfig, resolveMcpServeConfig, type ServeOverrides } from "../server/overrides.ts";
@@ -131,6 +132,12 @@ export class App {
   }
 
   async run(argv: string[] = process.argv.slice(2)): Promise<never> {
+    const gateway = mcpGatewayRegistry();
+    if (gateway) {
+      // Imported by `argsbarg gateway`: hand over the MCP handler instead of parsing argv.
+      gateway.register(this.gatewayApp());
+      return undefined as never;
+    }
     assertBuiltinAllowed(argv, this.caps, this.spec);
 
     const prep = this.prepareDispatch(argv);
@@ -190,12 +197,18 @@ export class App {
       await flushStdio();
       process.exit(0);
     } catch (err) {
-      const piped = await runErrorPipeline(hookCtx(), err, classifyFailureKind(err, {}), hooks, undefined, false).catch(
-        (hookErr: unknown) => {
-          const errorMsg = hookErr instanceof Error ? hookErr.message : String(hookErr);
-          return { errorMsg, clientError: { message: errorMsg, exitCode: 1 } };
-        },
-      );
+      const piped = await runErrorPipeline(
+        hookCtx(),
+        err,
+        classifyFailureKind(err, {}),
+        hooks,
+        undefined,
+        false,
+        this.spec.errorReporter,
+      ).catch((hookErr: unknown) => {
+        const errorMsg = hookErr instanceof Error ? hookErr.message : String(hookErr);
+        return { errorMsg, clientError: { message: errorMsg, exitCode: 1 } };
+      });
       if (err instanceof InputError && piped.errorMsg === err.message) {
         this.exitLeafInputError(err, pr.path);
       }
@@ -324,7 +337,15 @@ export class App {
     ): Promise<InvokeResult> => {
       const failureKind = classifyFailureKind(err, kindOpts);
       if (!skipHooks) {
-        const piped = await runErrorPipeline(hookCtx(), err, failureKind, hooks, emitter, obscureUnexpected);
+        const piped = await runErrorPipeline(
+          hookCtx(),
+          err,
+          failureKind,
+          hooks,
+          emitter,
+          obscureUnexpected,
+          this.spec.errorReporter,
+        );
         return {
           kind: "error",
           exitCode: piped.clientError.exitCode ?? 1,
@@ -412,6 +433,26 @@ export class App {
       console.info = origConsoleInfo;
       console.warn = origConsoleWarn;
     }
+  }
+
+  /** Sets up the MCP server state without stdio and returns the handler the gateway routes to. */
+  private gatewayApp(): McpGatewayApp {
+    const mcpServer = this.spec.mcpServer;
+    if (!mcpServer) throw new Error(`${this.spec.key}: mcpServer is not enabled, so it can't join a gateway`);
+    const resolved = resolveMcpServeConfig(this.spec, {});
+    this.server = {
+      runtime: createServerRuntime(this.spec, "mcp"),
+      emitter: new LogEmitter({ spec: this.spec, resolved: resolved.log }),
+      mcp: resolved,
+      mcpHooks: mcpServer.hooks,
+      mcpProtocolVersion: MCP_PROTOCOL_VERSIONS[0],
+    };
+    return {
+      key: this.spec.key,
+      version: this.spec.version,
+      ...(mcpServer.instructions ? { instructions: mcpServer.instructions } : {}),
+      handle: (req, writeResponse, controls) => handleRequestLine(this, req, writeResponse, controls),
+    };
   }
 
   async serveMcp(overrides: ServeOverrides = {}): Promise<never> {

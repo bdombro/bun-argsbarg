@@ -97,6 +97,10 @@ export { handleApiRequest, httpServeHttp, resolveHttpListenAddress } from "./htt
 export type { EcsLogEvent, EcsLogLevel, EcsServiceFields, FormatEcsLineOpts, LogEnrichContext } from "./log/ecs.ts";
 export { ECS_VERSION, formatEcsLine } from "./log/ecs.ts";
 export type { LogEmitterOpts, ResolvedLogConfig } from "./log/emitter.ts";
+export type { ErrorReporter, ErrorReporterOptions, ErrorReportLevel } from "./log/error-report.ts";
+export { createErrorReporter } from "./log/error-report.ts";
+export type { McpGatewayApp, McpGatewayEntry } from "./mcp/gateway.ts";
+export { mcpGatewayServe } from "./mcp/gateway.ts";
 export type { McpBundlePaths, PackMcpBundleOpts } from "./mcp/pack/bundle.ts";
 export { defaultMcpBundlePaths, generateMcpManifest, packMcpBundle } from "./mcp/pack/bundle.ts";
 export {

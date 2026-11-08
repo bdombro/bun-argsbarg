@@ -460,6 +460,34 @@ Unpack Cursor plugin locally into `~/.cursor/plugins/local/<name>`.
 
 Bare **`myapp mcp`** still runs the stdio MCP server for hosts configured by hand (see [Manual client setup](#manual-client-setup)).
 
+## MCP gateway
+
+Every agent session starts one process per stdio MCP server, and each Node process costs about 30 MB before any app code runs. `argsbarg gateway` serves several argsbarg plugin bundles from one process instead:
+
+```json
+{
+  "mcpServers": {
+    "assistant": {
+      "command": "node",
+      "args": [
+        "/path/to/node_modules/argsbarg/dist/cli-tool/main.js",
+        "gateway",
+        "--name", "assistant",
+        "notes=/path/to/obsidian/dist/obsidian.mjs",
+        "/path/to/personal-log/dist/personal-log.mjs"
+      ]
+    }
+  }
+}
+```
+
+- **Entries** are `[alias=]path`. The alias (default: the app key) prefixes each tool: `notes_read`. Aliases are letters, digits and dashes, and must be unique.
+- **Bundles join unchanged.** The gateway imports each one; its `await app.run()` finds the gateway and registers its MCP handler instead of reading argv or stdio. Bundles must be built with an argsbarg version that has the gateway. A bundle that registers nothing fails at startup.
+- **Instructions** become one section per plugin (`## <alias>`) under a line explaining the tool prefix.
+- **Resources** keep their URIs and merge. One shared `mcp_resource_read` tool reads any plugin's resource; plugins' own copies of that tool are dropped.
+- **Shared process:** plugins share env (the login-shell env is bootstrapped once, before any bundle loads), the working directory (the gateway selects the client's workspace root once), and the serialized request queue. Each keeps its own hooks, logging and `errorReporter`.
+- **Libraries** can call `mcpGatewayServe(entries, { name, version })`.
+
 ## Hidden commands and options
 
 Set **`hidden: true`** on a command or option to omit it from help listings, schema export, shell completions, and MCP `tools/list` / tool `inputSchema`. Hidden commands remain invocable; **`myapp hidden-cmd -h`** still works.
