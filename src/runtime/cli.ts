@@ -187,6 +187,7 @@ export class App {
         ctx.respond({ body: handlerResult as RespondOptions["body"] });
       }
       await runHook(() => hooks?.afterInvoke?.({ ...hookCtx(), result: { kind: "ok", exitCode: 0 } }), "afterInvoke");
+      await flushStdio();
       process.exit(0);
     } catch (err) {
       const piped = await runErrorPipeline(hookCtx(), err, classifyFailureKind(err, {}), hooks, undefined, false).catch(
@@ -199,6 +200,7 @@ export class App {
         this.exitLeafInputError(err, pr.path);
       }
       process.stderr.write(`${piped.errorMsg}\n`);
+      await flushStdio();
       process.exit(piped.clientError.exitCode ?? 1);
     }
   }
@@ -602,4 +604,13 @@ export function cliErrWithHelp(ctx: CommandContext, msg: string): never {
   process.stderr.write(`${msg}\n`);
   process.stderr.write(cliHelpRender(cliPresentationRoot(ctx.spec), ctx.commandPath, true));
   process.exit(1);
+}
+
+/**
+ * Wait until everything written to stdout and stderr has been handed to the OS. On a pipe, Node
+ * writes asynchronously, so exiting straight after a large write dropped everything past ~64 KB.
+ */
+function flushStdio(): Promise<void> {
+  const drain = (stream: NodeJS.WriteStream) => new Promise<void>((resolve) => stream.write("", () => resolve()));
+  return Promise.all([drain(process.stdout), drain(process.stderr)]).then(() => undefined);
 }

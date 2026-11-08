@@ -283,3 +283,18 @@ test("ctx.positional varargs matches ctx.args", async () => {
   await argsbarg(root).invoke(["read", "a.txt", "b.txt"]);
   assert.deepEqual(positional, args);
 });
+
+/** A handler result larger than a pipe buffer (64 KB) reaches a piped stdout in full. */
+test("app.run flushes a large result to a piped stdout before exiting", () => {
+  const indexPath = join(import.meta.dirname, "../index.ts");
+  const { stdout, exitCode } = runNode([
+    "--input-type=module",
+    "-e",
+    `
+import { argsbarg } from ${JSON.stringify(indexPath)};
+await argsbarg({ key: "t", description: "d", version: "0.0.0", handler: () => ({ big: "x".repeat(200_000) }) }).run([]);
+`,
+  ]);
+  assert.equal(exitCode, 0);
+  assert.equal((JSON.parse(stdout) as { big: string }).big.length, 200_000);
+});

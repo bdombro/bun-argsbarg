@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Fix:** `app.run()` now waits for stdout and stderr to drain before exiting. When stdout was a pipe, a handler result over ~64 KB was cut off at the pipe buffer size because the process exited while the write was still queued.
+
 ## [8.2.0] - 2026-11-05
 
 ### Changed
