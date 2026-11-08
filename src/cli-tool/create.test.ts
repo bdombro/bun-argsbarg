@@ -3,7 +3,7 @@ Tests for cli-tool/create module behavior.
 */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
@@ -17,6 +17,7 @@ import {
   renderCreateTree,
   resolveCreateOptions,
   substituteTemplateContent,
+  TEMPLATE_GITIGNORE,
 } from "./create.ts";
 
 function baseOpts(overrides: Partial<CreateOptions> = {}): CreateOptions {
@@ -131,5 +132,14 @@ describe("argsbarg create", () => {
   test("--diff captures drift details", () => {
     const drifts = diffCreateDetails("/nonexistent", { key: "x", releaseRepo: "org/x" });
     assert.ok(drifts.length > 0);
+  });
+});
+
+describe("TEMPLATE_GITIGNORE", () => {
+  test("matches each example's .gitignore, so npm installs (which drop .gitignore) still get one", () => {
+    for (const id of ["cli", "api", "agent-plugin", "homebrew"] as const) {
+      const onDisk = readFileSync(join(import.meta.dirname, "../../examples", id, ".gitignore"), "utf8");
+      assert.equal(TEMPLATE_GITIGNORE[id], onDisk, id);
+    }
   });
 });

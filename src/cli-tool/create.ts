@@ -84,6 +84,18 @@ const CREATE_IDENTITY_REL = "src/create-identity.ts";
 /** Paths never copied from a template (lockfiles, installs, and build output). */
 const EXCLUDE_REL = new Set(["bun.lock", "package-lock.json", "node_modules", "dist"]);
 
+/**
+ * Each template's `.gitignore`. npm never publishes `.gitignore` files, so templates installed from
+ * npm arrive without one and `create` writes this instead. Kept equal to `examples/<id>/.gitignore`
+ * by a test.
+ */
+export const TEMPLATE_GITIGNORE: Record<CreateTemplateId, string> = {
+  "agent-plugin": "node_modules/\ndist/*\n!dist/example-agent-plugin.mjs\n.DS_Store\n",
+  api: "node_modules/\ndist/\n.DS_Store\n",
+  cli: "node_modules/\ndist/\n.DS_Store\n",
+  homebrew: "node_modules/\ndist/\nFormula/.staging/\nworkspaces.db\n.DS_Store\n",
+};
+
 /** Argsbarg package root (two levels above this file in both `src/` and the compiled `dist/`). */
 export function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -319,6 +331,9 @@ export function renderCreateTree(opts: CreateOptions): Map<string, string> {
         ? `Formula/${opts.key}.rb`
         : rel;
     files.set(targetRel, substituteTemplateContent(raw, opts));
+  }
+  if (!files.has(".gitignore")) {
+    files.set(".gitignore", substituteTemplateContent(TEMPLATE_GITIGNORE[opts.templateId], opts));
   }
   return files;
 }
