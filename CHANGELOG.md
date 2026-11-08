@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.3.0] - 2026-11-08
+
 - **New:** `argsbarg gateway [alias=]bundle.mjs…` serves several argsbarg MCP plugins from one Node process over stdio, saving one Node runtime per plugin per agent session. Tools are named `<alias>_<tool>`, instructions get one section per plugin, resources merge, and one shared `mcp_resource_read` tool reads any of them. Bundles join unchanged: `app.run()` registers with the gateway when it imports them. Plugins must be built with this version or later. See [MCP gateway](docs/mcp.md#mcp-gateway).
 - **New:** `errorReporter` on the app spec, made with `createErrorReporter({ dsn, env })`, sends command failures (CLI, HTTP, MCP) to a Sentry-compatible collector such as Bugsink, with zero dependencies. Input errors, help, unknown routes, cancellations and deliberate `process.exit` calls are not reported. Apps can also call `reportError` / `reportMessage` directly. Each reporter holds its own DSN, so plugins sharing a gateway still report to their own projects. See [Error reporting](docs/logging.md#error-reporting).
 
@@ -1243,7 +1245,8 @@ const cli = { ... } satisfies CliProgram;  // or : CliProgram
 - Migrate schemas: rename every `children` property to **`commands`**; move positional definitions to **`CliPositional`** objects on `positionals` and strip `positional` / `argMin` / `argMax` from flag definitions under `options` (flags only carry `name`, `description`, `kind`, and optional `shortName`).
 - Imports: use `CliPositional` where needed; replace `CliOptionDef` with `CliOption` or `CliPositional` as appropriate.
 
-[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.2.0...HEAD
+[Unreleased]: https://github.com/bdombro/bun-argsbarg/compare/v8.3.0...HEAD
+[8.3.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.3.0
 [8.2.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.2.0
 [8.1.0]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.1.0
 [8.0.3]: https://github.com/bdombro/bun-argsbarg/releases/tag/v8.0.3
