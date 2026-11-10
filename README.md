@@ -8,7 +8,7 @@ _____ _______  ____  _____\_ |__ _____ _______  ____
 ```
 <!-- src https://patorjk.com/software/taag/#p=display&f=Graffiti&t=argsbarg&x=none&v=4&h=4&w=80&we=false -->
 
-[GitHub](https://github.com/bdombro/bun-argsbarg) · [npm](https://www.npmjs.com/package/argsbarg) · [License: MIT](LICENSE)
+[GitHub](https://github.com/bdombro/argsbarg) · [npm](https://www.npmjs.com/package/argsbarg) · [License: MIT](LICENSE)
 
 Build well-behaved CLIs, HTTP REST services, and MCP servers from one schema. Runs on Node ≥ 20 (Bun runs the same build). No production dependencies; one peer: [Zod](https://zod.dev).
 
